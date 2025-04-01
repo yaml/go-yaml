@@ -1,4 +1,16 @@
-# YAML support for the Go language
+# THIS PROJECT IS UNMAINTAINED
+
+This was one of my first Go projects, bootstapped over the christmas break of 2010 and well maintained for over a decade, often with help from contributors. Sadly, in the last few years my own free time, both personal and professional, became less common, and none of the contributions turned into more extensive long term engagements. I was hoping to address the situation by moving it into a dedicated professional team at a more resourceful home such as Canonical, Google, etc, but that hasn't materialized in time either.  So I'm now taking the more explicit action of clearly labeling the project as unmaintained, to inform the community of what should already be obvious by now.
+
+There's still a chance I may come back and bring this project to where I wish it should go, but something else will have to change for this to be viable.  Unfortunately, despite my own lack of time for the project, I cannot just "hand off" maintenance to an individual or to a small group either, due to the likelyhood of the project going back into an unmaintained, unstable, or even abused state.
+
+Sorry about that.
+
+_-- Gustavo Niemeyer_
+
+# ORIGINAL README
+
+## YAML support for the Go language
 
 Introduction
 ------------
