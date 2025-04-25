@@ -1,12 +1,21 @@
-# THIS PROJECT IS UNMAINTAINED
+# THIS FORK MAINTAINED BY YAML
 
-This was one of my first Go projects, bootstapped over the christmas break of 2010 and well maintained for over a decade, often with help from contributors. Sadly, in the last few years my own free time, both personal and professional, became less common, and none of the contributions turned into more extensive long term engagements. I was hoping to address the situation by moving it into a dedicated professional team at a more resourceful home such as Canonical, Google, etc, but that hasn't materialized in time either.  So I'm now taking the more explicit action of clearly labeling the project as unmaintained, to inform the community of what should already be obvious by now.
+This fork of the extremely popular [go-yaml](https://github.com/go-yaml/yaml)
+project is being maintained by the official YAML organization.
 
-There's still a chance I may come back and bring this project to where I wish it should go, but something else will have to change for this to be viable.  Unfortunately, despite my own lack of time for the project, I cannot just "hand off" maintenance to an individual or to a small group either, due to the likelyhood of the project going back into an unmaintained, unstable, or even abused state.
+We are working with go-yaml's author, @niemeyer, to show that we can maintain
+successful long term stewardship of the project following his decision to
+[label it as unmaintained](
+https://github.com/go-yaml/yaml/blob/944c86a7d2/README.md).
 
-Sorry about that.
+We hope to take the project over, attract dedicated maintainers and eventually
+the kind of sponsorship that can move it forward in sync with libyaml and
+pyyaml which are also under this organization.
 
-_-- Gustavo Niemeyer_
+We also are hoping to earn the trust of the various go-yaml forks to switch
+back to this repository as their upstream.
+
+----
 
 # ORIGINAL README
 
@@ -64,7 +73,8 @@ If opened in a browser, the import path itself leads to the API documentation:
 API stability
 -------------
 
-The package API for yaml v3 will remain stable as described in [gopkg.in](https://gopkg.in).
+The package API for yaml v3 will remain stable as described in [gopkg.in](
+https://gopkg.in).
 
 
 License
@@ -106,27 +116,27 @@ type T struct {
 
 func main() {
         t := T{}
-    
+
         err := yaml.Unmarshal([]byte(data), &t)
         if err != nil {
                 log.Fatalf("error: %v", err)
         }
         fmt.Printf("--- t:\n%v\n\n", t)
-    
+
         d, err := yaml.Marshal(&t)
         if err != nil {
                 log.Fatalf("error: %v", err)
         }
         fmt.Printf("--- t dump:\n%s\n\n", string(d))
-    
+
         m := make(map[interface{}]interface{})
-    
+
         err = yaml.Unmarshal([]byte(data), &m)
         if err != nil {
                 log.Fatalf("error: %v", err)
         }
         fmt.Printf("--- m:\n%v\n\n", m)
-    
+
         d, err = yaml.Marshal(&m)
         if err != nil {
                 log.Fatalf("error: %v", err)
