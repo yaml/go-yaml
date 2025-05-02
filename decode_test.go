@@ -23,6 +23,7 @@ import (
 	"math"
 	"reflect"
 	"strings"
+	"testing"
 	"time"
 
 	. "gopkg.in/check.v1"
@@ -1738,6 +1739,22 @@ func (s *S) TestFuzzCrashers(c *C) {
 	for _, data := range cases {
 		var v interface{}
 		_ = yaml.Unmarshal([]byte(data), &v)
+	}
+}
+
+func TestIssue117(t *testing.T) {
+	data := []byte(`
+a:
+<<:
+-
+?
+-
+`)
+
+	x := map[string]interface{}{}
+	err := yaml.Unmarshal([]byte(data), &x)
+	if err == nil {
+		t.Errorf("expected error, got none")
 	}
 }
 
