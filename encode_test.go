@@ -19,14 +19,14 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"net"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"net"
-	"os"
-
 	. "gopkg.in/check.v1"
+
 	"gopkg.in/yaml.v3"
 )
 
@@ -170,7 +170,7 @@ var marshalTests = []struct {
 		"a:\n    - 1\n    - 2\n",
 	}, {
 		&struct {
-			B int "a"
+			B int `yaml:"a"`
 		}{1},
 		"a: 1\n",
 	}, {
@@ -187,54 +187,54 @@ var marshalTests = []struct {
 	// Conditional flag
 	{
 		&struct {
-			A int "a,omitempty"
-			B int "b,omitempty"
+			A int `yaml:"a,omitempty"`
+			B int `yaml:"b,omitempty"`
 		}{1, 0},
 		"a: 1\n",
 	}, {
 		&struct {
-			A int "a,omitempty"
-			B int "b,omitempty"
+			A int `yaml:"a,omitempty"`
+			B int `yaml:"b,omitempty"`
 		}{0, 0},
 		"{}\n",
 	}, {
 		&struct {
-			A *struct{ X, y int } "a,omitempty,flow"
+			A *struct{ X, y int } `yaml:"a,omitempty,flow"`
 		}{&struct{ X, y int }{1, 2}},
 		"a: {x: 1}\n",
 	}, {
 		&struct {
-			A *struct{ X, y int } "a,omitempty,flow"
+			A *struct{ X, y int } `yaml:"a,omitempty,flow"`
 		}{nil},
 		"{}\n",
 	}, {
 		&struct {
-			A *struct{ X, y int } "a,omitempty,flow"
+			A *struct{ X, y int } `yaml:"a,omitempty,flow"`
 		}{&struct{ X, y int }{}},
 		"a: {x: 0}\n",
 	}, {
 		&struct {
-			A struct{ X, y int } "a,omitempty,flow"
+			A struct{ X, y int } `yaml:"a,omitempty,flow"`
 		}{struct{ X, y int }{1, 2}},
 		"a: {x: 1}\n",
 	}, {
 		&struct {
-			A struct{ X, y int } "a,omitempty,flow"
+			A struct{ X, y int } `yaml:"a,omitempty,flow"`
 		}{struct{ X, y int }{0, 1}},
 		"{}\n",
 	}, {
 		&struct {
-			A float64 "a,omitempty"
-			B float64 "b,omitempty"
+			A float64 `yaml:"a,omitempty"`
+			B float64 `yaml:"b,omitempty"`
 		}{1, 0},
 		"a: 1\n",
 	},
 	{
 		&struct {
-			T1 time.Time  "t1,omitempty"
-			T2 time.Time  "t2,omitempty"
-			T3 *time.Time "t3,omitempty"
-			T4 *time.Time "t4,omitempty"
+			T1 time.Time  `yaml:"t1,omitempty"`
+			T2 time.Time  `yaml:"t2,omitempty"`
+			T3 *time.Time `yaml:"t3,omitempty"`
+			T4 *time.Time `yaml:"t4,omitempty"`
 		}{
 			T2: time.Date(2018, 1, 9, 10, 40, 47, 0, time.UTC),
 			T4: newTime(time.Date(2098, 1, 9, 10, 40, 47, 0, time.UTC)),
@@ -252,24 +252,24 @@ var marshalTests = []struct {
 	// Flow flag
 	{
 		&struct {
-			A []int "a,flow"
+			A []int `yaml:"a,flow"`
 		}{[]int{1, 2}},
 		"a: [1, 2]\n",
 	}, {
 		&struct {
-			A map[string]string "a,flow"
+			A map[string]string `yaml:"a,flow"`
 		}{map[string]string{"b": "c", "d": "e"}},
 		"a: {b: c, d: e}\n",
 	}, {
 		&struct {
 			A struct {
 				B, D string
-			} "a,flow"
+			} `yaml:"a,flow"`
 		}{struct{ B, D string }{"c", "e"}},
 		"a: {b: c, d: e}\n",
 	}, {
 		&struct {
-			A string "a,flow"
+			A string `yaml:"a,flow"`
 		}{"b\nc"},
 		"a: \"b\\nc\"\n",
 	},
@@ -287,7 +287,7 @@ var marshalTests = []struct {
 	{
 		&struct {
 			A int
-			B int "-"
+			B int `yaml:"-"`
 		}{1, 2},
 		"a: 1\n",
 	},
@@ -551,13 +551,13 @@ var marshalErrorTests = []struct {
 }{{
 	value: &struct {
 		B       int
-		inlineB ",inline"
+		inlineB `yaml:",inline"`
 	}{1, inlineB{2, inlineC{3}}},
 	panic: `duplicated key 'b' in struct struct \{ B int; .*`,
 }, {
 	value: &struct {
 		A int
-		B map[string]int ",inline"
+		B map[string]int `yaml:",inline"`
 	}{1, map[string]int{"a": 2}},
 	panic: `cannot have key "a" in inlined map: conflicts with struct field`,
 }}
@@ -613,7 +613,7 @@ func (o marshalerType) MarshalYAML() (interface{}, error) {
 }
 
 type marshalerValue struct {
-	Field marshalerType "_"
+	Field marshalerType `yaml:"_"`
 }
 
 func (s *S) TestMarshaler(c *C) {
@@ -870,4 +870,3 @@ func (s *S) TestNewLinePreserved(c *C) {
 	// the newline at the start of the file should be preserved
 	c.Assert(string(data), Equals, "_: |4\n\n    a:\n            b:\n                    c: d\n")
 }
-
