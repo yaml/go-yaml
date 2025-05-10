@@ -17,5 +17,7 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ${{ matrix.go-versions }}
+    - name: Run go vet
+      run: go vet ./...
     - name: Run go test
       run: GO111MODULE=on go test -v -race ./...
