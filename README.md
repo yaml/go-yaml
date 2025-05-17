@@ -1,3 +1,13 @@
+> [!caution]
+>
+> This fork is not yet usable. See our [Launching Discussion](
+> https://github.com/yaml/go-yaml/discussions/11) for details.
+>
+> We hope to have everything sorted and fully usable by early June 2025.
+>
+> — Ingy, 16 May 2025
+
+
 # THIS FORK MAINTAINED BY YAML
 
 This fork of the extremely popular [go-yaml](https://github.com/go-yaml/yaml)
