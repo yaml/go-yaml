@@ -276,6 +276,16 @@ func (e *Encoder) SetIndent(spaces int) {
 	e.encoder.indent = spaces
 }
 
+// CompactSeqIndent makes it so that '- ' is considered part of the indentation.
+func (e *Encoder) CompactSeqIndent() {
+	e.encoder.emitter.compact_sequence_indent = true
+}
+
+// DefaultSeqIndent makes it so that '- ' is not considered part of the indentation.
+func (e *Encoder) DefaultSeqIndent() {
+	e.encoder.emitter.compact_sequence_indent = false
+}
+
 // Close closes the encoder by writing any remaining data.
 // It does not write a stream terminating string "...".
 func (e *Encoder) Close() (err error) {
@@ -556,9 +566,11 @@ type fieldInfo struct {
 	Inline []int
 }
 
-var structMap = make(map[reflect.Type]*structInfo)
-var fieldMapMutex sync.RWMutex
-var unmarshalerType reflect.Type
+var (
+	structMap       = make(map[reflect.Type]*structInfo)
+	fieldMapMutex   sync.RWMutex
+	unmarshalerType reflect.Type
+)
 
 func init() {
 	var v Unmarshaler
