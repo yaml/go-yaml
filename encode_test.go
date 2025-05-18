@@ -8,7 +8,7 @@ import (
 	"time"
 
 	. "gopkg.in/check.v1"
-	"gopkg.in/yaml.v1"
+	"go.yaml.in/yaml.v1"
 )
 
 var marshalIntTest = 123
