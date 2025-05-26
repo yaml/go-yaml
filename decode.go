@@ -363,14 +363,20 @@ func (d *decoder) terror(n *Node, tag string, out reflect.Value) {
 
 func (d *decoder) callUnmarshaler(n *Node, u Unmarshaler) (good bool) {
 	err := u.UnmarshalYAML(n)
-	if e, ok := err.(*TypeError); ok {
+	switch e := err.(type) {
+	case nil:
+		return true
+	case *TypeError:
 		d.terrors = append(d.terrors, e.Errors...)
 		return false
+	default:
+		d.terrors = append(d.terrors, UnmarshalError{
+			Message: err.Error(),
+			Line:    n.Line,
+			Column:  n.Column,
+		})
+		return false
 	}
-	if err != nil {
-		fail(err)
-	}
-	return true
 }
 
 func (d *decoder) callObsoleteUnmarshaler(n *Node, u obsoleteUnmarshaler) (good bool) {
@@ -385,14 +391,20 @@ func (d *decoder) callObsoleteUnmarshaler(n *Node, u obsoleteUnmarshaler) (good 
 		}
 		return nil
 	})
-	if e, ok := err.(*TypeError); ok {
+	switch e := err.(type) {
+	case nil:
+		return true
+	case *TypeError:
 		d.terrors = append(d.terrors, e.Errors...)
 		return false
+	default:
+		d.terrors = append(d.terrors, UnmarshalError{
+			Message: err.Error(),
+			Line:    n.Line,
+			Column:  n.Column,
+		})
+		return false
 	}
-	if err != nil {
-		fail(err)
-	}
-	return true
 }
 
 // d.prepare initializes and dereferences pointers and calls UnmarshalYAML
