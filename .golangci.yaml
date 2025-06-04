@@ -17,6 +17,7 @@ linters:
     - std-error-handling
 
 formatters:
-  enable: []
+  enable:
+  - gofmt
   exclusions:
     generated: lax
