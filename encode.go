@@ -295,6 +295,7 @@ func isBase60Float(s string) (result bool) {
 		return false
 	}
 	c := s[0]
+	//nolint:staticcheck // De Morgan's law does not improve readability here.
 	if !(c == '+' || c == '-' || c >= '0' && c <= '9') || strings.IndexByte(s, ':') < 0 {
 		return false
 	}
@@ -342,7 +343,7 @@ func (e *encoder) stringv(tag string, in reflect.Value) {
 		// tag when encoded unquoted. If it doesn't,
 		// there's no need to quote it.
 		rtag, _ := resolve("", s)
-		canUsePlain = rtag == strTag && !(isBase60Float(s) || isOldBool(s))
+		canUsePlain = rtag == strTag && !isBase60Float(s) && !isOldBool(s)
 	}
 	// Note: it's possible for user code to emit invalid YAML
 	// if they explicitly specify a tag and a string containing

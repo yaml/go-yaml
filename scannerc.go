@@ -857,6 +857,7 @@ func yaml_parser_fetch_next_token(parser *yaml_parser_t) (ok bool) {
 	//switch parser.buffer[parser.buffer_pos] {
 	//case '-', '?', ':', ',', '?', '-', ',', ':', ']', '[', '}', '{', '&', '#', '!', '*', '>', '|', '"', '\'', '@', '%', '-', '`':
 	//}
+	//nolint:staticcheck // De Morgan's law really doesn't need to be applied here.
 	if !(is_blankz(parser.buffer, parser.buffer_pos) || parser.buffer[parser.buffer_pos] == '-' ||
 		parser.buffer[parser.buffer_pos] == '?' || parser.buffer[parser.buffer_pos] == ':' ||
 		parser.buffer[parser.buffer_pos] == ',' || parser.buffer[parser.buffer_pos] == '[' ||
@@ -1298,7 +1299,7 @@ func yaml_parser_fetch_block_entry(parser *yaml_parser_t) bool {
 		if !yaml_parser_roll_indent(parser, parser.mark.column, -1, yaml_BLOCK_SEQUENCE_START_TOKEN, parser.mark) {
 			return false
 		}
-	} else {
+		// } else {
 		// It is an error for the '-' indicator to occur in the flow context,
 		// but we let the Parser detect and report about it because the Parser
 		// is able to point to the context.
@@ -1926,6 +1927,7 @@ func yaml_parser_scan_anchor(parser *yaml_parser_t, token *yaml_token_t, typ yam
 	 */
 
 	if len(s) == 0 ||
+		//nolint:staticcheck // Applying De Morgan's law here is unnecessary.
 		!(is_blankz(parser.buffer, parser.buffer_pos) || parser.buffer[parser.buffer_pos] == '?' ||
 			parser.buffer[parser.buffer_pos] == ':' || parser.buffer[parser.buffer_pos] == ',' ||
 			parser.buffer[parser.buffer_pos] == ']' || parser.buffer[parser.buffer_pos] == '}' ||
@@ -2153,6 +2155,7 @@ func yaml_parser_scan_uri_escapes(parser *yaml_parser_t, directive bool, start_m
 			return false
 		}
 
+		//nolint:staticcheck // De Morgan's law is not needed here.
 		if !(parser.buffer[parser.buffer_pos] == '%' &&
 			is_hex(parser.buffer, parser.buffer_pos+1) &&
 			is_hex(parser.buffer, parser.buffer_pos+2)) {
@@ -2767,7 +2770,7 @@ func yaml_parser_scan_plain_scalar(parser *yaml_parser_t, token *yaml_token_t) b
 		}
 
 		// Is it the end?
-		if !(is_blank(parser.buffer, parser.buffer_pos) || is_break(parser.buffer, parser.buffer_pos)) {
+		if !is_blank(parser.buffer, parser.buffer_pos) && !is_break(parser.buffer, parser.buffer_pos) {
 			break
 		}
 
