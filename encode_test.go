@@ -112,13 +112,13 @@ var marshalTests = []struct {
 		map[string]any{"v": ""},
 		"v: \"\"\n",
 	}, {
-		map[string][]string{"v": []string{"A", "B"}},
+		map[string][]string{"v": {"A", "B"}},
 		"v:\n    - A\n    - B\n",
 	}, {
-		map[string][]string{"v": []string{"A", "B\nC"}},
+		map[string][]string{"v": {"A", "B\nC"}},
 		"v:\n    - A\n    - |-\n      B\n      C\n",
 	}, {
-		map[string][]any{"v": []any{"A", 1, map[string][]int{"B": []int{2, 3}}}},
+		map[string][]any{"v": {"A", 1, map[string][]int{"B": {2, 3}}}},
 		"v:\n    - A\n    - 1\n    - B:\n        - 2\n        - 3\n",
 	}, {
 		map[string]any{"a": map[any]any{"b": "c"}},
