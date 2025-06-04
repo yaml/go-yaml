@@ -544,7 +544,6 @@ func yaml_parser_parse_node(parser *yaml_parser_t, event *yaml_event_t, block, i
 	if tag_token {
 		if len(tag_handle) == 0 {
 			tag = tag_suffix
-			tag_suffix = nil
 		} else {
 			for i := range parser.tag_directives {
 				if bytes.Equal(parser.tag_directives[i].handle, tag_handle) {
