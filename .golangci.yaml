@@ -6,8 +6,8 @@ linters:
     - errcheck
     - govet
     - ineffassign
-  disable:
     - staticcheck
+  disable:
     - unused
   exclusions:
     generated: lax

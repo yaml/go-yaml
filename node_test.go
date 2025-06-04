@@ -2820,7 +2820,7 @@ func (s *S) TestNodeZeroEncodeDecode(c *C) {
 	c.Assert(string(data), Equals, "null\n")
 
 	// ... and decoding.
-	var v *struct{} = &struct{}{}
+	var v = &struct{}{}
 	c.Assert(n.Decode(&v), IsNil)
 	c.Assert(v, IsNil)
 

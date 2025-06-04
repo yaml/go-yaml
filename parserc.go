@@ -496,7 +496,8 @@ func yaml_parser_parse_node(parser *yaml_parser_t, event *yaml_event_t, block, i
 	var tag_token bool
 	var tag_handle, tag_suffix, anchor []byte
 	var tag_mark yaml_mark_t
-	if token.typ == yaml_ANCHOR_TOKEN {
+	switch token.typ {
+	case yaml_ANCHOR_TOKEN:
 		anchor = token.value
 		start_mark = token.start_mark
 		end_mark = token.end_mark
@@ -517,7 +518,7 @@ func yaml_parser_parse_node(parser *yaml_parser_t, event *yaml_event_t, block, i
 				return false
 			}
 		}
-	} else if token.typ == yaml_TAG_TOKEN {
+	case yaml_TAG_TOKEN:
 		tag_token = true
 		tag_handle = token.value
 		tag_suffix = token.suffix
@@ -857,7 +858,8 @@ func yaml_parser_parse_block_mapping_key(parser *yaml_parser_t, event *yaml_even
 		return true
 	}
 
-	if token.typ == yaml_KEY_TOKEN {
+	switch token.typ {
+	case yaml_KEY_TOKEN:
 		mark := token.end_mark
 		skip_token(parser)
 		token = peek_token(parser)
@@ -873,7 +875,7 @@ func yaml_parser_parse_block_mapping_key(parser *yaml_parser_t, event *yaml_even
 			parser.state = yaml_PARSE_BLOCK_MAPPING_VALUE_STATE
 			return yaml_parser_process_empty_scalar(parser, event, mark)
 		}
-	} else if token.typ == yaml_BLOCK_END_TOKEN {
+	case yaml_BLOCK_END_TOKEN:
 		parser.state = parser.states[len(parser.states)-1]
 		parser.states = parser.states[:len(parser.states)-1]
 		parser.marks = parser.marks[:len(parser.marks)-1]
@@ -1201,7 +1203,8 @@ func yaml_parser_process_directives(parser *yaml_parser_t,
 	}
 
 	for token.typ == yaml_VERSION_DIRECTIVE_TOKEN || token.typ == yaml_TAG_DIRECTIVE_TOKEN {
-		if token.typ == yaml_VERSION_DIRECTIVE_TOKEN {
+		switch token.typ {
+		case yaml_VERSION_DIRECTIVE_TOKEN:
 			if version_directive != nil {
 				yaml_parser_set_parser_error(parser,
 					"found duplicate %YAML directive", token.start_mark)
@@ -1216,7 +1219,7 @@ func yaml_parser_process_directives(parser *yaml_parser_t,
 				major: token.major,
 				minor: token.minor,
 			}
-		} else if token.typ == yaml_TAG_DIRECTIVE_TOKEN {
+		case yaml_TAG_DIRECTIVE_TOKEN:
 			value := yaml_tag_directive_t{
 				handle: token.value,
 				prefix: token.prefix,
