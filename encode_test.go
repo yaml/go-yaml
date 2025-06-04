@@ -565,7 +565,7 @@ var marshalErrorTests = []struct {
 func (s *S) TestMarshalErrors(c *C) {
 	for _, item := range marshalErrorTests {
 		if item.panic != "" {
-			c.Assert(func() { yaml.Marshal(item.value) }, PanicMatches, item.panic)
+			c.Assert(func() { _, _ = yaml.Marshal(item.value) }, PanicMatches, item.panic)
 		} else {
 			_, err := yaml.Marshal(item.value)
 			c.Assert(err, ErrorMatches, item.error)

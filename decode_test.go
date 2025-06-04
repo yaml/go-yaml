@@ -1606,7 +1606,8 @@ func (s *S) TestUnmarshalPreservesData(c *C) {
 func (s *S) TestUnmarshalSliceOnPreset(c *C) {
 	// Issue #48.
 	v := struct{ A []int }{[]int{1}}
-	yaml.Unmarshal([]byte("a: [2]"), &v)
+	err := yaml.Unmarshal([]byte("a: [2]"), &v)
+	c.Assert(err, IsNil)
 	c.Assert(v.A, DeepEquals, []int{2})
 }
 
