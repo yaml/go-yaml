@@ -1285,23 +1285,23 @@ func (emitter *yamlEmitter) analyzeTag(tag []byte) bool {
 // Check if a scalar is valid.
 func (emitter *yamlEmitter) analyzeScalar(value []byte) bool {
 	var (
-		block_indicators   = false
-		flow_indicators    = false
-		line_breaks        = false
-		special_characters = false
-		tab_characters     = false
+		block_indicators,
+		flow_indicators,
+		line_breaks,
+		special_characters,
+		tab_characters,
 
-		leading_space  = false
-		leading_break  = false
-		trailing_space = false
-		trailing_break = false
-		break_space    = false
-		space_break    = false
+		leading_space,
+		leading_break,
+		trailing_space,
+		trailing_break,
+		break_space,
+		space_break,
 
-		preceded_by_whitespace = false
-		followed_by_whitespace = false
-		previous_space         = false
-		previous_break         = false
+		preceded_by_whitespace,
+		followed_by_whitespace,
+		previous_space,
+		previous_break bool
 	)
 
 	emitter.scalar_data.value = value
