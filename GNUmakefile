@@ -1,7 +1,7 @@
 # Auto-install https://github.com/makeplus/makes at specific commit:
 MAKES := .cache/makes
 MAKES-LOCAL := .cache/local
-MAKES-COMMIT ?= 4962658786cf52734b3e416e49cba2abf08402a6
+MAKES-COMMIT ?= 4e48a743c3652b88adc4a257398d895a801e6d11
 $(shell [ -d $(MAKES) ] || ( \
   git clone -q https://github.com/makeplus/makes $(MAKES) && \
   git -C $(MAKES) reset -q --hard $(MAKES-COMMIT)))
