@@ -244,7 +244,7 @@ var unmarshalTests = []struct {
 	},
 	{
 		"bin: -0b1000000000000000000000000000000000000000000000000000000000000000",
-		map[string]any{"bin": -9223372036854775808},
+		map[string]int64{"bin": -9223372036854775808},
 	},
 	{
 		"decimal: +685_230",
@@ -439,7 +439,7 @@ var unmarshalTests = []struct {
 	},
 	{
 		"int_overflow: 9223372036854775808", // math.MaxInt64 + 1
-		map[string]int{},
+		map[string]int64{},
 	},
 
 	// int64
