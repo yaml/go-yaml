@@ -1,4 +1,4 @@
-M := .git/.makes
+M := .cache/.makes
 $(shell [ -d $M ] || git clone -q https://github.com/makeplus/makes $M)
 include $M/init.mk
 include $M/go.mk
@@ -12,3 +12,6 @@ $(GO-CMDS):: $(GO)
 
 ys-test: $(YS)
 	prove -v test/
+
+distclean:
+	$(RM) -r .cache
