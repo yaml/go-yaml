@@ -165,6 +165,26 @@ b:
 ```
 
 
+## Testing with `make`
+
+Running `make test` in this directory should just work.
+You don't need to have `go` installed and even if you do the Makefile will
+ignore it and setup / cache its own version under `.cache/`.
+
+The only things you need are:
+* Linux or macOS
+* `git`
+* `bash`
+* `curl`
+* `make`
+
+Some `make` commands are:
+
+* `make test`
+* `make test GO-VERSION=1.2.34`
+* `make distclean` - Remove `.cache/`
+
+
 ## License
 
 The yaml package is licensed under the MIT and Apache License 2.0 licenses.
