@@ -1,12 +1,12 @@
-name: "CodeQL Advanced"
+name: CodeQL Advanced
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ main ]
   schedule:
-    - cron: '17 13 * * 3'
+    - cron: 17 13 * * 3
 
 jobs:
   analyze:
@@ -105,4 +105,4 @@ jobs:
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
       with:
-        category: "/language:${{matrix.language}}"
+        category: /language:${{matrix.language}}
