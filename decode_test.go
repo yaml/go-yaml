@@ -982,6 +982,18 @@ func (s *S) TestDecoderErrors(c *C) {
 	}
 }
 
+func (s *S) TestParserError(c *C) {
+	var v struct {
+		A, B int
+	}
+	data := "a: 1\n=\nb: 2"
+	err := yaml.Unmarshal([]byte(data), &v)
+	c.Assert(err, DeepEquals, &yaml.ParserError{
+		Message: "could not find expected ':'",
+		Line:    2,
+	})
+}
+
 var unmarshalerTests = []struct {
 	data, tag string
 	value     interface{}
@@ -1114,8 +1126,8 @@ func (s *S) TestUnmarshalerWholeDocument(c *C) {
 }
 
 func (s *S) TestUnmarshalerTypeError(c *C) {
-	unmarshalerResult[2] = &yaml.TypeError{[]string{"foo"}}
-	unmarshalerResult[4] = &yaml.TypeError{[]string{"bar"}}
+	unmarshalerResult[2] = &yaml.TypeError{[]yaml.UnmarshalError{{"foo", 1, 1}}}
+	unmarshalerResult[4] = &yaml.TypeError{[]yaml.UnmarshalError{{"bar", 1, 1}}}
 	defer func() {
 		delete(unmarshalerResult, 2)
 		delete(unmarshalerResult, 4)
@@ -1132,8 +1144,8 @@ func (s *S) TestUnmarshalerTypeError(c *C) {
 	c.Assert(err, ErrorMatches, ""+
 		"yaml: unmarshal errors:\n"+
 		"  line 1: cannot unmarshal !!str `A` into int\n"+
-		"  foo\n"+
-		"  bar\n"+
+		"  line 1: foo\n"+
+		"  line 1: bar\n"+
 		"  line 1: cannot unmarshal !!str `B` into int")
 	c.Assert(v.M["abc"], NotNil)
 	c.Assert(v.M["def"], IsNil)
@@ -1145,8 +1157,8 @@ func (s *S) TestUnmarshalerTypeError(c *C) {
 }
 
 func (s *S) TestObsoleteUnmarshalerTypeError(c *C) {
-	unmarshalerResult[2] = &yaml.TypeError{[]string{"foo"}}
-	unmarshalerResult[4] = &yaml.TypeError{[]string{"bar"}}
+	unmarshalerResult[2] = &yaml.TypeError{[]yaml.UnmarshalError{{"foo", 1, 1}}}
+	unmarshalerResult[4] = &yaml.TypeError{[]yaml.UnmarshalError{{"bar", 1, 1}}}
 	defer func() {
 		delete(unmarshalerResult, 2)
 		delete(unmarshalerResult, 4)
@@ -1163,8 +1175,8 @@ func (s *S) TestObsoleteUnmarshalerTypeError(c *C) {
 	c.Assert(err, ErrorMatches, ""+
 		"yaml: unmarshal errors:\n"+
 		"  line 1: cannot unmarshal !!str `A` into int\n"+
-		"  foo\n"+
-		"  bar\n"+
+		"  line 1: foo\n"+
+		"  line 1: bar\n"+
 		"  line 1: cannot unmarshal !!str `B` into int")
 	c.Assert(v.M["abc"], NotNil)
 	c.Assert(v.M["def"], IsNil)
@@ -1260,8 +1272,22 @@ func (ft *failingUnmarshaler) UnmarshalYAML(node *yaml.Node) error {
 }
 
 func (s *S) TestUnmarshalerError(c *C) {
-	err := yaml.Unmarshal([]byte("a: b"), &failingUnmarshaler{})
-	c.Assert(err, Equals, failingErr)
+	data := `{foo: 123, bar: {}, spam: "test"}`
+	dst := struct {
+		Foo  int
+		Bar  *failingUnmarshaler
+		Spam string
+	}{}
+	err := yaml.Unmarshal([]byte(data), &dst)
+	c.Assert(err, DeepEquals, &yaml.TypeError{
+		Errors: []yaml.UnmarshalError{
+			{Line: 1, Column: 17, Message: failingErr.Error()},
+		},
+	})
+	// whatever could be unmarshaled must be unmarshaled
+	c.Assert(dst.Foo, Equals, 123)
+	c.Assert(dst.Bar, Equals, &failingUnmarshaler{})
+	c.Assert(dst.Spam, Equals, "test")
 }
 
 type obsoleteFailingUnmarshaler struct{}
@@ -1271,8 +1297,22 @@ func (ft *obsoleteFailingUnmarshaler) UnmarshalYAML(unmarshal func(interface{}) 
 }
 
 func (s *S) TestObsoleteUnmarshalerError(c *C) {
-	err := yaml.Unmarshal([]byte("a: b"), &obsoleteFailingUnmarshaler{})
-	c.Assert(err, Equals, failingErr)
+	data := `{foo: 123, bar: {}, spam: "test"}`
+	dst := struct {
+		Foo  int
+		Bar  *obsoleteFailingUnmarshaler
+		Spam string
+	}{}
+	err := yaml.Unmarshal([]byte(data), &dst)
+	c.Assert(err, DeepEquals, &yaml.TypeError{
+		Errors: []yaml.UnmarshalError{
+			{Line: 1, Column: 17, Message: failingErr.Error()},
+		},
+	})
+	// whatever could be unmarshaled must be unmarshaled
+	c.Assert(dst.Foo, Equals, 123)
+	c.Assert(dst.Bar, Equals, &obsoleteFailingUnmarshaler{})
+	c.Assert(dst.Spam, Equals, "test")
 }
 
 type sliceUnmarshaler []int
