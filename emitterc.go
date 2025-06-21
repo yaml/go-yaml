@@ -173,13 +173,10 @@ func yaml_emitter_need_more_events(emitter *yaml_emitter_t) bool {
 	switch emitter.events[emitter.events_head].typ {
 	case yaml_DOCUMENT_START_EVENT:
 		accumulate = 1
-		break
 	case yaml_SEQUENCE_START_EVENT:
 		accumulate = 2
-		break
 	case yaml_MAPPING_START_EVENT:
 		accumulate = 3
-		break
 	default:
 		return false
 	}
@@ -1288,23 +1285,23 @@ func yaml_emitter_analyze_tag(emitter *yaml_emitter_t, tag []byte) bool {
 // Check if a scalar is valid.
 func yaml_emitter_analyze_scalar(emitter *yaml_emitter_t, value []byte) bool {
 	var (
-		block_indicators   = false
-		flow_indicators    = false
-		line_breaks        = false
-		special_characters = false
-		tab_characters     = false
+		block_indicators,
+		flow_indicators,
+		line_breaks,
+		special_characters,
+		tab_characters,
 
-		leading_space  = false
-		leading_break  = false
-		trailing_space = false
-		trailing_break = false
-		break_space    = false
-		space_break    = false
+		leading_space,
+		leading_break,
+		trailing_space,
+		trailing_break,
+		break_space,
+		space_break,
 
-		preceded_by_whitespace = false
-		followed_by_whitespace = false
-		previous_space         = false
-		previous_break         = false
+		preceded_by_whitespace,
+		followed_by_whitespace,
+		previous_space,
+		previous_break bool
 	)
 
 	emitter.scalar_data.value = value
