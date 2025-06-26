@@ -351,6 +351,34 @@ var nodeTests = []struct {
 			}},
 		},
 	}, {
+		"-0\n",
+		yaml.Node{
+			Kind:   yaml.DocumentNode,
+			Line:   1,
+			Column: 1,
+			Content: []*yaml.Node{{
+				Kind:   yaml.ScalarNode,
+				Value:  "-0",
+				Tag:    "!!float",
+				Line:   1,
+				Column: 1,
+			}},
+		},
+	}, {
+		"-0.0\n",
+		yaml.Node{
+			Kind:   yaml.DocumentNode,
+			Line:   1,
+			Column: 1,
+			Content: []*yaml.Node{{
+				Kind:   yaml.ScalarNode,
+				Value:  "-0.0",
+				Tag:    "!!float",
+				Line:   1,
+				Column: 1,
+			}},
+		},
+	}, {
 		"{}\n",
 		yaml.Node{
 			Kind:   yaml.DocumentNode,

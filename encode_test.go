@@ -126,12 +126,18 @@ var marshalTests = []struct {
 	}, {
 		map[string]interface{}{"a": "-"},
 		"a: '-'\n",
+	}, {
+		map[string]interface{}{"v": negativeZero},
+		"v: -0\n",
 	},
 
 	// Simple values.
 	{
 		&marshalIntTest,
 		"123\n",
+	}, {
+		negativeZero,
+		"-0\n",
 	},
 
 	// Structures
