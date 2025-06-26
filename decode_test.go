@@ -92,6 +92,9 @@ var unmarshalTests = []struct {
 		"v: -0\n",
 		map[string]interface{}{"v": negativeZero},
 	}, {
+		"a: \"\\t\\n\\t\\n\"\n",
+		map[string]string{"a": "\t\n\t\n"},
+	}, {
 		"\"<<\": []\n",
 		map[string]interface{}{"<<": []interface{}{}},
 	}, {
@@ -106,6 +109,9 @@ var unmarshalTests = []struct {
 	}, {
 		"-0",
 		negativeZero,
+	}, {
+		"\"\\t\\n\"\n",
+		"\t\n",
 	},
 
 	// Floats from spec
