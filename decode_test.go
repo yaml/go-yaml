@@ -84,12 +84,18 @@ var unmarshalTests = []struct {
 	}, {
 		"v: -.1",
 		map[string]interface{}{"v": -0.1},
+	}, {
+		"a: |\n    \t\n    \t\n",
+		map[string]string{"a": "\t\n\t\n"},
 	},
 
 	// Simple values.
 	{
 		"123",
 		&unmarshalIntTest,
+	}, {
+		"|\n    \t\n",
+		"\t\n",
 	},
 
 	// Floats from spec

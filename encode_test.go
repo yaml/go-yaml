@@ -132,6 +132,9 @@ var marshalTests = []struct {
 	{
 		&marshalIntTest,
 		"123\n",
+	}, {
+		"\t\n",
+		"|\n    \t\n",
 	},
 
 	// Structures
@@ -427,6 +430,9 @@ var marshalTests = []struct {
 	{
 		map[string]string{"a": "\tB\n\tC\n"},
 		"a: |\n    \tB\n    \tC\n",
+	}, {
+		map[string]string{"a": "\t\n\t\n"},
+		"a: |\n    \t\n    \t\n",
 	},
 
 	// Ensure that strings do not wrap
