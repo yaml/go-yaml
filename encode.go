@@ -321,6 +321,10 @@ func isOldBool(s string) (result bool) {
 	}
 }
 
+func looksLikeMerge(s string) (result bool) {
+	return s == "<<"
+}
+
 func (e *encoder) stringv(tag string, in reflect.Value) {
 	var style yaml_scalar_style_t
 	s := in.String()
@@ -342,7 +346,7 @@ func (e *encoder) stringv(tag string, in reflect.Value) {
 		// tag when encoded unquoted. If it doesn't,
 		// there's no need to quote it.
 		rtag, _ := resolve("", s)
-		canUsePlain = rtag == strTag && !(isBase60Float(s) || isOldBool(s))
+		canUsePlain = rtag == strTag && !(isBase60Float(s) || isOldBool(s) || looksLikeMerge(s))
 	}
 	// Note: it's possible for user code to emit invalid YAML
 	// if they explicitly specify a tag and a string containing
