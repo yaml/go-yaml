@@ -31,6 +31,11 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
+// negativeZero represents -0.0 for YAML test cases
+// this is needed because Go constants cannot express -0.0
+// https://staticcheck.dev/docs/checks/#SA4026
+var negativeZero = math.Copysign(0.0, -1.0)
+
 var unmarshalIntTest = 123
 
 var unmarshalTests = []struct {
@@ -84,12 +89,18 @@ var unmarshalTests = []struct {
 	}, {
 		"v: -.1",
 		map[string]interface{}{"v": -0.1},
+	}, {
+		"v: -0\n",
+		map[string]interface{}{"v": negativeZero},
 	},
 
 	// Simple values.
 	{
 		"123",
 		&unmarshalIntTest,
+	}, {
+		"-0",
+		negativeZero,
 	},
 
 	// Floats from spec
