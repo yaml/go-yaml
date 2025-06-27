@@ -46,7 +46,33 @@ const (
 // Check if the character at the specified position is an alphabetical
 // character, a digit, '_', or '-'.
 func is_alpha(b []byte, i int) bool {
-	return b[i] >= '0' && b[i] <= '9' || b[i] >= 'A' && b[i] <= 'Z' || b[i] >= 'a' && b[i] <= 'z' || b[i] == '_' || b[i] == '-'
+	return b[i] >= '0' && b[i] <= '9' || b[i] >= 'A' && b[i] <= 'Z' ||
+		b[i] >= 'a' && b[i] <= 'z' || b[i] == '_' || b[i] == '-'
+}
+
+// Check if the character at the specified position is a flow indicator as
+// defined by spec production [23] c-flow-indicator ::=
+// c-collect-entry | c-sequence-start | c-sequence-end |
+// c-mapping-start | c-mapping-end
+func is_flow_indicator(b []byte, i int) bool {
+	return b[i] == '[' || b[i] == ']' ||
+		b[i] == '{' || b[i] == '}' || b[i] == ','
+}
+
+// Check if the character at the specified position is valid for anchor names
+// as defined by spec production [102] ns-anchor-char ::= ns-char -
+// c-flow-indicator.
+// This includes all printable characters except: CR, LF, BOM, space, tab, '[',
+// ']', '{', '}', ','.
+// We further limit it to ascii chars only, which is a subset of the spec
+// production but is usually what most people expect.
+func is_anchor_char(b []byte, i int) bool {
+	return is_printable(b, i) &&
+		!is_break(b, i) &&
+		!is_blank(b, i) &&
+		!is_bom(b, i) &&
+		!is_flow_indicator(b, i) &&
+		is_ascii(b, i)
 }
 
 // Check if the character at the specified position is a digit.
@@ -61,7 +87,8 @@ func as_digit(b []byte, i int) int {
 
 // Check if the character at the specified position is a hex-digit.
 func is_hex(b []byte, i int) bool {
-	return b[i] >= '0' && b[i] <= '9' || b[i] >= 'A' && b[i] <= 'F' || b[i] >= 'a' && b[i] <= 'f'
+	return b[i] >= '0' && b[i] <= '9' || b[i] >= 'A' && b[i] <= 'F' ||
+		b[i] >= 'a' && b[i] <= 'f'
 }
 
 // Get the value of a hex-digit.
