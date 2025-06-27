@@ -1110,6 +1110,59 @@ var nodeTests = []struct {
 			}},
 		},
 	}, {
+		"a: &anchor(.!@#$%^&*+=?:;)name [1, 2]\nb: *anchor(.!@#$%^&*+=?:;)name\n",
+		yaml.Node{
+			Kind:   yaml.DocumentNode,
+			Line:   1,
+			Column: 1,
+			Content: []*yaml.Node{{
+				Kind:   yaml.MappingNode,
+				Line:   1,
+				Column: 1,
+				Tag:    "!!map",
+				Content: []*yaml.Node{{
+					Kind:   yaml.ScalarNode,
+					Value:  "a",
+					Tag:    "!!str",
+					Line:   1,
+					Column: 1,
+				},
+					saveNode("anchor(.!@#$%^&*+=?:;)name", &yaml.Node{
+						Kind:   yaml.SequenceNode,
+						Style:  yaml.FlowStyle,
+						Tag:    "!!seq",
+						Anchor: "anchor(.!@#$%^&*+=?:;)name",
+						Line:   1,
+						Column: 4,
+						Content: []*yaml.Node{{
+							Kind:   yaml.ScalarNode,
+							Value:  "1",
+							Tag:    "!!int",
+							Line:   1,
+							Column: 33,
+						}, {
+							Kind:   yaml.ScalarNode,
+							Value:  "2",
+							Tag:    "!!int",
+							Line:   1,
+							Column: 36,
+						}},
+					}), {
+						Kind:   yaml.ScalarNode,
+						Value:  "b",
+						Tag:    "!!str",
+						Line:   2,
+						Column: 1,
+					}, {
+						Kind:   yaml.AliasNode,
+						Value:  "anchor(.!@#$%^&*+=?:;)name",
+						Alias:  dropNode("anchor(.!@#$%^&*+=?:;)name"),
+						Line:   2,
+						Column: 4,
+					}},
+			}},
+		},
+	}, {
 
 		"# One\n# Two\ntrue # Three\n# Four\n# Five\n",
 		yaml.Node{
