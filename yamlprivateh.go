@@ -49,6 +49,18 @@ func is_alpha(b []byte, i int) bool {
 	return b[i] >= '0' && b[i] <= '9' || b[i] >= 'A' && b[i] <= 'Z' || b[i] >= 'a' && b[i] <= 'z' || b[i] == '_' || b[i] == '-'
 }
 
+// Check if the character at the specified position is valid for anchor names
+// as defined by spec production [102] ns-anchor-char ::= ns-char - c-flow-indicator.
+// This includes all printable characters except: CR, LF, BOM, space, tab, '[', ']', '{', '}', ','.
+func is_anchor_char(b []byte, i int) bool {
+	if !is_printable(b, i) || is_break(b, i) || is_blank(b, i) || is_bom(b, i) ||
+		b[i] == '[' || b[i] == ']' || b[i] == '{' || b[i] == '}' || b[i] == ',' {
+		return false
+	}
+
+	return true
+}
+
 // Check if the character at the specified position is a digit.
 func is_digit(b []byte, i int) bool {
 	return b[i] >= '0' && b[i] <= '9'
