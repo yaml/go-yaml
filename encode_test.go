@@ -500,6 +500,13 @@ var marshalTests = []struct {
 		},
 		"value: !!seq []\n",
 	},
+	// bug: question mark in value
+	{
+		map[string]interface{}{
+			"foo": map[string]interface{}{"bar": "a?bc"},
+		},
+		"foo:\n    bar: a?bc\n",
+	},
 }
 
 func (s *S) TestMarshal(c *C) {
