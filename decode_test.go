@@ -815,6 +815,39 @@ var unmarshalTests = []struct {
 			"c": []interface{}{"d", "e"},
 		},
 	},
+	// bug: question mark in value
+	{
+		"foo: {ba?r: a?bc}",
+		map[string]interface{}{
+			"foo": map[string]interface{}{"ba?r": "a?bc"},
+		},
+	}, {
+		"foo: {?bar: ?abc}",
+		map[string]interface{}{
+			"foo": map[string]interface{}{"?bar": "?abc"},
+		},
+	}, {
+		"foo: {bar?: abc?}",
+		map[string]interface{}{
+			"foo": map[string]interface{}{"bar?": "abc?"},
+		},
+	}, {
+		"foo: {? key: value}",
+		map[string]interface{}{
+			"foo": map[string]interface{}{"key": "value"},
+		},
+	}, {
+		`---
+foo:
+  ? complex key
+  : complex value
+ba?r: a?bc
+`,
+		map[string]interface{}{
+			"foo":  map[string]interface{}{"complex key": "complex value"},
+			"ba?r": "a?bc",
+		},
+	},
 }
 
 type M map[string]interface{}

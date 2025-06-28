@@ -527,6 +527,45 @@ var nodeTests = []struct {
 			}},
 		},
 	}, {
+		"[decode]foo: {b?r: a?bc}\n",
+		yaml.Node{
+			Kind:   yaml.DocumentNode,
+			Line:   1,
+			Column: 1,
+			Content: []*yaml.Node{{
+				Kind:   yaml.MappingNode,
+				Tag:    "!!map",
+				Line:   1,
+				Column: 1,
+				Content: []*yaml.Node{{
+					Kind:   yaml.ScalarNode,
+					Value:  "foo",
+					Tag:    "!!str",
+					Line:   1,
+					Column: 1,
+				}, {
+					Kind:   yaml.MappingNode,
+					Style:  yaml.FlowStyle,
+					Tag:    "!!map",
+					Line:   1,
+					Column: 6,
+					Content: []*yaml.Node{{
+						Kind:   yaml.ScalarNode,
+						Value:  "b?r",
+						Tag:    "!!str",
+						Line:   1,
+						Column: 7,
+					}, {
+						Kind:   yaml.ScalarNode,
+						Value:  "a?bc",
+						Tag:    "!!str",
+						Line:   1,
+						Column: 12,
+					}},
+				}},
+			}},
+		},
+	}, {
 		"a: # AI\n  - b\nc:\n  - d\n",
 		yaml.Node{
 			Kind:   yaml.DocumentNode,
