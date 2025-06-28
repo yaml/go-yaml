@@ -321,6 +321,10 @@ func isOldBool(s string) (result bool) {
 	}
 }
 
+// looksLikeMerge returns true if the given string is the merge indicator "<<".
+//
+// When encoding a scalar with this exact value, it must be quoted to prevent it
+// from being interpreted as a merge indicator during decoding.
 func looksLikeMerge(s string) (result bool) {
 	return s == "<<"
 }
