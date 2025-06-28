@@ -84,6 +84,12 @@ var unmarshalTests = []struct {
 	}, {
 		"v: -.1",
 		map[string]interface{}{"v": -0.1},
+	}, {
+		"\"<<\": []\n",
+		map[string]interface{}{"<<": []interface{}{}},
+	}, {
+		"foo: \"<<\"\n",
+		map[string]interface{}{"foo": "<<"},
 	},
 
 	// Simple values.
