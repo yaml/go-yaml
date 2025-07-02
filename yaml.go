@@ -701,3 +701,112 @@ func isZero(v reflect.Value) bool {
 	}
 	return false
 }
+
+// ParserGetEvents parses the YAML input and returns the generated event stream.
+func ParserGetEvents(in []byte) (string, error) {
+	p := newParser(in)
+	defer p.destroy()
+	var events strings.Builder
+	var event yaml_event_t
+	for {
+		if !yaml_parser_parse(&p.parser, &event) {
+			return "", errors.New(p.parser.problem)
+		}
+		formatted := formatEvent(&event)
+		events.WriteString(formatted)
+		if event.typ == yaml_STREAM_END_EVENT {
+			yaml_event_delete(&event)
+			break
+		}
+		yaml_event_delete(&event)
+		events.WriteByte('\n')
+	}
+	return events.String(), nil
+}
+
+func formatEvent(e *yaml_event_t) string {
+	var b strings.Builder
+	switch e.typ {
+	case yaml_STREAM_START_EVENT:
+		b.WriteString("+STR")
+	case yaml_STREAM_END_EVENT:
+		b.WriteString("-STR")
+	case yaml_DOCUMENT_START_EVENT:
+		b.WriteString("+DOC")
+		if !e.implicit {
+			b.WriteString(" ---")
+		}
+	case yaml_DOCUMENT_END_EVENT:
+		b.WriteString("-DOC")
+		if !e.implicit {
+			b.WriteString(" ...")
+		}
+	case yaml_ALIAS_EVENT:
+		b.WriteString("=ALI *")
+		b.Write(e.anchor)
+	case yaml_SCALAR_EVENT:
+		b.WriteString("=VAL")
+		if len(e.anchor) > 0 {
+			b.WriteString(" &")
+			b.Write(e.anchor)
+		}
+		if len(e.tag) > 0 {
+			b.WriteString(" <")
+			b.Write(e.tag)
+			b.WriteString(">")
+		}
+		switch e.scalar_style() {
+		case yaml_PLAIN_SCALAR_STYLE:
+			b.WriteString(" :")
+		case yaml_LITERAL_SCALAR_STYLE:
+			b.WriteString(" |")
+		case yaml_FOLDED_SCALAR_STYLE:
+			b.WriteString(" >")
+		case yaml_SINGLE_QUOTED_SCALAR_STYLE:
+			b.WriteString(" '")
+		case yaml_DOUBLE_QUOTED_SCALAR_STYLE:
+			b.WriteString(" \"")
+		}
+		// Escape special characters for consistent event output.
+		val := strings.NewReplacer(
+			"\\", "\\\\",
+			"\n", "\\n",
+			"\t", "\\t",
+		).Replace(string(e.value))
+		b.WriteString(val)
+
+	case yaml_SEQUENCE_START_EVENT:
+		b.WriteString("+SEQ")
+		if len(e.anchor) > 0 {
+			b.WriteString(" &")
+			b.Write(e.anchor)
+		}
+		if len(e.tag) > 0 {
+			b.WriteString(" <")
+			b.Write(e.tag)
+			b.WriteString(">")
+		}
+		if e.sequence_style() == yaml_FLOW_SEQUENCE_STYLE {
+			b.WriteString(" []")
+		}
+	case yaml_SEQUENCE_END_EVENT:
+		b.WriteString("-SEQ")
+	case yaml_MAPPING_START_EVENT:
+		b.WriteString("+MAP")
+		if len(e.anchor) > 0 {
+			b.WriteString(" &")
+			b.Write(e.anchor)
+		}
+		if len(e.tag) > 0 {
+			b.WriteString(" <")
+			b.Write(e.tag)
+			b.WriteString(">")
+		}
+		if e.mapping_style() == yaml_FLOW_MAPPING_STYLE {
+			b.WriteString(" {}")
+		}
+	case yaml_MAPPING_END_EVENT:
+		b.WriteString("-MAP")
+	}
+	return b.String()
+}
