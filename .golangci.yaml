@@ -1,0 +1,23 @@
+version: "2"
+run:
+  concurrency: 4
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+  disable:
+    - staticcheck
+    - unused
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+formatters:
+  enable:
+    - gofmt
+  exclusions:
+    generated: lax
