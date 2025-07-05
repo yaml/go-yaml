@@ -765,13 +765,13 @@ func formatEvent(e *yaml_event_t) string {
 		case yaml_SINGLE_QUOTED_SCALAR_STYLE:
 			b.WriteString(" '")
 		case yaml_DOUBLE_QUOTED_SCALAR_STYLE:
-			b.WriteString(" \"")
+			b.WriteString(` "`)
 		}
 		// Escape special characters for consistent event output.
 		val := strings.NewReplacer(
-			"\\", "\\\\",
-			"\n", "\\n",
-			"\t", "\\t",
+			`\`, `\\`,
+			"\n", `\n`,
+			"\t", `\t`,
 		).Replace(string(e.value))
 		b.WriteString(val)
 
