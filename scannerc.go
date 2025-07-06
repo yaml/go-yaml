@@ -1080,7 +1080,6 @@ func (parser *yamlParser) unrollIndent(column int, scan_mark yamlMark) bool {
 
 // Initialize the scanner and produce the STREAM-START token.
 func (parser *yamlParser) fetchStreamStart() bool {
-
 	// Set the initial indentation.
 	parser.indent = -1
 
@@ -1108,7 +1107,6 @@ func (parser *yamlParser) fetchStreamStart() bool {
 
 // Produce the STREAM-END token and shut down the scanner.
 func (parser *yamlParser) fetchStreamEnd() bool {
-
 	// Force new line.
 	if parser.mark.column != 0 {
 		parser.mark.column = 0
@@ -1197,7 +1195,6 @@ func (parser *yamlParser) fetchDocumentIndicator(typ yamlTokenType) bool {
 
 // Produce the FLOW-SEQUENCE-START or FLOW-MAPPING-START token.
 func (parser *yamlParser) fetchFlowCollectionStart(typ yamlTokenType) bool {
-
 	// The indicators '[' and '{' may start a simple key.
 	if !parser.saveSimpleKey() {
 		return false
@@ -1328,7 +1325,6 @@ func (parser *yamlParser) fetchBlockEntry() bool {
 
 // Produce the KEY token.
 func (parser *yamlParser) fetchKey() bool {
-
 	// In the block context, additional checks are required.
 	if parser.flow_level == 0 {
 		// Check if we are allowed to start a new key (not necessary simple).
@@ -1367,13 +1363,11 @@ func (parser *yamlParser) fetchKey() bool {
 
 // Produce the VALUE token.
 func (parser *yamlParser) fetchValue() bool {
-
 	simple_key := &parser.simple_keys[len(parser.simple_keys)-1]
 
 	// Have we found a simple key?
 	if valid, ok := parser.simpleKeyIsValid(simple_key); !ok {
 		return false
-
 	} else if valid {
 
 		// Create the KEY token and insert it into the queue.
@@ -1532,7 +1526,6 @@ func (parser *yamlParser) fetchPlainScalar() bool {
 
 // Eat whitespaces and comments until the next token is found.
 func (parser *yamlParser) scanToNextToken() bool {
-
 	scan_mark := parser.mark
 
 	// Until the next token is not found.
@@ -1803,7 +1796,6 @@ const max_number_length = 2
 //	%YAML   1.1     # a comment \n
 //	          ^
 func (parser *yamlParser) scanVersionDirectiveNumber(start_mark yamlMark, number *int8) bool {
-
 	// Repeat while the next character is digit.
 	if parser.unread < 1 && !parser.updateBuffer(1) {
 		return false
@@ -2085,7 +2077,7 @@ func (parser *yamlParser) scanTagHandle(directive bool, start_mark yamlMark, han
 
 // Scan a tag.
 func (parser *yamlParser) scanTagURI(directive bool, head []byte, start_mark yamlMark, uri *[]byte) bool {
-	//size_t length = head ? strlen((char *)head) : 0
+	// size_t length = head ? strlen((char *)head) : 0
 	var s []byte
 	hasTag := len(head) > 0
 
@@ -2143,7 +2135,6 @@ func (parser *yamlParser) scanTagURI(directive bool, head []byte, start_mark yam
 
 // Decode an URI-escape sequence corresponding to a single UTF-8 character.
 func (parser *yamlParser) scanURIEscapes(directive bool, start_mark yamlMark, s *[]byte) bool {
-
 	// Decode the required number of characters.
 	w := 1024
 	for w > 0 {
@@ -2481,7 +2472,6 @@ func (parser *yamlParser) scanFlowScalar(token *yamlToken, single bool) bool {
 			} else if !single && parser.buffer[parser.buffer_pos] == '"' {
 				// It is a right double quote.
 				break
-
 			} else if !single && parser.buffer[parser.buffer_pos] == '\\' && isLineBreak(parser.buffer, parser.buffer_pos+1) {
 				// It is an escaped line break.
 				if parser.unread < 3 && !parser.updateBuffer(3) {
@@ -2690,10 +2680,9 @@ func (parser *yamlParser) scanFlowScalar(token *yamlToken, single bool) bool {
 
 // Scan a plain scalar.
 func (parser *yamlParser) scanPlainScalar(token *yamlToken) bool {
-
 	var s, leading_break, trailing_breaks, whitespaces []byte
 	var leading_blanks bool
-	var indent = parser.indent + 1
+	indent := parser.indent + 1
 
 	start_mark := parser.mark
 	end_mark := parser.mark
@@ -2891,18 +2880,18 @@ func (parser *yamlParser) scanComments(scan_mark yamlMark) bool {
 		token = parser.tokens[len(parser.tokens)-2]
 	}
 
-	var token_mark = token.start_mark
+	token_mark := token.start_mark
 	var start_mark yamlMark
-	var next_indent = parser.indent
+	next_indent := parser.indent
 	if next_indent < 0 {
 		next_indent = 0
 	}
 
-	var recent_empty = false
-	var first_empty = parser.newlines <= 1
+	recent_empty := false
+	first_empty := parser.newlines <= 1
 
-	var line = parser.mark.line
-	var column = parser.mark.column
+	line := parser.mark.line
+	column := parser.mark.column
 
 	var text []byte
 
@@ -2910,7 +2899,7 @@ func (parser *yamlParser) scanComments(scan_mark yamlMark) bool {
 	// still be considered as a foot of the prior content.
 	// If there's some content in the currently parsed line, then
 	// the foot is the line below it.
-	var foot_line = -1
+	foot_line := -1
 	if scan_mark.line > 0 {
 		foot_line = parser.mark.line - parser.newlines + 1
 		if parser.newlines == 0 && parser.mark.column > 1 {
@@ -2918,7 +2907,7 @@ func (parser *yamlParser) scanComments(scan_mark yamlMark) bool {
 		}
 	}
 
-	var peek = 0
+	peek := 0
 	for ; peek < 512; peek++ {
 		if parser.unread < peek+1 && !parser.updateBuffer(peek+1) {
 			break
@@ -2928,7 +2917,7 @@ func (parser *yamlParser) scanComments(scan_mark yamlMark) bool {
 			continue
 		}
 		c := parser.buffer[parser.buffer_pos+peek]
-		var close_flow = parser.flow_level > 0 && (c == ']' || c == '}')
+		close_flow := parser.flow_level > 0 && (c == ']' || c == '}')
 		if close_flow || isBreakOrZero(parser.buffer, parser.buffer_pos+peek) {
 			// Got line break or terminator.
 			if close_flow || !recent_empty {

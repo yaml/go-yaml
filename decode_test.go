@@ -48,57 +48,75 @@ var unmarshalTests = []struct {
 	},
 	{
 		"{}", &struct{}{},
-	}, {
+	},
+	{
 		"v: hi",
 		map[string]string{"v": "hi"},
-	}, {
+	},
+	{
 		"v: hi", map[string]any{"v": "hi"},
-	}, {
+	},
+	{
 		"v: true",
 		map[string]string{"v": "true"},
-	}, {
+	},
+	{
 		"v: true",
 		map[string]any{"v": true},
-	}, {
+	},
+	{
 		"v: 10",
 		map[string]any{"v": 10},
-	}, {
+	},
+	{
 		"v: 0b10",
 		map[string]any{"v": 2},
-	}, {
+	},
+	{
 		"v: 0xA",
 		map[string]any{"v": 10},
-	}, {
+	},
+	{
 		"v: 4294967296",
 		map[string]int64{"v": 4294967296},
-	}, {
+	},
+	{
 		"v: 0.1",
 		map[string]any{"v": 0.1},
-	}, {
+	},
+	{
 		"v: .1",
 		map[string]any{"v": 0.1},
-	}, {
+	},
+	{
 		"v: .Inf",
 		map[string]any{"v": math.Inf(+1)},
-	}, {
+	},
+	{
 		"v: -.Inf",
 		map[string]any{"v": math.Inf(-1)},
-	}, {
+	},
+	{
 		"v: -10",
 		map[string]any{"v": -10},
-	}, {
+	},
+	{
 		"v: -.1",
 		map[string]any{"v": -0.1},
-	}, {
+	},
+	{
 		"v: -0\n",
 		map[string]any{"v": negativeZero},
-	}, {
+	},
+	{
 		"a: \"\\t\\n\\t\\n\"\n",
 		map[string]string{"a": "\t\n\t\n"},
-	}, {
+	},
+	{
 		"\"<<\": []\n",
 		map[string]any{"<<": []any{}},
-	}, {
+	},
+	{
 		"foo: \"<<\"\n",
 		map[string]any{"foo": "<<"},
 	},
@@ -107,10 +125,12 @@ var unmarshalTests = []struct {
 	{
 		"123",
 		&unmarshalIntTest,
-	}, {
+	},
+	{
 		"-0",
 		negativeZero,
-	}, {
+	},
+	{
 		"\"\\t\\n\"\n",
 		"\t\n",
 	},
@@ -119,16 +139,20 @@ var unmarshalTests = []struct {
 	{
 		"canonical: 6.8523e+5",
 		map[string]any{"canonical": 6.8523e+5},
-	}, {
+	},
+	{
 		"expo: 685.230_15e+03",
 		map[string]any{"expo": 685.23015e+03},
-	}, {
+	},
+	{
 		"fixed: 685_230.15",
 		map[string]any{"fixed": 685230.15},
-	}, {
+	},
+	{
 		"neginf: -.inf",
 		map[string]any{"neginf": math.Inf(-1)},
-	}, {
+	},
+	{
 		"fixed: 685_230.15",
 		map[string]float64{"fixed": 685230.15},
 	},
@@ -139,19 +163,24 @@ var unmarshalTests = []struct {
 	{
 		"canonical: true",
 		map[string]any{"canonical": true},
-	}, {
+	},
+	{
 		"canonical: false",
 		map[string]any{"canonical": false},
-	}, {
+	},
+	{
 		"bool: True",
 		map[string]any{"bool": true},
-	}, {
+	},
+	{
 		"bool: False",
 		map[string]any{"bool": false},
-	}, {
+	},
+	{
 		"bool: TRUE",
 		map[string]any{"bool": true},
-	}, {
+	},
+	{
 		"bool: FALSE",
 		map[string]any{"bool": false},
 	},
@@ -159,16 +188,20 @@ var unmarshalTests = []struct {
 	{
 		"option: on",
 		map[string]bool{"option": true},
-	}, {
+	},
+	{
 		"option: y",
 		map[string]bool{"option": true},
-	}, {
+	},
+	{
 		"option: Off",
 		map[string]bool{"option": false},
-	}, {
+	},
+	{
 		"option: No",
 		map[string]bool{"option": false},
-	}, {
+	},
+	{
 		"option: other",
 		map[string]bool{},
 	},
@@ -176,34 +209,44 @@ var unmarshalTests = []struct {
 	{
 		"canonical: 685230",
 		map[string]any{"canonical": 685230},
-	}, {
+	},
+	{
 		"decimal: +685_230",
 		map[string]any{"decimal": 685230},
-	}, {
+	},
+	{
 		"octal: 02472256",
 		map[string]any{"octal": 685230},
-	}, {
+	},
+	{
 		"octal: -02472256",
 		map[string]any{"octal": -685230},
-	}, {
+	},
+	{
 		"octal: 0o2472256",
 		map[string]any{"octal": 685230},
-	}, {
+	},
+	{
 		"octal: -0o2472256",
 		map[string]any{"octal": -685230},
-	}, {
+	},
+	{
 		"hexa: 0x_0A_74_AE",
 		map[string]any{"hexa": 685230},
-	}, {
+	},
+	{
 		"bin: 0b1010_0111_0100_1010_1110",
 		map[string]any{"bin": 685230},
-	}, {
+	},
+	{
 		"bin: -0b101010",
 		map[string]any{"bin": -42},
-	}, {
+	},
+	{
 		"bin: -0b1000000000000000000000000000000000000000000000000000000000000000",
 		map[string]any{"bin": -9223372036854775808},
-	}, {
+	},
+	{
 		"decimal: +685_230",
 		map[string]int{"decimal": 685230},
 	},
@@ -214,16 +257,20 @@ var unmarshalTests = []struct {
 	{
 		"empty:",
 		map[string]any{"empty": nil},
-	}, {
+	},
+	{
 		"canonical: ~",
 		map[string]any{"canonical": nil},
-	}, {
+	},
+	{
 		"english: null",
 		map[string]any{"english": nil},
-	}, {
+	},
+	{
 		"~: null key",
 		map[any]string{nil: "null key"},
-	}, {
+	},
+	{
 		"empty:",
 		map[string]*bool{"empty": nil},
 	},
@@ -232,16 +279,20 @@ var unmarshalTests = []struct {
 	{
 		"seq: [A,B]",
 		map[string]any{"seq": []any{"A", "B"}},
-	}, {
+	},
+	{
 		"seq: [A,B,C,]",
 		map[string][]string{"seq": {"A", "B", "C"}},
-	}, {
+	},
+	{
 		"seq: [A,1,C]",
 		map[string][]string{"seq": {"A", "1", "C"}},
-	}, {
+	},
+	{
 		"seq: [A,1,C]",
 		map[string][]int{"seq": {1}},
-	}, {
+	},
+	{
 		"seq: [A,1,C]",
 		map[string]any{"seq": []any{"A", 1, "C"}},
 	},
@@ -249,16 +300,20 @@ var unmarshalTests = []struct {
 	{
 		"seq:\n - A\n - B",
 		map[string]any{"seq": []any{"A", "B"}},
-	}, {
+	},
+	{
 		"seq:\n - A\n - B\n - C",
 		map[string][]string{"seq": {"A", "B", "C"}},
-	}, {
+	},
+	{
 		"seq:\n - A\n - 1\n - C",
 		map[string][]string{"seq": {"A", "1", "C"}},
-	}, {
+	},
+	{
 		"seq:\n - A\n - 1\n - C",
 		map[string][]int{"seq": {1}},
-	}, {
+	},
+	{
 		"seq:\n - A\n - 1\n - C",
 		map[string]any{"seq": []any{"A", 1, "C"}},
 	},
@@ -290,51 +345,66 @@ var unmarshalTests = []struct {
 	{
 		"hello: world",
 		&struct{ Hello string }{"world"},
-	}, {
+	},
+	{
 		"a: {b: c}",
 		&struct{ A struct{ B string } }{struct{ B string }{"c"}},
-	}, {
+	},
+	{
 		"a: {b: c}",
 		&struct{ A *struct{ B string } }{&struct{ B string }{"c"}},
-	}, {
+	},
+	{
 		"a: 'null'",
 		&struct{ A *unmarshalerType }{&unmarshalerType{"null"}},
-	}, {
+	},
+	{
 		"a: {b: c}",
 		&struct{ A map[string]string }{map[string]string{"b": "c"}},
-	}, {
+	},
+	{
 		"a: {b: c}",
 		&struct{ A *map[string]string }{&map[string]string{"b": "c"}},
-	}, {
+	},
+	{
 		"a:",
 		&struct{ A map[string]string }{},
-	}, {
+	},
+	{
 		"a: 1",
 		&struct{ A int }{1},
-	}, {
+	},
+	{
 		"a: 1",
 		&struct{ A float64 }{1},
-	}, {
+	},
+	{
 		"a: 1.0",
 		&struct{ A int }{1},
-	}, {
+	},
+	{
 		"a: 1.0",
 		&struct{ A uint }{1},
-	}, {
+	},
+	{
 		"a: [1, 2]",
 		&struct{ A []int }{[]int{1, 2}},
-	}, {
+	},
+	{
 		"a: [1, 2]",
 		&struct{ A [2]int }{[2]int{1, 2}},
-	}, {
+	},
+	{
 		"a: 1",
 		&struct{ B int }{0},
-	}, {
+	},
+	{
 		"a: 1",
 		&struct {
 			B int `yaml:"a"`
 		}{1},
-	}, {
+	},
+	{
 		// Some limited backwards compatibility with the 1.1 spec.
 		"a: YES",
 		&struct{ A bool }{true},
@@ -344,13 +414,16 @@ var unmarshalTests = []struct {
 	{
 		"v: 42",
 		map[string]uint{"v": 42},
-	}, {
+	},
+	{
 		"v: -42",
 		map[string]uint{},
-	}, {
+	},
+	{
 		"v: 4294967296",
 		map[string]uint64{"v": 4294967296},
-	}, {
+	},
+	{
 		"v: -4294967296",
 		map[string]uint64{},
 	},
@@ -467,7 +540,8 @@ var unmarshalTests = []struct {
 	{
 		"v: 4294967297",
 		map[string]int32{},
-	}, {
+	},
+	{
 		"v: 128",
 		map[string]int8{},
 	},
@@ -476,7 +550,8 @@ var unmarshalTests = []struct {
 	{
 		"'1': '\"2\"'",
 		map[any]any{"1": "\"2\""},
-	}, {
+	},
+	{
 		"v:\n- A\n- 'B\n\n  C'\n",
 		map[string][]string{"v": {"A", "B\nC"}},
 	},
@@ -485,16 +560,20 @@ var unmarshalTests = []struct {
 	{
 		"v: !!float '1.1'",
 		map[string]any{"v": 1.1},
-	}, {
+	},
+	{
 		"v: !!float 0",
 		map[string]any{"v": float64(0)},
-	}, {
+	},
+	{
 		"v: !!float -1",
 		map[string]any{"v": float64(-1)},
-	}, {
+	},
+	{
 		"v: !!null ''",
 		map[string]any{"v": nil},
-	}, {
+	},
+	{
 		"%TAG !y! tag:yaml.org,2002:\n---\nv: !y!int '1'",
 		map[string]any{"v": 1},
 	},
@@ -509,17 +588,20 @@ var unmarshalTests = []struct {
 	{
 		"a: &x 1\nb: &y 2\nc: *x\nd: *y\n",
 		&struct{ A, B, C, D int }{1, 2, 1, 2},
-	}, {
+	},
+	{
 		"a: &a {c: 1}\nb: *a",
 		&struct {
 			A, B struct {
 				C int
 			}
 		}{struct{ C int }{1}, struct{ C int }{1}},
-	}, {
+	},
+	{
 		"a: &a [1, 2]\nb: *a",
 		&struct{ B []int }{[]int{1, 2}},
-	}, {
+	},
+	{
 		"a: &a.b1.c [1, 2]\nb: *a.b1.c",
 		&struct{ B []int }{[]int{1, 2}},
 	},
@@ -528,13 +610,16 @@ var unmarshalTests = []struct {
 	{
 		"foo: ''",
 		map[string]*string{"foo": new(string)},
-	}, {
+	},
+	{
 		"foo: null",
 		map[string]*string{"foo": nil},
-	}, {
+	},
+	{
 		"foo: null",
 		map[string]string{"foo": ""},
-	}, {
+	},
+	{
 		"foo: null",
 		map[string]any{"foo": nil},
 	},
@@ -543,10 +628,12 @@ var unmarshalTests = []struct {
 	{
 		"foo: ~",
 		map[string]*string{"foo": nil},
-	}, {
+	},
+	{
 		"foo: ~",
 		map[string]string{"foo": ""},
-	}, {
+	},
+	{
 		"foo: ~",
 		map[string]any{"foo": nil},
 	},
@@ -591,13 +678,15 @@ var unmarshalTests = []struct {
 			A int
 			C *inlineB `yaml:",inline"`
 		}{1, &inlineB{2, inlineC{3}}},
-	}, {
+	},
+	{
 		"a: 1\n",
 		&struct {
 			A int
 			C *inlineB `yaml:",inline"`
 		}{1, nil},
-	}, {
+	},
+	{
 		"a: 1\nc: 3\nd: 4\n",
 		&struct {
 			A int
@@ -662,10 +751,12 @@ var unmarshalTests = []struct {
 	{
 		"a: !!binary gIGC\n",
 		map[string]string{"a": "\x80\x81\x82"},
-	}, {
+	},
+	{
 		"a: !!binary |\n  " + strings.Repeat("kJCQ", 17) + "kJ\n  CQ\n",
 		map[string]string{"a": strings.Repeat("\x90", 54)},
-	}, {
+	},
+	{
 		"a: !!binary |\n  " + strings.Repeat("A", 70) + "\n  ==\n",
 		map[string]string{"a": strings.Repeat("\x00", 52)},
 	},
@@ -793,7 +884,8 @@ var unmarshalTests = []struct {
 	{
 		"a: 123456e1\n",
 		M{"a": 123456e1},
-	}, {
+	},
+	{
 		"a: 123456E1\n",
 		M{"a": 123456e1},
 	},
@@ -817,7 +909,8 @@ var unmarshalTests = []struct {
 	{
 		"true\n#" + strings.Repeat(" ", 512*3),
 		"true",
-	}, {
+	},
+	{
 		"true #" + strings.Repeat(" ", 512*3),
 		"true",
 	},
@@ -836,22 +929,26 @@ var unmarshalTests = []struct {
 		map[string]any{
 			"foo": map[string]any{"ba?r": "a?bc"},
 		},
-	}, {
+	},
+	{
 		"foo: {?bar: ?abc}",
 		map[string]any{
 			"foo": map[string]any{"?bar": "?abc"},
 		},
-	}, {
+	},
+	{
 		"foo: {bar?: abc?}",
 		map[string]any{
 			"foo": map[string]any{"bar?": "abc?"},
 		},
-	}, {
+	},
+	{
 		"foo: {? key: value}",
 		map[string]any{
 			"foo": map[string]any{"key": "value"},
 		},
-	}, {
+	},
+	{
 		`---
 foo:
   ? complex key
@@ -898,7 +995,7 @@ func TestUnmarshal(t *testing.T) {
 func TestUnmarshalFullTimestamp(t *testing.T) {
 	// Full timestamp in same format as encoded. This is confirmed to be
 	// properly decoded by Python as a timestamp as well.
-	var str = "2015-02-24T18:19:39.123456789-03:00"
+	str := "2015-02-24T18:19:39.123456789-03:00"
 	var tm any
 	err := yaml.Unmarshal([]byte(str), &tm)
 	assert.NoError(t, err)
@@ -1618,7 +1715,7 @@ inlineSequenceMap:
 `
 
 func TestMerge(t *testing.T) {
-	var want = map[string]any{
+	want := map[string]any{
 		"x":     1,
 		"y":     2,
 		"r":     10,
@@ -1742,7 +1839,7 @@ func TestMergeNestedStruct(t *testing.T) {
 	// Repeat test with a map.
 
 	var testm map[string]any
-	var wantm = map[string]any{
+	wantm := map[string]any{
 		"f": 60,
 		"inner": map[string]any{
 			"a": 10,
@@ -1765,36 +1862,36 @@ var unmarshalNullTests = []struct {
 	func() any { var v any; v = nil; return &v },
 }, {
 	"null",
-	func() any { var s = "s"; return &s },
-	func() any { var s = "s"; return &s },
+	func() any { s := "s"; return &s },
+	func() any { s := "s"; return &s },
 }, {
 	"null",
-	func() any { var s = "s"; sptr := &s; return &sptr },
+	func() any { s := "s"; sptr := &s; return &sptr },
 	func() any { var sptr *string; return &sptr },
 }, {
 	"null",
-	func() any { var i = 1; return &i },
-	func() any { var i = 1; return &i },
+	func() any { i := 1; return &i },
+	func() any { i := 1; return &i },
 }, {
 	"null",
-	func() any { var i = 1; iptr := &i; return &iptr },
+	func() any { i := 1; iptr := &i; return &iptr },
 	func() any { var iptr *int; return &iptr },
 }, {
 	"null",
-	func() any { var m = map[string]int{"s": 1}; return &m },
+	func() any { m := map[string]int{"s": 1}; return &m },
 	func() any { var m map[string]int; return &m },
 }, {
 	"null",
-	func() any { var m = map[string]int{"s": 1}; return m },
-	func() any { var m = map[string]int{"s": 1}; return m },
+	func() any { m := map[string]int{"s": 1}; return m },
+	func() any { m := map[string]int{"s": 1}; return m },
 }, {
 	"s2: null\ns3: null",
-	func() any { var m = map[string]int{"s1": 1, "s2": 2}; return m },
-	func() any { var m = map[string]int{"s1": 1, "s2": 2, "s3": 0}; return m },
+	func() any { m := map[string]int{"s1": 1, "s2": 2}; return m },
+	func() any { m := map[string]int{"s1": 1, "s2": 2, "s3": 0}; return m },
 }, {
 	"s2: null\ns3: null",
-	func() any { var m = map[string]any{"s1": 1, "s2": 2}; return m },
-	func() any { var m = map[string]any{"s1": 1, "s2": nil, "s3": nil}; return m },
+	func() any { m := map[string]any{"s1": 1, "s2": 2}; return m },
+	func() any { m := map[string]any{"s1": 1, "s2": nil, "s3": nil}; return m },
 }}
 
 func TestUnmarshalNull(t *testing.T) {

@@ -215,7 +215,7 @@ func (p *parser) alias() *Node {
 }
 
 func (p *parser) scalar() *Node {
-	var parsedStyle = p.event.scalarStyle()
+	parsedStyle := p.event.scalarStyle()
 	var nodeStyle Style
 	switch {
 	case parsedStyle&yaml_DOUBLE_QUOTED_SCALAR_STYLE != 0:
@@ -227,8 +227,8 @@ func (p *parser) scalar() *Node {
 	case parsedStyle&yaml_FOLDED_SCALAR_STYLE != 0:
 		nodeStyle = FoldedStyle
 	}
-	var nodeValue = string(p.event.value)
-	var nodeTag = string(p.event.tag)
+	nodeValue := string(p.event.value)
+	nodeTag := string(p.event.tag)
 	var defaultTag string
 	if nodeStyle == 0 {
 		if nodeValue == "<<" {
