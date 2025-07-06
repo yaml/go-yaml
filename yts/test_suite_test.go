@@ -202,7 +202,6 @@ func runTest(t *testing.T, testPath string) {
 		} else if !reflect.DeepEqual(reUnmarshaledValue, expectedUnmarshaledValue) {
 			t.Errorf("Test: %s\nDescription: %s\nError: Marshal output mismatch\nExpected: %+v\nGot     : %+v", testPath, testDescription, expectedUnmarshaledValue, reUnmarshaledValue)
 		}
-
 	})
 
 	t.Run("JSONComparisonTest", func(t *testing.T) {
@@ -230,6 +229,5 @@ func runTest(t *testing.T, testPath string) {
 		} else if !reflect.DeepEqual(currentUnmarshaledValue, jsonValue) {
 			t.Errorf("Test: %s\nDescription: %s\nError: YAML unmarshal vs JSON unmarshal mismatch\nExpected: %+v\nGot     : %+v", testPath, testDescription, jsonValue, currentUnmarshaledValue)
 		}
-
 	})
 }

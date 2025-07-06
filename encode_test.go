@@ -39,94 +39,124 @@ var marshalTests = []struct {
 	{
 		nil,
 		"null\n",
-	}, {
+	},
+	{
 		(*marshalerType)(nil),
 		"null\n",
-	}, {
+	},
+	{
 		&struct{}{},
 		"{}\n",
-	}, {
+	},
+	{
 		map[string]string{"v": "hi"},
 		"v: hi\n",
-	}, {
+	},
+	{
 		map[string]any{"v": "hi"},
 		"v: hi\n",
-	}, {
+	},
+	{
 		map[string]string{"v": "true"},
 		"v: \"true\"\n",
-	}, {
+	},
+	{
 		map[string]string{"v": "false"},
 		"v: \"false\"\n",
-	}, {
+	},
+	{
 		map[string]any{"v": true},
 		"v: true\n",
-	}, {
+	},
+	{
 		map[string]any{"v": false},
 		"v: false\n",
-	}, {
+	},
+	{
 		map[string]any{"v": 10},
 		"v: 10\n",
-	}, {
+	},
+	{
 		map[string]any{"v": -10},
 		"v: -10\n",
-	}, {
+	},
+	{
 		map[string]uint{"v": 42},
 		"v: 42\n",
-	}, {
+	},
+	{
 		map[string]any{"v": int64(4294967296)},
 		"v: 4294967296\n",
-	}, {
+	},
+	{
 		map[string]int64{"v": int64(4294967296)},
 		"v: 4294967296\n",
-	}, {
+	},
+	{
 		map[string]uint64{"v": 4294967296},
 		"v: 4294967296\n",
-	}, {
+	},
+	{
 		map[string]any{"v": "10"},
 		"v: \"10\"\n",
-	}, {
+	},
+	{
 		map[string]any{"v": 0.1},
 		"v: 0.1\n",
-	}, {
+	},
+	{
 		map[string]any{"v": float64(0.1)},
 		"v: 0.1\n",
-	}, {
+	},
+	{
 		map[string]any{"v": float32(0.99)},
 		"v: 0.99\n",
-	}, {
+	},
+	{
 		map[string]any{"v": -0.1},
 		"v: -0.1\n",
-	}, {
+	},
+	{
 		map[string]any{"v": math.Inf(+1)},
 		"v: .inf\n",
-	}, {
+	},
+	{
 		map[string]any{"v": math.Inf(-1)},
 		"v: -.inf\n",
-	}, {
+	},
+	{
 		map[string]any{"v": math.NaN()},
 		"v: .nan\n",
-	}, {
+	},
+	{
 		map[string]any{"v": nil},
 		"v: null\n",
-	}, {
+	},
+	{
 		map[string]any{"v": ""},
 		"v: \"\"\n",
-	}, {
+	},
+	{
 		map[string][]string{"v": {"A", "B"}},
 		"v:\n    - A\n    - B\n",
-	}, {
+	},
+	{
 		map[string][]string{"v": {"A", "B\nC"}},
 		"v:\n    - A\n    - |-\n      B\n      C\n",
-	}, {
+	},
+	{
 		map[string][]any{"v": {"A", 1, map[string][]int{"B": {2, 3}}}},
 		"v:\n    - A\n    - 1\n    - B:\n        - 2\n        - 3\n",
-	}, {
+	},
+	{
 		map[string]any{"a": map[any]any{"b": "c"}},
 		"a:\n    b: c\n",
-	}, {
+	},
+	{
 		map[string]any{"a": "-"},
 		"a: '-'\n",
-	}, {
+	},
+	{
 		map[string]any{"v": negativeZero},
 		"v: -0\n",
 	},
@@ -135,10 +165,12 @@ var marshalTests = []struct {
 	{
 		&marshalIntTest,
 		"123\n",
-	}, {
+	},
+	{
 		negativeZero,
 		"-0\n",
-	}, {
+	},
+	{
 		"\t\n",
 		"\"\\t\\n\"\n",
 	},
@@ -147,48 +179,58 @@ var marshalTests = []struct {
 	{
 		&struct{ Hello string }{"world"},
 		"hello: world\n",
-	}, {
+	},
+	{
 		&struct {
 			A struct {
 				B string
 			}
 		}{struct{ B string }{"c"}},
 		"a:\n    b: c\n",
-	}, {
+	},
+	{
 		&struct {
 			A *struct {
 				B string
 			}
 		}{&struct{ B string }{"c"}},
 		"a:\n    b: c\n",
-	}, {
+	},
+	{
 		&struct {
 			A *struct {
 				B string
 			}
 		}{},
 		"a: null\n",
-	}, {
+	},
+	{
 		&struct{ A int }{1},
 		"a: 1\n",
-	}, {
+	},
+	{
 		&struct{ A []int }{[]int{1, 2}},
 		"a:\n    - 1\n    - 2\n",
-	}, {
+	},
+	{
 		&struct{ A [2]int }{[2]int{1, 2}},
 		"a:\n    - 1\n    - 2\n",
-	}, {
+	},
+	{
 		&struct {
 			B int `yaml:"a"`
 		}{1},
 		"a: 1\n",
-	}, {
+	},
+	{
 		&struct{ A bool }{true},
 		"a: true\n",
-	}, {
+	},
+	{
 		&struct{ A string }{"true"},
 		"a: \"true\"\n",
-	}, {
+	},
+	{
 		&struct{ A string }{"off"},
 		"a: \"off\"\n",
 	},
@@ -200,38 +242,45 @@ var marshalTests = []struct {
 			B int `yaml:"b,omitempty"`
 		}{1, 0},
 		"a: 1\n",
-	}, {
+	},
+	{
 		&struct {
 			A int `yaml:"a,omitempty"`
 			B int `yaml:"b,omitempty"`
 		}{0, 0},
 		"{}\n",
-	}, {
+	},
+	{
 		&struct {
 			A *struct{ X, y int } `yaml:"a,omitempty,flow"`
 		}{&struct{ X, y int }{1, 2}},
 		"a: {x: 1}\n",
-	}, {
+	},
+	{
 		&struct {
 			A *struct{ X, y int } `yaml:"a,omitempty,flow"`
 		}{nil},
 		"{}\n",
-	}, {
+	},
+	{
 		&struct {
 			A *struct{ X, y int } `yaml:"a,omitempty,flow"`
 		}{&struct{ X, y int }{}},
 		"a: {x: 0}\n",
-	}, {
+	},
+	{
 		&struct {
 			A struct{ X, y int } `yaml:"a,omitempty,flow"`
 		}{struct{ X, y int }{1, 2}},
 		"a: {x: 1}\n",
-	}, {
+	},
+	{
 		&struct {
 			A struct{ X, y int } `yaml:"a,omitempty,flow"`
 		}{struct{ X, y int }{0, 1}},
 		"{}\n",
-	}, {
+	},
+	{
 		&struct {
 			A float64 `yaml:"a,omitempty"`
 			B float64 `yaml:"b,omitempty"`
@@ -264,19 +313,22 @@ var marshalTests = []struct {
 			A []int `yaml:"a,flow"`
 		}{[]int{1, 2}},
 		"a: [1, 2]\n",
-	}, {
+	},
+	{
 		&struct {
 			A map[string]string `yaml:"a,flow"`
 		}{map[string]string{"b": "c", "d": "e"}},
 		"a: {b: c, d: e}\n",
-	}, {
+	},
+	{
 		&struct {
 			A struct {
 				B, D string
 			} `yaml:"a,flow"`
 		}{struct{ B, D string }{"c", "e"}},
 		"a: {b: c, d: e}\n",
-	}, {
+	},
+	{
 		&struct {
 			A string `yaml:"a,flow"`
 		}{"b\nc"},
@@ -316,13 +368,15 @@ var marshalTests = []struct {
 			C *inlineB `yaml:",inline"`
 		}{1, &inlineB{2, inlineC{3}}},
 		"a: 1\nb: 2\nc: 3\n",
-	}, {
+	},
+	{
 		&struct {
 			A int
 			C *inlineB `yaml:",inline"`
 		}{1, nil},
 		"a: 1\n",
-	}, {
+	},
+	{
 		&struct {
 			A int
 			D *inlineD `yaml:",inline"`
@@ -362,10 +416,12 @@ var marshalTests = []struct {
 	{
 		map[string]string{"a": "\x00"},
 		"a: \"\\0\"\n",
-	}, {
+	},
+	{
 		map[string]string{"a": "\x80\x81\x82"},
 		"a: !!binary gIGC\n",
-	}, {
+	},
+	{
 		map[string]string{"a": strings.Repeat("\x90", 54)},
 		"a: !!binary |\n    " + strings.Repeat("kJCQ", 17) + "kJ\n    CQ\n",
 	},
@@ -421,7 +477,8 @@ var marshalTests = []struct {
 	{
 		&marshalerType{marshalerType{true}},
 		"true\n",
-	}, {
+	},
+	{
 		&marshalerType{&marshalerType{true}},
 		"true\n",
 	},
@@ -436,13 +493,16 @@ var marshalTests = []struct {
 	{
 		map[string]string{"a": "\tB\n\tC\n"},
 		"a: |\n    \tB\n    \tC\n",
-	}, {
+	},
+	{
 		map[string]string{"a": "\t\n\t\n"},
 		"a: \"\\t\\n\\t\\n\"\n",
-	}, {
+	},
+	{
 		map[string]any{"<<": []string{}},
 		"\"<<\": []\n",
-	}, {
+	},
+	{
 		map[string]any{"foo": "<<"},
 		"foo: \"<<\"\n",
 	},
@@ -466,7 +526,8 @@ var marshalTests = []struct {
 			},
 		},
 		"value: 'foo'\n",
-	}, {
+	},
+	{
 		yaml.Node{
 			Kind:  yaml.ScalarNode,
 			Tag:   "!!str",
@@ -489,7 +550,8 @@ var marshalTests = []struct {
 			},
 		},
 		"value: !!str foo\n",
-	}, {
+	},
+	{
 		&struct {
 			Value yaml.Node
 		}{
@@ -500,7 +562,8 @@ var marshalTests = []struct {
 			},
 		},
 		"value: !!map {}\n",
-	}, {
+	},
+	{
 		&struct {
 			Value yaml.Node
 		}{
@@ -563,7 +626,6 @@ func TestEncoderWriteError(t *testing.T) {
 	enc := yaml.NewEncoder(errorWriter{})
 	err := enc.Encode(map[string]string{"a": "b"})
 	assert.ErrorMatches(t, `yaml: write error: some write error`, err) // Data not flushed yet
-
 }
 
 type errorWriter struct{}
@@ -799,8 +861,10 @@ func TestCompactSequenceWithSetIndent(t *testing.T) {
 `, buf.String())
 }
 
-type normal string
-type compact string
+type (
+	normal  string
+	compact string
+)
 
 // newlinePlusNormalToNewlinePlusCompact maps the normal encoding (prefixed with a newline)
 // to the compact encoding (prefixed with a newline), for test cases in marshalTests
