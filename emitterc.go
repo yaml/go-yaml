@@ -360,7 +360,6 @@ func (emitter *yamlEmitter) emitStreamStart(event *yamlEvent) bool {
 
 // Expect DOCUMENT-START or STREAM-END.
 func (emitter *yamlEmitter) emitDocumentStart(event *yamlEvent, first bool) bool {
-
 	if event.typ == yaml_DOCUMENT_START_EVENT {
 
 		if event.version_directive != nil {
@@ -877,8 +876,8 @@ func (emitter *yamlEmitter) silentNilEvent(event *yamlEvent) bool {
 
 // Expect a node.
 func (emitter *yamlEmitter) emitNode(event *yamlEvent,
-	root bool, sequence bool, mapping bool, simple_key bool) bool {
-
+	root bool, sequence bool, mapping bool, simple_key bool,
+) bool {
 	emitter.root_context = root
 	emitter.sequence_context = sequence
 	emitter.mapping_context = mapping
@@ -1026,7 +1025,6 @@ func (emitter *yamlEmitter) checkSimpleKey() bool {
 
 // Determine an acceptable scalar style.
 func (emitter *yamlEmitter) selectScalarStyle(event *yamlEvent) bool {
-
 	no_tag := len(emitter.tag_data.handle) == 0 && len(emitter.tag_data.suffix) == 0
 	if no_tag && !event.implicit && !event.quoted_implicit {
 		return emitter.setEmitterError("neither tag nor implicit flags are specified")
@@ -1284,8 +1282,7 @@ func (emitter *yamlEmitter) analyzeTag(tag []byte) bool {
 
 // Check if a scalar is valid.
 func (emitter *yamlEmitter) analyzeScalar(value []byte) bool {
-	var (
-		block_indicators,
+	var block_indicators,
 		flow_indicators,
 		line_breaks,
 		special_characters,
@@ -1302,7 +1299,6 @@ func (emitter *yamlEmitter) analyzeScalar(value []byte) bool {
 		followed_by_whitespace,
 		previous_space,
 		previous_break bool
-	)
 
 	emitter.scalar_data.value = value
 
@@ -1438,7 +1434,6 @@ func (emitter *yamlEmitter) analyzeScalar(value []byte) bool {
 
 // Check if the event data is valid.
 func (emitter *yamlEmitter) analyzeEvent(event *yamlEvent) bool {
-
 	emitter.anchor_data.anchor = nil
 	emitter.tag_data.handle = nil
 	emitter.tag_data.suffix = nil
@@ -1539,7 +1534,7 @@ func (emitter *yamlEmitter) writeIndent() bool {
 		}
 	}
 	emitter.whitespace = true
-	//emitter.indention = true
+	// emitter.indention = true
 	emitter.space_above = false
 	emitter.foot_indent = -1
 	return true
@@ -1668,7 +1663,7 @@ func (emitter *yamlEmitter) writePlainScalar(value []byte, allow_breaks bool) bo
 			if !emitter.writeLineBreak(value, &i) {
 				return false
 			}
-			//emitter.indention = true
+			// emitter.indention = true
 			breaks = true
 		} else {
 			if breaks {
@@ -1697,7 +1692,6 @@ func (emitter *yamlEmitter) writePlainScalar(value []byte, allow_breaks bool) bo
 }
 
 func (emitter *yamlEmitter) writeSingleQuotedScalar(value []byte, allow_breaks bool) bool {
-
 	if !emitter.writeIndicator([]byte{'\''}, true, false, false) {
 		return false
 	}
@@ -1726,7 +1720,7 @@ func (emitter *yamlEmitter) writeSingleQuotedScalar(value []byte, allow_breaks b
 			if !emitter.writeLineBreak(value, &i) {
 				return false
 			}
-			//emitter.indention = true
+			// emitter.indention = true
 			breaks = true
 		} else {
 			if breaks {
@@ -1928,7 +1922,7 @@ func (emitter *yamlEmitter) writeLiteralScalar(value []byte) bool {
 	if !emitter.processLineCommentLinebreak(true) {
 		return false
 	}
-	//emitter.indention = true
+	// emitter.indention = true
 	emitter.whitespace = true
 	breaks := true
 	for i := 0; i < len(value); {
@@ -1936,7 +1930,7 @@ func (emitter *yamlEmitter) writeLiteralScalar(value []byte) bool {
 			if !emitter.writeLineBreak(value, &i) {
 				return false
 			}
-			//emitter.indention = true
+			// emitter.indention = true
 			breaks = true
 		} else {
 			if breaks {
@@ -1966,7 +1960,7 @@ func (emitter *yamlEmitter) writeFoldedScalar(value []byte) bool {
 		return false
 	}
 
-	//emitter.indention = true
+	// emitter.indention = true
 	emitter.whitespace = true
 
 	breaks := true
@@ -1987,7 +1981,7 @@ func (emitter *yamlEmitter) writeFoldedScalar(value []byte) bool {
 			if !emitter.writeLineBreak(value, &i) {
 				return false
 			}
-			//emitter.indention = true
+			// emitter.indention = true
 			breaks = true
 		} else {
 			if breaks {
@@ -2021,7 +2015,7 @@ func (emitter *yamlEmitter) writeComment(comment []byte) bool {
 			if !emitter.writeLineBreak(comment, &i) {
 				return false
 			}
-			//emitter.indention = true
+			// emitter.indention = true
 			breaks = true
 			pound = false
 		} else {
@@ -2046,6 +2040,6 @@ func (emitter *yamlEmitter) writeComment(comment []byte) bool {
 	}
 
 	emitter.whitespace = true
-	//emitter.indention = true
+	// emitter.indention = true
 	return true
 }

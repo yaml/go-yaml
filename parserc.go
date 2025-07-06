@@ -148,7 +148,7 @@ func (parser *yamlParser) setParserErrorContext(context string, context_mark yam
 
 // State dispatcher.
 func (parser *yamlParser) stateMachine(event *yamlEvent) bool {
-	//trace("yaml_parser_state_machine", "state:", parser.state.String())
+	// trace("yaml_parser_state_machine", "state:", parser.state.String())
 
 	switch parser.state {
 	case yaml_PARSE_STREAM_START_STATE:
@@ -257,7 +257,6 @@ func (parser *yamlParser) parseStreamStart(event *yamlEvent) bool {
 //
 //	*************************
 func (parser *yamlParser) parseDocumentStart(event *yamlEvent, implicit bool) bool {
-
 	token := parser.peekToken()
 	if token == nil {
 		return false
@@ -469,7 +468,7 @@ func (parser *yamlParser) setEventComments(event *yamlEvent) {
 //
 //	******
 func (parser *yamlParser) parseNode(event *yamlEvent, block, indentless_sequence bool) bool {
-	//defer trace("yaml_parser_parse_node", "block:", block, "indentless_sequence:", indentless_sequence)()
+	// defer trace("yaml_parser_parse_node", "block:", block, "indentless_sequence:", indentless_sequence)()
 
 	token := parser.peekToken()
 	if token == nil {

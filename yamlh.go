@@ -287,7 +287,6 @@ func (e yamlEventType) String() string {
 
 // The event structure.
 type yamlEvent struct {
-
 	// The event type.
 	typ yamlEventType
 
@@ -407,12 +406,10 @@ type yamlNode struct {
 
 	start_mark yamlMark // The beginning of the node.
 	end_mark   yamlMark // The end of the node.
-
 }
 
 // The document structure.
 type yamlDocument struct {
-
 	// The document nodes.
 	nodes []yamlNode
 
@@ -554,7 +551,6 @@ type yamlAliasData struct {
 //
 // All members are internal.
 type yamlParser struct {
-
 	// Error handling
 
 	error yamlErrorType // Error type.
@@ -701,7 +697,6 @@ const (
 //
 // All members are internal.
 type yamlEmitter struct {
-
 	// Error handling
 
 	error   yamlErrorType // Error type.
