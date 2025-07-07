@@ -40,4 +40,4 @@ jobs:
     - name: Run go test
       run: GO111MODULE=on go test -v -race ./...
     - name: Run yaml-test-suit tests
-      run: make yts
+      run: make test-yts
