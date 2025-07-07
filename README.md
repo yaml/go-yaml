@@ -168,7 +168,7 @@ b:
 ## Testing with `make`
 
 Running `make test` in this directory should just work.
-You don't need to have `go` installed and even if you do the Makefile will
+You don't need to have `go` installed and even if you do the `GNUmakefile` will
 ignore it and setup / cache its own version under `.cache/`.
 
 The only things you need are:
@@ -182,7 +182,9 @@ Some `make` commands are:
 
 * `make test`
 * `make test GO-VERSION=1.2.34`
-* `make distclean` - Remove `.cache/`
+* `make shell` Start a shell with the local `go` environment
+* `make shell GO-VERSION=1.2.34`
+* `make distclean` - Removes `.cache/`
 
 
 ## License
