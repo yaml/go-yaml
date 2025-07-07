@@ -1,4 +1,4 @@
-package yaml_test
+package yts
 
 import (
 	"encoding/json"
