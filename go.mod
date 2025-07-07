@@ -1,3 +1,3 @@
-module go.yaml.in/yaml/v3
+module go.yaml.in/yaml/v4
 
-go 1.22
+go 1.16
