@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"log"
 
-	"go.yaml.in/yaml/v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // An example showing how to unmarshal embedded
