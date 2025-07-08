@@ -2,9 +2,10 @@ name: Go
 
 on:
   push:
-    branches: [ v3 ]
+    branches: [ main, v4, v3, v2, v1 ]
   pull_request:
-    branches: [ v3 ]
+    branches: [ main, v4, v3, v2, v1 ]
+
 jobs:
   fmt:
     runs-on: ubuntu-latest
