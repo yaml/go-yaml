@@ -37,7 +37,7 @@ jobs:
         go-version: ${{ matrix.go-versions }}
     - name: Run go vet
       run: go vet ./...
-    - name: Run go test
-      run: GO111MODULE=on go test -v -race ./...
     - name: Run yaml-test-suit tests
       run: make test-yts
+    - name: Run go test
+      run: GO111MODULE=on go test -v -race .
