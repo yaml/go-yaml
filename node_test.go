@@ -253,6 +253,21 @@ var nodeTests = []struct {
 			}},
 		},
 	}, {
+		"|\n  \t\n",
+		yaml.Node{
+			Kind:   yaml.DocumentNode,
+			Line:   1,
+			Column: 1,
+			Content: []*yaml.Node{{
+				Kind:   yaml.ScalarNode,
+				Style:  yaml.LiteralStyle,
+				Value:  "\t\n",
+				Tag:    "!!str",
+				Line:   1,
+				Column: 1,
+			}},
+		},
+	}, {
 		"|\n  foo\n  bar\n",
 		yaml.Node{
 			Kind:   yaml.DocumentNode,
