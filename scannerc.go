@@ -1908,7 +1908,7 @@ func yaml_parser_scan_anchor(parser *yaml_parser_t, token *yaml_token_t, typ yam
 		return false
 	}
 
-	for is_alpha(parser.buffer, parser.buffer_pos) {
+	for is_anchor_char(parser.buffer, parser.buffer_pos) {
 		s = read(parser, s)
 		if parser.unread < 1 && !yaml_parser_update_buffer(parser, 1) {
 			return false
