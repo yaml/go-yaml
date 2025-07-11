@@ -1112,10 +1112,6 @@ type unmarshalerPointer struct {
 	Field *unmarshalerType `yaml:"_"`
 }
 
-type unmarshalerValue struct {
-	Field unmarshalerType `yaml:"_"`
-}
-
 type unmarshalerInlined struct {
 	Field   *unmarshalerType `yaml:"_"`
 	Inlined unmarshalerType  `yaml:",inline"`
