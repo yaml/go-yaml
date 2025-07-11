@@ -45,6 +45,8 @@ count ?= 1
 test: $(TEST-DEPS)
 	go test$(if $v, -v)
 
+test-data: $(YTS-DIR)
+
 test-all: test test-yts-all
 
 test-yts: $(TEST-DEPS)
