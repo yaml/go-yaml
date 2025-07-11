@@ -49,6 +49,9 @@ func shouldSkipTest(t *testing.T) {
 
 func TestYAMLSuite(t *testing.T) {
 	testDir := "./testdata/data-2022-01-17"
+	if _, err := os.Stat(testDir + "/229Q"); os.IsNotExist(err) {
+		t.Fatalf("YTS tests requires the data files to be present in `%s`. Run `make test-data` to download them.", testDir)
+	}
 	runTestsInDir(t, testDir)
 }
 
