@@ -333,8 +333,6 @@ var (
 	stringMapType  = reflect.TypeOf(map[string]interface{}{})
 	generalMapType = reflect.TypeOf(map[interface{}]interface{}{})
 	ifaceType      = generalMapType.Elem()
-	timeType       = reflect.TypeOf(time.Time{})
-	ptrTimeType    = reflect.TypeOf(&time.Time{})
 )
 
 func newDecoder() *decoder {
@@ -541,14 +539,6 @@ func (d *decoder) alias(n *Node, out reflect.Value) (good bool) {
 	d.aliasDepth--
 	delete(d.aliases, n)
 	return good
-}
-
-var zeroValue reflect.Value
-
-func resetMap(out reflect.Value) {
-	for _, k := range out.MapKeys() {
-		out.SetMapIndex(k, zeroValue)
-	}
 }
 
 func (d *decoder) null(out reflect.Value) bool {
