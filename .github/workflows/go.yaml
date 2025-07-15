@@ -24,6 +24,17 @@ jobs:
           echo 'Run go fmt ./... and commit changes.'
           exit 1
         fi
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: stable
+    - uses: golangci/golangci-lint-action@v8
+      with:
+        version: v2.1
   build:
     strategy:
       matrix:
