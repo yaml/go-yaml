@@ -844,7 +844,7 @@ func (d *decoder) mapping(n *Node, out reflect.Value) (good bool) {
 			if kkind == reflect.Map || kkind == reflect.Slice {
 				compKey, err := makeComparableKey(k)
 				if err != nil {
-					failf("invalid map key: %s", k.Interface())
+					failf("cannot use %s as a map key: %s", k.Interface(), err.Error())
 				}
 				k = compKey
 			}
@@ -1035,7 +1035,8 @@ func isMerge(n *Node) bool {
 //     M = number of entries
 //     type Entry struct { Key K; Value V } with K and V the original map’s key and value types.
 //
-//   - Otherwise, it returns v unchanged (for primitives, structs, etc.).
+//   - Otherwise, it returns v unchanged for comparable types,
+//     and error for uncomparable types other than map or slice.
 func makeComparableKey(v reflect.Value) (reflect.Value, error) {
 	switch v.Kind() {
 	case reflect.Interface:
@@ -1056,7 +1057,7 @@ func makeComparableKey(v reflect.Value) (reflect.Value, error) {
 			child := v.Index(i)
 			cmpChild, err := makeComparableKey(child)
 			if err != nil {
-				return reflect.Value{}, err
+				return reflect.Value{}, fmt.Errorf("cannot use type %s as a map key: %w", v.Type(), err)
 			}
 			// If we recursed into a nested slice/map, cmpChild.Type() may differ
 			if cmpChild.Type() != elemT {
@@ -1084,11 +1085,11 @@ func makeComparableKey(v reflect.Value) (reflect.Value, error) {
 
 			ck, err := makeComparableKey(mk)
 			if err != nil {
-				return reflect.Value{}, err
+				return reflect.Value{}, fmt.Errorf("cannot use type %s as a map key: %w", v.Type(), err)
 			}
 			cv, err := makeComparableKey(mv)
 			if err != nil {
-				return reflect.Value{}, err
+				return reflect.Value{}, fmt.Errorf("cannot use type %s as a map key: %w", v.Type(), err)
 			}
 
 			ent := reflect.New(entryType).Elem()
@@ -1114,7 +1115,14 @@ func makeComparableKey(v reflect.Value) (reflect.Value, error) {
 		return arrVal, nil
 
 	default:
-		// Primitive, struct, ptr, etc.: return unchanged
-		return v, nil
+		// base case (string, int, etc.)
+		// this check needs to come after converting slice and map to a comparable array.
+		if v.Type().Comparable() {
+			return v, nil
+		}
+		// supports only Go's map and slice for YAML's mappings and sequences.
+		// should not expect the parser to use / nest other Go types like struct or chan.
+		// but return error for completeness.
+		return reflect.Value{}, fmt.Errorf("cannot use type %s as a map key", v.Type())
 	}
 }
