@@ -1043,9 +1043,8 @@ func makeComparableKey(v reflect.Value) (reflect.Value, error) {
 		if v.IsNil() {
 			// Zero value for interface{}
 			return reflect.Zero(reflect.TypeOf((*interface{})(nil)).Elem()), nil
-		} else {
-			return makeComparableKey(v.Elem())
 		}
+		return makeComparableKey(v.Elem())
 	case reflect.Slice:
 		// Convert slice → [N]T array
 		n := v.Len()
