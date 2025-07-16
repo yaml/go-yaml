@@ -23,9 +23,9 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
-
-	"go.yaml.in/yaml/v3"
 	"testing"
+
+	"go.yaml.in/yaml/v4"
 )
 
 var nodeTests = []struct {

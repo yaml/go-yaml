@@ -36,6 +36,14 @@ this repository as their upstream.
 Please [contact us](https://cloud-native.slack.com/archives/C08PPAT8PS7) if you
 would like to contribute or be involved.
 
+### Version roadmap
+
+`v1`, `v2`, and `v3` remain as **frozen legacy**. They will receive
+**security-fixes only** so that existing consumers keep working without
+breaking changes.  
+All ongoing work, including new features and routine bug-fixes, happens in
+**`v4`**.  If you’re starting a new project or upgrading an existing one,
+please migrate to the `go.yaml.in/yaml/v4` import path.
 
 ## Compatibility
 
@@ -59,18 +67,18 @@ Specifically, v3 of the `yaml` package:
 
 ## Installation and Usage
 
-The import path for the package is *go.yaml.in/yaml/v3*.
+The import path for the package is *go.yaml.in/yaml/v4*.
 
 To install it, run:
 
 ```bash
-go get go.yaml.in/yaml/v3
+go get go.yaml.in/yaml/v4
 ```
 
 
 ## API Documentation
 
-See: <https://pkg.go.dev/go.yaml.in/yaml/v3>
+See: <https://pkg.go.dev/go.yaml.in/yaml/v4>
 
 
 ## API Stability
@@ -88,7 +96,7 @@ import (
 	"fmt"
 	"log"
 
-	"go.yaml.in/yaml/v3"
+	"go.yaml.in/yaml/v4"
 )
 
 var data = `
