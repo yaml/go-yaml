@@ -832,7 +832,11 @@ func (d *decoder) mapping(n *Node, out reflect.Value) (good bool) {
 				kkind = k.Elem().Kind()
 			}
 			if kkind == reflect.Map || kkind == reflect.Slice {
-				failf("invalid map key: %#v", k.Interface())
+				compKey, err := makeComparableType(k)
+				if err != nil {
+					failf("cannot use %#v as a map key: %s", k.Interface(), err.Error())
+				}
+				k = compKey
 			}
 			e := reflect.New(et).Elem()
 			if d.unmarshal(n.Content[i+1], e) || n.Content[i+1].ShortTag() == nullTag && (mapIsNew || !out.MapIndex(k).IsValid()) {
@@ -1005,4 +1009,108 @@ func (d *decoder) merge(parent *Node, merge *Node, out reflect.Value) {
 
 func isMerge(n *Node) bool {
 	return n.Kind == ScalarNode && n.Value == "<<" && (n.Tag == "" || n.Tag == "!" || shortTag(n.Tag) == mergeTag)
+}
+
+// --------------------------------------------------------------------------
+// Support for decoding Sequence and Mapping as a Mapping key.
+// Go does not support slices or maps as a map key.
+// But we can use fixed length arrays as map keys.
+
+// makeComparableType returns a fully comparable version of v, recursively converting any nested slices or maps.
+//
+//   - If v.Kind() is Slice, it returns a fixed-length array [N]T, where
+//     N = v.Len() and T is the slice’s element type.
+//
+//   - If v.Kind() is Map, it returns a fixed-length array [M]Entry, where
+//     M = number of entries
+//     type Entry struct { Key K; Value V } with K and V the original map’s key and value types.
+//
+//   - Otherwise, it returns v unchanged for comparable types,
+//     and error for uncomparable types other than map or slice.
+func makeComparableType(v reflect.Value) (reflect.Value, error) {
+	switch v.Kind() {
+	case reflect.Interface:
+		if v.IsNil() {
+			// Zero value for interface{}
+			return reflect.Zero(reflect.TypeOf((*interface{})(nil)).Elem()), nil
+		}
+		return makeComparableType(v.Elem())
+	case reflect.Slice:
+		// Convert slice → [N]T array
+		n := v.Len()
+		elemT := v.Type().Elem()
+		arrT := reflect.ArrayOf(n, elemT)
+		arrVal := reflect.New(arrT).Elem()
+
+		for i := 0; i < n; i++ {
+			child := v.Index(i)
+			cmpChild, err := makeComparableType(child)
+			if err != nil {
+				return reflect.Value{}, fmt.Errorf("type %s is not comparable: %w", v.Type(), err)
+			}
+			// If we recursed into a nested slice/map, cmpChild.Type() may differ
+			if cmpChild.Type() != elemT {
+				cmpChild = cmpChild.Convert(elemT)
+			}
+			arrVal.Index(i).Set(cmpChild)
+		}
+		return arrVal, nil
+
+	case reflect.Map:
+		// Build dynamic Entry type: struct{ Key K; Value V }
+		keyT := v.Type().Key()
+		valT := v.Type().Elem()
+		entryType := reflect.StructOf([]reflect.StructField{
+			{Name: "Key", Type: keyT, Index: []int{0}},
+			{Name: "Value", Type: valT, Index: []int{1}},
+		})
+
+		mapKeys := v.MapKeys()
+
+		// Build a slice of Entry structs
+		entries := reflect.MakeSlice(reflect.SliceOf(entryType), 0, len(mapKeys))
+		for _, mk := range mapKeys {
+			mv := v.MapIndex(mk)
+
+			ck, err := makeComparableType(mk)
+			if err != nil {
+				return reflect.Value{}, fmt.Errorf("type %s is not comparable: %w", v.Type(), err)
+			}
+			cv, err := makeComparableType(mv)
+			if err != nil {
+				return reflect.Value{}, fmt.Errorf("type %s is not comparable: %w", v.Type(), err)
+			}
+
+			ent := reflect.New(entryType).Elem()
+			if ck.Type() != keyT {
+				ck = ck.Convert(keyT)
+			}
+			if cv.Type() != valT {
+				cv = cv.Convert(valT)
+			}
+			ent.Field(0).Set(ck)
+			ent.Field(1).Set(cv)
+
+			entries = reflect.Append(entries, ent)
+		}
+
+		// Turn []Entry → [M]Entry
+		m := entries.Len()
+		arrT := reflect.ArrayOf(m, entryType)
+		arrVal := reflect.New(arrT).Elem()
+		for i := 0; i < m; i++ {
+			arrVal.Index(i).Set(entries.Index(i))
+		}
+		return arrVal, nil
+
+	default:
+		if v.Type().Comparable() {
+			// slice and map are not comparable. so this check needs to come after processing them into comparable arrays.
+			// returns comparable Go types (string, int, float64, time.Time, bool, etc.) that are parsed from YAML scalars.
+			// also includes other Go comparable types that wouldn't be parsed.
+			return v, nil
+		}
+		// expect that the parser should not use nor nest other Go types, but return error for completeness.
+		return reflect.Value{}, fmt.Errorf("type %s is not comparable", v.Type())
+	}
 }
