@@ -1513,13 +1513,13 @@ func TestObsoleteUnmarshalerError(t *testing.T) {
 	}
 	// whatever could be unmarshaled must be unmarshaled
 	if got, want := dst.Foo, 123; got != want {
-		t.Errorf("foo unmarshaled incorrectly, got %#v, want  %#v", got, want)
+		t.Errorf("foo unmarshaled incorrectly, got %#v, want %#v", got, want)
 	}
 	if got, want := dst.Bar, (&obsoleteFailingUnmarshaler{}); !reflect.DeepEqual(got, want) {
-		t.Errorf("bar unmarshaled incorrectly, got %#v, want  %#v", got, want)
+		t.Errorf("bar unmarshaled incorrectly, got %#v, want %#v", got, want)
 	}
 	if got, want := dst.Spam, "test"; got != want {
-		t.Errorf("spam unmarshaled incorrectly, got %#v, want  %#v", got, want)
+		t.Errorf("spam unmarshaled incorrectly, got %#v, want %#v", got, want)
 	}
 }
 
