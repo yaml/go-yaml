@@ -26,7 +26,7 @@ import (
 	"testing"
 	"time"
 
-	"go.yaml.in/yaml/v3"
+	"go.yaml.in/yaml/v4"
 )
 
 var marshalIntTest = 123
@@ -432,6 +432,12 @@ var marshalTests = []struct {
 	{
 		map[string]string{"a": "\tB\n\tC\n"},
 		"a: |\n    \tB\n    \tC\n",
+	}, {
+		map[string]interface{}{"<<": []string{}},
+		"\"<<\": []\n",
+	}, {
+		map[string]interface{}{"foo": "<<"},
+		"foo: \"<<\"\n",
 	},
 
 	// Ensure that strings do not wrap

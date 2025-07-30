@@ -23,9 +23,9 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
-
-	"go.yaml.in/yaml/v3"
 	"testing"
+
+	"go.yaml.in/yaml/v4"
 )
 
 var nodeTests = []struct {
@@ -418,6 +418,63 @@ var nodeTests = []struct {
 					Tag:    "!!str",
 					Line:   1,
 					Column: 4,
+				}},
+			}},
+		},
+	}, {
+		"\"<<\": []\n",
+		yaml.Node{
+			Kind:   yaml.DocumentNode,
+			Line:   1,
+			Column: 1,
+			Content: []*yaml.Node{{
+				Kind:   yaml.MappingNode,
+				Value:  "",
+				Tag:    "!!map",
+				Line:   1,
+				Column: 1,
+				Content: []*yaml.Node{{
+					Kind:   yaml.ScalarNode,
+					Style:  yaml.DoubleQuotedStyle,
+					Value:  "<<",
+					Tag:    "!!str",
+					Line:   1,
+					Column: 1,
+				}, {
+					Kind:   yaml.SequenceNode,
+					Style:  yaml.FlowStyle,
+					Value:  "",
+					Tag:    "!!seq",
+					Line:   1,
+					Column: 7,
+				}},
+			}},
+		},
+	}, {
+		"foo: \"<<\"\n",
+		yaml.Node{
+			Kind:   yaml.DocumentNode,
+			Line:   1,
+			Column: 1,
+			Content: []*yaml.Node{{
+				Kind:   yaml.MappingNode,
+				Value:  "",
+				Tag:    "!!map",
+				Line:   1,
+				Column: 1,
+				Content: []*yaml.Node{{
+					Kind:   yaml.ScalarNode,
+					Value:  "foo",
+					Tag:    "!!str",
+					Line:   1,
+					Column: 1,
+				}, {
+					Kind:   yaml.ScalarNode,
+					Style:  yaml.DoubleQuotedStyle,
+					Value:  "<<",
+					Tag:    "!!str",
+					Line:   1,
+					Column: 6,
 				}},
 			}},
 		},
