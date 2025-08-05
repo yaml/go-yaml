@@ -205,19 +205,15 @@ func runTest(t *testing.T, testPath string) {
 	t.Run("JSONComparisonTest", func(t *testing.T) {
 		shouldSkipTest(t)
 
-		if !fileExists(testPath, "in.json") {
+		// Nothing to test if unmarshall is expected to error
+		if expectError || !fileExists(testPath, "in.json") {
 			return
 		}
 		inJSON := mustRead(t, testPath, "in.json")
 
 		var unmarshaledValue interface{}
 		if err := yaml.Unmarshal(inYAML, &unmarshaledValue); err != nil {
-			if !expectError {
-				return
-			}
-			t.Errorf(
-				"Test: %s\nDescription: %s\nError: Failed to unmarshal in.yaml: %v",
-				testPath, testDescription, err)
+			t.Errorf("Test: %s\nDescription: %s\nError: Failed to unmarshal in.yaml: %v", testPath, testDescription, err)
 		}
 
 		var jsonValue interface{}
