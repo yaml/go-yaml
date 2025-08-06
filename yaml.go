@@ -522,15 +522,9 @@ func (n *Node) indicatedString() bool {
 // shouldUseLiteralStyle determines if a string should use literal style.
 // It returns true if the string contains newlines AND meets additional criteria:
 // - is at least 2 characters long
-// - if it starts with whitespace, it must be at least 6 characters long
 // - contains at least one non-whitespace character
 func shouldUseLiteralStyle(s string) bool {
 	if !strings.Contains(s, "\n") || len(s) < 2 {
-		return false
-	}
-	// If it starts with whitespace, require it to be longer to use literal style
-	// Any longer than 6 characters breaks a lot of the current tests
-	if (s[0] == ' ' || s[0] == '\t') && len(s) < 6 {
 		return false
 	}
 	// Must contain at least one non-whitespace character

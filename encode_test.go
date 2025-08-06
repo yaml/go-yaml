@@ -1056,6 +1056,16 @@ func TestScalarStyleRules(t *testing.T) {
 			"|-\n    a\n    b\n",
 			"Two chars with newline - should be literal (3 chars, has content)",
 		},
+		{
+			" a\n",
+			"|4\n     a\n",
+			"Space + char + newline - should be literal (3 chars, has content)",
+		},
+		{
+			"\ta\n",
+			"|\n    \ta\n",
+			"Tab + char + newline - should be literal (3 chars, has content)",
+		},
 	}
 
 	for i, testCase := range testCases {
@@ -1158,7 +1168,7 @@ func TestWhitespaceWithContent(t *testing.T) {
 		{
 			" hello\n",
 			"|4\n     hello\n",
-			"Space + text + newline - should be literal (has non-ws chars, >= 6 chars)",
+			"Space + text + newline - should be literal (has non-ws chars)",
 		},
 		{
 			" \nhello",
@@ -1168,7 +1178,7 @@ func TestWhitespaceWithContent(t *testing.T) {
 		{
 			"\thello\n",
 			"|\n    \thello\n",
-			"Tab + text + newline - should be literal (has non-ws chars, >= 6 chars)",
+			"Tab + text + newline - should be literal (has non-ws chars)",
 		},
 		{
 			"\t\nhello",
