@@ -54,11 +54,11 @@ test-yts: $(TEST-DEPS)
 
 test-yts-all: $(TEST-DEPS)
 	@echo 'Testing yaml-test-suite'
-	@RUNALL=1 $(call yts-pass-fail)
+	@export RUNALL=1; $(call yts-pass-fail)
 
 test-yts-fail: $(TEST-DEPS)
 	@echo 'Testing yaml-test-suite failures'
-	@RUNFAILING=1 $(call yts-pass-fail)
+	@export RUNFAILING=1; $(call yts-pass-fail)
 
 
 # Clean rules:
@@ -75,7 +75,23 @@ $(YTS-DIR):
 	git -C $@ checkout -q $(YTS-TAG)
 
 define yts-pass-fail
-go test ./yts -count=1 -v | \
-  awk '/     --- (PASS|FAIL): / {print $$2}' | \
-  sort | uniq -c
+( \
+  result=.cache/local/tmp/yts-test-results; \
+  go test ./yts -count=1 -v | \
+    awk '/     --- (PASS|FAIL): / {print $$2, $$3}' > $$result; \
+  known_count=$$(grep -c '' yts/known-failing-tests); \
+  pass_count=$$(grep -c '^PASS:' $$result); \
+  fail_count=$$(grep -c '^FAIL:' $$result); \
+  echo "PASS: $$pass_count"; \
+  echo "FAIL: $$fail_count (known: $$known_count)"; \
+  if [[ $$RUNFAILING ]] && [[ $$pass_count -gt 0 ]]; then \
+    echo "ERROR: Found passing tests among expected failures:"; \
+    grep '^PASS:' $$result; \
+    exit 1; \
+  fi; \
+  if [[ $$fail_count != "$$known_count" ]]; then \
+    echo "ERROR: FAIL count differs from expected value of $$known_count"; \
+    exit 1; \
+  fi \
+)
 endef
