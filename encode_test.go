@@ -978,3 +978,229 @@ func TestNewLinePreserved(t *testing.T) {
 		t.Fatalf("Marshal() returned\n%q\nbut expected\n%q", string(data), "_: |4\n\n    a:\n            b:\n                    c: d\n")
 	}
 }
+
+func TestScalarStyleRules(t *testing.T) {
+	// Test cases for the new scalar style rules
+	testCases := []struct {
+		input    string
+		expected string
+		desc     string
+	}{
+		{
+			"\t\n",
+			"\"\\t\\n\"\n",
+			"Tab + newline - should be double quoted (short, starts with whitespace)",
+		},
+		{
+			"\n",
+			"\"\\n\"\n",
+			"Just newline - should be double quoted (no non-ws chars)",
+		},
+		{
+			"\t",
+			"\"\\t\"\n",
+			"Just tab - should be double quoted (control char)",
+		},
+		{
+			"hello\nworld",
+			"|-\n    hello\n    world\n",
+			"Text with newline - should be literal (>= 2 chars, doesn't start with whitespace)",
+		},
+		{
+			"hello\tworld",
+			"\"hello\\tworld\"\n",
+			"Text with tab - should be double quoted (control char)",
+		},
+		{
+			"hello",
+			"hello\n",
+			"Simple text - should be plain",
+		},
+		{
+			"123",
+			"\"123\"\n",
+			"Number-like - should be quoted (looks like number)",
+		},
+		{
+			"true",
+			"\"true\"\n",
+			"Boolean-like - should be quoted (looks like boolean)",
+		},
+		{
+			"This is a longer string\nwith multiple lines\nthat should use literal style",
+			"|-\n    This is a longer string\n    with multiple lines\n    that should use literal style\n",
+			"Long multi-line - should be literal",
+		},
+		{
+			" This starts with space\nand is long enough\nfor literal style",
+			"|4-\n     This starts with space\n    and is long enough\n    for literal style\n",
+			"Long multi-line starting with space - should be literal (>= 6 chars)",
+		},
+		{
+			"\tThis starts with tab\nand is long enough\nfor literal style",
+			"|-\n    \tThis starts with tab\n    and is long enough\n    for literal style\n",
+			"Long multi-line starting with tab - should be literal (>= 6 chars)",
+		},
+		{
+			"\tB\n\tC\n",
+			"|\n    \tB\n    \tC\n",
+			"Tab + B + newline + tab + C + newline - should be literal (6 chars)",
+		},
+		{
+			"a\n",
+			"|\n    a\n",
+			"Single char + newline - should be literal (2 chars, has content)",
+		},
+		{
+			"a\nb",
+			"|-\n    a\n    b\n",
+			"Two chars with newline - should be literal (3 chars, has content)",
+		},
+	}
+
+	for i, testCase := range testCases {
+		t.Run(fmt.Sprintf("test_%d_%s", i, testCase.desc), func(t *testing.T) {
+			data, err := yaml.Marshal(testCase.input)
+			if err != nil {
+				t.Fatalf("Marshal() returned error: %v", err)
+			}
+			if string(data) != testCase.expected {
+				t.Fatalf("Marshal() returned\n%q\nbut expected\n%q", string(data), testCase.expected)
+			}
+		})
+	}
+}
+
+func TestWhitespaceOnlyStrings(t *testing.T) {
+	// Test cases for whitespace-only strings that should not use literal style
+	testCases := []struct {
+		input    string
+		expected string
+		desc     string
+	}{
+		{
+			"\n",
+			"\"\\n\"\n",
+			"Just newline - should be double quoted (no non-ws chars)",
+		},
+		{
+			"\n\n",
+			"\"\\n\\n\"\n",
+			"Two newlines - should be double quoted (no non-ws chars)",
+		},
+		{
+			" \n",
+			"\" \\n\"\n",
+			"Space + newline - should be double quoted (no non-ws chars)",
+		},
+		{
+			"\t\n",
+			"\"\\t\\n\"\n",
+			"Tab + newline - should be double quoted (no non-ws chars)",
+		},
+		{
+			" \n ",
+			"\" \\n \"\n",
+			"Space + newline + space - should be double quoted (no non-ws chars)",
+		},
+		{
+			"\n \n",
+			"\"\\n \\n\"\n",
+			"Newline + space + newline - should be double quoted (no non-ws chars)",
+		},
+		{
+			"\t \n\t",
+			"\"\\t \\n\\t\"\n",
+			"Tab + space + newline + tab - should be double quoted (no non-ws chars)",
+		},
+		{
+			"   \n   ",
+			"\"   \\n   \"\n",
+			"Multiple spaces + newline + multiple spaces - should be double quoted (no non-ws chars)",
+		},
+		{
+			"\n\n\n",
+			"\"\\n\\n\\n\"\n",
+			"Three newlines - should be double quoted (no non-ws chars)",
+		},
+		{
+			" \t\n \t",
+			"\" \\t\\n \\t\"\n",
+			"Space + tab + newline + space + tab - should be double quoted (no non-ws chars)",
+		},
+	}
+
+	for i, testCase := range testCases {
+		t.Run(fmt.Sprintf("test_%d_%s", i, testCase.desc), func(t *testing.T) {
+			data, err := yaml.Marshal(testCase.input)
+			if err != nil {
+				t.Fatalf("Marshal() returned error: %v", err)
+			}
+			if string(data) != testCase.expected {
+				t.Fatalf("Marshal() returned\n%q\nbut expected\n%q", string(data), testCase.expected)
+			}
+		})
+	}
+}
+
+func TestWhitespaceWithContent(t *testing.T) {
+	// Test cases for strings with whitespace AND content that should use literal style
+	testCases := []struct {
+		input    string
+		expected string
+		desc     string
+	}{
+		{
+			"hello\n",
+			"|\n    hello\n",
+			"Text + newline - should be literal (has non-ws chars)",
+		},
+		{
+			" hello\n",
+			"|4\n     hello\n",
+			"Space + text + newline - should be literal (has non-ws chars, >= 6 chars)",
+		},
+		{
+			" \nhello",
+			"\" \\nhello\"\n",
+			"Space + newline + text - should be double quoted (short, starts with whitespace)",
+		},
+		{
+			"\thello\n",
+			"|\n    \thello\n",
+			"Tab + text + newline - should be literal (has non-ws chars, >= 6 chars)",
+		},
+		{
+			"\t\nhello",
+			"|-\n    \t\n    hello\n",
+			"Tab + newline + text - should be literal (has non-ws chars)",
+		},
+		{
+			"  hello  \n",
+			"\"  hello  \\n\"\n",
+			"Multiple spaces + text + spaces + newline - should be double quoted (ends with spaces)",
+		},
+		{
+			"hello  \n",
+			"\"hello  \\n\"\n",
+			"Text + spaces + newline - should be double quoted (ends with spaces)",
+		},
+		{
+			"hello\n  ",
+			"\"hello\\n  \"\n",
+			"Text + newline + spaces - should be double quoted (ends with spaces)",
+		},
+	}
+
+	for i, testCase := range testCases {
+		t.Run(fmt.Sprintf("test_%d_%s", i, testCase.desc), func(t *testing.T) {
+			data, err := yaml.Marshal(testCase.input)
+			if err != nil {
+				t.Fatalf("Marshal() returned error: %v", err)
+			}
+			if string(data) != testCase.expected {
+				t.Fatalf("Marshal() returned\n%q\nbut expected\n%q", string(data), testCase.expected)
+			}
+		})
+	}
+}

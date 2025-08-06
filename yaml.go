@@ -519,6 +519,29 @@ func (n *Node) indicatedString() bool {
 			(n.Tag == "" || n.Tag == "!") && n.Style&(SingleQuotedStyle|DoubleQuotedStyle|LiteralStyle|FoldedStyle) != 0)
 }
 
+// shouldUseLiteralStyle determines if a string should use literal style.
+// It returns true if the string contains newlines AND meets additional criteria:
+// - is at least 2 characters long
+// - if it starts with whitespace, it must be at least 6 characters long
+// - contains at least one non-whitespace character
+func shouldUseLiteralStyle(s string) bool {
+	if !strings.Contains(s, "\n") || len(s) < 2 {
+		return false
+	}
+	// If it starts with whitespace, require it to be longer to use literal style
+	// Any longer than 6 characters breaks a lot of the current tests
+	if (s[0] == ' ' || s[0] == '\t') && len(s) < 6 {
+		return false
+	}
+	// Must contain at least one non-whitespace character
+	for _, r := range s {
+		if r != ' ' && r != '\t' && r != '\n' && r != '\r' {
+			return true
+		}
+	}
+	return false
+}
+
 // SetString is a convenience function that sets the node to a string value
 // and defines its style in a pleasant way depending on its content.
 func (n *Node) SetString(s string) {
@@ -530,7 +553,7 @@ func (n *Node) SetString(s string) {
 		n.Value = encodeBase64(s)
 		n.Tag = binaryTag
 	}
-	if strings.Contains(n.Value, "\n") {
+	if shouldUseLiteralStyle(n.Value) {
 		n.Style = LiteralStyle
 	}
 }
