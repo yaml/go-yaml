@@ -162,43 +162,68 @@ func runTest(t *testing.T, testPath string) {
 		}
 	})
 
-	// Only proceed with marshal and JSON tests if unmarshal was successful and no expected error
-
-	t.Run("MarshalTest", func(t *testing.T) {
+	t.Run("MarshalCanonicalTest", func(t *testing.T) {
 		shouldSkipTest(t)
-		var currentUnmarshaledValue any
+		var unmarshaledValue interface{}
 
-		currentUnmarshalErr := yaml.Unmarshal(inYAML, &currentUnmarshaledValue)
-
-		if !(currentUnmarshalErr == nil || expectError) {
+		if expectError || !fileExists(testPath, "out.yaml") {
 			return
 		}
-		marshaledYAML, marshalErr := yaml.Marshal(currentUnmarshaledValue)
+
+		if err := yaml.Unmarshal(inYAML, &unmarshaledValue); err != nil {
+			t.Errorf(
+				"Test: %s\nDescription: %s\nError: Failed to unmarshal in.yaml: %v",
+				testPath, testDescription, err)
+		}
+
+		marshaledYAML, marshalErr := yaml.Marshal(unmarshaledValue)
 		if marshalErr != nil {
-			t.Errorf("Test: %s\nDescription: %s\nError: Failed to marshal value: %v", testPath, testDescription, marshalErr)
+			t.Errorf(
+				"Test: %s\nDescription: %s\nError: Failed to marshal value: %v",
+				testPath, testDescription, marshalErr)
+		}
+
+		expectedOutYAML := mustRead(t, testPath, "out.yaml")
+
+		if string(marshaledYAML) != string(expectedOutYAML) {
+			t.Errorf(
+				"Test: %s\nDescription: %s\nError: Marshal output doesn't match canonical\n"+
+					"Expected: %+v\nGot     : %+v",
+				testPath, testDescription, string(expectedOutYAML), string(marshaledYAML))
+		}
+	})
+
+	t.Run("RoundtripTest", func(t *testing.T) {
+		shouldSkipTest(t)
+		var unmarshaledValue interface{}
+
+		if expectError {
 			return
 		}
-		outYAMLPath := filepath.Join(testPath, "out.yaml")
-		if _, err := os.Stat(outYAMLPath); err != nil {
-			return
+
+		if err := yaml.Unmarshal(inYAML, &unmarshaledValue); err != nil {
+			t.Errorf(
+				"Test: %s\nDescription: %s\nError: Failed to unmarshal in.yaml: %v",
+				testPath, testDescription, err)
 		}
-		expectedOutYAML, err := os.ReadFile(outYAMLPath)
-		if err != nil {
-			t.Errorf("Test: %s\nDescription: %s\nError: Failed to read out.yaml: %v", testPath, testDescription, err)
-			return
+
+		marshaledYAML, marshalErr := yaml.Marshal(unmarshaledValue)
+		if marshalErr != nil {
+			t.Errorf(
+				"Test: %s\nDescription: %s\nError: Failed to marshal value: %v",
+				testPath, testDescription, marshalErr)
 		}
-		var expectedUnmarshaledValue any
-		err = yaml.Unmarshal(expectedOutYAML, &expectedUnmarshaledValue)
-		if err != nil {
-			t.Errorf("Test: %s\nDescription: %s\nError: Failed to unmarshal out.yaml: %v", testPath, testDescription, err)
-			return
-		}
-		var reUnmarshaledValue any
-		err = yaml.Unmarshal(marshaledYAML, &reUnmarshaledValue)
-		if err != nil {
-			t.Errorf("Test: %s\nDescription: %s\nError: Failed to re-unmarshal marshaled YAML: %v", testPath, testDescription, err)
-		} else if !reflect.DeepEqual(reUnmarshaledValue, expectedUnmarshaledValue) {
-			t.Errorf("Test: %s\nDescription: %s\nError: Marshal output mismatch\nExpected: %+v\nGot     : %+v", testPath, testDescription, expectedUnmarshaledValue, reUnmarshaledValue)
+
+		var roundtrippedValue interface{}
+		if err := yaml.Unmarshal(marshaledYAML, &roundtrippedValue); err != nil {
+			t.Errorf(
+				"Test: %s\nDescription: %s\nError: Failed to roundtrip in.yaml: %v",
+				testPath, testDescription, err)
+		} else if !reflect.DeepEqual(unmarshaledValue, roundtrippedValue) {
+			t.Errorf(
+				"Test: %s\nDescription: %s\nError: YAML unmarshal vs roundtripped unmarshal mismatch\n"+
+					"Expected: %+v\nGot     : %+v",
+				testPath, testDescription, unmarshaledValue, roundtrippedValue)
 		}
 	})
 
