@@ -1220,3 +1220,210 @@ func TestWhitespaceWithContent(t *testing.T) {
 		})
 	}
 }
+
+func TestUnicodeWhitespaceHandling(t *testing.T) {
+	// Test cases for Unicode whitespace characters that should be properly handled
+	// by the shouldUseLiteralStyle function using unicode.IsSpace()
+	testCases := []struct {
+		input    string
+		expected string
+		desc     string
+	}{
+		// Unicode whitespace characters
+		{
+			"hello\u00A0\n", // non-breaking space
+			"|\n    hello\u00A0\n",
+			"Non-breaking space with content - should use literal style",
+		},
+		{
+			"\u00A0\n", // non-breaking space
+			"\"\u00A0\\n\"\n",
+			"Non-breaking space only - should not use literal style",
+		},
+		{
+			"hello\u2000\n", // en quad
+			"|\n    hello\u2000\n",
+			"En quad with content - should use literal style",
+		},
+		{
+			"\u2000\n", // en quad
+			"\"\u2000\\n\"\n",
+			"En quad only - should not use literal style",
+		},
+		{
+			"hello\u2001\n", // em quad
+			"|\n    hello\u2001\n",
+			"Em quad with content - should use literal style",
+		},
+		{
+			"\u2001\n", // em quad
+			"\"\u2001\\n\"\n",
+			"Em quad only - should not use literal style",
+		},
+		{
+			"hello\u2002\n", // en space
+			"|\n    hello\u2002\n",
+			"En space with content - should use literal style",
+		},
+		{
+			"\u2002\n", // en space
+			"\"\u2002\\n\"\n",
+			"En space only - should not use literal style",
+		},
+		{
+			"hello\u2003\n", // em space
+			"|\n    hello\u2003\n",
+			"Em space with content - should use literal style",
+		},
+		{
+			"\u2003\n", // em space
+			"\"\u2003\\n\"\n",
+			"Em space only - should not use literal style",
+		},
+		{
+			"hello\u2004\n", // three-per-em space
+			"|\n    hello\u2004\n",
+			"Three-per-em space with content - should use literal style",
+		},
+		{
+			"\u2004\n", // three-per-em space
+			"\"\u2004\\n\"\n",
+			"Three-per-em space only - should not use literal style",
+		},
+		{
+			"hello\u2005\n", // four-per-em space
+			"|\n    hello\u2005\n",
+			"Four-per-em space with content - should use literal style",
+		},
+		{
+			"\u2005\n", // four-per-em space
+			"\"\u2005\\n\"\n",
+			"Four-per-em space only - should not use literal style",
+		},
+		{
+			"hello\u2006\n", // six-per-em space
+			"|\n    hello\u2006\n",
+			"Six-per-em space with content - should use literal style",
+		},
+		{
+			"\u2006\n", // six-per-em space
+			"\"\u2006\\n\"\n",
+			"Six-per-em space only - should not use literal style",
+		},
+		{
+			"hello\u2007\n", // figure space
+			"|\n    hello\u2007\n",
+			"Figure space with content - should use literal style",
+		},
+		{
+			"\u2007\n", // figure space
+			"\"\u2007\\n\"\n",
+			"Figure space only - should not use literal style",
+		},
+		{
+			"hello\u2008\n", // punctuation space
+			"|\n    hello\u2008\n",
+			"Punctuation space with content - should use literal style",
+		},
+		{
+			"\u2008\n", // punctuation space
+			"\"\u2008\\n\"\n",
+			"Punctuation space only - should not use literal style",
+		},
+		{
+			"hello\u2009\n", // thin space
+			"|\n    hello\u2009\n",
+			"Thin space with content - should use literal style",
+		},
+		{
+			"\u2009\n", // thin space
+			"\"\u2009\\n\"\n",
+			"Thin space only - should not use literal style",
+		},
+		{
+			"hello\u200A\n", // hair space
+			"|\n    hello\u200A\n",
+			"Hair space with content - should use literal style",
+		},
+		{
+			"\u200A\n", // hair space
+			"\"\u200A\\n\"\n",
+			"Hair space only - should not use literal style",
+		},
+		// Other Unicode whitespace
+		{
+			"hello\u2028\n", // line separator
+			"|+\n    hello\u2028\n",
+			"Line separator with content - should use literal style",
+		},
+		{
+			"\u2028\n", // line separator
+			"\"\\L\\n\"\n",
+			"Line separator only - should not use literal style",
+		},
+		{
+			"hello\u2029\n", // paragraph separator
+			"|+\n    hello\u2029\n",
+			"Paragraph separator with content - should use literal style",
+		},
+		{
+			"\u2029\n", // paragraph separator
+			"\"\\P\\n\"\n",
+			"Paragraph separator only - should not use literal style",
+		},
+		{
+			"hello\u205F\n", // medium mathematical space
+			"|\n    hello\u205F\n",
+			"Medium mathematical space with content - should use literal style",
+		},
+		{
+			"\u205F\n", // medium mathematical space
+			"\"\u205F\\n\"\n",
+			"Medium mathematical space only - should not use literal style",
+		},
+		{
+			"hello\u3000\n", // ideographic space
+			"|\n    hello\u3000\n",
+			"Ideographic space with content - should use literal style",
+		},
+		{
+			"\u3000\n", // ideographic space
+			"\"\u3000\\n\"\n",
+			"Ideographic space only - should not use literal style",
+		},
+		// Mixed Unicode whitespace
+		{
+			"hello\u00A0\u2000\u2001\n", // mixed Unicode spaces
+			"|\n    hello\u00A0\u2000\u2001\n",
+			"Mixed Unicode spaces with content - should use literal style",
+		},
+		{
+			"\u00A0\u2000\u2001\n", // mixed Unicode spaces
+			"\"\u00A0\u2000\u2001\\n\"\n",
+			"Mixed Unicode spaces only - should not use literal style",
+		},
+		// Unicode whitespace with ASCII whitespace
+		{
+			"hello \u00A0\t\n", // ASCII + Unicode spaces
+			"|\n    hello \u00A0\t\n",
+			"ASCII + Unicode spaces with content - should use literal style",
+		},
+		{
+			" \u00A0\t\n", // ASCII + Unicode spaces
+			"\" \u00A0\\t\\n\"\n",
+			"ASCII + Unicode spaces only - should not use literal style",
+		},
+	}
+
+	for i, testCase := range testCases {
+		t.Run(fmt.Sprintf("test_%d_%s", i, testCase.desc), func(t *testing.T) {
+			data, err := yaml.Marshal(testCase.input)
+			if err != nil {
+				t.Fatalf("Marshal() returned error: %v", err)
+			}
+			if string(data) != testCase.expected {
+				t.Fatalf("Marshal() returned\n%q\nbut expected\n%q", string(data), testCase.expected)
+			}
+		})
+	}
+}

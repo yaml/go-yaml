@@ -28,6 +28,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -529,7 +530,7 @@ func shouldUseLiteralStyle(s string) bool {
 	}
 	// Must contain at least one non-whitespace character
 	for _, r := range s {
-		if r != ' ' && r != '\t' && r != '\n' && r != '\r' {
+		if !unicode.IsSpace(r) {
 			return true
 		}
 	}
