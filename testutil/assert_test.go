@@ -1,0 +1,227 @@
+package testutil
+
+import (
+	"fmt"
+	"io"
+	"regexp"
+	"testing"
+)
+
+func TestAssertEqual_Success(t *testing.T) {
+	AssertEqual(t, 2, 2)
+	AssertEqual(t, "ok", "ok")
+}
+
+func TestAssertDeepEqual_Success(t *testing.T) {
+	AssertDeepEqual(t, []int{1, 2, 3}, []int{1, 2, 3})
+	AssertDeepEqual(t, map[string]int{"a": 1}, map[string]int{"a": 1})
+}
+
+func TestErrorMatches_Success(t *testing.T) {
+	err := fmt.Errorf("http 404: not found")
+	AssertErrorMatches(t, err, `http \d+: not found`)
+}
+
+func TestAssertNoError_Success(t *testing.T) {
+	var err error
+	AssertNoError(t, err)
+}
+
+func TestIsNil_NotNil_Success(t *testing.T) {
+	var p *int
+	AssertIsNil(t, p)
+
+	var s []int
+	AssertIsNil(t, s)
+
+	var w io.Writer
+	AssertIsNil(t, w)
+
+	s2 := make([]int, 0)
+	AssertNotNil(t, s2)
+
+	x := 0
+	AssertNotNil(t, &x)
+}
+
+func TestPanicMatches_Success(t *testing.T) {
+	AssertPanicMatches(t, func() { panic("boom 123") }, `boom \d+`)
+	AssertPanicMatches(t, func() { panic(fmt.Errorf("fail xyz")) }, `fail xyz`)
+}
+
+func Test_isNil_Basics(t *testing.T) {
+	if !isNil(nil) {
+		t.Fatalf("nil should be nil")
+	}
+	var p *int
+	if !isNil(p) {
+		t.Fatalf("nil pointer should be nil")
+	}
+	if isNil(0) {
+		t.Fatalf("non-nil value reported as nil")
+	}
+	s := make([]int, 0)
+	if isNil(s) {
+		t.Fatalf("non-nil slice reported as nil")
+	}
+}
+
+/************** failure-path checks **************/
+
+type fakeTB struct {
+	failed bool
+	msg    string
+}
+
+func (f *fakeTB) Helper() {}
+
+func (f *fakeTB) Fatalf(format string, args ...any) {
+	f.failed = true
+	f.msg = fmt.Sprintf(format, args...)
+}
+
+// assertFailureMessageMatches checks if fakeTB recorded a failure and that
+// its message matches the regexp.
+func assertFailureMessageMatches(t *testing.T, f *fakeTB, pattern string) {
+	t.Helper()
+	if !f.failed {
+		t.Fatalf("expected failure")
+	}
+	re := regexp.MustCompile(pattern)
+	if !re.MatchString(f.msg) {
+		t.Fatalf("message %q does not match %q", f.msg, pattern)
+	}
+}
+
+func TestAssertEqual_Fails(t *testing.T) {
+	mock := &fakeTB{}
+	AssertEqual(mock, 1, 2)
+	assertFailureMessageMatches(t, mock, `^got 1; want 2$`)
+}
+
+func TestAssertDeepEqual_Fails(t *testing.T) {
+	// slice mismatch
+	mock := &fakeTB{}
+	AssertDeepEqual(mock, []int{1}, []int{2})
+	assertFailureMessageMatches(t, mock, `^got \[1\]; want \[2\]$`)
+
+	// map mismatch
+	mock2 := &fakeTB{}
+	AssertDeepEqual(mock2, map[string]int{"a": 1}, map[string]int{"a": 2})
+	assertFailureMessageMatches(t, mock2, `^got map\[a:1\]; want map\[a:2\]$`)
+}
+
+func TestErrorMatches_Fails(t *testing.T) {
+	// nil error
+	mockTB1 := &fakeTB{}
+	AssertErrorMatches(mockTB1, nil, `x`)
+	assertFailureMessageMatches(t, mockTB1, `^got nil; want error matching "x"$`)
+
+	// invalid regexp (message may include parser details; check prefix)
+	mockTB2 := &fakeTB{}
+	AssertErrorMatches(mockTB2, fmt.Errorf("x"), `(`)
+	assertFailureMessageMatches(t, mockTB2, `^invalid regexp "`)
+
+	// no match
+	mockTB3 := &fakeTB{}
+	AssertErrorMatches(mockTB3, fmt.Errorf("abc"), `def`)
+	assertFailureMessageMatches(t, mockTB3, `^error "abc" does not match "def"$`)
+}
+
+func TestAssertNoError_Fails(t *testing.T) {
+	m := &fakeTB{}
+	AssertNoError(m, fmt.Errorf("problem"))
+	assertFailureMessageMatches(t, m, `^unexpected error: problem$`)
+}
+
+func TestIsNil_Fails(t *testing.T) {
+	// non-nil slice
+	mockTB1 := &fakeTB{}
+	s := make([]int, 0)
+	AssertIsNil(mockTB1, s)
+	assertFailureMessageMatches(t, mockTB1, `^got non-nil \(type `)
+
+	// non-nil pointer
+	mockTB2 := &fakeTB{}
+	x := 1
+	AssertIsNil(mockTB2, &x)
+	assertFailureMessageMatches(t, mockTB2, `^got non-nil \(type `)
+}
+
+func TestNotNil_Fails(t *testing.T) {
+	// nil interface
+	mockTB1 := &fakeTB{}
+	var w io.Writer
+	AssertNotNil(mockTB1, w)
+	assertFailureMessageMatches(t, mockTB1, `^got nil; want non-nil$`)
+
+	// nil pointer
+	mockTB2 := &fakeTB{}
+	var p *int
+	AssertNotNil(mockTB2, p)
+	assertFailureMessageMatches(t, mockTB2, `^got nil; want non-nil$`)
+}
+
+func TestPanicMatches_Fails(t *testing.T) {
+	// no panic
+	mockTB1 := &fakeTB{}
+	AssertPanicMatches(mockTB1, func() {}, `x`)
+	assertFailureMessageMatches(t, mockTB1, `^function did not panic; want panic matching "x"$`)
+
+	// invalid regexp
+	mockTB2 := &fakeTB{}
+	AssertPanicMatches(mockTB2, func() { panic("oops") }, `(`)
+	assertFailureMessageMatches(t, mockTB2, `^invalid regexp "`)
+
+	// pattern mismatch
+	mockTB3 := &fakeTB{}
+	AssertPanicMatches(mockTB3, func() { panic("foo") }, `bar`)
+	assertFailureMessageMatches(t, mockTB3, `^panic "foo" does not match "bar"$`)
+}
+
+func TestFormatSuffix_NoArgs(t *testing.T) {
+	if got := formatSuffix(); got != "" {
+		t.Fatalf("expected empty suffix; got %q", got)
+	}
+}
+
+func TestFormatSuffix_FormatString(t *testing.T) {
+	got := formatSuffix("failed %s", "case")
+	want := " - failed case"
+	if got != want {
+		t.Fatalf("got %q; want %q", got, want)
+	}
+}
+
+func TestFormatSuffix_JustString(t *testing.T) {
+	got := formatSuffix("hello")
+	want := " - hello"
+	if got != want {
+		t.Fatalf("got %q; want %q", got, want)
+	}
+}
+
+func TestFormatSuffix_NonStringArgs(t *testing.T) {
+	got := formatSuffix(map[string]int{"number": 42})
+	want := " - map[number:42]"
+	if got != want {
+		t.Fatalf("got %q; want %q", got, want)
+	}
+}
+
+func TestFormatSuffix_AsUsedByAssertions(t *testing.T) {
+	mockTB1 := &fakeTB{}
+	var w io.Writer // nil interface
+
+	// with format string
+	AssertNotNil(mockTB1, w, "extra %s options %d", "str", 42)
+	assertFailureMessageMatches(t, mockTB1, `^got nil; want non-nil - extra str options 42$`)
+
+	// with just a string arg
+	AssertNotNil(mockTB1, w, "ba-dum-tss")
+	assertFailureMessageMatches(t, mockTB1, `^got nil; want non-nil - ba-dum-tss$`)
+
+	// with non string arg
+	AssertNotNil(mockTB1, w, map[int]bool{3: true})
+	assertFailureMessageMatches(t, mockTB1, `^got nil; want non-nil - map\[3:true\]$`)
+}

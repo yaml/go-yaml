@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"go.yaml.in/yaml/v4"
+	"go.yaml.in/yaml/v4/testutil"
 )
 
 var marshalIntTest = 123
@@ -526,12 +527,8 @@ func TestMarshal(t *testing.T) {
 	for i, item := range marshalTests {
 		t.Run(fmt.Sprintf("test %d: %q", i, item.data), func(t *testing.T) {
 			data, err := yaml.Marshal(item.value)
-			if err != nil {
-				t.Fatalf("Marshal() returned error: %v", err)
-			}
-			if string(data) != item.data {
-				t.Fatalf("Marshal() returned\n%q\nbut expected\n%q", string(data), item.data)
-			}
+			testutil.AssertNoError(t, err)
+			testutil.AssertEqual(t, string(data), item.data)
 		})
 	}
 }
@@ -542,16 +539,10 @@ func TestEncoderSingleDocument(t *testing.T) {
 			var buf bytes.Buffer
 			enc := yaml.NewEncoder(&buf)
 			err := enc.Encode(item.value)
-			if err != nil {
-				t.Fatalf("Encode() returned error: %v", err)
-			}
+			testutil.AssertNoError(t, err)
 			err = enc.Close()
-			if err != nil {
-				t.Fatalf("Close() returned error: %v", err)
-			}
-			if buf.String() != item.data {
-				t.Fatalf("Encode() returned\n%q\nbut expected\n%q", buf.String(), item.data)
-			}
+			testutil.AssertNoError(t, err)
+			testutil.AssertEqual(t, buf.String(), item.data)
 		})
 	}
 }
@@ -560,28 +551,19 @@ func TestEncoderMultipleDocuments(t *testing.T) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	err := enc.Encode(map[string]string{"a": "b"})
-	if err != nil {
-		t.Fatalf("Encode() returned error: %v", err)
-	}
+	testutil.AssertNoError(t, err)
 	err = enc.Encode(map[string]string{"c": "d"})
-	if err != nil {
-		t.Fatalf("Encode() returned error: %v", err)
-	}
+	testutil.AssertNoError(t, err)
 	err = enc.Close()
-	if err != nil {
-		t.Fatalf("Close() returned error: %v", err)
-	}
-	if buf.String() != "a: b\n---\nc: d\n" {
-		t.Fatalf("Encode() returned\n%q\nbut expected\n%q", buf.String(), "a: b\n---\nc: d\n")
-	}
+	testutil.AssertNoError(t, err)
+	testutil.AssertEqual(t, buf.String(), "a: b\n---\nc: d\n")
 }
 
 func TestEncoderWriteError(t *testing.T) {
 	enc := yaml.NewEncoder(errorWriter{})
 	err := enc.Encode(map[string]string{"a": "b"})
-	if err == nil || !strings.Contains(err.Error(), `yaml: write error: some write error`) {
-		t.Fatalf("Encode() returned %v, want error containing %q", err, `yaml: write error: some write error`)
-	}
+	testutil.AssertErrorMatches(t, err, `yaml: write error: some write error`) // Data not flushed yet
+
 }
 
 type errorWriter struct{}
@@ -612,17 +594,10 @@ func TestMarshalErrors(t *testing.T) {
 	for _, item := range marshalErrorTests {
 		t.Run(item.panic, func(t *testing.T) {
 			if item.panic != "" {
-				defer func() {
-					if r := recover(); r == nil {
-						t.Fatalf("expected panic")
-					}
-				}()
-				yaml.Marshal(item.value)
+				testutil.AssertPanicMatches(t, func() { yaml.Marshal(item.value) }, item.panic)
 			} else {
 				_, err := yaml.Marshal(item.value)
-				if err == nil || !strings.Contains(err.Error(), item.error) {
-					t.Fatalf("Marshal() returned %v, want error containing %q", err, item.error)
-				}
+				testutil.AssertErrorMatches(t, err, item.error)
 			}
 		})
 	}
@@ -634,20 +609,14 @@ func TestMarshalTypeCache(t *testing.T) {
 	func() {
 		type T struct{ A int }
 		data, err = yaml.Marshal(&T{})
-		if err != nil {
-			t.Fatalf("Marshal() returned error: %v", err)
-		}
+		testutil.AssertNoError(t, err)
 	}()
 	func() {
 		type T struct{ B int }
 		data, err = yaml.Marshal(&T{})
-		if err != nil {
-			t.Fatalf("Marshal() returned error: %v", err)
-		}
+		testutil.AssertNoError(t, err)
 	}()
-	if string(data) != "b: 0\n" {
-		t.Fatalf("Marshal() returned\n%q\nbut expected\n%q", string(data), "b: 0\n")
-	}
+	testutil.AssertEqual(t, string(data), "b: 0\n")
 }
 
 var marshalerTests = []struct {
@@ -683,12 +652,8 @@ func TestMarshaler(t *testing.T) {
 			obj := &marshalerValue{}
 			obj.Field.value = item.value
 			data, err := yaml.Marshal(obj)
-			if err != nil {
-				t.Fatalf("Marshal() returned error: %v", err)
-			}
-			if string(data) != string(item.data) {
-				t.Fatalf("Marshal() returned\n%q\nbut expected\n%q", string(data), string(item.data))
-			}
+			testutil.AssertNoError(t, err)
+			testutil.AssertEqual(t, string(data), string(item.data))
 		})
 	}
 }
@@ -697,12 +662,8 @@ func TestMarshalerWholeDocument(t *testing.T) {
 	obj := &marshalerType{}
 	obj.value = map[string]string{"hello": "world!"}
 	data, err := yaml.Marshal(obj)
-	if err != nil {
-		t.Fatalf("Marshal() returned error: %v", err)
-	}
-	if string(data) != "hello: world!\n" {
-		t.Fatalf("Marshal() returned\n%q\nbut expected\n%q", string(data), "hello: world!\n")
-	}
+	testutil.AssertNoError(t, err)
+	testutil.AssertEqual(t, string(data), "hello: world!\n")
 }
 
 type failingMarshaler struct{}
@@ -713,9 +674,7 @@ func (ft *failingMarshaler) MarshalYAML() (interface{}, error) {
 
 func TestMarshalerError(t *testing.T) {
 	_, err := yaml.Marshal(&failingMarshaler{})
-	if err != failingErr {
-		t.Fatalf("Marshal() returned %v, want %v", err, failingErr)
-	}
+	testutil.AssertEqual(t, err, failingErr)
 }
 
 func TestSetIndent(t *testing.T) {
@@ -723,16 +682,10 @@ func TestSetIndent(t *testing.T) {
 	enc := yaml.NewEncoder(&buf)
 	enc.SetIndent(8)
 	err := enc.Encode(map[string]interface{}{"a": map[string]interface{}{"b": map[string]string{"c": "d"}}})
-	if err != nil {
-		t.Fatalf("Encode() returned error: %v", err)
-	}
+	testutil.AssertNoError(t, err)
 	err = enc.Close()
-	if err != nil {
-		t.Fatalf("Close() returned error: %v", err)
-	}
-	if buf.String() != "a:\n        b:\n                c: d\n" {
-		t.Fatalf("Encode() returned\n%q\nbut expected\n%q", buf.String(), "a:\n        b:\n                c: d\n")
-	}
+	testutil.AssertNoError(t, err)
+	testutil.AssertEqual(t, buf.String(), "a:\n        b:\n                c: d\n")
 }
 
 func TestSortedOutput(t *testing.T) {
@@ -789,9 +742,7 @@ func TestSortedOutput(t *testing.T) {
 		m[k] = 1
 	}
 	data, err := yaml.Marshal(m)
-	if err != nil {
-		t.Fatalf("Marshal() returned error: %v", err)
-	}
+	testutil.AssertNoError(t, err)
 	out := "\n" + string(data)
 	last := 0
 	for i, k := range order {
@@ -821,23 +772,14 @@ func TestCompactSeqIndentDefault(t *testing.T) {
 	enc := yaml.NewEncoder(&buf)
 	enc.CompactSeqIndent()
 	err := enc.Encode(map[string]interface{}{"a": []string{"b", "c"}})
-	if err != nil {
-		t.Fatalf("Encode() returned error: %v", err)
-	}
+	testutil.AssertNoError(t, err)
 	err = enc.Close()
-	if err != nil {
-		t.Fatalf("Close() returned error: %v", err)
-	}
+	testutil.AssertNoError(t, err)
 	// The default indent is 4, so these sequence elements get 2 indents as before
-	if buf.String() != `a:
-  - b
-  - c
-` {
-		t.Fatalf("Encode() returned\n%q\nbut expected\n%q", buf.String(), `a:
+	testutil.AssertEqual(t, buf.String(), `a:
   - b
   - c
 `)
-	}
 }
 
 func TestCompactSequenceWithSetIndent(t *testing.T) {
@@ -846,23 +788,14 @@ func TestCompactSequenceWithSetIndent(t *testing.T) {
 	enc.CompactSeqIndent()
 	enc.SetIndent(2)
 	err := enc.Encode(map[string]interface{}{"a": []string{"b", "c"}})
-	if err != nil {
-		t.Fatalf("Encode() returned error: %v", err)
-	}
+	testutil.AssertNoError(t, err)
 	err = enc.Close()
-	if err != nil {
-		t.Fatalf("Close() returned error: %v", err)
-	}
+	testutil.AssertNoError(t, err)
 	// The sequence indent is 2, so these sequence elements don't get indented at all
-	if buf.String() != `a:
-- b
-- c
-` {
-		t.Fatalf("Encode() returned\n%q\nbut expected\n%q", buf.String(), `a:
+	testutil.AssertEqual(t, buf.String(), `a:
 - b
 - c
 `)
-	}
 }
 
 type normal string
@@ -941,13 +874,9 @@ func TestEncoderCompactIndents(t *testing.T) {
 			enc := yaml.NewEncoder(&buf)
 			enc.CompactSeqIndent()
 			err := enc.Encode(item.value)
-			if err != nil {
-				t.Fatalf("Encode() returned error: %v", err)
-			}
+			testutil.AssertNoError(t, err)
 			err = enc.Close()
-			if err != nil {
-				t.Fatalf("Close() returned error: %v", err)
-			}
+			testutil.AssertNoError(t, err)
 
 			// Default to expecting the item data
 			expected := item.data
@@ -956,9 +885,7 @@ func TestEncoderCompactIndents(t *testing.T) {
 				expected = string(c[1:])
 			}
 
-			if buf.String() != expected {
-				t.Fatalf("Encode() returned\n%q\nbut expected\n%q", buf.String(), expected)
-			}
+			testutil.AssertEqual(t, buf.String(), expected)
 		})
 	}
 }
@@ -967,22 +894,14 @@ func TestNewLinePreserved(t *testing.T) {
 	obj := &marshalerValue{}
 	obj.Field.value = "a:\n        b:\n                c: d\n"
 	data, err := yaml.Marshal(obj)
-	if err != nil {
-		t.Fatalf("Marshal() returned error: %v", err)
-	}
-	if string(data) != "_: |\n    a:\n            b:\n                    c: d\n" {
-		t.Fatalf("Marshal() returned\n%q\nbut expected\n%q", string(data), "_: |\n    a:\n            b:\n                    c: d\n")
-	}
+	testutil.AssertNoError(t, err)
+	testutil.AssertEqual(t, string(data), "_: |\n    a:\n            b:\n                    c: d\n")
 
 	obj.Field.value = "\na:\n        b:\n                c: d\n"
 	data, err = yaml.Marshal(obj)
-	if err != nil {
-		t.Fatalf("Marshal() returned error: %v", err)
-	}
+	testutil.AssertNoError(t, err)
 	// the newline at the start of the file should be preserved
-	if string(data) != "_: |4\n\n    a:\n            b:\n                    c: d\n" {
-		t.Fatalf("Marshal() returned\n%q\nbut expected\n%q", string(data), "_: |4\n\n    a:\n            b:\n                    c: d\n")
-	}
+	testutil.AssertEqual(t, string(data), "_: |4\n\n    a:\n            b:\n                    c: d\n")
 }
 
 func TestScalarStyleRules(t *testing.T) {
@@ -1077,12 +996,8 @@ func TestScalarStyleRules(t *testing.T) {
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("test_%d_%s", i, testCase.desc), func(t *testing.T) {
 			data, err := yaml.Marshal(testCase.input)
-			if err != nil {
-				t.Fatalf("Marshal() returned error: %v", err)
-			}
-			if string(data) != testCase.expected {
-				t.Fatalf("Marshal() returned\n%q\nbut expected\n%q", string(data), testCase.expected)
-			}
+			testutil.AssertNoError(t, err)
+			testutil.AssertEqual(t, string(data), testCase.expected)
 		})
 	}
 }
@@ -1149,12 +1064,8 @@ func TestWhitespaceOnlyStrings(t *testing.T) {
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("test_%d_%s", i, testCase.desc), func(t *testing.T) {
 			data, err := yaml.Marshal(testCase.input)
-			if err != nil {
-				t.Fatalf("Marshal() returned error: %v", err)
-			}
-			if string(data) != testCase.expected {
-				t.Fatalf("Marshal() returned\n%q\nbut expected\n%q", string(data), testCase.expected)
-			}
+			testutil.AssertNoError(t, err)
+			testutil.AssertEqual(t, string(data), testCase.expected)
 		})
 	}
 }
@@ -1211,12 +1122,8 @@ func TestWhitespaceWithContent(t *testing.T) {
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("test_%d_%s", i, testCase.desc), func(t *testing.T) {
 			data, err := yaml.Marshal(testCase.input)
-			if err != nil {
-				t.Fatalf("Marshal() returned error: %v", err)
-			}
-			if string(data) != testCase.expected {
-				t.Fatalf("Marshal() returned\n%q\nbut expected\n%q", string(data), testCase.expected)
-			}
+			testutil.AssertNoError(t, err)
+			testutil.AssertEqual(t, string(data), testCase.expected)
 		})
 	}
 }
@@ -1418,12 +1325,8 @@ func TestUnicodeWhitespaceHandling(t *testing.T) {
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("test_%d_%s", i, testCase.desc), func(t *testing.T) {
 			data, err := yaml.Marshal(testCase.input)
-			if err != nil {
-				t.Fatalf("Marshal() returned error: %v", err)
-			}
-			if string(data) != testCase.expected {
-				t.Fatalf("Marshal() returned\n%q\nbut expected\n%q", string(data), testCase.expected)
-			}
+			testutil.AssertNoError(t, err)
+			testutil.AssertEqual(t, string(data), testCase.expected)
 		})
 	}
 }
