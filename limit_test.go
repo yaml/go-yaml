@@ -1,11 +1,11 @@
 package yaml_test
 
 import (
-	"regexp"
 	"strings"
 	"testing"
 
 	"go.yaml.in/yaml/v4"
+	"go.yaml.in/yaml/v4/internal/testutil/assert"
 )
 
 var limitTests = []struct {
@@ -50,13 +50,9 @@ func TestLimits(t *testing.T) {
 		var v interface{}
 		err := yaml.Unmarshal(tc.data, &v)
 		if len(tc.error) > 0 {
-			if err == nil || !regexp.MustCompile(tc.error).MatchString(err.Error()) {
-				t.Fatalf("testcase: %s. Expected error matching %q, got %v", tc.name, tc.error, err)
-			}
+			assert.ErrorMatchesf(t, tc.error, err, "testcase: %s", tc.name)
 		} else {
-			if err != nil {
-				t.Fatalf("testcase: %s. Unmarshal() got error %v", tc.name, err)
-			}
+			assert.NoErrorf(t, err, "testcase: %s", tc.name)
 		}
 	}
 }
@@ -113,15 +109,9 @@ func benchmark(b *testing.B, name string) {
 			var v interface{}
 			err := yaml.Unmarshal(t.data, &v)
 			if len(t.error) > 0 {
-				if err == nil {
-					b.Errorf("expected error, got none")
-				} else if err.Error() != t.error {
-					b.Errorf("expected error '%s', got '%s'", t.error, err.Error())
-				}
+				assert.ErrorMatches(b, t.error, err)
 			} else {
-				if err != nil {
-					b.Errorf("unexpected error: %v", err)
-				}
+				assert.NoError(b, err)
 			}
 		}
 
