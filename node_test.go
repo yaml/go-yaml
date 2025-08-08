@@ -20,12 +20,11 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"reflect"
-	"regexp"
 	"strings"
 	"testing"
 
 	"go.yaml.in/yaml/v4"
+	"go.yaml.in/yaml/v4/internal/testutil/assert"
 )
 
 var nodeTests = []struct {
@@ -2775,17 +2774,13 @@ func TestNodeRoundtrip(t *testing.T) {
 		if decode {
 			var node yaml.Node
 			err := yaml.Unmarshal([]byte(testYaml), &node)
-			if err != nil {
-				t.Fatalf("Unmarshal got error: %v", err)
-			}
+			assert.NoError(t, err)
 			if strings.Contains(item.yaml, "#") {
 				var buf bytes.Buffer
 				fprintComments(&buf, &node, "    ")
 				t.Logf("  obtained comments:\n%s", buf.Bytes())
 			}
-			if !reflect.DeepEqual(&node, &item.node) {
-				t.Fatalf("Nodes are not deep equal.\nGot: %+v\nWant: %+v", &node, &item.node)
-			}
+			assert.DeepEqual(t, &item.node, &node)
 		}
 		if encode {
 			node := deepCopyNode(&item.node, nil)
@@ -2793,21 +2788,13 @@ func TestNodeRoundtrip(t *testing.T) {
 			enc := yaml.NewEncoder(&buf)
 			enc.SetIndent(2)
 			err := enc.Encode(node)
-			if err != nil {
-				t.Fatalf("Encode got error: %v", err)
-			}
+			assert.NoError(t, err)
 			err = enc.Close()
-			if err != nil {
-				t.Fatalf("Close got error: %v", err)
-			}
-			if buf.String() != testYaml {
-				t.Fatalf("Encoded YAML mismatch.\nGot: %q\nWant: %q", buf.String(), testYaml)
-			}
+			assert.NoError(t, err)
+			assert.Equal(t, buf.String(), testYaml)
 
 			// Ensure there were no mutations to the tree.
-			if !reflect.DeepEqual(node, &item.node) {
-				t.Fatalf("Node mutated.\nGot: %+v\nWant: %+v", node, &item.node)
-			}
+			assert.DeepEqual(t, &item.node, node)
 		}
 	}
 }
@@ -2916,39 +2903,25 @@ func TestSetString(t *testing.T) {
 
 		node.SetString(item.str)
 
-		if !reflect.DeepEqual(node, item.node) {
-			t.Fatalf("Nodes are not deep equal.\nGot: %+v\nWant: %+v", node, item.node)
-		}
+		assert.DeepEqual(t, item.node, node)
 
 		buf := bytes.Buffer{}
 		enc := yaml.NewEncoder(&buf)
 		enc.SetIndent(2)
 		err := enc.Encode(&item.node)
-		if err != nil {
-			t.Fatalf("Encode got error: %v", err)
-		}
+		assert.NoError(t, err)
 		err = enc.Close()
-		if err != nil {
-			t.Fatalf("Close got error: %v", err)
-		}
-		if buf.String() != item.yaml {
-			t.Fatalf("Encoded YAML mismatch.\nGot: %q\nWant: %q", buf.String(), item.yaml)
-		}
+		assert.NoError(t, err)
+		assert.Equal(t, item.yaml, buf.String())
 
 		var doc yaml.Node
 		err = yaml.Unmarshal([]byte(item.yaml), &doc)
-		if err != nil {
-			t.Fatalf("Unmarshal got error: %v", err)
-		}
+		assert.NoError(t, err)
 
 		var str string
 		err = node.Decode(&str)
-		if err != nil {
-			t.Fatalf("Decode got error: %v", err)
-		}
-		if str != item.str {
-			t.Fatalf("Decoded string mismatch.\nGot: %q\nWant: %q", str, item.str)
-		}
+		assert.NoError(t, err)
+		assert.Equal(t, item.str, str)
 	}
 }
 
@@ -3021,21 +2994,13 @@ func TestNodeEncodeDecode(t *testing.T) {
 
 		var v interface{}
 		err := item.node.Decode(&v)
-		if err != nil {
-			t.Fatalf("Decode got error: %v", err)
-		}
-		if !reflect.DeepEqual(v, item.value) {
-			t.Fatalf("Decoded value mismatch.\nGot: %+v\nWant: %+v", v, item.value)
-		}
+		assert.NoError(t, err)
+		assert.DeepEqual(t, item.value, v)
 
 		var n yaml.Node
 		err = n.Encode(item.value)
-		if err != nil {
-			t.Fatalf("Encode got error: %v", err)
-		}
-		if !reflect.DeepEqual(n, item.node) {
-			t.Fatalf("Encoded node mismatch.\nGot: %+v\nWant: %+v", n, item.node)
-		}
+		assert.NoError(t, err)
+		assert.DeepEqual(t, item.node, n)
 	}
 }
 
@@ -3043,38 +3008,24 @@ func TestNodeZeroEncodeDecode(t *testing.T) {
 	// Zero node value behaves as nil when encoding...
 	var n yaml.Node
 	data, err := yaml.Marshal(&n)
-	if err != nil {
-		t.Fatalf("Marshal got error: %v", err)
-	}
-	if string(data) != "null\n" {
-		t.Fatalf("Encoded YAML mismatch.\nGot: %q\nWant: %q", string(data), "null\n")
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, "null\n", string(data))
 
 	// ... and decoding.
 	var v *struct{} = &struct{}{}
 	err = n.Decode(&v)
-	if err != nil {
-		t.Fatalf("Decode got error: %v", err)
-	}
-	if v != nil {
-		t.Fatalf("Decoded value mismatch.\nGot: %+v\nWant: nil", v)
-	}
+	assert.NoError(t, err)
+	assert.IsNil(t, v)
 
 	// ... and even when looking for its tag.
-	if n.ShortTag() != "!!null" {
-		t.Fatalf("ShortTag mismatch. Got: %q, Want: %q", n.ShortTag(), "!!null")
-	}
+	assert.Equal(t, "!!null", n.ShortTag())
 
 	// Kind zero is still unknown, though.
 	n.Line = 1
 	_, err = yaml.Marshal(&n)
-	if err == nil || !regexp.MustCompile("yaml: cannot encode node with unknown kind 0").MatchString(err.Error()) {
-		t.Fatalf("Expected error matching %q, got %v", "yaml: cannot encode node with unknown kind 0", err)
-	}
+	assert.ErrorMatches(t, "yaml: cannot encode node with unknown kind 0", err)
 	err = n.Decode(&v)
-	if err == nil || !regexp.MustCompile("yaml: cannot decode node with unknown kind 0").MatchString(err.Error()) {
-		t.Fatalf("expected error matching %q, got %v", "yaml: cannot decode node with unknown kind 0", err)
-	}
+	assert.ErrorMatches(t, "yaml: cannot decode node with unknown kind 0", err)
 }
 
 func TestNodeOmitEmpty(t *testing.T) {
@@ -3084,18 +3035,12 @@ func TestNodeOmitEmpty(t *testing.T) {
 	}
 	v.A = 1
 	data, err := yaml.Marshal(&v)
-	if err != nil {
-		t.Fatalf("Decoded value mismatch. Got: %+v Want: nil", err)
-	}
-	if string(data) != "a: 1\n" {
-		t.Fatalf("Encoded YAML mismatch.\nGot: %q\nWant: %q", string(data), "a: 1\n")
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, "a: 1\n", string(data))
 
 	v.B.Line = 1
 	_, err = yaml.Marshal(&v)
-	if err == nil || !regexp.MustCompile("yaml: cannot encode node with unknown kind 0").MatchString(err.Error()) {
-		t.Fatalf("Expected error matching %q, got %v", "yaml: cannot encode node with unknown kind 0", err)
-	}
+	assert.ErrorMatches(t, "yaml: cannot encode node with unknown kind 0", err)
 }
 
 func fprintComments(out io.Writer, node *yaml.Node, indent string) {
