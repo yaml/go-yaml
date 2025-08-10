@@ -462,6 +462,35 @@ var unmarshalTests = []struct {
 		map[string]float64{"float64_maxuint64+1": float64(math.MaxUint64 + 1)},
 	},
 
+	// sequence‐as‐key
+	{
+		`?
+- Detroit Tigers
+- Chicago cubs
+: 2001-07-23
+`,
+		map[[2]string]time.Time{
+			[2]string{"Detroit Tigers", "Chicago cubs"}: time.Date(2001, 7, 23, 0, 0, 0, 0, time.UTC),
+		},
+	},
+
+	// mapping‐as‐key
+	{
+		`?
+  null: false
+:
+  42: 3.1416
+`,
+		map[interface{}]map[int]float64{
+			[1]struct {
+				Key   interface{}
+				Value interface{}
+			}{{Key: nil, Value: false}}: {
+				42: 3.1416,
+			},
+		},
+	},
+
 	// Overflow cases.
 	{
 		"v: 4294967297",
@@ -1031,8 +1060,6 @@ var unmarshalErrorTests = []struct {
 	{"a: &a\n  b: *a\n", "yaml: anchor 'a' value contains itself"},
 	{"value: -", "yaml: block sequence entries are not allowed in this context"},
 	{"a: !!binary ==", "yaml: !!binary value contains invalid base64 data"},
-	{"{[.]}", `yaml: invalid map key: \[\]interface \{\}\{"\."\}`},
-	{"{{.}}", `yaml: invalid map key: map\[string]interface \{\}\{".":interface \{\}\(nil\)\}`},
 	{"b: *a\na: &a {c: 1}", `yaml: unknown anchor 'a' referenced`},
 	{"%TAG !%79! tag:yaml.org,2002:\n---\nv: !%79!int '1'", "yaml: did not find expected whitespace"},
 	{"a:\n  1:\nb\n  2:", ".*could not find expected ':'"},
@@ -1662,7 +1689,7 @@ longTag:
   label: center/big
 
 inlineMap:
-  # Inlined map 
+  # Inlined map
   << : {"x": 1, "y": 2, "r": 10}
   label: center/big
 
