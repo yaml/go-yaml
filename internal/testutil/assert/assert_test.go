@@ -100,19 +100,19 @@ func assertFailureMessageMatches(t *testing.T, f *fakeTB, pattern string) {
 
 func TestAssertEqual_Fails(t *testing.T) {
 	mock := &fakeTB{}
-	Equal(mock, 1, 2)
+	Equal(mock, 2, 1)
 	assertFailureMessageMatches(t, mock, `^got 1; want 2$`)
 }
 
 func TestAssertDeepEqual_Fails(t *testing.T) {
 	// slice mismatch
 	mock := &fakeTB{}
-	DeepEqual(mock, []int{1}, []int{2})
+	DeepEqual(mock, []int{2}, []int{1})
 	assertFailureMessageMatches(t, mock, `^got \[1\]; want \[2\]$`)
 
 	// map mismatch
 	mock2 := &fakeTB{}
-	DeepEqual(mock2, map[string]int{"a": 1}, map[string]int{"a": 2})
+	DeepEqual(mock2, map[string]int{"a": 2}, map[string]int{"a": 1})
 	assertFailureMessageMatches(t, mock2, `^got map\[a:1\]; want map\[a:2\]$`)
 }
 

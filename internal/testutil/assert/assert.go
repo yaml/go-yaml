@@ -21,12 +21,12 @@ func formatSuffix(msgFormat string, args ...interface{}) string {
 }
 
 // Comparable types (numbers, strings, pointers to the same object, etc.).
-func Equal(tb miniTB, got, want interface{}) {
+func Equal(tb miniTB, want, got interface{}) {
 	tb.Helper()
-	Equalf(tb, got, want, "")
+	Equalf(tb, want, got, "")
 }
 
-func Equalf(tb miniTB, got, want interface{}, msgFormat string, args ...interface{}) {
+func Equalf(tb miniTB, want, got interface{}, msgFormat string, args ...interface{}) {
 	tb.Helper()
 	if got != want {
 		suffix := formatSuffix(msgFormat, args...)
@@ -35,12 +35,12 @@ func Equalf(tb miniTB, got, want interface{}, msgFormat string, args ...interfac
 }
 
 // interface{}thing else (slices, maps, structs with slices...).
-func DeepEqual(tb miniTB, got, want interface{}) {
+func DeepEqual(tb miniTB, want, got interface{}) {
 	tb.Helper()
-	DeepEqualf(tb, got, want, "")
+	DeepEqualf(tb, want, got, "")
 }
 
-func DeepEqualf(tb miniTB, got, want interface{}, msgFormat string, args ...interface{}) {
+func DeepEqualf(tb miniTB, want, got interface{}, msgFormat string, args ...interface{}) {
 	tb.Helper()
 	if !reflect.DeepEqual(got, want) {
 		suffix := formatSuffix(msgFormat, args...)

@@ -2778,7 +2778,7 @@ func TestNodeRoundtrip(t *testing.T) {
 				fprintComments(&buf, &node, "    ")
 				t.Logf("  obtained comments:\n%s", buf.Bytes())
 			}
-			assert.DeepEqual(t, &node, &item.node)
+			assert.DeepEqual(t, &item.node, &node)
 		}
 		if encode {
 			node := deepCopyNode(&item.node, nil)
@@ -2792,7 +2792,7 @@ func TestNodeRoundtrip(t *testing.T) {
 			assert.Equal(t, buf.String(), testYaml)
 
 			// Ensure there were no mutations to the tree.
-			assert.DeepEqual(t, node, &item.node)
+			assert.DeepEqual(t, &item.node, node)
 		}
 	}
 }
@@ -2900,7 +2900,7 @@ func TestSetString(t *testing.T) {
 
 		node.SetString(item.str)
 
-		assert.DeepEqual(t, node, item.node)
+		assert.DeepEqual(t, item.node, node)
 
 		buf := bytes.Buffer{}
 		enc := yaml.NewEncoder(&buf)
@@ -2909,7 +2909,7 @@ func TestSetString(t *testing.T) {
 		assert.NoError(t, err)
 		err = enc.Close()
 		assert.NoError(t, err)
-		assert.Equal(t, buf.String(), item.yaml)
+		assert.Equal(t, item.yaml, buf.String())
 
 		var doc yaml.Node
 		err = yaml.Unmarshal([]byte(item.yaml), &doc)
@@ -2918,7 +2918,7 @@ func TestSetString(t *testing.T) {
 		var str string
 		err = node.Decode(&str)
 		assert.NoError(t, err)
-		assert.Equal(t, str, item.str)
+		assert.Equal(t, item.str, str)
 	}
 }
 
@@ -2992,12 +2992,12 @@ func TestNodeEncodeDecode(t *testing.T) {
 		var v interface{}
 		err := item.node.Decode(&v)
 		assert.NoError(t, err)
-		assert.DeepEqual(t, v, item.value)
+		assert.DeepEqual(t, item.value, v)
 
 		var n yaml.Node
 		err = n.Encode(item.value)
 		assert.NoError(t, err)
-		assert.DeepEqual(t, n, item.node)
+		assert.DeepEqual(t, item.node, n)
 	}
 }
 
@@ -3006,7 +3006,7 @@ func TestNodeZeroEncodeDecode(t *testing.T) {
 	var n yaml.Node
 	data, err := yaml.Marshal(&n)
 	assert.NoError(t, err)
-	assert.Equal(t, string(data), "null\n")
+	assert.Equal(t, "null\n", string(data))
 
 	// ... and decoding.
 	var v *struct{} = &struct{}{}
@@ -3015,7 +3015,7 @@ func TestNodeZeroEncodeDecode(t *testing.T) {
 	assert.IsNil(t, v)
 
 	// ... and even when looking for its tag.
-	assert.Equal(t, n.ShortTag(), "!!null")
+	assert.Equal(t, "!!null", n.ShortTag())
 
 	// Kind zero is still unknown, though.
 	n.Line = 1
@@ -3033,7 +3033,7 @@ func TestNodeOmitEmpty(t *testing.T) {
 	v.A = 1
 	data, err := yaml.Marshal(&v)
 	assert.NoError(t, err)
-	assert.Equal(t, string(data), "a: 1\n")
+	assert.Equal(t, "a: 1\n", string(data))
 
 	v.B.Line = 1
 	_, err = yaml.Marshal(&v)

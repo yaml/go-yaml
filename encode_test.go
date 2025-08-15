@@ -526,7 +526,7 @@ func TestMarshal(t *testing.T) {
 		t.Run(fmt.Sprintf("test %d: %q", i, item.data), func(t *testing.T) {
 			data, err := yaml.Marshal(item.value)
 			assert.NoError(t, err)
-			assert.Equal(t, string(data), item.data)
+			assert.Equal(t, item.data, string(data))
 		})
 	}
 }
@@ -540,7 +540,7 @@ func TestEncoderSingleDocument(t *testing.T) {
 			assert.NoError(t, err)
 			err = enc.Close()
 			assert.NoError(t, err)
-			assert.Equal(t, buf.String(), item.data)
+			assert.Equal(t, item.data, buf.String())
 		})
 	}
 }
@@ -554,7 +554,7 @@ func TestEncoderMultipleDocuments(t *testing.T) {
 	assert.NoError(t, err)
 	err = enc.Close()
 	assert.NoError(t, err)
-	assert.Equal(t, buf.String(), "a: b\n---\nc: d\n")
+	assert.Equal(t, "a: b\n---\nc: d\n", buf.String())
 }
 
 func TestEncoderWriteError(t *testing.T) {
@@ -614,7 +614,7 @@ func TestMarshalTypeCache(t *testing.T) {
 		data, err = yaml.Marshal(&T{})
 		assert.NoError(t, err)
 	}()
-	assert.Equal(t, string(data), "b: 0\n")
+	assert.Equal(t, "b: 0\n", string(data))
 }
 
 var marshalerTests = []struct {
@@ -651,7 +651,7 @@ func TestMarshaler(t *testing.T) {
 			obj.Field.value = item.value
 			data, err := yaml.Marshal(obj)
 			assert.NoError(t, err)
-			assert.Equal(t, string(data), string(item.data))
+			assert.Equal(t, string(item.data), string(data))
 		})
 	}
 }
@@ -661,7 +661,7 @@ func TestMarshalerWholeDocument(t *testing.T) {
 	obj.value = map[string]string{"hello": "world!"}
 	data, err := yaml.Marshal(obj)
 	assert.NoError(t, err)
-	assert.Equal(t, string(data), "hello: world!\n")
+	assert.Equal(t, "hello: world!\n", string(data))
 }
 
 type failingMarshaler struct{}
@@ -672,7 +672,7 @@ func (ft *failingMarshaler) MarshalYAML() (interface{}, error) {
 
 func TestMarshalerError(t *testing.T) {
 	_, err := yaml.Marshal(&failingMarshaler{})
-	assert.Equal(t, err, failingErr)
+	assert.Equal(t, failingErr, err)
 }
 
 func TestSetIndent(t *testing.T) {
@@ -683,7 +683,7 @@ func TestSetIndent(t *testing.T) {
 	assert.NoError(t, err)
 	err = enc.Close()
 	assert.NoError(t, err)
-	assert.Equal(t, buf.String(), "a:\n        b:\n                c: d\n")
+	assert.Equal(t, "a:\n        b:\n                c: d\n", buf.String())
 }
 
 func TestSortedOutput(t *testing.T) {
@@ -774,10 +774,10 @@ func TestCompactSeqIndentDefault(t *testing.T) {
 	err = enc.Close()
 	assert.NoError(t, err)
 	// The default indent is 4, so these sequence elements get 2 indents as before
-	assert.Equal(t, buf.String(), `a:
+	assert.Equal(t, `a:
   - b
   - c
-`)
+`, buf.String())
 }
 
 func TestCompactSequenceWithSetIndent(t *testing.T) {
@@ -790,10 +790,10 @@ func TestCompactSequenceWithSetIndent(t *testing.T) {
 	err = enc.Close()
 	assert.NoError(t, err)
 	// The sequence indent is 2, so these sequence elements don't get indented at all
-	assert.Equal(t, buf.String(), `a:
+	assert.Equal(t, `a:
 - b
 - c
-`)
+`, buf.String())
 }
 
 type normal string
@@ -883,7 +883,7 @@ func TestEncoderCompactIndents(t *testing.T) {
 				expected = string(c[1:])
 			}
 
-			assert.Equal(t, buf.String(), expected)
+			assert.Equal(t, expected, buf.String())
 		})
 	}
 }
@@ -893,13 +893,13 @@ func TestNewLinePreserved(t *testing.T) {
 	obj.Field.value = "a:\n        b:\n                c: d\n"
 	data, err := yaml.Marshal(obj)
 	assert.NoError(t, err)
-	assert.Equal(t, string(data), "_: |\n    a:\n            b:\n                    c: d\n")
+	assert.Equal(t, "_: |\n    a:\n            b:\n                    c: d\n", string(data))
 
 	obj.Field.value = "\na:\n        b:\n                c: d\n"
 	data, err = yaml.Marshal(obj)
 	assert.NoError(t, err)
 	// the newline at the start of the file should be preserved
-	assert.Equal(t, string(data), "_: |4\n\n    a:\n            b:\n                    c: d\n")
+	assert.Equal(t, "_: |4\n\n    a:\n            b:\n                    c: d\n", string(data))
 }
 
 func TestScalarStyleRules(t *testing.T) {
@@ -995,7 +995,7 @@ func TestScalarStyleRules(t *testing.T) {
 		t.Run(fmt.Sprintf("test_%d_%s", i, testCase.desc), func(t *testing.T) {
 			data, err := yaml.Marshal(testCase.input)
 			assert.NoError(t, err)
-			assert.Equal(t, string(data), testCase.expected)
+			assert.Equal(t, testCase.expected, string(data))
 		})
 	}
 }
@@ -1063,7 +1063,7 @@ func TestWhitespaceOnlyStrings(t *testing.T) {
 		t.Run(fmt.Sprintf("test_%d_%s", i, testCase.desc), func(t *testing.T) {
 			data, err := yaml.Marshal(testCase.input)
 			assert.NoError(t, err)
-			assert.Equal(t, string(data), testCase.expected)
+			assert.Equal(t, testCase.expected, string(data))
 		})
 	}
 }
@@ -1121,7 +1121,7 @@ func TestWhitespaceWithContent(t *testing.T) {
 		t.Run(fmt.Sprintf("test_%d_%s", i, testCase.desc), func(t *testing.T) {
 			data, err := yaml.Marshal(testCase.input)
 			assert.NoError(t, err)
-			assert.Equal(t, string(data), testCase.expected)
+			assert.Equal(t, testCase.expected, string(data))
 		})
 	}
 }
@@ -1324,7 +1324,7 @@ func TestUnicodeWhitespaceHandling(t *testing.T) {
 		t.Run(fmt.Sprintf("test_%d_%s", i, testCase.desc), func(t *testing.T) {
 			data, err := yaml.Marshal(testCase.input)
 			assert.NoError(t, err)
-			assert.Equal(t, string(data), testCase.expected)
+			assert.Equal(t, testCase.expected, string(data))
 		})
 	}
 }

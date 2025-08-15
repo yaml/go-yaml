@@ -889,7 +889,7 @@ func TestUnmarshal(t *testing.T) {
 			if _, ok := err.(*yaml.TypeError); !ok {
 				assert.NoError(t, err)
 			}
-			assert.DeepEqualf(t, value.Elem().Interface(), item.value, "error: %v", err)
+			assert.DeepEqualf(t, item.value, value.Elem().Interface(), "error: %v", err)
 		})
 	}
 }
@@ -902,8 +902,8 @@ func TestUnmarshalFullTimestamp(t *testing.T) {
 	err := yaml.Unmarshal([]byte(str), &tm)
 	assert.NoError(t, err)
 	expectedTime := time.Date(2015, 2, 24, 18, 19, 39, 123456789, tm.(time.Time).Location())
-	assert.DeepEqual(t, tm, expectedTime)
-	assert.DeepEqual(t, tm.(time.Time).In(time.UTC), time.Date(2015, 2, 24, 21, 19, 39, 123456789, time.UTC))
+	assert.DeepEqual(t, expectedTime, tm)
+	assert.DeepEqual(t, time.Date(2015, 2, 24, 21, 19, 39, 123456789, time.UTC), tm.(time.Time).In(time.UTC))
 }
 
 func TestDecoderSingleDocument(t *testing.T) {
@@ -921,7 +921,7 @@ func TestDecoderSingleDocument(t *testing.T) {
 			if _, ok := err.(*yaml.TypeError); !ok {
 				assert.NoError(t, err)
 			}
-			assert.DeepEqual(t, value.Elem().Interface(), item.value)
+			assert.DeepEqual(t, item.value, value.Elem().Interface())
 		})
 	}
 }
@@ -964,7 +964,7 @@ func TestDecoder(t *testing.T) {
 				assert.NoError(t, err)
 				values = append(values, value)
 			}
-			assert.DeepEqual(t, values, item.values)
+			assert.DeepEqual(t, item.values, values)
 		})
 	}
 }
@@ -1061,7 +1061,7 @@ func TestParserError(t *testing.T) {
 		Message: "could not find expected ':'",
 		Line:    2,
 	}
-	assert.DeepEqual(t, asErr, expectedErr)
+	assert.DeepEqual(t, expectedErr, asErr)
 }
 
 var unmarshalerTests = []struct {
@@ -1142,7 +1142,7 @@ func TestUnmarshalerPointerField(t *testing.T) {
 			assert.IsNil(t, obj.Field)
 		} else {
 			assert.NotNilf(t, obj.Field, "Pointer not initialized (%#v)", item.value)
-			assert.DeepEqual(t, obj.Field.value, item.value)
+			assert.DeepEqual(t, item.value, obj.Field.value)
 		}
 	}
 	for _, item := range unmarshalerTests {
@@ -1153,7 +1153,7 @@ func TestUnmarshalerPointerField(t *testing.T) {
 			assert.IsNil(t, obj.Field)
 		} else {
 			assert.NotNilf(t, obj.Field, "Pointer not initialized (%#v)", item.value)
-			assert.DeepEqual(t, obj.Field.value, item.value)
+			assert.DeepEqual(t, item.value, obj.Field.value)
 		}
 	}
 }
@@ -1164,7 +1164,7 @@ func TestUnmarshalerValueField(t *testing.T) {
 		err := yaml.Unmarshal([]byte(item.data), obj)
 		assert.NoError(t, err)
 		assert.NotNilf(t, obj.Field, "Pointer not initialized (%#v)", item.value)
-		assert.DeepEqual(t, obj.Field.value, item.value)
+		assert.DeepEqual(t, item.value, obj.Field.value)
 	}
 }
 
@@ -1172,14 +1172,14 @@ func TestUnmarshalerInlinedField(t *testing.T) {
 	obj := &unmarshalerInlined{}
 	err := yaml.Unmarshal([]byte("_: a\ninlined: b\n"), obj)
 	assert.NoError(t, err)
-	assert.DeepEqual(t, obj.Field, &unmarshalerType{"a"})
-	assert.DeepEqual(t, obj.Inlined, unmarshalerType{map[string]interface{}{"_": "a", "inlined": "b"}})
+	assert.DeepEqual(t, &unmarshalerType{"a"}, obj.Field)
+	assert.DeepEqual(t, unmarshalerType{map[string]interface{}{"_": "a", "inlined": "b"}}, obj.Inlined)
 
 	twc := &unmarshalerInlinedTwice{}
 	err = yaml.Unmarshal([]byte("_: a\ninlined: b\n"), twc)
 	assert.NoError(t, err)
-	assert.DeepEqual(t, twc.InlinedTwice.Field, &unmarshalerType{"a"})
-	assert.DeepEqual(t, twc.InlinedTwice.Inlined, unmarshalerType{map[string]interface{}{"_": "a", "inlined": "b"}})
+	assert.DeepEqual(t, &unmarshalerType{"a"}, twc.InlinedTwice.Field)
+	assert.DeepEqual(t, unmarshalerType{map[string]interface{}{"_": "a", "inlined": "b"}}, twc.InlinedTwice.Inlined)
 }
 
 func TestUnmarshalerWholeDocument(t *testing.T) {
@@ -1188,7 +1188,7 @@ func TestUnmarshalerWholeDocument(t *testing.T) {
 	assert.NoError(t, err)
 	value, ok := obj.value.(map[string]interface{})
 	assert.Truef(t, ok, "value: %#v", obj.value)
-	assert.DeepEqual(t, value["_"], unmarshalerTests[0].value)
+	assert.DeepEqual(t, unmarshalerTests[0].value, value["_"])
 }
 
 func TestUnmarshalerTypeError(t *testing.T) {
@@ -1219,8 +1219,8 @@ func TestUnmarshalerTypeError(t *testing.T) {
 	assert.NotNil(t, v.M["ghi"])
 	assert.IsNil(t, v.M["jkl"])
 
-	assert.Equal(t, v.M["abc"].value, 1)
-	assert.Equal(t, v.M["ghi"].value, 3)
+	assert.Equal(t, 1, v.M["abc"].value)
+	assert.Equal(t, 3, v.M["ghi"].value)
 }
 
 func TestObsoleteUnmarshalerTypeError(t *testing.T) {
@@ -1252,8 +1252,8 @@ func TestObsoleteUnmarshalerTypeError(t *testing.T) {
 	assert.NotNil(t, v.M["ghi"])
 	assert.IsNil(t, v.M["jkl"])
 
-	assert.Equal(t, v.M["abc"].value, 1)
-	assert.Equal(t, v.M["ghi"].value, 3)
+	assert.Equal(t, 1, v.M["abc"].value)
+	assert.Equal(t, 3, v.M["ghi"].value)
 }
 
 type proxyTypeError struct{}
@@ -1355,11 +1355,11 @@ func TestUnmarshalerError(t *testing.T) {
 			{Line: 1, Column: 17, Err: failingErr},
 		},
 	}
-	assert.DeepEqual(t, err, expectedErr)
+	assert.DeepEqual(t, expectedErr, err)
 	// whatever could be unmarshaled must be unmarshaled
-	assert.Equal(t, dst.Foo, 123)
-	assert.DeepEqual(t, dst.Bar, &obsoleteFailingUnmarshaler{})
-	assert.Equal(t, dst.Spam, "test")
+	assert.Equal(t, 123, dst.Foo)
+	assert.DeepEqual(t, &obsoleteFailingUnmarshaler{}, dst.Bar)
+	assert.Equal(t, "test", dst.Spam)
 }
 
 type obsoleteFailingUnmarshaler struct{}
@@ -1381,11 +1381,11 @@ func TestObsoleteUnmarshalerError(t *testing.T) {
 			{Line: 1, Column: 17, Err: failingErr},
 		},
 	}
-	assert.DeepEqual(t, err, expectedErr)
+	assert.DeepEqual(t, expectedErr, err)
 	// whatever could be unmarshaled must be unmarshaled
-	assert.Equal(t, dst.Foo, 123)
-	assert.DeepEqual(t, dst.Bar, &obsoleteFailingUnmarshaler{})
-	assert.Equal(t, dst.Spam, "test")
+	assert.Equal(t, 123, dst.Foo)
+	assert.DeepEqual(t, &obsoleteFailingUnmarshaler{}, dst.Bar)
+	assert.Equal(t, "test", dst.Spam)
 }
 
 type sliceUnmarshaler []int
@@ -1412,11 +1412,11 @@ func TestUnmarshalerRetry(t *testing.T) {
 	var su sliceUnmarshaler
 	err := yaml.Unmarshal([]byte("[1, 2, 3]"), &su)
 	assert.NoError(t, err)
-	assert.DeepEqual(t, su, sliceUnmarshaler([]int{1, 2, 3}))
+	assert.DeepEqual(t, sliceUnmarshaler([]int{1, 2, 3}), su)
 
 	err = yaml.Unmarshal([]byte("1"), &su)
 	assert.NoError(t, err)
-	assert.DeepEqual(t, su, sliceUnmarshaler([]int{1}))
+	assert.DeepEqual(t, sliceUnmarshaler([]int{1}), su)
 }
 
 type obsoleteSliceUnmarshaler []int
@@ -1443,11 +1443,11 @@ func TestObsoleteUnmarshalerRetry(t *testing.T) {
 	var su obsoleteSliceUnmarshaler
 	err := yaml.Unmarshal([]byte("[1, 2, 3]"), &su)
 	assert.NoError(t, err)
-	assert.DeepEqual(t, su, obsoleteSliceUnmarshaler([]int{1, 2, 3}))
+	assert.DeepEqual(t, obsoleteSliceUnmarshaler([]int{1, 2, 3}), su)
 
 	err = yaml.Unmarshal([]byte("1"), &su)
 	assert.NoError(t, err)
-	assert.DeepEqual(t, su, obsoleteSliceUnmarshaler([]int{1}))
+	assert.DeepEqual(t, obsoleteSliceUnmarshaler([]int{1}), su)
 }
 
 // From http://yaml.org/type/merge.html
@@ -1527,10 +1527,10 @@ func TestMerge(t *testing.T) {
 			continue
 		}
 		if name == "plain" {
-			assert.DeepEqualf(t, test, wantStringMap, "test %q failed", name)
+			assert.DeepEqualf(t, wantStringMap, test, "test %q failed", name)
 			continue
 		}
-		assert.DeepEqualf(t, test, want, "test %q failed", name)
+		assert.DeepEqualf(t, want, test, "test %q failed", name)
 	}
 }
 
@@ -1548,7 +1548,7 @@ func TestMergeStruct(t *testing.T) {
 		if name == "anchors" {
 			continue
 		}
-		assert.DeepEqualf(t, test, want, "test %q failed", name)
+		assert.DeepEqualf(t, want, test, "test %q failed", name)
 	}
 }
 
@@ -1626,7 +1626,7 @@ func TestMergeNestedStruct(t *testing.T) {
 
 	err := yaml.Unmarshal([]byte(mergeTestsNested), &test)
 	assert.NoError(t, err)
-	assert.DeepEqual(t, test, want)
+	assert.DeepEqual(t, want, test)
 
 	// Repeat test with a map.
 
@@ -1642,7 +1642,7 @@ func TestMergeNestedStruct(t *testing.T) {
 	}
 	err = yaml.Unmarshal([]byte(mergeTestsNested), &testm)
 	assert.NoError(t, err)
-	assert.DeepEqual(t, testm["outer"], wantm)
+	assert.DeepEqual(t, wantm, testm["outer"])
 }
 
 var unmarshalNullTests = []struct {
@@ -1692,7 +1692,7 @@ func TestUnmarshalNull(t *testing.T) {
 		expected := test.expected()
 		err := yaml.Unmarshal([]byte(test.input), pristine)
 		assert.NoError(t, err)
-		assert.DeepEqual(t, pristine, expected)
+		assert.DeepEqual(t, expected, pristine)
 	}
 }
 
@@ -1705,15 +1705,15 @@ func TestUnmarshalPreservesData(t *testing.T) {
 	v.C = 88
 	err := yaml.Unmarshal([]byte("---"), &v)
 	assert.NoError(t, err)
-	assert.Equal(t, v.A, 42)
-	assert.Equal(t, v.B, 0)
-	assert.Equal(t, v.C, 88)
+	assert.Equal(t, 42, v.A)
+	assert.Equal(t, 0, v.B)
+	assert.Equal(t, 88, v.C)
 
 	err = yaml.Unmarshal([]byte("b: 21\nc: 99"), &v)
 	assert.NoError(t, err)
-	assert.Equal(t, v.A, 42)
-	assert.Equal(t, v.B, 21)
-	assert.Equal(t, v.C, 88)
+	assert.Equal(t, 42, v.A)
+	assert.Equal(t, 21, v.B)
+	assert.Equal(t, 88, v.C)
 }
 
 func TestUnmarshalSliceOnPreset(t *testing.T) {
@@ -1721,7 +1721,7 @@ func TestUnmarshalSliceOnPreset(t *testing.T) {
 	v := struct{ A []int }{[]int{1}}
 	err := yaml.Unmarshal([]byte("a: [2]"), &v)
 	assert.NoError(t, err)
-	assert.DeepEqual(t, v.A, []int{2})
+	assert.DeepEqual(t, []int{2}, v.A)
 }
 
 var unmarshalStrictTests = []struct {
@@ -1806,7 +1806,7 @@ func TestUnmarshalKnownFields(t *testing.T) {
 			value := reflect.New(typ)
 			err := yaml.Unmarshal([]byte(item.data), value.Interface())
 			assert.NoError(t, err)
-			assert.DeepEqual(t, value.Elem().Interface(), item.value)
+			assert.DeepEqual(t, item.value, value.Elem().Interface())
 		}
 
 		// Then test that it fails on the same thing with KnownFields on.
