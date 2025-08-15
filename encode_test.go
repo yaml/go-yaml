@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"go.yaml.in/yaml/v4"
-	"go.yaml.in/yaml/v4/testutil"
+	"go.yaml.in/yaml/v4/internal/testutil"
 )
 
 var marshalIntTest = 123

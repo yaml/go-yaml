@@ -27,7 +27,7 @@ import (
 	"time"
 
 	"go.yaml.in/yaml/v4"
-	"go.yaml.in/yaml/v4/testutil"
+	"go.yaml.in/yaml/v4/internal/testutil"
 )
 
 // negativeZero represents -0.0 for YAML test cases
