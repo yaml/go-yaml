@@ -49,6 +49,11 @@ func TestPanicMatches_Success(t *testing.T) {
 	AssertPanicMatches(t, func() { panic(fmt.Errorf("fail xyz")) }, `fail xyz`)
 }
 
+func TestAssertTrueAndFalse_Success(t *testing.T) {
+	AssertTrue(t, true)
+	AssertFalse(t, false)
+}
+
 func Test_isNil_Basics(t *testing.T) {
 	if !isNil(nil) {
 		t.Fatalf("nil should be nil")
@@ -183,6 +188,16 @@ func TestFormatSuffix_NoArgs(t *testing.T) {
 	if got := formatSuffix(); got != "" {
 		t.Fatalf("expected empty suffix; got %q", got)
 	}
+}
+
+func TestAssertTrueAndFalse_Fails(t *testing.T) {
+	mock1 := &fakeTB{}
+	AssertTrue(mock1, false)
+	assertFailureMessageMatches(t, mock1, `^got false; want true$`)
+
+	mock2 := &fakeTB{}
+	AssertFalse(mock2, true)
+	assertFailureMessageMatches(t, mock2, `^got true; want false$`)
 }
 
 func TestFormatSuffix_FormatString(t *testing.T) {

@@ -984,7 +984,7 @@ func TestUnmarshalNaN(t *testing.T) {
 	value := map[string]interface{}{}
 	err := yaml.Unmarshal([]byte("notanum: .NaN"), &value)
 	testutil.AssertNoError(t, err)
-	testutil.AssertEqual(t, math.IsNaN(value["notanum"].(float64)), true)
+	testutil.AssertTrue(t, math.IsNaN(value["notanum"].(float64)))
 }
 
 func TestUnmarshalDurationInt(t *testing.T) {
@@ -1187,7 +1187,7 @@ func TestUnmarshalerWholeDocument(t *testing.T) {
 	err := yaml.Unmarshal([]byte(unmarshalerTests[0].data), obj)
 	testutil.AssertNoError(t, err)
 	value, ok := obj.value.(map[string]interface{})
-	testutil.AssertEqual(t, ok, true, "value: %#v", obj.value)
+	testutil.AssertTrue(t, ok, "value: %#v", obj.value)
 	testutil.AssertDeepEqual(t, value["_"], unmarshalerTests[0].value)
 }
 

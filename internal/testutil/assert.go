@@ -84,6 +84,24 @@ func AssertNotNil(tb miniTB, v any, msgAndArgs ...any) {
 	}
 }
 
+// AssertTrue fails the test if cond is false.
+func AssertTrue(tb miniTB, got bool, msgAndArgs ...any) {
+	tb.Helper()
+	if !got {
+		suffix := formatSuffix(msgAndArgs...)
+		tb.Fatalf("got false; want true%s", suffix)
+	}
+}
+
+// AssertFalse fails the test if cond is true.
+func AssertFalse(tb miniTB, got bool, msgAndArgs ...any) {
+	tb.Helper()
+	if got {
+		suffix := formatSuffix(msgAndArgs...)
+		tb.Fatalf("got true; want false%s", suffix)
+	}
+}
+
 func AssertPanicMatches(tb miniTB, f func(), pattern string, msgAndArgs ...any) {
 	tb.Helper()
 	var pan any
