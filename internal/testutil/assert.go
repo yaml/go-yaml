@@ -24,7 +24,7 @@ func formatSuffix(msgAndArgs ...any) string {
 }
 
 // Comparable types (numbers, strings, pointers to the same object, etc.).
-func AssertEqual[T comparable](tb miniTB, got, want T, msgAndArgs ...any) {
+func AssertEqual(tb miniTB, got, want any, msgAndArgs ...any) {
 	tb.Helper()
 	if got != want {
 		suffix := formatSuffix(msgAndArgs...)
