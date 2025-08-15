@@ -139,6 +139,36 @@ func TestAssertNoError_Fails(t *testing.T) {
 	assertFailureMessageMatches(t, m, `^unexpected error: problem$`)
 }
 
+func TestErrorIs_Success(t *testing.T) {
+	base := fmt.Errorf("base error")
+	wrapped := fmt.Errorf("wrap: %w", base)
+	// direct match
+	ErrorIs(t, base, base)
+	ErrorIs(t, wrapped, wrapped)
+	ErrorIs(t, base, wrapped)
+	// both nil
+	ErrorIs(t, nil, nil)
+}
+
+func TestErrorIs_Fails(t *testing.T) {
+	// mismatch
+	mock1 := &fakeTB{}
+	base := fmt.Errorf("base")
+	other := fmt.Errorf("other")
+	ErrorIs(mock1, base, other)
+	assertFailureMessageMatches(t, mock1, `got &errors.errorString\{s:"other"\}; want &errors.errorString\{s:"base"\}`)
+
+	// expected non-nil, actual nil
+	mock2 := &fakeTB{}
+	ErrorIs(mock2, base, nil)
+	assertFailureMessageMatches(t, mock2, `got \<nil\>; want &errors.errorString\{s:"base"\}`)
+
+	// expected nil, actual non-nil
+	mock3 := &fakeTB{}
+	ErrorIs(mock3, nil, other)
+	assertFailureMessageMatches(t, mock3, `got &errors.errorString\{s:"other"\}; want \<nil\>`)
+}
+
 func TestIsNil_Fails(t *testing.T) {
 	// non-nil slice
 	mockTB1 := &fakeTB{}

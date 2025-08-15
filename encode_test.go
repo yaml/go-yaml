@@ -672,7 +672,7 @@ func (ft *failingMarshaler) MarshalYAML() (interface{}, error) {
 
 func TestMarshalerError(t *testing.T) {
 	_, err := yaml.Marshal(&failingMarshaler{})
-	assert.Equal(t, failingErr, err)
+	assert.ErrorIs(t, failingErr, err)
 }
 
 func TestSetIndent(t *testing.T) {

@@ -1,6 +1,7 @@
 package assert
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -72,6 +73,12 @@ func ErrorMatchesf(tb miniTB, pattern string, err error, msgFormat string, args 
 	}
 }
 
+func ErrorIs(tb miniTB, want, got error) {
+	tb.Helper()
+	if !errors.Is(got, want) {
+		tb.Fatalf("got %#v; want %#v", got, want)
+	}
+}
 func NoError(tb miniTB, err error) {
 	tb.Helper()
 	NoErrorf(tb, err, "")
