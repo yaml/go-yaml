@@ -48,12 +48,12 @@ func DeepEqualf(tb miniTB, want, got interface{}, msgFormat string, args ...inte
 	}
 }
 
-func ErrorMatches(tb miniTB, err error, pattern string) {
+func ErrorMatches(tb miniTB, pattern string, err error) {
 	tb.Helper()
-	ErrorMatchesf(tb, err, pattern, "")
+	ErrorMatchesf(tb, pattern, err, "")
 }
 
-func ErrorMatchesf(tb miniTB, err error, pattern string, msgFormat string, args ...interface{}) {
+func ErrorMatchesf(tb miniTB, pattern string, err error, msgFormat string, args ...interface{}) {
 	tb.Helper()
 	if err == nil {
 		suffix := formatSuffix(msgFormat, args...)
@@ -137,12 +137,12 @@ func Falsef(tb miniTB, got bool, msgFormat string, args ...interface{}) {
 	}
 }
 
-func PanicMatches(tb miniTB, f func(), pattern string) {
+func PanicMatches(tb miniTB, pattern string, f func()) {
 	tb.Helper()
-	PanicMatchesf(tb, f, pattern, "")
+	PanicMatchesf(tb, pattern, f, "")
 }
 
-func PanicMatchesf(tb miniTB, f func(), pattern string, msgFormat string, args ...interface{}) {
+func PanicMatchesf(tb miniTB, pattern string, f func(), msgFormat string, args ...interface{}) {
 	tb.Helper()
 	var pan interface{}
 	func() {

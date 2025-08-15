@@ -50,7 +50,7 @@ func TestLimits(t *testing.T) {
 		var v interface{}
 		err := yaml.Unmarshal(tc.data, &v)
 		if len(tc.error) > 0 {
-			assert.ErrorMatchesf(t, err, tc.error, "testcase: %s", tc.name)
+			assert.ErrorMatchesf(t, tc.error, err, "testcase: %s", tc.name)
 		} else {
 			assert.NoErrorf(t, err, "testcase: %s", tc.name)
 		}
@@ -109,7 +109,7 @@ func benchmark(b *testing.B, name string) {
 			var v interface{}
 			err := yaml.Unmarshal(t.data, &v)
 			if len(t.error) > 0 {
-				assert.ErrorMatches(b, err, t.error)
+				assert.ErrorMatches(b, t.error, err)
 			} else {
 				assert.NoError(b, err)
 			}

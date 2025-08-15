@@ -560,7 +560,7 @@ func TestEncoderMultipleDocuments(t *testing.T) {
 func TestEncoderWriteError(t *testing.T) {
 	enc := yaml.NewEncoder(errorWriter{})
 	err := enc.Encode(map[string]string{"a": "b"})
-	assert.ErrorMatches(t, err, `yaml: write error: some write error`) // Data not flushed yet
+	assert.ErrorMatches(t, `yaml: write error: some write error`, err) // Data not flushed yet
 
 }
 
@@ -592,10 +592,10 @@ func TestMarshalErrors(t *testing.T) {
 	for _, item := range marshalErrorTests {
 		t.Run(item.panic, func(t *testing.T) {
 			if item.panic != "" {
-				assert.PanicMatches(t, func() { yaml.Marshal(item.value) }, item.panic)
+				assert.PanicMatches(t, item.panic, func() { yaml.Marshal(item.value) })
 			} else {
 				_, err := yaml.Marshal(item.value)
-				assert.ErrorMatches(t, err, item.error)
+				assert.ErrorMatches(t, item.error, err)
 			}
 		})
 	}

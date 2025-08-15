@@ -19,7 +19,7 @@ func TestAssertDeepEqual_Success(t *testing.T) {
 
 func TestErrorMatches_Success(t *testing.T) {
 	err := fmt.Errorf("http 404: not found")
-	ErrorMatches(t, err, `http \d+: not found`)
+	ErrorMatches(t, `http \d+: not found`, err)
 }
 
 func TestAssertNoError_Success(t *testing.T) {
@@ -45,8 +45,8 @@ func TestIsNil_NotNil_Success(t *testing.T) {
 }
 
 func TestPanicMatches_Success(t *testing.T) {
-	PanicMatches(t, func() { panic("boom 123") }, `boom \d+`)
-	PanicMatches(t, func() { panic(fmt.Errorf("fail xyz")) }, `fail xyz`)
+	PanicMatches(t, `boom \d+`, func() { panic("boom 123") })
+	PanicMatches(t, `fail xyz`, func() { panic(fmt.Errorf("fail xyz")) })
 }
 
 func TestAssertTrueAndFalse_Success(t *testing.T) {
@@ -119,17 +119,17 @@ func TestAssertDeepEqual_Fails(t *testing.T) {
 func TestErrorMatches_Fails(t *testing.T) {
 	// nil error
 	mockTB1 := &fakeTB{}
-	ErrorMatches(mockTB1, nil, `x`)
+	ErrorMatches(mockTB1, `x`, nil)
 	assertFailureMessageMatches(t, mockTB1, `^got nil; want error matching "x"$`)
 
 	// invalid regexp (message may include parser details; check prefix)
 	mockTB2 := &fakeTB{}
-	ErrorMatches(mockTB2, fmt.Errorf("x"), `(`)
+	ErrorMatches(mockTB2, `(`, fmt.Errorf("x"))
 	assertFailureMessageMatches(t, mockTB2, `^invalid regexp "`)
 
 	// no match
 	mockTB3 := &fakeTB{}
-	ErrorMatches(mockTB3, fmt.Errorf("abc"), `def`)
+	ErrorMatches(mockTB3, `def`, fmt.Errorf("abc"))
 	assertFailureMessageMatches(t, mockTB3, `^error "abc" does not match "def"$`)
 }
 
@@ -170,17 +170,17 @@ func TestNotNil_Fails(t *testing.T) {
 func TestPanicMatches_Fails(t *testing.T) {
 	// no panic
 	mockTB1 := &fakeTB{}
-	PanicMatches(mockTB1, func() {}, `x`)
+	PanicMatches(mockTB1, `x`, func() {})
 	assertFailureMessageMatches(t, mockTB1, `^function did not panic; want panic matching "x"$`)
 
 	// invalid regexp
 	mockTB2 := &fakeTB{}
-	PanicMatches(mockTB2, func() { panic("oops") }, `(`)
+	PanicMatches(mockTB2, `(`, func() { panic("oops") })
 	assertFailureMessageMatches(t, mockTB2, `^invalid regexp "`)
 
 	// pattern mismatch
 	mockTB3 := &fakeTB{}
-	PanicMatches(mockTB3, func() { panic("foo") }, `bar`)
+	PanicMatches(mockTB3, `bar`, func() { panic("foo") })
 	assertFailureMessageMatches(t, mockTB3, `^panic "foo" does not match "bar"$`)
 }
 
