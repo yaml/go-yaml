@@ -1,4 +1,4 @@
-package testutil
+package assert
 
 import (
 	"fmt"
@@ -8,50 +8,50 @@ import (
 )
 
 func TestAssertEqual_Success(t *testing.T) {
-	AssertEqual(t, 2, 2)
-	AssertEqual(t, "ok", "ok")
+	Equal(t, 2, 2)
+	Equal(t, "ok", "ok")
 }
 
 func TestAssertDeepEqual_Success(t *testing.T) {
-	AssertDeepEqual(t, []int{1, 2, 3}, []int{1, 2, 3})
-	AssertDeepEqual(t, map[string]int{"a": 1}, map[string]int{"a": 1})
+	DeepEqual(t, []int{1, 2, 3}, []int{1, 2, 3})
+	DeepEqual(t, map[string]int{"a": 1}, map[string]int{"a": 1})
 }
 
 func TestErrorMatches_Success(t *testing.T) {
 	err := fmt.Errorf("http 404: not found")
-	AssertErrorMatches(t, err, `http \d+: not found`)
+	ErrorMatches(t, err, `http \d+: not found`)
 }
 
 func TestAssertNoError_Success(t *testing.T) {
 	var err error
-	AssertNoError(t, err)
+	NoError(t, err)
 }
 
 func TestIsNil_NotNil_Success(t *testing.T) {
 	var p *int
-	AssertIsNil(t, p)
+	IsNil(t, p)
 
 	var s []int
-	AssertIsNil(t, s)
+	IsNil(t, s)
 
 	var w io.Writer
-	AssertIsNil(t, w)
+	IsNil(t, w)
 
 	s2 := make([]int, 0)
-	AssertNotNil(t, s2)
+	NotNil(t, s2)
 
 	x := 0
-	AssertNotNil(t, &x)
+	NotNil(t, &x)
 }
 
 func TestPanicMatches_Success(t *testing.T) {
-	AssertPanicMatches(t, func() { panic("boom 123") }, `boom \d+`)
-	AssertPanicMatches(t, func() { panic(fmt.Errorf("fail xyz")) }, `fail xyz`)
+	PanicMatches(t, func() { panic("boom 123") }, `boom \d+`)
+	PanicMatches(t, func() { panic(fmt.Errorf("fail xyz")) }, `fail xyz`)
 }
 
 func TestAssertTrueAndFalse_Success(t *testing.T) {
-	AssertTrue(t, true)
-	AssertFalse(t, false)
+	True(t, true)
+	False(t, false)
 }
 
 func Test_isNil_Basics(t *testing.T) {
@@ -100,42 +100,42 @@ func assertFailureMessageMatches(t *testing.T, f *fakeTB, pattern string) {
 
 func TestAssertEqual_Fails(t *testing.T) {
 	mock := &fakeTB{}
-	AssertEqual(mock, 1, 2)
+	Equal(mock, 1, 2)
 	assertFailureMessageMatches(t, mock, `^got 1; want 2$`)
 }
 
 func TestAssertDeepEqual_Fails(t *testing.T) {
 	// slice mismatch
 	mock := &fakeTB{}
-	AssertDeepEqual(mock, []int{1}, []int{2})
+	DeepEqual(mock, []int{1}, []int{2})
 	assertFailureMessageMatches(t, mock, `^got \[1\]; want \[2\]$`)
 
 	// map mismatch
 	mock2 := &fakeTB{}
-	AssertDeepEqual(mock2, map[string]int{"a": 1}, map[string]int{"a": 2})
+	DeepEqual(mock2, map[string]int{"a": 1}, map[string]int{"a": 2})
 	assertFailureMessageMatches(t, mock2, `^got map\[a:1\]; want map\[a:2\]$`)
 }
 
 func TestErrorMatches_Fails(t *testing.T) {
 	// nil error
 	mockTB1 := &fakeTB{}
-	AssertErrorMatches(mockTB1, nil, `x`)
+	ErrorMatches(mockTB1, nil, `x`)
 	assertFailureMessageMatches(t, mockTB1, `^got nil; want error matching "x"$`)
 
 	// invalid regexp (message may include parser details; check prefix)
 	mockTB2 := &fakeTB{}
-	AssertErrorMatches(mockTB2, fmt.Errorf("x"), `(`)
+	ErrorMatches(mockTB2, fmt.Errorf("x"), `(`)
 	assertFailureMessageMatches(t, mockTB2, `^invalid regexp "`)
 
 	// no match
 	mockTB3 := &fakeTB{}
-	AssertErrorMatches(mockTB3, fmt.Errorf("abc"), `def`)
+	ErrorMatches(mockTB3, fmt.Errorf("abc"), `def`)
 	assertFailureMessageMatches(t, mockTB3, `^error "abc" does not match "def"$`)
 }
 
 func TestAssertNoError_Fails(t *testing.T) {
 	m := &fakeTB{}
-	AssertNoError(m, fmt.Errorf("problem"))
+	NoError(m, fmt.Errorf("problem"))
 	assertFailureMessageMatches(t, m, `^unexpected error: problem$`)
 }
 
@@ -143,13 +143,13 @@ func TestIsNil_Fails(t *testing.T) {
 	// non-nil slice
 	mockTB1 := &fakeTB{}
 	s := make([]int, 0)
-	AssertIsNil(mockTB1, s)
+	IsNil(mockTB1, s)
 	assertFailureMessageMatches(t, mockTB1, `^got non-nil \(type `)
 
 	// non-nil pointer
 	mockTB2 := &fakeTB{}
 	x := 1
-	AssertIsNil(mockTB2, &x)
+	IsNil(mockTB2, &x)
 	assertFailureMessageMatches(t, mockTB2, `^got non-nil \(type `)
 }
 
@@ -157,30 +157,30 @@ func TestNotNil_Fails(t *testing.T) {
 	// nil interface
 	mockTB1 := &fakeTB{}
 	var w io.Writer
-	AssertNotNil(mockTB1, w)
+	NotNil(mockTB1, w)
 	assertFailureMessageMatches(t, mockTB1, `^got nil; want non-nil$`)
 
 	// nil pointer
 	mockTB2 := &fakeTB{}
 	var p *int
-	AssertNotNil(mockTB2, p)
+	NotNil(mockTB2, p)
 	assertFailureMessageMatches(t, mockTB2, `^got nil; want non-nil$`)
 }
 
 func TestPanicMatches_Fails(t *testing.T) {
 	// no panic
 	mockTB1 := &fakeTB{}
-	AssertPanicMatches(mockTB1, func() {}, `x`)
+	PanicMatches(mockTB1, func() {}, `x`)
 	assertFailureMessageMatches(t, mockTB1, `^function did not panic; want panic matching "x"$`)
 
 	// invalid regexp
 	mockTB2 := &fakeTB{}
-	AssertPanicMatches(mockTB2, func() { panic("oops") }, `(`)
+	PanicMatches(mockTB2, func() { panic("oops") }, `(`)
 	assertFailureMessageMatches(t, mockTB2, `^invalid regexp "`)
 
 	// pattern mismatch
 	mockTB3 := &fakeTB{}
-	AssertPanicMatches(mockTB3, func() { panic("foo") }, `bar`)
+	PanicMatches(mockTB3, func() { panic("foo") }, `bar`)
 	assertFailureMessageMatches(t, mockTB3, `^panic "foo" does not match "bar"$`)
 }
 
@@ -192,11 +192,11 @@ func TestFormatSuffix_NoArgs(t *testing.T) {
 
 func TestAssertTrueAndFalse_Fails(t *testing.T) {
 	mock1 := &fakeTB{}
-	AssertTrue(mock1, false)
+	True(mock1, false)
 	assertFailureMessageMatches(t, mock1, `^got false; want true$`)
 
 	mock2 := &fakeTB{}
-	AssertFalse(mock2, true)
+	False(mock2, true)
 	assertFailureMessageMatches(t, mock2, `^got true; want false$`)
 }
 
@@ -229,14 +229,14 @@ func TestFormatSuffix_AsUsedByAssertions(t *testing.T) {
 	var w io.Writer // nil interface
 
 	// with format string
-	AssertNotNil(mockTB1, w, "extra %s options %d", "str", 42)
+	NotNil(mockTB1, w, "extra %s options %d", "str", 42)
 	assertFailureMessageMatches(t, mockTB1, `^got nil; want non-nil - extra str options 42$`)
 
 	// with just a string arg
-	AssertNotNil(mockTB1, w, "ba-dum-tss")
+	NotNil(mockTB1, w, "ba-dum-tss")
 	assertFailureMessageMatches(t, mockTB1, `^got nil; want non-nil - ba-dum-tss$`)
 
 	// with non string arg
-	AssertNotNil(mockTB1, w, map[int]bool{3: true})
+	NotNil(mockTB1, w, map[int]bool{3: true})
 	assertFailureMessageMatches(t, mockTB1, `^got nil; want non-nil - map\[3:true\]$`)
 }

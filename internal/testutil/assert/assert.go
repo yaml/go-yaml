@@ -1,4 +1,4 @@
-package testutil
+package assert
 
 import (
 	"fmt"
@@ -24,7 +24,7 @@ func formatSuffix(msgAndArgs ...any) string {
 }
 
 // Comparable types (numbers, strings, pointers to the same object, etc.).
-func AssertEqual(tb miniTB, got, want any, msgAndArgs ...any) {
+func Equal(tb miniTB, got, want any, msgAndArgs ...any) {
 	tb.Helper()
 	if got != want {
 		suffix := formatSuffix(msgAndArgs...)
@@ -33,7 +33,7 @@ func AssertEqual(tb miniTB, got, want any, msgAndArgs ...any) {
 }
 
 // Anything else (slices, maps, structs with slices...).
-func AssertDeepEqual(tb miniTB, got, want any, msgAndArgs ...any) {
+func DeepEqual(tb miniTB, got, want any, msgAndArgs ...any) {
 	tb.Helper()
 	if !reflect.DeepEqual(got, want) {
 		suffix := formatSuffix(msgAndArgs...)
@@ -41,7 +41,7 @@ func AssertDeepEqual(tb miniTB, got, want any, msgAndArgs ...any) {
 	}
 }
 
-func AssertErrorMatches(tb miniTB, err error, pattern string, msgAndArgs ...any) {
+func ErrorMatches(tb miniTB, err error, pattern string, msgAndArgs ...any) {
 	tb.Helper()
 	if err == nil {
 		suffix := formatSuffix(msgAndArgs...)
@@ -60,7 +60,7 @@ func AssertErrorMatches(tb miniTB, err error, pattern string, msgAndArgs ...any)
 	}
 }
 
-func AssertNoError(tb miniTB, err error, msgAndArgs ...any) {
+func NoError(tb miniTB, err error, msgAndArgs ...any) {
 	tb.Helper()
 	if err != nil {
 		suffix := formatSuffix(msgAndArgs...)
@@ -68,7 +68,7 @@ func AssertNoError(tb miniTB, err error, msgAndArgs ...any) {
 	}
 }
 
-func AssertIsNil(tb miniTB, v any, msgAndArgs ...any) {
+func IsNil(tb miniTB, v any, msgAndArgs ...any) {
 	tb.Helper()
 	if !isNil(v) {
 		suffix := formatSuffix(msgAndArgs...)
@@ -76,7 +76,7 @@ func AssertIsNil(tb miniTB, v any, msgAndArgs ...any) {
 	}
 }
 
-func AssertNotNil(tb miniTB, v any, msgAndArgs ...any) {
+func NotNil(tb miniTB, v any, msgAndArgs ...any) {
 	tb.Helper()
 	if isNil(v) {
 		suffix := formatSuffix(msgAndArgs...)
@@ -84,8 +84,7 @@ func AssertNotNil(tb miniTB, v any, msgAndArgs ...any) {
 	}
 }
 
-// AssertTrue fails the test if cond is false.
-func AssertTrue(tb miniTB, got bool, msgAndArgs ...any) {
+func True(tb miniTB, got bool, msgAndArgs ...any) {
 	tb.Helper()
 	if !got {
 		suffix := formatSuffix(msgAndArgs...)
@@ -93,8 +92,7 @@ func AssertTrue(tb miniTB, got bool, msgAndArgs ...any) {
 	}
 }
 
-// AssertFalse fails the test if cond is true.
-func AssertFalse(tb miniTB, got bool, msgAndArgs ...any) {
+func False(tb miniTB, got bool, msgAndArgs ...any) {
 	tb.Helper()
 	if got {
 		suffix := formatSuffix(msgAndArgs...)
@@ -102,7 +100,7 @@ func AssertFalse(tb miniTB, got bool, msgAndArgs ...any) {
 	}
 }
 
-func AssertPanicMatches(tb miniTB, f func(), pattern string, msgAndArgs ...any) {
+func PanicMatches(tb miniTB, f func(), pattern string, msgAndArgs ...any) {
 	tb.Helper()
 	var pan any
 	func() {

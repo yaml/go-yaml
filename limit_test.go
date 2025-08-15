@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"go.yaml.in/yaml/v4"
-	"go.yaml.in/yaml/v4/internal/testutil"
+	"go.yaml.in/yaml/v4/internal/testutil/assert"
 )
 
 var limitTests = []struct {
@@ -50,9 +50,9 @@ func TestLimits(t *testing.T) {
 		var v interface{}
 		err := yaml.Unmarshal(tc.data, &v)
 		if len(tc.error) > 0 {
-			testutil.AssertErrorMatches(t, err, tc.error, "testcase: %s", tc.name)
+			assert.ErrorMatches(t, err, tc.error, "testcase: %s", tc.name)
 		} else {
-			testutil.AssertNoError(t, err, "testcase: %s", tc.name)
+			assert.NoError(t, err, "testcase: %s", tc.name)
 		}
 	}
 }
@@ -109,9 +109,9 @@ func benchmark(b *testing.B, name string) {
 			var v interface{}
 			err := yaml.Unmarshal(t.data, &v)
 			if len(t.error) > 0 {
-				testutil.AssertErrorMatches(b, err, t.error)
+				assert.ErrorMatches(b, err, t.error)
 			} else {
-				testutil.AssertNoError(b, err)
+				assert.NoError(b, err)
 			}
 		}
 
