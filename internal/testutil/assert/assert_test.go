@@ -184,12 +184,6 @@ func TestPanicMatches_Fails(t *testing.T) {
 	assertFailureMessageMatches(t, mockTB3, `^panic "foo" does not match "bar"$`)
 }
 
-func TestFormatSuffix_NoArgs(t *testing.T) {
-	if got := formatSuffix(); got != "" {
-		t.Fatalf("expected empty suffix; got %q", got)
-	}
-}
-
 func TestAssertTrueAndFalse_Fails(t *testing.T) {
 	mock1 := &fakeTB{}
 	True(mock1, false)
@@ -198,6 +192,12 @@ func TestAssertTrueAndFalse_Fails(t *testing.T) {
 	mock2 := &fakeTB{}
 	False(mock2, true)
 	assertFailureMessageMatches(t, mock2, `^got true; want false$`)
+}
+
+func TestFormatSuffix_NoArgs(t *testing.T) {
+	if got := formatSuffix(""); got != "" {
+		t.Fatalf("expected empty suffix; got %q", got)
+	}
 }
 
 func TestFormatSuffix_FormatString(t *testing.T) {
@@ -216,27 +216,19 @@ func TestFormatSuffix_JustString(t *testing.T) {
 	}
 }
 
-func TestFormatSuffix_NonStringArgs(t *testing.T) {
-	got := formatSuffix(map[string]int{"number": 42})
-	want := " - map[number:42]"
-	if got != want {
-		t.Fatalf("got %q; want %q", got, want)
-	}
-}
-
 func TestFormatSuffix_AsUsedByAssertions(t *testing.T) {
 	mockTB1 := &fakeTB{}
 	var w io.Writer // nil interface
 
 	// with format string
-	NotNil(mockTB1, w, "extra %s options %d", "str", 42)
-	assertFailureMessageMatches(t, mockTB1, `^got nil; want non-nil - extra str options 42$`)
+	NotNilf(mockTB1, w, "extra %s options %d foo %+v", "str", 42, map[int]bool{3: true})
+	assertFailureMessageMatches(t, mockTB1, `^got nil; want non-nil - extra str options 42 foo map\[3:true\]$`)
 
 	// with just a string arg
-	NotNil(mockTB1, w, "ba-dum-tss")
+	NotNilf(mockTB1, w, "ba-dum-tss")
 	assertFailureMessageMatches(t, mockTB1, `^got nil; want non-nil - ba-dum-tss$`)
 
-	// with non string arg
-	NotNil(mockTB1, w, map[int]bool{3: true})
-	assertFailureMessageMatches(t, mockTB1, `^got nil; want non-nil - map\[3:true\]$`)
+	// with no message args
+	NotNil(mockTB1, w)
+	assertFailureMessageMatches(t, mockTB1, `^got nil; want non-nil$`)
 }

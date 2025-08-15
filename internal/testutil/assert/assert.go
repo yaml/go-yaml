@@ -11,96 +11,138 @@ type miniTB interface {
 	Fatalf(string, ...interface{})
 }
 
-// formatSuffix builds an optional suffix from msgAndArgs
-func formatSuffix(msgAndArgs ...interface{}) string {
-	switch len(msgAndArgs) {
-	case 0:
+// formatSuffix builds an optional suffix from a printf-style format and args.
+// If msgFormat is empty, an empty string is returned.
+func formatSuffix(msgFormat string, args ...interface{}) string {
+	if msgFormat == "" {
 		return ""
-	case 1:
-		return " - " + fmt.Sprintf("%+v", msgAndArgs[0])
-	default:
-		return " - " + fmt.Sprintf(msgAndArgs[0].(string), msgAndArgs[1:]...)
 	}
+	return " - " + fmt.Sprintf(msgFormat, args...)
 }
 
 // Comparable types (numbers, strings, pointers to the same object, etc.).
-func Equal(tb miniTB, got, want interface{}, msgAndArgs ...interface{}) {
+func Equal(tb miniTB, got, want interface{}) {
+	tb.Helper()
+	Equalf(tb, got, want, "")
+}
+
+func Equalf(tb miniTB, got, want interface{}, msgFormat string, args ...interface{}) {
 	tb.Helper()
 	if got != want {
-		suffix := formatSuffix(msgAndArgs...)
+		suffix := formatSuffix(msgFormat, args...)
 		tb.Fatalf("got %v; want %v%s", got, want, suffix)
 	}
 }
 
 // interface{}thing else (slices, maps, structs with slices...).
-func DeepEqual(tb miniTB, got, want interface{}, msgAndArgs ...interface{}) {
+func DeepEqual(tb miniTB, got, want interface{}) {
+	tb.Helper()
+	DeepEqualf(tb, got, want, "")
+}
+
+func DeepEqualf(tb miniTB, got, want interface{}, msgFormat string, args ...interface{}) {
 	tb.Helper()
 	if !reflect.DeepEqual(got, want) {
-		suffix := formatSuffix(msgAndArgs...)
+		suffix := formatSuffix(msgFormat, args...)
 		tb.Fatalf("got %+v; want %+v%s", got, want, suffix)
 	}
 }
 
-func ErrorMatches(tb miniTB, err error, pattern string, msgAndArgs ...interface{}) {
+func ErrorMatches(tb miniTB, err error, pattern string) {
+	tb.Helper()
+	ErrorMatchesf(tb, err, pattern, "")
+}
+
+func ErrorMatchesf(tb miniTB, err error, pattern string, msgFormat string, args ...interface{}) {
 	tb.Helper()
 	if err == nil {
-		suffix := formatSuffix(msgAndArgs...)
+		suffix := formatSuffix(msgFormat, args...)
 		tb.Fatalf("got nil; want error matching %q%s", pattern, suffix)
 		return
 	}
 	re, reErr := regexp.Compile(pattern)
 	if reErr != nil {
-		suffix := formatSuffix(msgAndArgs...)
+		suffix := formatSuffix(msgFormat, args...)
 		tb.Fatalf("invalid regexp %q: %v%s", pattern, reErr, suffix)
 		return
 	}
 	if !re.MatchString(err.Error()) {
-		suffix := formatSuffix(msgAndArgs...)
+		suffix := formatSuffix(msgFormat, args...)
 		tb.Fatalf("error %q does not match %q%s", err.Error(), pattern, suffix)
 	}
 }
 
-func NoError(tb miniTB, err error, msgAndArgs ...interface{}) {
+func NoError(tb miniTB, err error) {
+	tb.Helper()
+	NoErrorf(tb, err, "")
+}
+
+func NoErrorf(tb miniTB, err error, msgFormat string, args ...interface{}) {
 	tb.Helper()
 	if err != nil {
-		suffix := formatSuffix(msgAndArgs...)
+		suffix := formatSuffix(msgFormat, args...)
 		tb.Fatalf("unexpected error: %v%s", err, suffix)
 	}
 }
 
-func IsNil(tb miniTB, v interface{}, msgAndArgs ...interface{}) {
+func IsNil(tb miniTB, v interface{}) {
+	tb.Helper()
+	IsNilf(tb, v, "")
+}
+
+func IsNilf(tb miniTB, v interface{}, msgFormat string, args ...interface{}) {
 	tb.Helper()
 	if !isNil(v) {
-		suffix := formatSuffix(msgAndArgs...)
+		suffix := formatSuffix(msgFormat, args...)
 		tb.Fatalf("got non-nil (type %T): %#v%s", v, v, suffix)
 	}
 }
 
-func NotNil(tb miniTB, v interface{}, msgAndArgs ...interface{}) {
+func NotNil(tb miniTB, v interface{}) {
+	tb.Helper()
+	NotNilf(tb, v, "")
+}
+
+func NotNilf(tb miniTB, v interface{}, msgFormat string, args ...interface{}) {
 	tb.Helper()
 	if isNil(v) {
-		suffix := formatSuffix(msgAndArgs...)
+		suffix := formatSuffix(msgFormat, args...)
 		tb.Fatalf("got nil; want non-nil%s", suffix)
 	}
 }
 
-func True(tb miniTB, got bool, msgAndArgs ...interface{}) {
+func True(tb miniTB, got bool) {
+	tb.Helper()
+	Truef(tb, got, "")
+}
+
+func Truef(tb miniTB, got bool, msgFormat string, args ...interface{}) {
 	tb.Helper()
 	if !got {
-		suffix := formatSuffix(msgAndArgs...)
+		suffix := formatSuffix(msgFormat, args...)
 		tb.Fatalf("got false; want true%s", suffix)
 	}
 }
 
-func False(tb miniTB, got bool, msgAndArgs ...interface{}) {
+func False(tb miniTB, got bool) {
+	tb.Helper()
+	Falsef(tb, got, "")
+}
+
+func Falsef(tb miniTB, got bool, msgFormat string, args ...interface{}) {
 	tb.Helper()
 	if got {
-		suffix := formatSuffix(msgAndArgs...)
+		suffix := formatSuffix(msgFormat, args...)
 		tb.Fatalf("got true; want false%s", suffix)
 	}
 }
 
-func PanicMatches(tb miniTB, f func(), pattern string, msgAndArgs ...interface{}) {
+func PanicMatches(tb miniTB, f func(), pattern string) {
+	tb.Helper()
+	PanicMatchesf(tb, f, pattern, "")
+}
+
+func PanicMatchesf(tb miniTB, f func(), pattern string, msgFormat string, args ...interface{}) {
 	tb.Helper()
 	var pan interface{}
 	func() {
@@ -108,28 +150,28 @@ func PanicMatches(tb miniTB, f func(), pattern string, msgAndArgs ...interface{}
 		f()
 	}()
 	if pan == nil {
-		suffix := formatSuffix(msgAndArgs...)
+		suffix := formatSuffix(msgFormat, args...)
 		tb.Fatalf("function did not panic; want panic matching %q%s", pattern, suffix)
 		return
 	}
-	var msg string
+	var pmsg string
 	switch x := pan.(type) {
 	case error:
-		msg = x.Error()
+		pmsg = x.Error()
 	case string:
-		msg = x
+		pmsg = x
 	default:
-		msg = fmt.Sprint(x)
+		pmsg = fmt.Sprint(x)
 	}
 	re, reErr := regexp.Compile(pattern)
 	if reErr != nil {
-		suffix := formatSuffix(msgAndArgs...)
+		suffix := formatSuffix(msgFormat, args...)
 		tb.Fatalf("invalid regexp %q: %v%s", pattern, reErr, suffix)
 		return
 	}
-	if !re.MatchString(msg) {
-		suffix := formatSuffix(msgAndArgs...)
-		tb.Fatalf("panic %q does not match %q%s", msg, pattern, suffix)
+	if !re.MatchString(pmsg) {
+		suffix := formatSuffix(msgFormat, args...)
+		tb.Fatalf("panic %q does not match %q%s", pmsg, pattern, suffix)
 	}
 }
 

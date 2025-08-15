@@ -889,7 +889,7 @@ func TestUnmarshal(t *testing.T) {
 			if _, ok := err.(*yaml.TypeError); !ok {
 				assert.NoError(t, err)
 			}
-			assert.DeepEqual(t, value.Elem().Interface(), item.value, "error: %v", err)
+			assert.DeepEqualf(t, value.Elem().Interface(), item.value, "error: %v", err)
 		})
 	}
 }
@@ -1032,7 +1032,7 @@ func TestUnmarshalErrors(t *testing.T) {
 		t.Run(fmt.Sprintf("test %d: %q", i, item.data), func(t *testing.T) {
 			var value interface{}
 			err := yaml.Unmarshal([]byte(item.data), &value)
-			assert.ErrorMatches(t, err, item.error, "Partial unmarshal: %#v", value)
+			assert.ErrorMatchesf(t, err, item.error, "Partial unmarshal: %#v", value)
 		})
 	}
 }
@@ -1042,7 +1042,7 @@ func TestDecoderErrors(t *testing.T) {
 		t.Run(fmt.Sprintf("test %d: %q", i, item.data), func(t *testing.T) {
 			var value interface{}
 			err := yaml.NewDecoder(strings.NewReader(item.data)).Decode(&value)
-			assert.ErrorMatches(t, err, item.error, "Partial unmarshal: %#v", value)
+			assert.ErrorMatchesf(t, err, item.error, "Partial unmarshal: %#v", value)
 		})
 	}
 }
@@ -1141,7 +1141,7 @@ func TestUnmarshalerPointerField(t *testing.T) {
 		if item.value == nil {
 			assert.IsNil(t, obj.Field)
 		} else {
-			assert.NotNil(t, obj.Field, "Pointer not initialized (%#v)", item.value)
+			assert.NotNilf(t, obj.Field, "Pointer not initialized (%#v)", item.value)
 			assert.DeepEqual(t, obj.Field.value, item.value)
 		}
 	}
@@ -1152,7 +1152,7 @@ func TestUnmarshalerPointerField(t *testing.T) {
 		if item.value == nil {
 			assert.IsNil(t, obj.Field)
 		} else {
-			assert.NotNil(t, obj.Field, "Pointer not initialized (%#v)", item.value)
+			assert.NotNilf(t, obj.Field, "Pointer not initialized (%#v)", item.value)
 			assert.DeepEqual(t, obj.Field.value, item.value)
 		}
 	}
@@ -1163,7 +1163,7 @@ func TestUnmarshalerValueField(t *testing.T) {
 		obj := &obsoleteUnmarshalerValue{}
 		err := yaml.Unmarshal([]byte(item.data), obj)
 		assert.NoError(t, err)
-		assert.NotNil(t, obj.Field, "Pointer not initialized (%#v)", item.value)
+		assert.NotNilf(t, obj.Field, "Pointer not initialized (%#v)", item.value)
 		assert.DeepEqual(t, obj.Field.value, item.value)
 	}
 }
@@ -1187,7 +1187,7 @@ func TestUnmarshalerWholeDocument(t *testing.T) {
 	err := yaml.Unmarshal([]byte(unmarshalerTests[0].data), obj)
 	assert.NoError(t, err)
 	value, ok := obj.value.(map[string]interface{})
-	assert.True(t, ok, "value: %#v", obj.value)
+	assert.Truef(t, ok, "value: %#v", obj.value)
 	assert.DeepEqual(t, value["_"], unmarshalerTests[0].value)
 }
 
@@ -1527,10 +1527,10 @@ func TestMerge(t *testing.T) {
 			continue
 		}
 		if name == "plain" {
-			assert.DeepEqual(t, test, wantStringMap, "test %q failed", name)
+			assert.DeepEqualf(t, test, wantStringMap, "test %q failed", name)
 			continue
 		}
-		assert.DeepEqual(t, test, want, "test %q failed", name)
+		assert.DeepEqualf(t, test, want, "test %q failed", name)
 	}
 }
 
@@ -1548,7 +1548,7 @@ func TestMergeStruct(t *testing.T) {
 		if name == "anchors" {
 			continue
 		}
-		assert.DeepEqual(t, test, want, "test %q failed", name)
+		assert.DeepEqualf(t, test, want, "test %q failed", name)
 	}
 }
 
