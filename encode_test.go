@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -521,7 +522,8 @@ var marshalTests = []struct {
 }
 
 func TestMarshal(t *testing.T) {
-	t.Setenv("TZ", "UTC")
+	defer os.Setenv("TZ", os.Getenv("TZ"))
+	os.Setenv("TZ", "UTC")
 	for i, item := range marshalTests {
 		t.Run(fmt.Sprintf("test %d: %q", i, item.data), func(t *testing.T) {
 			data, err := yaml.Marshal(item.value)

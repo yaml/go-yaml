@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"testing"
 
@@ -2746,7 +2747,8 @@ var nodeTests = []struct {
 }
 
 func TestNodeRoundtrip(t *testing.T) {
-	t.Setenv("TZ", "UTC")
+	defer os.Setenv("TZ", os.Getenv("TZ"))
+	os.Setenv("TZ", "UTC")
 	for i, item := range nodeTests {
 		t.Logf("test %d: %q", i, item.yaml)
 
@@ -2892,7 +2894,8 @@ var setStringTests = []struct {
 }
 
 func TestSetString(t *testing.T) {
-	t.Setenv("TZ", "UTC")
+	defer os.Setenv("TZ", os.Getenv("TZ"))
+	os.Setenv("TZ", "UTC")
 	for i, item := range setStringTests {
 		t.Logf("test %d: %q", i, item.str)
 
