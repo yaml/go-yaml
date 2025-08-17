@@ -1480,7 +1480,7 @@ func TestUnmarshalerError(t *testing.T) {
 	data := `{foo: 123, bar: {}, spam: "test"}`
 	dst := struct {
 		Foo  int
-		Bar  *obsoleteFailingUnmarshaler
+		Bar  *failingUnmarshaler
 		Spam string
 	}{}
 	err := yaml.Unmarshal([]byte(data), &dst)
@@ -1496,7 +1496,7 @@ func TestUnmarshalerError(t *testing.T) {
 	if got, want := dst.Foo, 123; got != want {
 		t.Errorf("foo unmarshaled incorrectly, got %#v, want  %#v", got, want)
 	}
-	if got, want := dst.Bar, (&obsoleteFailingUnmarshaler{}); !reflect.DeepEqual(got, want) {
+	if got, want := dst.Bar, (&failingUnmarshaler{}); !reflect.DeepEqual(got, want) {
 		t.Errorf("bar unmarshaled incorrectly, got %#v, want  %#v", got, want)
 	}
 	if got, want := dst.Spam, "test"; got != want {
