@@ -603,7 +603,12 @@ func (d *decoder) scalar(n *Node, out reflect.Value) bool {
 			}
 			err := u.UnmarshalText(text)
 			if err != nil {
-				fail(err)
+				d.terrors = append(d.terrors, &UnmarshalError{
+					Err:    err,
+					Line:   n.Line,
+					Column: n.Column,
+				})
+				return false
 			}
 			return true
 		}

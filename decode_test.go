@@ -17,6 +17,7 @@ package yaml_test
 
 import (
 	"bytes"
+	"encoding"
 	"errors"
 	"fmt"
 	"io"
@@ -1531,6 +1532,42 @@ func TestObsoleteUnmarshalerError(t *testing.T) {
 		t.Errorf("foo unmarshaled incorrectly, got %#v, want %#v", got, want)
 	}
 	if got, want := dst.Bar, (&obsoleteFailingUnmarshaler{}); !reflect.DeepEqual(got, want) {
+		t.Errorf("bar unmarshaled incorrectly, got %#v, want %#v", got, want)
+	}
+	if got, want := dst.Spam, "test"; got != want {
+		t.Errorf("spam unmarshaled incorrectly, got %#v, want %#v", got, want)
+	}
+}
+
+type failingTextUnmarshaler struct{}
+
+var _ encoding.TextUnmarshaler = &failingTextUnmarshaler{}
+
+func (ft *failingTextUnmarshaler) UnmarshalText(b []byte) error {
+	return failingErr
+}
+
+func TestTextUnmarshalerError(t *testing.T) {
+	data := `{foo: 123, bar: "456", spam: "test"}`
+	dst := struct {
+		Foo  int
+		Bar  *failingTextUnmarshaler
+		Spam string
+	}{}
+	err := yaml.Unmarshal([]byte(data), &dst)
+	expectedErr := &yaml.TypeError{
+		Errors: []*yaml.UnmarshalError{
+			{Line: 1, Column: 17, Err: failingErr},
+		},
+	}
+	if !reflect.DeepEqual(expectedErr, err) {
+		t.Errorf("expected error %#v, got %#v", expectedErr, err)
+	}
+	// whatever could be unmarshaled must be unmarshaled
+	if got, want := dst.Foo, 123; got != want {
+		t.Errorf("foo unmarshaled incorrectly, got %#v, want %#v", got, want)
+	}
+	if got, want := dst.Bar, (&failingTextUnmarshaler{}); !reflect.DeepEqual(got, want) {
 		t.Errorf("bar unmarshaled incorrectly, got %#v, want %#v", got, want)
 	}
 	if got, want := dst.Spam, "test"; got != want {
