@@ -33,7 +33,7 @@ import (
 var marshalIntTest = 123
 
 var marshalTests = []struct {
-	value interface{}
+	value any
 	data  string
 }{
 	{
@@ -49,7 +49,7 @@ var marshalTests = []struct {
 		map[string]string{"v": "hi"},
 		"v: hi\n",
 	}, {
-		map[string]interface{}{"v": "hi"},
+		map[string]any{"v": "hi"},
 		"v: hi\n",
 	}, {
 		map[string]string{"v": "true"},
@@ -58,22 +58,22 @@ var marshalTests = []struct {
 		map[string]string{"v": "false"},
 		"v: \"false\"\n",
 	}, {
-		map[string]interface{}{"v": true},
+		map[string]any{"v": true},
 		"v: true\n",
 	}, {
-		map[string]interface{}{"v": false},
+		map[string]any{"v": false},
 		"v: false\n",
 	}, {
-		map[string]interface{}{"v": 10},
+		map[string]any{"v": 10},
 		"v: 10\n",
 	}, {
-		map[string]interface{}{"v": -10},
+		map[string]any{"v": -10},
 		"v: -10\n",
 	}, {
 		map[string]uint{"v": 42},
 		"v: 42\n",
 	}, {
-		map[string]interface{}{"v": int64(4294967296)},
+		map[string]any{"v": int64(4294967296)},
 		"v: 4294967296\n",
 	}, {
 		map[string]int64{"v": int64(4294967296)},
@@ -82,34 +82,34 @@ var marshalTests = []struct {
 		map[string]uint64{"v": 4294967296},
 		"v: 4294967296\n",
 	}, {
-		map[string]interface{}{"v": "10"},
+		map[string]any{"v": "10"},
 		"v: \"10\"\n",
 	}, {
-		map[string]interface{}{"v": 0.1},
+		map[string]any{"v": 0.1},
 		"v: 0.1\n",
 	}, {
-		map[string]interface{}{"v": float64(0.1)},
+		map[string]any{"v": float64(0.1)},
 		"v: 0.1\n",
 	}, {
-		map[string]interface{}{"v": float32(0.99)},
+		map[string]any{"v": float32(0.99)},
 		"v: 0.99\n",
 	}, {
-		map[string]interface{}{"v": -0.1},
+		map[string]any{"v": -0.1},
 		"v: -0.1\n",
 	}, {
-		map[string]interface{}{"v": math.Inf(+1)},
+		map[string]any{"v": math.Inf(+1)},
 		"v: .inf\n",
 	}, {
-		map[string]interface{}{"v": math.Inf(-1)},
+		map[string]any{"v": math.Inf(-1)},
 		"v: -.inf\n",
 	}, {
-		map[string]interface{}{"v": math.NaN()},
+		map[string]any{"v": math.NaN()},
 		"v: .nan\n",
 	}, {
-		map[string]interface{}{"v": nil},
+		map[string]any{"v": nil},
 		"v: null\n",
 	}, {
-		map[string]interface{}{"v": ""},
+		map[string]any{"v": ""},
 		"v: \"\"\n",
 	}, {
 		map[string][]string{"v": []string{"A", "B"}},
@@ -118,16 +118,16 @@ var marshalTests = []struct {
 		map[string][]string{"v": []string{"A", "B\nC"}},
 		"v:\n    - A\n    - |-\n      B\n      C\n",
 	}, {
-		map[string][]interface{}{"v": []interface{}{"A", 1, map[string][]int{"B": []int{2, 3}}}},
+		map[string][]any{"v": []any{"A", 1, map[string][]int{"B": []int{2, 3}}}},
 		"v:\n    - A\n    - 1\n    - B:\n        - 2\n        - 3\n",
 	}, {
-		map[string]interface{}{"a": map[interface{}]interface{}{"b": "c"}},
+		map[string]any{"a": map[any]any{"b": "c"}},
 		"a:\n    b: c\n",
 	}, {
-		map[string]interface{}{"a": "-"},
+		map[string]any{"a": "-"},
 		"a: '-'\n",
 	}, {
-		map[string]interface{}{"v": negativeZero},
+		map[string]any{"v": negativeZero},
 		"v: -0\n",
 	},
 
@@ -428,7 +428,7 @@ var marshalTests = []struct {
 
 	// Check indentation of maps inside sequences inside maps.
 	{
-		map[string]interface{}{"a": map[string]interface{}{"b": []map[string]int{{"c": 1, "d": 2}}}},
+		map[string]any{"a": map[string]any{"b": []map[string]int{{"c": 1, "d": 2}}}},
 		"a:\n    b:\n        - c: 1\n          d: 2\n",
 	},
 
@@ -440,10 +440,10 @@ var marshalTests = []struct {
 		map[string]string{"a": "\t\n\t\n"},
 		"a: \"\\t\\n\\t\\n\"\n",
 	}, {
-		map[string]interface{}{"<<": []string{}},
+		map[string]any{"<<": []string{}},
 		"\"<<\": []\n",
 	}, {
-		map[string]interface{}{"foo": "<<"},
+		map[string]any{"foo": "<<"},
 		"foo: \"<<\"\n",
 	},
 
@@ -514,8 +514,8 @@ var marshalTests = []struct {
 	},
 	// bug: question mark in value
 	{
-		map[string]interface{}{
-			"foo": map[string]interface{}{"bar": "a?bc"},
+		map[string]any{
+			"foo": map[string]any{"bar": "a?bc"},
 		},
 		"foo:\n    bar: a?bc\n",
 	},
@@ -573,7 +573,7 @@ func (errorWriter) Write([]byte) (int, error) {
 }
 
 var marshalErrorTests = []struct {
-	value interface{}
+	value any
 	error string
 	panic string
 }{{
@@ -621,24 +621,24 @@ func TestMarshalTypeCache(t *testing.T) {
 
 var marshalerTests = []struct {
 	data  string
-	value interface{}
+	value any
 }{
-	{"_:\n    hi: there\n", map[interface{}]interface{}{"hi": "there"}},
-	{"_:\n    - 1\n    - A\n", []interface{}{1, "A"}},
+	{"_:\n    hi: there\n", map[any]any{"hi": "there"}},
+	{"_:\n    - 1\n    - A\n", []any{1, "A"}},
 	{"_: 10\n", 10},
 	{"_: null\n", nil},
 	{"_: BAR!\n", "BAR!"},
 }
 
 type marshalerType struct {
-	value interface{}
+	value any
 }
 
 func (o marshalerType) MarshalText() ([]byte, error) {
 	panic("MarshalText called on type with MarshalYAML")
 }
 
-func (o marshalerType) MarshalYAML() (interface{}, error) {
+func (o marshalerType) MarshalYAML() (any, error) {
 	return o.value, nil
 }
 
@@ -668,7 +668,7 @@ func TestMarshalerWholeDocument(t *testing.T) {
 
 type failingMarshaler struct{}
 
-func (ft *failingMarshaler) MarshalYAML() (interface{}, error) {
+func (ft *failingMarshaler) MarshalYAML() (any, error) {
 	return nil, failingErr
 }
 
@@ -681,7 +681,7 @@ func TestSetIndent(t *testing.T) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	enc.SetIndent(8)
-	err := enc.Encode(map[string]interface{}{"a": map[string]interface{}{"b": map[string]string{"c": "d"}}})
+	err := enc.Encode(map[string]any{"a": map[string]any{"b": map[string]string{"c": "d"}}})
 	assert.NoError(t, err)
 	err = enc.Close()
 	assert.NoError(t, err)
@@ -689,7 +689,7 @@ func TestSetIndent(t *testing.T) {
 }
 
 func TestSortedOutput(t *testing.T) {
-	order := []interface{}{
+	order := []any{
 		false,
 		true,
 		1,
@@ -737,7 +737,7 @@ func TestSortedOutput(t *testing.T) {
 		"e4b",
 		"e21a",
 	}
-	m := make(map[interface{}]int)
+	m := make(map[any]int)
 	for _, k := range order {
 		m[k] = 1
 	}
@@ -771,7 +771,7 @@ func TestCompactSeqIndentDefault(t *testing.T) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	enc.CompactSeqIndent()
-	err := enc.Encode(map[string]interface{}{"a": []string{"b", "c"}})
+	err := enc.Encode(map[string]any{"a": []string{"b", "c"}})
 	assert.NoError(t, err)
 	err = enc.Close()
 	assert.NoError(t, err)
@@ -787,7 +787,7 @@ func TestCompactSequenceWithSetIndent(t *testing.T) {
 	enc := yaml.NewEncoder(&buf)
 	enc.CompactSeqIndent()
 	enc.SetIndent(2)
-	err := enc.Encode(map[string]interface{}{"a": []string{"b", "c"}})
+	err := enc.Encode(map[string]any{"a": []string{"b", "c"}})
 	assert.NoError(t, err)
 	err = enc.Close()
 	assert.NoError(t, err)
