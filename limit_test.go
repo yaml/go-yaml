@@ -47,7 +47,7 @@ func TestLimits(t *testing.T) {
 		return
 	}
 	for _, tc := range limitTests {
-		var v interface{}
+		var v any
 		err := yaml.Unmarshal(tc.data, &v)
 		if len(tc.error) > 0 {
 			assert.ErrorMatchesf(t, tc.error, err, "testcase: %s", tc.name)
@@ -106,7 +106,7 @@ func benchmark(b *testing.B, name string) {
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			var v interface{}
+			var v any
 			err := yaml.Unmarshal(t.data, &v)
 			if len(t.error) > 0 {
 				assert.ErrorMatches(b, t.error, err)

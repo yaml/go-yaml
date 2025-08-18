@@ -645,10 +645,10 @@ func yaml_parser_set_scanner_tag_error(parser *yaml_parser_t, directive bool, co
 	return yaml_parser_set_scanner_error(parser, context, context_mark, problem)
 }
 
-func trace(args ...interface{}) func() {
-	pargs := append([]interface{}{"+++"}, args...)
+func trace(args ...any) func() {
+	pargs := append([]any{"+++"}, args...)
 	fmt.Println(pargs...)
-	pargs = append([]interface{}{"---"}, args...)
+	pargs = append([]any{"---"}, args...)
 	return func() { fmt.Println(pargs...) }
 }
 
