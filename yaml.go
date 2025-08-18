@@ -368,14 +368,6 @@ func (e *TypeError) Error() string {
 	return b.String()
 }
 
-func (e *TypeError) Unwrap() []error {
-	errs := make([]error, 0, len(e.Errors))
-	for _, err := range e.Errors {
-		errs = append(errs, err)
-	}
-	return errs
-}
-
 type Kind uint32
 
 const (
