@@ -39,7 +39,7 @@ type Unmarshaler interface {
 }
 
 type obsoleteUnmarshaler interface {
-	UnmarshalYAML(unmarshal func(interface{}) error) error
+	UnmarshalYAML(unmarshal func(any) error) error
 }
 
 // The Marshaler interface may be implemented by types to customize their
@@ -49,7 +49,7 @@ type obsoleteUnmarshaler interface {
 // If an error is returned by MarshalYAML, the marshaling procedure stops
 // and returns with the provided error.
 type Marshaler interface {
-	MarshalYAML() (interface{}, error)
+	MarshalYAML() (any, error)
 }
 
 // Unmarshal decodes the first document found within the in byte slice
@@ -85,7 +85,7 @@ type Marshaler interface {
 //
 // See the documentation of Marshal for the format of tags and a list of
 // supported tag options.
-func Unmarshal(in []byte, out interface{}) (err error) {
+func Unmarshal(in []byte, out any) (err error) {
 	return unmarshal(in, out, false)
 }
 
@@ -116,7 +116,7 @@ func (dec *Decoder) KnownFields(enable bool) {
 //
 // See the documentation for Unmarshal for details about the
 // conversion of YAML into a Go value.
-func (dec *Decoder) Decode(v interface{}) (err error) {
+func (dec *Decoder) Decode(v any) (err error) {
 	d := newDecoder()
 	d.knownFields = dec.knownFields
 	defer handleErr(&err)
@@ -139,7 +139,7 @@ func (dec *Decoder) Decode(v interface{}) (err error) {
 //
 // See the documentation for Unmarshal for details about the
 // conversion of YAML into a Go value.
-func (n *Node) Decode(v interface{}) (err error) {
+func (n *Node) Decode(v any) (err error) {
 	d := newDecoder()
 	defer handleErr(&err)
 	out := reflect.ValueOf(v)
@@ -153,7 +153,7 @@ func (n *Node) Decode(v interface{}) (err error) {
 	return nil
 }
 
-func unmarshal(in []byte, out interface{}, strict bool) (err error) {
+func unmarshal(in []byte, out any, strict bool) (err error) {
 	defer handleErr(&err)
 	d := newDecoder()
 	p := newParser(in)
@@ -214,7 +214,7 @@ func unmarshal(in []byte, out interface{}, strict bool) (err error) {
 //	}
 //	yaml.Marshal(&T{B: 2}) // Returns "b: 2\n"
 //	yaml.Marshal(&T{F: 1}} // Returns "a: 1\nb: 0\n"
-func Marshal(in interface{}) (out []byte, err error) {
+func Marshal(in any) (out []byte, err error) {
 	defer handleErr(&err)
 	e := newEncoder()
 	defer e.destroy()
@@ -245,7 +245,7 @@ func NewEncoder(w io.Writer) *Encoder {
 //
 // See the documentation for Marshal for details about the conversion of Go
 // values to YAML.
-func (e *Encoder) Encode(v interface{}) (err error) {
+func (e *Encoder) Encode(v any) (err error) {
 	defer handleErr(&err)
 	e.encoder.marshalDoc("", reflect.ValueOf(v))
 	return nil
@@ -255,7 +255,7 @@ func (e *Encoder) Encode(v interface{}) (err error) {
 //
 // See the documentation for Marshal for details about the
 // conversion of Go values into YAML.
-func (n *Node) Encode(v interface{}) (err error) {
+func (n *Node) Encode(v any) (err error) {
 	defer handleErr(&err)
 	e := newEncoder()
 	defer e.destroy()
@@ -313,7 +313,7 @@ func fail(err error) {
 	panic(&yamlError{err})
 }
 
-func failf(format string, args ...interface{}) {
+func failf(format string, args ...any) {
 	panic(&yamlError{fmt.Errorf("yaml: "+format, args...)})
 }
 
@@ -383,7 +383,7 @@ func (e *TypeError) Is(target error) bool {
 // As checks if the error is equal to any of the errors in the TypeError.
 //
 // [errors.As] will call this method when unwrapping errors.
-func (e *TypeError) As(target interface{}) bool {
+func (e *TypeError) As(target any) bool {
 	for _, err := range e.Errors {
 		if errors.As(err, target) {
 			return true

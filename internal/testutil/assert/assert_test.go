@@ -80,7 +80,7 @@ type fakeTB struct {
 
 func (f *fakeTB) Helper() {}
 
-func (f *fakeTB) Fatalf(format string, args ...interface{}) {
+func (f *fakeTB) Fatalf(format string, args ...any) {
 	f.failed = true
 	f.msg = fmt.Sprintf(format, args...)
 }

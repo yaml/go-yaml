@@ -319,14 +319,14 @@ type decoder struct {
 	aliasCount  int
 	aliasDepth  int
 
-	mergedFields map[interface{}]bool
+	mergedFields map[any]bool
 }
 
 var (
 	nodeType       = reflect.TypeOf(Node{})
 	durationType   = reflect.TypeOf(time.Duration(0))
-	stringMapType  = reflect.TypeOf(map[string]interface{}{})
-	generalMapType = reflect.TypeOf(map[interface{}]interface{}{})
+	stringMapType  = reflect.TypeOf(map[string]any{})
+	generalMapType = reflect.TypeOf(map[any]any{})
 	ifaceType      = generalMapType.Elem()
 )
 
@@ -379,7 +379,7 @@ func (d *decoder) callUnmarshaler(n *Node, u Unmarshaler) (good bool) {
 
 func (d *decoder) callObsoleteUnmarshaler(n *Node, u obsoleteUnmarshaler) (good bool) {
 	terrlen := len(d.terrors)
-	err := u.UnmarshalYAML(func(v interface{}) (err error) {
+	err := u.UnmarshalYAML(func(v any) (err error) {
 		defer handleErr(&err)
 		d.unmarshal(n, reflect.ValueOf(v))
 		if len(d.terrors) > terrlen {
@@ -565,7 +565,7 @@ func (d *decoder) null(out reflect.Value) bool {
 
 func (d *decoder) scalar(n *Node, out reflect.Value) bool {
 	var tag string
-	var resolved interface{}
+	var resolved any
 	if n.indicatedString() {
 		tag = strTag
 		resolved = n.Value
@@ -725,7 +725,7 @@ func (d *decoder) scalar(n *Node, out reflect.Value) bool {
 	return false
 }
 
-func settableValueOf(i interface{}) reflect.Value {
+func settableValueOf(i any) reflect.Value {
 	v := reflect.ValueOf(i)
 	sv := reflect.New(v.Type()).Elem()
 	sv.Set(v)
@@ -746,7 +746,7 @@ func (d *decoder) sequence(n *Node, out reflect.Value) (good bool) {
 	case reflect.Interface:
 		// No type hints. Will have to use a generic sequence.
 		iface = out
-		out = settableValueOf(make([]interface{}, l))
+		out = settableValueOf(make([]any, l))
 	default:
 		d.terror(n, seqTag, out)
 		return false
@@ -974,7 +974,7 @@ func failWantMap() {
 	failf("map merge requires map or sequence of maps as the value")
 }
 
-func (d *decoder) setPossiblyUnhashableKey(m map[interface{}]bool, key interface{}, value bool) {
+func (d *decoder) setPossiblyUnhashableKey(m map[any]bool, key any, value bool) {
 	defer func() {
 		if err := recover(); err != nil {
 			failf("%v", err)
@@ -983,7 +983,7 @@ func (d *decoder) setPossiblyUnhashableKey(m map[interface{}]bool, key interface
 	m[key] = value
 }
 
-func (d *decoder) getPossiblyUnhashableKey(m map[interface{}]bool, key interface{}) bool {
+func (d *decoder) getPossiblyUnhashableKey(m map[any]bool, key any) bool {
 	defer func() {
 		if err := recover(); err != nil {
 			failf("%v", err)
@@ -995,7 +995,7 @@ func (d *decoder) getPossiblyUnhashableKey(m map[interface{}]bool, key interface
 func (d *decoder) merge(parent *Node, merge *Node, out reflect.Value) {
 	mergedFields := d.mergedFields
 	if mergedFields == nil {
-		d.mergedFields = make(map[interface{}]bool)
+		d.mergedFields = make(map[any]bool)
 		for i := 0; i < len(parent.Content); i += 2 {
 			k := reflect.New(ifaceType).Elem()
 			if d.unmarshal(parent.Content[i], k) {

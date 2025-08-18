@@ -2926,7 +2926,7 @@ func TestSetString(t *testing.T) {
 }
 
 var nodeEncodeDecodeTests = []struct {
-	value interface{}
+	value any
 	yaml  string
 	node  yaml.Node
 }{{
@@ -2955,7 +2955,7 @@ var nodeEncodeDecodeTests = []struct {
 		Tag:   "!!int",
 	},
 }, {
-	[]interface{}{1, 2},
+	[]any{1, 2},
 	"[1, 2]",
 	yaml.Node{
 		Kind: yaml.SequenceNode,
@@ -2971,7 +2971,7 @@ var nodeEncodeDecodeTests = []struct {
 		}},
 	},
 }, {
-	map[string]interface{}{"a": "b"},
+	map[string]any{"a": "b"},
 	"a: b",
 	yaml.Node{
 		Kind: yaml.MappingNode,
@@ -2992,7 +2992,7 @@ func TestNodeEncodeDecode(t *testing.T) {
 	for i, item := range nodeEncodeDecodeTests {
 		t.Logf("Encode/Decode test value #%d: %#v", i, item.value)
 
-		var v interface{}
+		var v any
 		err := item.node.Decode(&v)
 		assert.NoError(t, err)
 		assert.DeepEqual(t, item.value, v)

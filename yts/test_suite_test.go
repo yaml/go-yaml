@@ -115,7 +115,7 @@ func runTest(t *testing.T, testPath string) {
 	_, err = os.Stat(errorPath)
 	expectError := err == nil
 
-	var unmarshaledValue interface{}
+	var unmarshaledValue any
 	var unmarshalErr error
 
 	t.Run("UnmarshalTest", func(t *testing.T) {
@@ -168,7 +168,7 @@ func runTest(t *testing.T, testPath string) {
 
 	t.Run("MarshalTest", func(t *testing.T) {
 		shouldSkipTest(t)
-		var currentUnmarshaledValue interface{}
+		var currentUnmarshaledValue any
 
 		currentUnmarshalErr := yaml.Unmarshal(inYAML, &currentUnmarshaledValue)
 
@@ -189,13 +189,13 @@ func runTest(t *testing.T, testPath string) {
 			t.Errorf("Test: %s\nDescription: %s\nError: Failed to read out.yaml: %v", testPath, testDescription, err)
 			return
 		}
-		var expectedUnmarshaledValue interface{}
+		var expectedUnmarshaledValue any
 		err = yaml.Unmarshal(expectedOutYAML, &expectedUnmarshaledValue)
 		if err != nil {
 			t.Errorf("Test: %s\nDescription: %s\nError: Failed to unmarshal out.yaml: %v", testPath, testDescription, err)
 			return
 		}
-		var reUnmarshaledValue interface{}
+		var reUnmarshaledValue any
 		err = yaml.Unmarshal(marshaledYAML, &reUnmarshaledValue)
 		if err != nil {
 			t.Errorf("Test: %s\nDescription: %s\nError: Failed to re-unmarshal marshaled YAML: %v", testPath, testDescription, err)
@@ -207,7 +207,7 @@ func runTest(t *testing.T, testPath string) {
 
 	t.Run("JSONComparisonTest", func(t *testing.T) {
 		shouldSkipTest(t)
-		var currentUnmarshaledValue interface{}
+		var currentUnmarshaledValue any
 
 		currentUnmarshalErr := yaml.Unmarshal(inYAML, &currentUnmarshaledValue)
 
@@ -223,7 +223,7 @@ func runTest(t *testing.T, testPath string) {
 			t.Errorf("Test: %s\nDescription: %s\nError: Failed to read in.json: %v", testPath, testDescription, err)
 			return
 		}
-		var jsonValue interface{}
+		var jsonValue any
 		jsonErr := json.Unmarshal(inJSON, &jsonValue)
 		if jsonErr != nil {
 			t.Errorf("Test: %s\nDescription: %s\nError: Failed to unmarshal in.json: %v", testPath, testDescription, jsonErr)

@@ -9,12 +9,12 @@ import (
 
 type miniTB interface {
 	Helper()
-	Fatalf(string, ...interface{})
+	Fatalf(string, ...any)
 }
 
 // formatSuffix builds an optional suffix from a printf-style format and args.
 // If msgFormat is empty, an empty string is returned.
-func formatSuffix(msgFormat string, args ...interface{}) string {
+func formatSuffix(msgFormat string, args ...any) string {
 	if msgFormat == "" {
 		return ""
 	}
@@ -22,12 +22,12 @@ func formatSuffix(msgFormat string, args ...interface{}) string {
 }
 
 // Comparable types (numbers, strings, pointers to the same object, etc.).
-func Equal(tb miniTB, want, got interface{}) {
+func Equal(tb miniTB, want, got any) {
 	tb.Helper()
 	Equalf(tb, want, got, "")
 }
 
-func Equalf(tb miniTB, want, got interface{}, msgFormat string, args ...interface{}) {
+func Equalf(tb miniTB, want, got any, msgFormat string, args ...any) {
 	tb.Helper()
 	if got != want {
 		suffix := formatSuffix(msgFormat, args...)
@@ -36,12 +36,12 @@ func Equalf(tb miniTB, want, got interface{}, msgFormat string, args ...interfac
 }
 
 // Anything else (slices, maps, structs with slices...).
-func DeepEqual(tb miniTB, want, got interface{}) {
+func DeepEqual(tb miniTB, want, got any) {
 	tb.Helper()
 	DeepEqualf(tb, want, got, "")
 }
 
-func DeepEqualf(tb miniTB, want, got interface{}, msgFormat string, args ...interface{}) {
+func DeepEqualf(tb miniTB, want, got any, msgFormat string, args ...any) {
 	tb.Helper()
 	if !reflect.DeepEqual(got, want) {
 		suffix := formatSuffix(msgFormat, args...)
@@ -54,7 +54,7 @@ func ErrorMatches(tb miniTB, pattern string, err error) {
 	ErrorMatchesf(tb, pattern, err, "")
 }
 
-func ErrorMatchesf(tb miniTB, pattern string, err error, msgFormat string, args ...interface{}) {
+func ErrorMatchesf(tb miniTB, pattern string, err error, msgFormat string, args ...any) {
 	tb.Helper()
 	if err == nil {
 		suffix := formatSuffix(msgFormat, args...)
@@ -84,7 +84,7 @@ func NoError(tb miniTB, err error) {
 	NoErrorf(tb, err, "")
 }
 
-func NoErrorf(tb miniTB, err error, msgFormat string, args ...interface{}) {
+func NoErrorf(tb miniTB, err error, msgFormat string, args ...any) {
 	tb.Helper()
 	if err != nil {
 		suffix := formatSuffix(msgFormat, args...)
@@ -92,12 +92,12 @@ func NoErrorf(tb miniTB, err error, msgFormat string, args ...interface{}) {
 	}
 }
 
-func IsNil(tb miniTB, v interface{}) {
+func IsNil(tb miniTB, v any) {
 	tb.Helper()
 	IsNilf(tb, v, "")
 }
 
-func IsNilf(tb miniTB, v interface{}, msgFormat string, args ...interface{}) {
+func IsNilf(tb miniTB, v any, msgFormat string, args ...any) {
 	tb.Helper()
 	if !isNil(v) {
 		suffix := formatSuffix(msgFormat, args...)
@@ -105,12 +105,12 @@ func IsNilf(tb miniTB, v interface{}, msgFormat string, args ...interface{}) {
 	}
 }
 
-func NotNil(tb miniTB, v interface{}) {
+func NotNil(tb miniTB, v any) {
 	tb.Helper()
 	NotNilf(tb, v, "")
 }
 
-func NotNilf(tb miniTB, v interface{}, msgFormat string, args ...interface{}) {
+func NotNilf(tb miniTB, v any, msgFormat string, args ...any) {
 	tb.Helper()
 	if isNil(v) {
 		suffix := formatSuffix(msgFormat, args...)
@@ -123,7 +123,7 @@ func True(tb miniTB, got bool) {
 	Truef(tb, got, "")
 }
 
-func Truef(tb miniTB, got bool, msgFormat string, args ...interface{}) {
+func Truef(tb miniTB, got bool, msgFormat string, args ...any) {
 	tb.Helper()
 	if !got {
 		suffix := formatSuffix(msgFormat, args...)
@@ -136,7 +136,7 @@ func False(tb miniTB, got bool) {
 	Falsef(tb, got, "")
 }
 
-func Falsef(tb miniTB, got bool, msgFormat string, args ...interface{}) {
+func Falsef(tb miniTB, got bool, msgFormat string, args ...any) {
 	tb.Helper()
 	if got {
 		suffix := formatSuffix(msgFormat, args...)
@@ -149,9 +149,9 @@ func PanicMatches(tb miniTB, pattern string, f func()) {
 	PanicMatchesf(tb, pattern, f, "")
 }
 
-func PanicMatchesf(tb miniTB, pattern string, f func(), msgFormat string, args ...interface{}) {
+func PanicMatchesf(tb miniTB, pattern string, f func(), msgFormat string, args ...any) {
 	tb.Helper()
-	var pan interface{}
+	var pan any
 	func() {
 		defer func() { pan = recover() }()
 		f()
@@ -182,7 +182,7 @@ func PanicMatchesf(tb miniTB, pattern string, f func(), msgFormat string, args .
 	}
 }
 
-func isNil(v interface{}) bool {
+func isNil(v any) bool {
 	if v == nil {
 		return true
 	}
