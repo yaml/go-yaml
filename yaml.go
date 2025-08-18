@@ -368,12 +368,28 @@ func (e *TypeError) Error() string {
 	return b.String()
 }
 
-func (e *TypeError) Unwrap() []error {
-	errs := make([]error, 0, len(e.Errors))
+// Is checks if the error is equal to any of the errors in the TypeError.
+//
+// [errors.Is] will call this method when unwrapping errors.
+func (e *TypeError) Is(target error) bool {
 	for _, err := range e.Errors {
-		errs = append(errs, err)
+		if errors.Is(err, target) {
+			return true
+		}
 	}
-	return errs
+	return false
+}
+
+// As checks if the error is equal to any of the errors in the TypeError.
+//
+// [errors.As] will call this method when unwrapping errors.
+func (e *TypeError) As(target interface{}) bool {
+	for _, err := range e.Errors {
+		if errors.As(err, target) {
+			return true
+		}
+	}
+	return false
 }
 
 type Kind uint32
