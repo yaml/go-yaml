@@ -1301,3 +1301,51 @@
     want:
       foo:
         key: value
+
+# TextUnmarshaler success cases
+
+- decode:
+    name: Scalar string into TextUnmarshaler (value field)
+    yaml: 'a: hello world'
+    type: testStructA_TextUnmarshaler
+    want:
+      a:
+        value: hello world
+
+- decode:
+    name: Scalar string into TextUnmarshaler (pointer field)
+    yaml: 'a: hello world'
+    type: testStructA_TextUnmarshalerPtr
+    want:
+      a:
+        value: hello world
+
+- decode:
+    name: Scalar string into TextUnmarshaler (pointer-pointer field)
+    yaml: 'a: hello world'
+    type: testStructA_TextUnmarshalerPtrPtr
+    want:
+      a:
+        value: hello world
+
+- decode:
+    name: Null into TextUnmarshaler (value field)
+    yaml: 'a: null'
+    type: testStructA_TextUnmarshaler
+    want:
+      a:
+        value: ''
+
+- decode:
+    name: Null into TextUnmarshaler (pointer field)
+    yaml: 'a: null'
+    type: testStructA_TextUnmarshalerPtr
+    want:
+      a: null
+
+- decode:
+    name: Null into TextUnmarshaler (pointer-pointer field)
+    yaml: 'a: null'
+    type: testStructA_TextUnmarshalerPtrPtr
+    want:
+      a: null

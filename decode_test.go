@@ -101,6 +101,30 @@ type (
 	}
 )
 
+// simpleTextUnmarshaler is a simple type implementing encoding.TextUnmarshaler
+// for testing TextUnmarshaler validation.
+type simpleTextUnmarshaler struct {
+	Value string
+}
+
+func (s *simpleTextUnmarshaler) UnmarshalText(text []byte) error {
+	s.Value = string(text)
+	return nil
+}
+
+// Test types for TextUnmarshaler validation
+type (
+	testStructA_TextUnmarshaler struct {
+		A simpleTextUnmarshaler
+	}
+	testStructA_TextUnmarshalerPtr struct {
+		A *simpleTextUnmarshaler
+	}
+	testStructA_TextUnmarshalerPtrPtr struct {
+		A **simpleTextUnmarshaler
+	}
+)
+
 // Type and value registries for data-driven tests
 var (
 	decodeTypes  = datatest.NewTypeRegistry()
@@ -204,6 +228,11 @@ func init() {
 	decodeTypes.Register("testStructA_Int_InlineBPtr", testStructA_Int_InlineBPtr{})
 	decodeTypes.Register("testStructA_Int_InlineDPtr", testStructA_Int_InlineDPtr{})
 	decodeTypes.Register("testStructA_Int_InlineMapStringInt", testStructA_Int_InlineMapStringInt{})
+
+	// Register TextUnmarshaler test types
+	decodeTypes.Register("testStructA_TextUnmarshaler", testStructA_TextUnmarshaler{})
+	decodeTypes.Register("testStructA_TextUnmarshalerPtr", testStructA_TextUnmarshalerPtr{})
+	decodeTypes.Register("testStructA_TextUnmarshalerPtrPtr", testStructA_TextUnmarshalerPtrPtr{})
 
 	// Register math constants
 	decodeValues.Register("+Inf", math.Inf(+1))
@@ -717,12 +746,24 @@ func runUnmarshalErrorTest(t *testing.T, tc map[string]any) {
 	yamlInput := datatest.RequireString(t, tc, "yaml")
 	expectedError := datatest.RequireString(t, tc, "want")
 
-	var value any
-	err := yaml.Unmarshal([]byte(yamlInput), &value)
-	if err == nil {
-		t.Fatalf("got nil; want error %q - Partial unmarshal: %#v", expectedError, value)
+	var target any
+	// If a type is specified, use it; otherwise default to any
+	if typeName, ok := tc["output_type"].(string); ok {
+		var err error
+		target, err = decodeTypes.NewPointerInstance(typeName)
+		if err != nil {
+			t.Fatalf("failed to create instance of type %s: %v", typeName, err)
+		}
+	} else {
+		var value any
+		target = &value
 	}
-	assert.Equalf(t, expectedError, err.Error(), "Partial unmarshal: %#v", value)
+
+	err := yaml.Unmarshal([]byte(yamlInput), target)
+	if err == nil {
+		t.Fatalf("got nil; want error %q - Partial unmarshal: %#v", expectedError, target)
+	}
+	assert.Equalf(t, expectedError, err.Error(), "Partial unmarshal: %#v", target)
 }
 
 func TestDecoderErrors(t *testing.T) {
@@ -734,12 +775,24 @@ func TestDecoderErrors(t *testing.T) {
 			yamlInput := datatest.RequireString(t, tc, "yaml")
 			expectedError := datatest.RequireString(t, tc, "want")
 
-			var value any
-			err := yaml.NewDecoder(strings.NewReader(yamlInput)).Decode(&value)
-			if err == nil {
-				t.Fatalf("got nil; want error %q - Partial decode: %#v", expectedError, value)
+			var target any
+			// If a type is specified, use it; otherwise default to any
+			if typeName, ok := tc["output_type"].(string); ok {
+				var err error
+				target, err = decodeTypes.NewPointerInstance(typeName)
+				if err != nil {
+					t.Fatalf("failed to create instance of type %s: %v", typeName, err)
+				}
+			} else {
+				var value any
+				target = &value
 			}
-			assert.Equalf(t, expectedError, err.Error(), "Partial decode: %#v", value)
+
+			err := yaml.NewDecoder(strings.NewReader(yamlInput)).Decode(target)
+			if err == nil {
+				t.Fatalf("got nil; want error %q - Partial decode: %#v", expectedError, target)
+			}
+			assert.Equalf(t, expectedError, err.Error(), "Partial decode: %#v", target)
 		},
 	})
 }
@@ -1219,6 +1272,25 @@ func TestUnmarshalError_Unwrapping(t *testing.T) {
 	}
 
 	assert.ErrorIs(t, errUnmarshal, errSentinel)
+}
+
+func TestTextUnmarshalerNonScalar(t *testing.T) {
+	dst := struct {
+		A textUnmarshaler
+	}{}
+	inputs := []string{
+		`a: {}`,
+		`a: []`,
+	}
+
+	for _, input := range inputs {
+		err := yaml.Unmarshal([]byte(input), &dst)
+		t.Logf("%s -> err=%v", input, err)
+		var target *yaml.TypeError
+		if !errors.As(err, &target) {
+			t.Errorf("expected yaml.TypeError, got %v", err)
+		}
+	}
 }
 
 type sliceUnmarshaler []int
