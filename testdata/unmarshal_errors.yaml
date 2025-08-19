@@ -158,3 +158,53 @@
       h: &h [*g,*g,*g,*g,*g,*g,*g,*g,*g]
       i: &i [*h,*h,*h,*h,*h,*h,*h,*h,*h]
     want: 'yaml: document contains excessive aliasing'
+
+# TextUnmarshaler validation errors
+
+- unmarshal-error:
+    name: Mapping into TextUnmarshaler (value field)
+    type: testStructA_TextUnmarshaler
+    yaml: 'a: {foo: bar}'
+    want: |-
+      yaml: unmarshal errors:
+        line 1: cannot unmarshal !!map into yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
+
+- unmarshal-error:
+    name: Sequence into TextUnmarshaler (value field)
+    type: testStructA_TextUnmarshaler
+    yaml: 'a: [foo, bar]'
+    want: |-
+      yaml: unmarshal errors:
+        line 1: cannot unmarshal !!seq into yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
+
+- unmarshal-error:
+    name: Mapping into TextUnmarshaler (pointer field)
+    type: testStructA_TextUnmarshalerPtr
+    yaml: 'a: {foo: bar}'
+    want: |-
+      yaml: unmarshal errors:
+        line 1: cannot unmarshal !!map into *yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
+
+- unmarshal-error:
+    name: Sequence into TextUnmarshaler (pointer field)
+    type: testStructA_TextUnmarshalerPtr
+    yaml: 'a: [foo, bar]'
+    want: |-
+      yaml: unmarshal errors:
+        line 1: cannot unmarshal !!seq into *yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
+
+- unmarshal-error:
+    name: Mapping into TextUnmarshaler (pointer-pointer field)
+    type: testStructA_TextUnmarshalerPtrPtr
+    yaml: 'a: {foo: bar}'
+    want: |-
+      yaml: unmarshal errors:
+        line 1: cannot unmarshal !!map into **yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
+
+- unmarshal-error:
+    name: Sequence into TextUnmarshaler (pointer-pointer field)
+    type: testStructA_TextUnmarshalerPtrPtr
+    yaml: 'a: [foo, bar]'
+    want: |-
+      yaml: unmarshal errors:
+        line 1: cannot unmarshal !!seq into **yaml_test.simpleTextUnmarshaler (TextUnmarshaler)

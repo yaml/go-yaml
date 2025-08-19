@@ -476,6 +476,24 @@ func allowedAliasRatio(decodeCount int) float64 {
 	}
 }
 
+func isTextUnmarshaler(out reflect.Value) bool {
+	// Dereference pointers to check the underlying type,
+	// similar to how prepare() handles Unmarshaler checks.
+	for out.Kind() == reflect.Pointer {
+		if out.IsNil() {
+			// Create a new instance to check the type
+			out = reflect.New(out.Type().Elem()).Elem()
+		} else {
+			out = out.Elem()
+		}
+	}
+	if out.CanAddr() {
+		_, ok := out.Addr().Interface().(encoding.TextUnmarshaler)
+		return ok
+	}
+	return false
+}
+
 func (d *decoder) unmarshal(n *Node, out reflect.Value) (good bool) {
 	d.decodeCount++
 	if d.aliasDepth > 0 {
@@ -488,6 +506,23 @@ func (d *decoder) unmarshal(n *Node, out reflect.Value) (good bool) {
 		out.Set(reflect.ValueOf(n).Elem())
 		return true
 	}
+
+	// When out type implements [encoding.TextUnmarshaler], ensure the node is
+	// a scalar. Otherwise, for example, unmarshaling a YAML mapping into
+	// a struct having no exported fields, but implementing TextUnmarshaler
+	// would silently succeed, but do nothing.
+	//
+	// Note that this matches the behavior of both encoding/json and encoding/json/v2.
+	if n.Kind != ScalarNode && isTextUnmarshaler(out) {
+		err := fmt.Errorf("cannot unmarshal %s%s into %s (TextUnmarshaler)", shortTag(n.Tag), n.Value, out.Type())
+		d.terrors = append(d.terrors, &UnmarshalError{
+			Err:    err,
+			Line:   n.Line,
+			Column: n.Column,
+		})
+		return false
+	}
+
 	switch n.Kind {
 	case DocumentNode:
 		return d.document(n, out)
