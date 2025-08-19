@@ -895,6 +895,82 @@ func TestUnmarshal(t *testing.T) {
 	}
 }
 
+func TestUnmarshalScalar(t *testing.T) {
+	var unmarshalTests = []struct {
+		data  string
+		value interface{}
+	}{
+		{
+			`run: |
+
+     uname -a
+`,
+			map[string]interface{}{
+				"run": "\nuname -a\n",
+			},
+		},
+		{
+			`run: |
+     uname -a
+`,
+			map[string]interface{}{
+				"run": "uname -a\n",
+			},
+		},
+		{
+			`run: |2
+     uname -a
+`,
+			map[string]interface{}{
+				"run": "   uname -a\n",
+			},
+		},
+		{
+			`jobs:
+      - run: |
+
+             uname -a
+`,
+			map[string]interface{}{
+				"jobs": []interface{}{
+					[]interface{}{
+						map[string]interface{}{
+							"run": "   uname -a\n",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for i, item := range unmarshalTests {
+		t.Run(fmt.Sprintf("test %d: %q", i, item.data), func(t *testing.T) {
+			typ := reflect.ValueOf(item.value).Type()
+			value := reflect.New(typ)
+			err := yaml.Unmarshal([]byte(item.data), value.Interface())
+			if _, ok := err.(*yaml.TypeError); !ok {
+				if err != nil {
+					t.Fatalf("Unmarshal() returned error: %v", err)
+				}
+			}
+			out, err := yaml.Marshal(value.Elem().Interface())
+			if err != nil {
+				t.Fatalf("Marshal() returned error: %v", err)
+			}
+			value2 := reflect.New(typ)
+			err = yaml.Unmarshal(out, value2.Interface())
+			if _, ok := err.(*yaml.TypeError); !ok {
+				if err != nil {
+					t.Fatalf("Unmarshal() returned error: %v\nOriginal\n%v\nAfter an Unmarshal/Marshal round\n%v", err, item.data, string(out))
+				}
+			}
+			if !reflect.DeepEqual(value.Elem().Interface(), item.value) {
+				t.Fatalf("Unmarshal() returned\n%#v\nbut expected\n%#v", value.Elem().Interface(), item.value)
+			}
+		})
+	}
+}
+
 func TestUnmarshalFullTimestamp(t *testing.T) {
 	// Full timestamp in same format as encoded. This is confirmed to be
 	// properly decoded by Python as a timestamp as well.
