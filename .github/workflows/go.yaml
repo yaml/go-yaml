@@ -2,9 +2,10 @@ name: Go
 
 on:
   push:
-    branches: [ v3 ]
+    branches: [ main, v4, v3, v2, v1 ]
   pull_request:
-    branches: [ v3 ]
+    branches: [ main, v4, v3, v2, v1 ]
+
 jobs:
   fmt:
     runs-on: ubuntu-latest
@@ -47,5 +48,7 @@ jobs:
         go-version: ${{ matrix.go-versions }}
     - name: Run go vet
       run: go vet ./...
+    - name: Run yaml-test-suit tests
+      run: make test-yts
     - name: Run go test
-      run: GO111MODULE=on go test -v -race ./...
+      run: GO111MODULE=on go test -v -race .

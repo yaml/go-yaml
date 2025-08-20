@@ -25,8 +25,10 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -295,7 +297,7 @@ func (e *Encoder) Close() (err error) {
 
 func handleErr(err *error) {
 	if v := recover(); v != nil {
-		if e, ok := v.(yamlError); ok {
+		if e, ok := v.(*yamlError); ok {
 			*err = e.err
 		} else {
 			panic(v)
@@ -308,11 +310,45 @@ type yamlError struct {
 }
 
 func fail(err error) {
-	panic(yamlError{err})
+	panic(&yamlError{err})
 }
 
 func failf(format string, args ...interface{}) {
-	panic(yamlError{fmt.Errorf("yaml: "+format, args...)})
+	panic(&yamlError{fmt.Errorf("yaml: "+format, args...)})
+}
+
+// ParserError represents a fatal error encountered during the parsing phase.
+// These errors typically indicate a syntax issue in the YAML document that
+// prevents further processing.
+type ParserError struct {
+	Message string
+	Line    int
+}
+
+func (e *ParserError) Error() string {
+	var b strings.Builder
+	b.WriteString("yaml: ")
+	if e.Line != 0 {
+		b.WriteString("line " + strconv.Itoa(e.Line) + ": ")
+	}
+	b.WriteString(e.Message)
+	return b.String()
+}
+
+// UnmarshalError represents a single, non-fatal error that occurred during
+// the unmarshaling of a YAML document into a Go value.
+type UnmarshalError struct {
+	Err    error
+	Line   int
+	Column int
+}
+
+func (e *UnmarshalError) Error() string {
+	return fmt.Sprintf("line %d: %s", e.Line, e.Err.Error())
+}
+
+func (e *UnmarshalError) Unwrap() error {
+	return e.Err
 }
 
 // A TypeError is returned by Unmarshal when one or more fields in
@@ -320,11 +356,24 @@ func failf(format string, args ...interface{}) {
 // types. When this error is returned, the value is still
 // unmarshaled partially.
 type TypeError struct {
-	Errors []string
+	Errors []*UnmarshalError
 }
 
 func (e *TypeError) Error() string {
-	return fmt.Sprintf("yaml: unmarshal errors:\n  %s", strings.Join(e.Errors, "\n  "))
+	var b strings.Builder
+	b.WriteString("yaml: unmarshal errors:")
+	for _, err := range e.Errors {
+		b.WriteString("\n  " + err.Error())
+	}
+	return b.String()
+}
+
+func (e *TypeError) Unwrap() []error {
+	errs := make([]error, 0, len(e.Errors))
+	for _, err := range e.Errors {
+		errs = append(errs, err)
+	}
+	return errs
 }
 
 type Kind uint32
@@ -471,6 +520,23 @@ func (n *Node) indicatedString() bool {
 			(n.Tag == "" || n.Tag == "!") && n.Style&(SingleQuotedStyle|DoubleQuotedStyle|LiteralStyle|FoldedStyle) != 0)
 }
 
+// shouldUseLiteralStyle determines if a string should use literal style.
+// It returns true if the string contains newlines AND meets additional criteria:
+// - is at least 2 characters long
+// - contains at least one non-whitespace character
+func shouldUseLiteralStyle(s string) bool {
+	if !strings.Contains(s, "\n") || len(s) < 2 {
+		return false
+	}
+	// Must contain at least one non-whitespace character
+	for _, r := range s {
+		if !unicode.IsSpace(r) {
+			return true
+		}
+	}
+	return false
+}
+
 // SetString is a convenience function that sets the node to a string value
 // and defines its style in a pleasant way depending on its content.
 func (n *Node) SetString(s string) {
@@ -482,7 +548,7 @@ func (n *Node) SetString(s string) {
 		n.Value = encodeBase64(s)
 		n.Tag = binaryTag
 	}
-	if strings.Contains(n.Value, "\n") {
+	if shouldUseLiteralStyle(n.Value) {
 		n.Style = LiteralStyle
 	}
 }
@@ -520,9 +586,11 @@ type fieldInfo struct {
 	Inline []int
 }
 
-var structMap = make(map[reflect.Type]*structInfo)
-var fieldMapMutex sync.RWMutex
-var unmarshalerType reflect.Type
+var (
+	structMap       = make(map[reflect.Type]*structInfo)
+	fieldMapMutex   sync.RWMutex
+	unmarshalerType reflect.Type
+)
 
 func init() {
 	var v Unmarshaler
@@ -700,4 +768,113 @@ func isZero(v reflect.Value) bool {
 		return true
 	}
 	return false
+}
+
+// ParserGetEvents parses the YAML input and returns the generated event stream.
+func ParserGetEvents(in []byte) (string, error) {
+	p := newParser(in)
+	defer p.destroy()
+	var events strings.Builder
+	var event yaml_event_t
+	for {
+		if !yaml_parser_parse(&p.parser, &event) {
+			return "", errors.New(p.parser.problem)
+		}
+		formatted := formatEvent(&event)
+		events.WriteString(formatted)
+		if event.typ == yaml_STREAM_END_EVENT {
+			yaml_event_delete(&event)
+			break
+		}
+		yaml_event_delete(&event)
+		events.WriteByte('\n')
+	}
+	return events.String(), nil
+}
+
+func formatEvent(e *yaml_event_t) string {
+	var b strings.Builder
+	switch e.typ {
+	case yaml_STREAM_START_EVENT:
+		b.WriteString("+STR")
+	case yaml_STREAM_END_EVENT:
+		b.WriteString("-STR")
+	case yaml_DOCUMENT_START_EVENT:
+		b.WriteString("+DOC")
+		if !e.implicit {
+			b.WriteString(" ---")
+		}
+	case yaml_DOCUMENT_END_EVENT:
+		b.WriteString("-DOC")
+		if !e.implicit {
+			b.WriteString(" ...")
+		}
+	case yaml_ALIAS_EVENT:
+		b.WriteString("=ALI *")
+		b.Write(e.anchor)
+	case yaml_SCALAR_EVENT:
+		b.WriteString("=VAL")
+		if len(e.anchor) > 0 {
+			b.WriteString(" &")
+			b.Write(e.anchor)
+		}
+		if len(e.tag) > 0 {
+			b.WriteString(" <")
+			b.Write(e.tag)
+			b.WriteString(">")
+		}
+		switch e.scalar_style() {
+		case yaml_PLAIN_SCALAR_STYLE:
+			b.WriteString(" :")
+		case yaml_LITERAL_SCALAR_STYLE:
+			b.WriteString(" |")
+		case yaml_FOLDED_SCALAR_STYLE:
+			b.WriteString(" >")
+		case yaml_SINGLE_QUOTED_SCALAR_STYLE:
+			b.WriteString(" '")
+		case yaml_DOUBLE_QUOTED_SCALAR_STYLE:
+			b.WriteString(` "`)
+		}
+		// Escape special characters for consistent event output.
+		val := strings.NewReplacer(
+			`\`, `\\`,
+			"\n", `\n`,
+			"\t", `\t`,
+		).Replace(string(e.value))
+		b.WriteString(val)
+
+	case yaml_SEQUENCE_START_EVENT:
+		b.WriteString("+SEQ")
+		if len(e.anchor) > 0 {
+			b.WriteString(" &")
+			b.Write(e.anchor)
+		}
+		if len(e.tag) > 0 {
+			b.WriteString(" <")
+			b.Write(e.tag)
+			b.WriteString(">")
+		}
+		if e.sequence_style() == yaml_FLOW_SEQUENCE_STYLE {
+			b.WriteString(" []")
+		}
+	case yaml_SEQUENCE_END_EVENT:
+		b.WriteString("-SEQ")
+	case yaml_MAPPING_START_EVENT:
+		b.WriteString("+MAP")
+		if len(e.anchor) > 0 {
+			b.WriteString(" &")
+			b.Write(e.anchor)
+		}
+		if len(e.tag) > 0 {
+			b.WriteString(" <")
+			b.Write(e.tag)
+			b.WriteString(">")
+		}
+		if e.mapping_style() == yaml_FLOW_MAPPING_STYLE {
+			b.WriteString(" {}")
+		}
+	case yaml_MAPPING_END_EVENT:
+		b.WriteString("-MAP")
+	}
+	return b.String()
 }

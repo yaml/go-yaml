@@ -173,13 +173,10 @@ func yaml_emitter_need_more_events(emitter *yaml_emitter_t) bool {
 	switch emitter.events[emitter.events_head].typ {
 	case yaml_DOCUMENT_START_EVENT:
 		accumulate = 1
-		break
 	case yaml_SEQUENCE_START_EVENT:
 		accumulate = 2
-		break
 	case yaml_MAPPING_START_EVENT:
 		accumulate = 3
-		break
 	default:
 		return false
 	}
@@ -1255,10 +1252,10 @@ func yaml_emitter_analyze_anchor(emitter *yaml_emitter_t, anchor []byte, alias b
 		return yaml_emitter_set_emitter_error(emitter, problem)
 	}
 	for i := 0; i < len(anchor); i += width(anchor[i]) {
-		if !is_alpha(anchor, i) {
-			problem := "anchor value must contain alphanumerical characters only"
+		if !is_anchor_char(anchor, i) {
+			problem := "anchor value must contain valid characters only"
 			if alias {
-				problem = "alias value must contain alphanumerical characters only"
+				problem = "alias value must contain valid characters only"
 			}
 			return yaml_emitter_set_emitter_error(emitter, problem)
 		}
