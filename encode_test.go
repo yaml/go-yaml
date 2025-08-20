@@ -618,7 +618,7 @@ func TestMarshalErrors(t *testing.T) {
 					}
 				}()
 				// error is ignorable because we should panic
-				_, _ := yaml.Marshal(item.value)
+				_, _ = yaml.Marshal(item.value)
 			} else {
 				_, err := yaml.Marshal(item.value)
 				if err == nil || !strings.Contains(err.Error(), item.error) {
