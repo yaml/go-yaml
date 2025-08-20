@@ -56,6 +56,7 @@ func init() {
 		{math.Inf(+1), floatTag, []string{".inf", ".Inf", ".INF"}},
 		{math.Inf(+1), floatTag, []string{"+.inf", "+.Inf", "+.INF"}},
 		{math.Inf(-1), floatTag, []string{"-.inf", "-.Inf", "-.INF"}},
+		{negativeZero, floatTag, []string{"-0", "-0.0"}},
 		{"<<", mergeTag, []string{"<<"}},
 	}
 
@@ -79,6 +80,11 @@ const (
 	binaryTag    = "!!binary"
 	mergeTag     = "!!merge"
 )
+
+// negativeZero represents -0.0 for YAML encoding/decoding
+// this is needed because Go constants cannot express -0.0
+// https://staticcheck.dev/docs/checks/#SA4026
+var negativeZero = math.Copysign(0.0, -1.0)
 
 var longTags = make(map[string]string)
 var shortTags = make(map[string]string)
