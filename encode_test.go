@@ -23,11 +23,10 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"testing"
 	"time"
 
-	. "gopkg.in/check.v1"
-
-	"go.yaml.in/yaml/v3"
+	"go.yaml.in/yaml/v4"
 )
 
 var marshalIntTest = 123
@@ -126,12 +125,21 @@ var marshalTests = []struct {
 	}, {
 		map[string]interface{}{"a": "-"},
 		"a: '-'\n",
+	}, {
+		map[string]interface{}{"v": negativeZero},
+		"v: -0\n",
 	},
 
 	// Simple values.
 	{
 		&marshalIntTest,
 		"123\n",
+	}, {
+		negativeZero,
+		"-0\n",
+	}, {
+		"\t\n",
+		"\"\\t\\n\"\n",
 	},
 
 	// Structures
@@ -427,6 +435,15 @@ var marshalTests = []struct {
 	{
 		map[string]string{"a": "\tB\n\tC\n"},
 		"a: |\n    \tB\n    \tC\n",
+	}, {
+		map[string]string{"a": "\t\n\t\n"},
+		"a: \"\\t\\n\\t\\n\"\n",
+	}, {
+		map[string]interface{}{"<<": []string{}},
+		"\"<<\": []\n",
+	}, {
+		map[string]interface{}{"foo": "<<"},
+		"foo: \"<<\"\n",
 	},
 
 	// Ensure that strings do not wrap
@@ -494,48 +511,77 @@ var marshalTests = []struct {
 		},
 		"value: !!seq []\n",
 	},
+	// bug: question mark in value
+	{
+		map[string]interface{}{
+			"foo": map[string]interface{}{"bar": "a?bc"},
+		},
+		"foo:\n    bar: a?bc\n",
+	},
 }
 
-func (s *S) TestMarshal(c *C) {
+func TestMarshal(t *testing.T) {
 	defer os.Setenv("TZ", os.Getenv("TZ"))
 	os.Setenv("TZ", "UTC")
 	for i, item := range marshalTests {
-		c.Logf("test %d: %q", i, item.data)
-		data, err := yaml.Marshal(item.value)
-		c.Assert(err, IsNil)
-		c.Assert(string(data), Equals, item.data)
+		t.Run(fmt.Sprintf("test %d: %q", i, item.data), func(t *testing.T) {
+			data, err := yaml.Marshal(item.value)
+			if err != nil {
+				t.Fatalf("Marshal() returned error: %v", err)
+			}
+			if string(data) != item.data {
+				t.Fatalf("Marshal() returned\n%q\nbut expected\n%q", string(data), item.data)
+			}
+		})
 	}
 }
 
-func (s *S) TestEncoderSingleDocument(c *C) {
+func TestEncoderSingleDocument(t *testing.T) {
 	for i, item := range marshalTests {
-		c.Logf("test %d. %q", i, item.data)
-		var buf bytes.Buffer
-		enc := yaml.NewEncoder(&buf)
-		err := enc.Encode(item.value)
-		c.Assert(err, Equals, nil)
-		err = enc.Close()
-		c.Assert(err, Equals, nil)
-		c.Assert(buf.String(), Equals, item.data)
+		t.Run(fmt.Sprintf("test %d. %q", i, item.data), func(t *testing.T) {
+			var buf bytes.Buffer
+			enc := yaml.NewEncoder(&buf)
+			err := enc.Encode(item.value)
+			if err != nil {
+				t.Fatalf("Encode() returned error: %v", err)
+			}
+			err = enc.Close()
+			if err != nil {
+				t.Fatalf("Close() returned error: %v", err)
+			}
+			if buf.String() != item.data {
+				t.Fatalf("Encode() returned\n%q\nbut expected\n%q", buf.String(), item.data)
+			}
+		})
 	}
 }
 
-func (s *S) TestEncoderMultipleDocuments(c *C) {
+func TestEncoderMultipleDocuments(t *testing.T) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	err := enc.Encode(map[string]string{"a": "b"})
-	c.Assert(err, Equals, nil)
+	if err != nil {
+		t.Fatalf("Encode() returned error: %v", err)
+	}
 	err = enc.Encode(map[string]string{"c": "d"})
-	c.Assert(err, Equals, nil)
+	if err != nil {
+		t.Fatalf("Encode() returned error: %v", err)
+	}
 	err = enc.Close()
-	c.Assert(err, Equals, nil)
-	c.Assert(buf.String(), Equals, "a: b\n---\nc: d\n")
+	if err != nil {
+		t.Fatalf("Close() returned error: %v", err)
+	}
+	if buf.String() != "a: b\n---\nc: d\n" {
+		t.Fatalf("Encode() returned\n%q\nbut expected\n%q", buf.String(), "a: b\n---\nc: d\n")
+	}
 }
 
-func (s *S) TestEncoderWriteError(c *C) {
+func TestEncoderWriteError(t *testing.T) {
 	enc := yaml.NewEncoder(errorWriter{})
 	err := enc.Encode(map[string]string{"a": "b"})
-	c.Assert(err, ErrorMatches, `yaml: write error: some write error`) // Data not flushed yet
+	if err == nil || !strings.Contains(err.Error(), `yaml: write error: some write error`) {
+		t.Fatalf("Encode() returned %v, want error containing %q", err, `yaml: write error: some write error`)
+	}
 }
 
 type errorWriter struct{}
@@ -562,31 +608,46 @@ var marshalErrorTests = []struct {
 	panic: `cannot have key "a" in inlined map: conflicts with struct field`,
 }}
 
-func (s *S) TestMarshalErrors(c *C) {
+func TestMarshalErrors(t *testing.T) {
 	for _, item := range marshalErrorTests {
-		if item.panic != "" {
-			c.Assert(func() { _, _ = yaml.Marshal(item.value) }, PanicMatches, item.panic)
-		} else {
-			_, err := yaml.Marshal(item.value)
-			c.Assert(err, ErrorMatches, item.error)
-		}
+		t.Run(item.panic, func(t *testing.T) {
+			if item.panic != "" {
+				defer func() {
+					if r := recover(); r == nil {
+						t.Fatalf("expected panic")
+					}
+				}()
+				yaml.Marshal(item.value)
+			} else {
+				_, err := yaml.Marshal(item.value)
+				if err == nil || !strings.Contains(err.Error(), item.error) {
+					t.Fatalf("Marshal() returned %v, want error containing %q", err, item.error)
+				}
+			}
+		})
 	}
 }
 
-func (s *S) TestMarshalTypeCache(c *C) {
+func TestMarshalTypeCache(t *testing.T) {
 	var data []byte
 	var err error
 	func() {
 		type T struct{ A int }
 		data, err = yaml.Marshal(&T{})
-		c.Assert(err, IsNil)
+		if err != nil {
+			t.Fatalf("Marshal() returned error: %v", err)
+		}
 	}()
 	func() {
 		type T struct{ B int }
 		data, err = yaml.Marshal(&T{})
-		c.Assert(err, IsNil)
+		if err != nil {
+			t.Fatalf("Marshal() returned error: %v", err)
+		}
 	}()
-	c.Assert(string(data), Equals, "b: 0\n")
+	if string(data) != "b: 0\n" {
+		t.Fatalf("Marshal() returned\n%q\nbut expected\n%q", string(data), "b: 0\n")
+	}
 }
 
 var marshalerTests = []struct {
@@ -616,22 +677,32 @@ type marshalerValue struct {
 	Field marshalerType `yaml:"_"`
 }
 
-func (s *S) TestMarshaler(c *C) {
+func TestMarshaler(t *testing.T) {
 	for _, item := range marshalerTests {
-		obj := &marshalerValue{}
-		obj.Field.value = item.value
-		data, err := yaml.Marshal(obj)
-		c.Assert(err, IsNil)
-		c.Assert(string(data), Equals, string(item.data))
+		t.Run(string(item.data), func(t *testing.T) {
+			obj := &marshalerValue{}
+			obj.Field.value = item.value
+			data, err := yaml.Marshal(obj)
+			if err != nil {
+				t.Fatalf("Marshal() returned error: %v", err)
+			}
+			if string(data) != string(item.data) {
+				t.Fatalf("Marshal() returned\n%q\nbut expected\n%q", string(data), string(item.data))
+			}
+		})
 	}
 }
 
-func (s *S) TestMarshalerWholeDocument(c *C) {
+func TestMarshalerWholeDocument(t *testing.T) {
 	obj := &marshalerType{}
 	obj.value = map[string]string{"hello": "world!"}
 	data, err := yaml.Marshal(obj)
-	c.Assert(err, IsNil)
-	c.Assert(string(data), Equals, "hello: world!\n")
+	if err != nil {
+		t.Fatalf("Marshal() returned error: %v", err)
+	}
+	if string(data) != "hello: world!\n" {
+		t.Fatalf("Marshal() returned\n%q\nbut expected\n%q", string(data), "hello: world!\n")
+	}
 }
 
 type failingMarshaler struct{}
@@ -640,23 +711,31 @@ func (ft *failingMarshaler) MarshalYAML() (interface{}, error) {
 	return nil, failingErr
 }
 
-func (s *S) TestMarshalerError(c *C) {
+func TestMarshalerError(t *testing.T) {
 	_, err := yaml.Marshal(&failingMarshaler{})
-	c.Assert(err, Equals, failingErr)
+	if err != failingErr {
+		t.Fatalf("Marshal() returned %v, want %v", err, failingErr)
+	}
 }
 
-func (s *S) TestSetIndent(c *C) {
+func TestSetIndent(t *testing.T) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	enc.SetIndent(8)
 	err := enc.Encode(map[string]interface{}{"a": map[string]interface{}{"b": map[string]string{"c": "d"}}})
-	c.Assert(err, Equals, nil)
+	if err != nil {
+		t.Fatalf("Encode() returned error: %v", err)
+	}
 	err = enc.Close()
-	c.Assert(err, Equals, nil)
-	c.Assert(buf.String(), Equals, "a:\n        b:\n                c: d\n")
+	if err != nil {
+		t.Fatalf("Close() returned error: %v", err)
+	}
+	if buf.String() != "a:\n        b:\n                c: d\n" {
+		t.Fatalf("Encode() returned\n%q\nbut expected\n%q", buf.String(), "a:\n        b:\n                c: d\n")
+	}
 }
 
-func (s *S) TestSortedOutput(c *C) {
+func TestSortedOutput(t *testing.T) {
 	order := []interface{}{
 		false,
 		true,
@@ -710,7 +789,9 @@ func (s *S) TestSortedOutput(c *C) {
 		m[k] = 1
 	}
 	data, err := yaml.Marshal(m)
-	c.Assert(err, IsNil)
+	if err != nil {
+		t.Fatalf("Marshal() returned error: %v", err)
+	}
 	out := "\n" + string(data)
 	last := 0
 	for i, k := range order {
@@ -722,10 +803,10 @@ func (s *S) TestSortedOutput(c *C) {
 		}
 		index := strings.Index(out, "\n"+repr+":")
 		if index == -1 {
-			c.Fatalf("%#v is not in the output: %#v", k, out)
+			t.Fatalf("%#v is not in the output: %#v", k, out)
 		}
 		if index < last {
-			c.Fatalf("%#v was generated before %#v: %q", k, order[i-1], out)
+			t.Fatalf("%#v was generated before %#v: %q", k, order[i-1], out)
 		}
 		last = index
 	}
@@ -735,35 +816,53 @@ func newTime(t time.Time) *time.Time {
 	return &t
 }
 
-func (s *S) TestCompactSeqIndentDefault(c *C) {
+func TestCompactSeqIndentDefault(t *testing.T) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	enc.CompactSeqIndent()
 	err := enc.Encode(map[string]interface{}{"a": []string{"b", "c"}})
-	c.Assert(err, Equals, nil)
+	if err != nil {
+		t.Fatalf("Encode() returned error: %v", err)
+	}
 	err = enc.Close()
-	c.Assert(err, Equals, nil)
+	if err != nil {
+		t.Fatalf("Close() returned error: %v", err)
+	}
 	// The default indent is 4, so these sequence elements get 2 indents as before
-	c.Assert(buf.String(), Equals, `a:
+	if buf.String() != `a:
+  - b
+  - c
+` {
+		t.Fatalf("Encode() returned\n%q\nbut expected\n%q", buf.String(), `a:
   - b
   - c
 `)
+	}
 }
 
-func (s *S) TestCompactSequenceWithSetIndent(c *C) {
+func TestCompactSequenceWithSetIndent(t *testing.T) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	enc.CompactSeqIndent()
 	enc.SetIndent(2)
 	err := enc.Encode(map[string]interface{}{"a": []string{"b", "c"}})
-	c.Assert(err, Equals, nil)
+	if err != nil {
+		t.Fatalf("Encode() returned error: %v", err)
+	}
 	err = enc.Close()
-	c.Assert(err, Equals, nil)
+	if err != nil {
+		t.Fatalf("Close() returned error: %v", err)
+	}
 	// The sequence indent is 2, so these sequence elements don't get indented at all
-	c.Assert(buf.String(), Equals, `a:
+	if buf.String() != `a:
+- b
+- c
+` {
+		t.Fatalf("Encode() returned\n%q\nbut expected\n%q", buf.String(), `a:
 - b
 - c
 `)
+	}
 }
 
 type normal string
@@ -835,38 +934,496 @@ a:
 `),
 }
 
-func (s *S) TestEncoderCompactIndents(c *C) {
+func TestEncoderCompactIndents(t *testing.T) {
 	for i, item := range marshalTests {
-		c.Logf("test %d. %q", i, item.data)
-		var buf bytes.Buffer
-		enc := yaml.NewEncoder(&buf)
-		enc.CompactSeqIndent()
-		err := enc.Encode(item.value)
-		c.Assert(err, Equals, nil)
-		err = enc.Close()
-		c.Assert(err, Equals, nil)
+		t.Run(fmt.Sprintf("test %d. %q", i, item.data), func(t *testing.T) {
+			var buf bytes.Buffer
+			enc := yaml.NewEncoder(&buf)
+			enc.CompactSeqIndent()
+			err := enc.Encode(item.value)
+			if err != nil {
+				t.Fatalf("Encode() returned error: %v", err)
+			}
+			err = enc.Close()
+			if err != nil {
+				t.Fatalf("Close() returned error: %v", err)
+			}
 
-		// Default to expecting the item data
-		expected := item.data
-		// If there's a different compact representation, use that
-		if c, ok := newlinePlusNormalToNewlinePlusCompact[normal("\n"+item.data)]; ok {
-			expected = string(c[1:])
-		}
+			// Default to expecting the item data
+			expected := item.data
+			// If there's a different compact representation, use that
+			if c, ok := newlinePlusNormalToNewlinePlusCompact[normal("\n"+item.data)]; ok {
+				expected = string(c[1:])
+			}
 
-		c.Assert(buf.String(), Equals, expected)
+			if buf.String() != expected {
+				t.Fatalf("Encode() returned\n%q\nbut expected\n%q", buf.String(), expected)
+			}
+		})
 	}
 }
 
-func (s *S) TestNewLinePreserved(c *C) {
+func TestNewLinePreserved(t *testing.T) {
 	obj := &marshalerValue{}
 	obj.Field.value = "a:\n        b:\n                c: d\n"
 	data, err := yaml.Marshal(obj)
-	c.Assert(err, IsNil)
-	c.Assert(string(data), Equals, "_: |\n    a:\n            b:\n                    c: d\n")
+	if err != nil {
+		t.Fatalf("Marshal() returned error: %v", err)
+	}
+	if string(data) != "_: |\n    a:\n            b:\n                    c: d\n" {
+		t.Fatalf("Marshal() returned\n%q\nbut expected\n%q", string(data), "_: |\n    a:\n            b:\n                    c: d\n")
+	}
 
 	obj.Field.value = "\na:\n        b:\n                c: d\n"
 	data, err = yaml.Marshal(obj)
-	c.Assert(err, IsNil)
+	if err != nil {
+		t.Fatalf("Marshal() returned error: %v", err)
+	}
 	// the newline at the start of the file should be preserved
-	c.Assert(string(data), Equals, "_: |4\n\n    a:\n            b:\n                    c: d\n")
+	if string(data) != "_: |4\n\n    a:\n            b:\n                    c: d\n" {
+		t.Fatalf("Marshal() returned\n%q\nbut expected\n%q", string(data), "_: |4\n\n    a:\n            b:\n                    c: d\n")
+	}
+}
+
+func TestScalarStyleRules(t *testing.T) {
+	// Test cases for the new scalar style rules
+	testCases := []struct {
+		input    string
+		expected string
+		desc     string
+	}{
+		{
+			"\t\n",
+			"\"\\t\\n\"\n",
+			"Tab + newline - should be double quoted (short, starts with whitespace)",
+		},
+		{
+			"\n",
+			"\"\\n\"\n",
+			"Just newline - should be double quoted (no non-ws chars)",
+		},
+		{
+			"\t",
+			"\"\\t\"\n",
+			"Just tab - should be double quoted (control char)",
+		},
+		{
+			"hello\nworld",
+			"|-\n    hello\n    world\n",
+			"Text with newline - should be literal (>= 2 chars, doesn't start with whitespace)",
+		},
+		{
+			"hello\tworld",
+			"\"hello\\tworld\"\n",
+			"Text with tab - should be double quoted (control char)",
+		},
+		{
+			"hello",
+			"hello\n",
+			"Simple text - should be plain",
+		},
+		{
+			"123",
+			"\"123\"\n",
+			"Number-like - should be quoted (looks like number)",
+		},
+		{
+			"true",
+			"\"true\"\n",
+			"Boolean-like - should be quoted (looks like boolean)",
+		},
+		{
+			"This is a longer string\nwith multiple lines\nthat should use literal style",
+			"|-\n    This is a longer string\n    with multiple lines\n    that should use literal style\n",
+			"Long multi-line - should be literal",
+		},
+		{
+			" This starts with space\nand is long enough\nfor literal style",
+			"|4-\n     This starts with space\n    and is long enough\n    for literal style\n",
+			"Long multi-line starting with space - should be literal (>= 6 chars)",
+		},
+		{
+			"\tThis starts with tab\nand is long enough\nfor literal style",
+			"|-\n    \tThis starts with tab\n    and is long enough\n    for literal style\n",
+			"Long multi-line starting with tab - should be literal (>= 6 chars)",
+		},
+		{
+			"\tB\n\tC\n",
+			"|\n    \tB\n    \tC\n",
+			"Tab + B + newline + tab + C + newline - should be literal (6 chars)",
+		},
+		{
+			"a\n",
+			"|\n    a\n",
+			"Single char + newline - should be literal (2 chars, has content)",
+		},
+		{
+			"a\nb",
+			"|-\n    a\n    b\n",
+			"Two chars with newline - should be literal (3 chars, has content)",
+		},
+		{
+			" a\n",
+			"|4\n     a\n",
+			"Space + char + newline - should be literal (3 chars, has content)",
+		},
+		{
+			"\ta\n",
+			"|\n    \ta\n",
+			"Tab + char + newline - should be literal (3 chars, has content)",
+		},
+	}
+
+	for i, testCase := range testCases {
+		t.Run(fmt.Sprintf("test_%d_%s", i, testCase.desc), func(t *testing.T) {
+			data, err := yaml.Marshal(testCase.input)
+			if err != nil {
+				t.Fatalf("Marshal() returned error: %v", err)
+			}
+			if string(data) != testCase.expected {
+				t.Fatalf("Marshal() returned\n%q\nbut expected\n%q", string(data), testCase.expected)
+			}
+		})
+	}
+}
+
+func TestWhitespaceOnlyStrings(t *testing.T) {
+	// Test cases for whitespace-only strings that should not use literal style
+	testCases := []struct {
+		input    string
+		expected string
+		desc     string
+	}{
+		{
+			"\n",
+			"\"\\n\"\n",
+			"Just newline - should be double quoted (no non-ws chars)",
+		},
+		{
+			"\n\n",
+			"\"\\n\\n\"\n",
+			"Two newlines - should be double quoted (no non-ws chars)",
+		},
+		{
+			" \n",
+			"\" \\n\"\n",
+			"Space + newline - should be double quoted (no non-ws chars)",
+		},
+		{
+			"\t\n",
+			"\"\\t\\n\"\n",
+			"Tab + newline - should be double quoted (no non-ws chars)",
+		},
+		{
+			" \n ",
+			"\" \\n \"\n",
+			"Space + newline + space - should be double quoted (no non-ws chars)",
+		},
+		{
+			"\n \n",
+			"\"\\n \\n\"\n",
+			"Newline + space + newline - should be double quoted (no non-ws chars)",
+		},
+		{
+			"\t \n\t",
+			"\"\\t \\n\\t\"\n",
+			"Tab + space + newline + tab - should be double quoted (no non-ws chars)",
+		},
+		{
+			"   \n   ",
+			"\"   \\n   \"\n",
+			"Multiple spaces + newline + multiple spaces - should be double quoted (no non-ws chars)",
+		},
+		{
+			"\n\n\n",
+			"\"\\n\\n\\n\"\n",
+			"Three newlines - should be double quoted (no non-ws chars)",
+		},
+		{
+			" \t\n \t",
+			"\" \\t\\n \\t\"\n",
+			"Space + tab + newline + space + tab - should be double quoted (no non-ws chars)",
+		},
+	}
+
+	for i, testCase := range testCases {
+		t.Run(fmt.Sprintf("test_%d_%s", i, testCase.desc), func(t *testing.T) {
+			data, err := yaml.Marshal(testCase.input)
+			if err != nil {
+				t.Fatalf("Marshal() returned error: %v", err)
+			}
+			if string(data) != testCase.expected {
+				t.Fatalf("Marshal() returned\n%q\nbut expected\n%q", string(data), testCase.expected)
+			}
+		})
+	}
+}
+
+func TestWhitespaceWithContent(t *testing.T) {
+	// Test cases for strings with whitespace AND content that should use literal style
+	testCases := []struct {
+		input    string
+		expected string
+		desc     string
+	}{
+		{
+			"hello\n",
+			"|\n    hello\n",
+			"Text + newline - should be literal (has non-ws chars)",
+		},
+		{
+			" hello\n",
+			"|4\n     hello\n",
+			"Space + text + newline - should be literal (has non-ws chars)",
+		},
+		{
+			" \nhello",
+			"\" \\nhello\"\n",
+			"Space + newline + text - should be double quoted (short, starts with whitespace)",
+		},
+		{
+			"\thello\n",
+			"|\n    \thello\n",
+			"Tab + text + newline - should be literal (has non-ws chars)",
+		},
+		{
+			"\t\nhello",
+			"|-\n    \t\n    hello\n",
+			"Tab + newline + text - should be literal (has non-ws chars)",
+		},
+		{
+			"  hello  \n",
+			"\"  hello  \\n\"\n",
+			"Multiple spaces + text + spaces + newline - should be double quoted (ends with spaces)",
+		},
+		{
+			"hello  \n",
+			"\"hello  \\n\"\n",
+			"Text + spaces + newline - should be double quoted (ends with spaces)",
+		},
+		{
+			"hello\n  ",
+			"\"hello\\n  \"\n",
+			"Text + newline + spaces - should be double quoted (ends with spaces)",
+		},
+	}
+
+	for i, testCase := range testCases {
+		t.Run(fmt.Sprintf("test_%d_%s", i, testCase.desc), func(t *testing.T) {
+			data, err := yaml.Marshal(testCase.input)
+			if err != nil {
+				t.Fatalf("Marshal() returned error: %v", err)
+			}
+			if string(data) != testCase.expected {
+				t.Fatalf("Marshal() returned\n%q\nbut expected\n%q", string(data), testCase.expected)
+			}
+		})
+	}
+}
+
+func TestUnicodeWhitespaceHandling(t *testing.T) {
+	// Test cases for Unicode whitespace characters that should be properly handled
+	// by the shouldUseLiteralStyle function using unicode.IsSpace()
+	testCases := []struct {
+		input    string
+		expected string
+		desc     string
+	}{
+		// Unicode whitespace characters
+		{
+			"hello\u00A0\n", // non-breaking space
+			"|\n    hello\u00A0\n",
+			"Non-breaking space with content - should use literal style",
+		},
+		{
+			"\u00A0\n", // non-breaking space
+			"\"\u00A0\\n\"\n",
+			"Non-breaking space only - should not use literal style",
+		},
+		{
+			"hello\u2000\n", // en quad
+			"|\n    hello\u2000\n",
+			"En quad with content - should use literal style",
+		},
+		{
+			"\u2000\n", // en quad
+			"\"\u2000\\n\"\n",
+			"En quad only - should not use literal style",
+		},
+		{
+			"hello\u2001\n", // em quad
+			"|\n    hello\u2001\n",
+			"Em quad with content - should use literal style",
+		},
+		{
+			"\u2001\n", // em quad
+			"\"\u2001\\n\"\n",
+			"Em quad only - should not use literal style",
+		},
+		{
+			"hello\u2002\n", // en space
+			"|\n    hello\u2002\n",
+			"En space with content - should use literal style",
+		},
+		{
+			"\u2002\n", // en space
+			"\"\u2002\\n\"\n",
+			"En space only - should not use literal style",
+		},
+		{
+			"hello\u2003\n", // em space
+			"|\n    hello\u2003\n",
+			"Em space with content - should use literal style",
+		},
+		{
+			"\u2003\n", // em space
+			"\"\u2003\\n\"\n",
+			"Em space only - should not use literal style",
+		},
+		{
+			"hello\u2004\n", // three-per-em space
+			"|\n    hello\u2004\n",
+			"Three-per-em space with content - should use literal style",
+		},
+		{
+			"\u2004\n", // three-per-em space
+			"\"\u2004\\n\"\n",
+			"Three-per-em space only - should not use literal style",
+		},
+		{
+			"hello\u2005\n", // four-per-em space
+			"|\n    hello\u2005\n",
+			"Four-per-em space with content - should use literal style",
+		},
+		{
+			"\u2005\n", // four-per-em space
+			"\"\u2005\\n\"\n",
+			"Four-per-em space only - should not use literal style",
+		},
+		{
+			"hello\u2006\n", // six-per-em space
+			"|\n    hello\u2006\n",
+			"Six-per-em space with content - should use literal style",
+		},
+		{
+			"\u2006\n", // six-per-em space
+			"\"\u2006\\n\"\n",
+			"Six-per-em space only - should not use literal style",
+		},
+		{
+			"hello\u2007\n", // figure space
+			"|\n    hello\u2007\n",
+			"Figure space with content - should use literal style",
+		},
+		{
+			"\u2007\n", // figure space
+			"\"\u2007\\n\"\n",
+			"Figure space only - should not use literal style",
+		},
+		{
+			"hello\u2008\n", // punctuation space
+			"|\n    hello\u2008\n",
+			"Punctuation space with content - should use literal style",
+		},
+		{
+			"\u2008\n", // punctuation space
+			"\"\u2008\\n\"\n",
+			"Punctuation space only - should not use literal style",
+		},
+		{
+			"hello\u2009\n", // thin space
+			"|\n    hello\u2009\n",
+			"Thin space with content - should use literal style",
+		},
+		{
+			"\u2009\n", // thin space
+			"\"\u2009\\n\"\n",
+			"Thin space only - should not use literal style",
+		},
+		{
+			"hello\u200A\n", // hair space
+			"|\n    hello\u200A\n",
+			"Hair space with content - should use literal style",
+		},
+		{
+			"\u200A\n", // hair space
+			"\"\u200A\\n\"\n",
+			"Hair space only - should not use literal style",
+		},
+		// Other Unicode whitespace
+		{
+			"hello\u2028\n", // line separator
+			"|+\n    hello\u2028\n",
+			"Line separator with content - should use literal style",
+		},
+		{
+			"\u2028\n", // line separator
+			"\"\\L\\n\"\n",
+			"Line separator only - should not use literal style",
+		},
+		{
+			"hello\u2029\n", // paragraph separator
+			"|+\n    hello\u2029\n",
+			"Paragraph separator with content - should use literal style",
+		},
+		{
+			"\u2029\n", // paragraph separator
+			"\"\\P\\n\"\n",
+			"Paragraph separator only - should not use literal style",
+		},
+		{
+			"hello\u205F\n", // medium mathematical space
+			"|\n    hello\u205F\n",
+			"Medium mathematical space with content - should use literal style",
+		},
+		{
+			"\u205F\n", // medium mathematical space
+			"\"\u205F\\n\"\n",
+			"Medium mathematical space only - should not use literal style",
+		},
+		{
+			"hello\u3000\n", // ideographic space
+			"|\n    hello\u3000\n",
+			"Ideographic space with content - should use literal style",
+		},
+		{
+			"\u3000\n", // ideographic space
+			"\"\u3000\\n\"\n",
+			"Ideographic space only - should not use literal style",
+		},
+		// Mixed Unicode whitespace
+		{
+			"hello\u00A0\u2000\u2001\n", // mixed Unicode spaces
+			"|\n    hello\u00A0\u2000\u2001\n",
+			"Mixed Unicode spaces with content - should use literal style",
+		},
+		{
+			"\u00A0\u2000\u2001\n", // mixed Unicode spaces
+			"\"\u00A0\u2000\u2001\\n\"\n",
+			"Mixed Unicode spaces only - should not use literal style",
+		},
+		// Unicode whitespace with ASCII whitespace
+		{
+			"hello \u00A0\t\n", // ASCII + Unicode spaces
+			"|\n    hello \u00A0\t\n",
+			"ASCII + Unicode spaces with content - should use literal style",
+		},
+		{
+			" \u00A0\t\n", // ASCII + Unicode spaces
+			"\" \u00A0\\t\\n\"\n",
+			"ASCII + Unicode spaces only - should not use literal style",
+		},
+	}
+
+	for i, testCase := range testCases {
+		t.Run(fmt.Sprintf("test_%d_%s", i, testCase.desc), func(t *testing.T) {
+			data, err := yaml.Marshal(testCase.input)
+			if err != nil {
+				t.Fatalf("Marshal() returned error: %v", err)
+			}
+			if string(data) != testCase.expected {
+				t.Fatalf("Marshal() returned\n%q\nbut expected\n%q", string(data), testCase.expected)
+			}
+		})
+	}
 }
