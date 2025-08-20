@@ -29,8 +29,8 @@ import (
 // Parser, produces a node tree out of a libyaml event stream.
 
 type parser struct {
-	parser   yaml_parser_t
-	event    yaml_event_t
+	parser   yamlParser
+	event    yamlEvent
 	doc      *Node
 	anchors  map[string]*Node
 	doneInit bool
@@ -76,7 +76,7 @@ func (p *parser) destroy() {
 
 // expect consumes an event from the event stream and
 // checks that it's of the expected type.
-func (p *parser) expect(e yaml_event_type_t) {
+func (p *parser) expect(e yamlEventType) {
 	if p.event.typ == yaml_NO_EVENT {
 		if !yaml_parser_parse(&p.parser, &p.event) {
 			p.fail()
@@ -95,7 +95,7 @@ func (p *parser) expect(e yaml_event_type_t) {
 
 // peek peeks at the next event in the event stream,
 // puts the results into p.event and returns the event type.
-func (p *parser) peek() yaml_event_type_t {
+func (p *parser) peek() yamlEventType {
 	if p.event.typ != yaml_NO_EVENT {
 		return p.event.typ
 	}

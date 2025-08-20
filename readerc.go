@@ -27,7 +27,7 @@ import (
 )
 
 // Set the reader error and return 0.
-func yaml_parser_set_reader_error(parser *yaml_parser_t, problem string, offset int, value int) bool {
+func yaml_parser_set_reader_error(parser *yamlParser, problem string, offset int, value int) bool {
 	parser.error = yaml_READER_ERROR
 	parser.problem = problem
 	parser.problem_offset = offset
@@ -44,7 +44,7 @@ const (
 
 // Determine the input stream encoding by checking the BOM symbol. If no BOM is
 // found, the UTF-8 encoding is assumed. Return 1 on success, 0 on failure.
-func yaml_parser_determine_encoding(parser *yaml_parser_t) bool {
+func yaml_parser_determine_encoding(parser *yamlParser) bool {
 	// Ensure that we had enough bytes in the raw buffer.
 	for !parser.eof && len(parser.raw_buffer)-parser.raw_buffer_pos < 3 {
 		if !yaml_parser_update_raw_buffer(parser) {
@@ -75,7 +75,7 @@ func yaml_parser_determine_encoding(parser *yaml_parser_t) bool {
 }
 
 // Update the raw buffer.
-func yaml_parser_update_raw_buffer(parser *yaml_parser_t) bool {
+func yaml_parser_update_raw_buffer(parser *yamlParser) bool {
 	size_read := 0
 
 	// Return if the raw buffer is full.
@@ -110,7 +110,7 @@ func yaml_parser_update_raw_buffer(parser *yaml_parser_t) bool {
 // Return true on success, false on failure.
 //
 // The length is supposed to be significantly less that the buffer size.
-func yaml_parser_update_buffer(parser *yaml_parser_t, length int) bool {
+func yaml_parser_update_buffer(parser *yamlParser, length int) bool {
 	if parser.read_handler == nil {
 		panic("read handler must be set")
 	}

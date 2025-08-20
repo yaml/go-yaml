@@ -29,8 +29,8 @@ import (
 )
 
 type encoder struct {
-	emitter  yaml_emitter_t
-	event    yaml_event_t
+	emitter  yamlEmitter
+	event    yamlEvent
 	out      []byte
 	flow     bool
 	indent   int
@@ -330,7 +330,7 @@ func looksLikeMerge(s string) (result bool) {
 }
 
 func (e *encoder) stringv(tag string, in reflect.Value) {
-	var style yaml_scalar_style_t
+	var style yamlScalarStyle
 	s := in.String()
 	canUsePlain := true
 	switch {
@@ -422,7 +422,7 @@ func (e *encoder) nilv() {
 	e.emitScalar("null", "", "", yaml_PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
-func (e *encoder) emitScalar(value, anchor, tag string, style yaml_scalar_style_t, head, line, foot, tail []byte) {
+func (e *encoder) emitScalar(value, anchor, tag string, style yamlScalarStyle, head, line, foot, tail []byte) {
 	// TODO Kill this function. Replace all initialize calls by their underlining Go literals.
 	implicit := tag == ""
 	if !implicit {

@@ -28,47 +28,47 @@ import (
 )
 
 // The version directive data.
-type yaml_version_directive_t struct {
+type yamlVersionDirective struct {
 	major int8 // The major version number.
 	minor int8 // The minor version number.
 }
 
 // The tag directive data.
-type yaml_tag_directive_t struct {
+type yamlTagDirective struct {
 	handle []byte // The tag handle.
 	prefix []byte // The tag prefix.
 }
 
-type yaml_encoding_t int
+type yamlEncoding int
 
 // The stream encoding.
 const (
 	// Let the parser choose the encoding.
-	yaml_ANY_ENCODING yaml_encoding_t = iota
+	yaml_ANY_ENCODING yamlEncoding = iota
 
 	yaml_UTF8_ENCODING    // The default UTF-8 encoding.
 	yaml_UTF16LE_ENCODING // The UTF-16-LE encoding with BOM.
 	yaml_UTF16BE_ENCODING // The UTF-16-BE encoding with BOM.
 )
 
-type yaml_break_t int
+type yamlBreak int
 
 // Line break types.
 const (
 	// Let the parser choose the break type.
-	yaml_ANY_BREAK yaml_break_t = iota
+	yaml_ANY_BREAK yamlBreak = iota
 
 	yaml_CR_BREAK   // Use CR for line breaks (Mac style).
 	yaml_LN_BREAK   // Use LN for line breaks (Unix style).
 	yaml_CRLN_BREAK // Use CR LN for line breaks (DOS style).
 )
 
-type yaml_error_type_t int
+type yamlErrorType int
 
 // Many bad things could happen with the parser and emitter.
 const (
 	// No error is produced.
-	yaml_NO_ERROR yaml_error_type_t = iota
+	yaml_NO_ERROR yamlErrorType = iota
 
 	yaml_MEMORY_ERROR   // Cannot allocate or reallocate a block of memory.
 	yaml_READER_ERROR   // Cannot read or decode the input stream.
@@ -80,7 +80,7 @@ const (
 )
 
 // The pointer position.
-type yaml_mark_t struct {
+type yamlMark struct {
 	index  int // The position index.
 	line   int // The position line.
 	column int // The position column.
@@ -88,39 +88,39 @@ type yaml_mark_t struct {
 
 // Node Styles
 
-type yaml_style_t int8
+type yamlStyle int8
 
-type yaml_scalar_style_t yaml_style_t
+type yamlScalarStyle yamlStyle
 
 // Scalar styles.
 const (
 	// Let the emitter choose the style.
-	yaml_ANY_SCALAR_STYLE yaml_scalar_style_t = 0
+	yaml_ANY_SCALAR_STYLE yamlScalarStyle = 0
 
-	yaml_PLAIN_SCALAR_STYLE         yaml_scalar_style_t = 1 << iota // The plain scalar style.
-	yaml_SINGLE_QUOTED_SCALAR_STYLE                                 // The single-quoted scalar style.
-	yaml_DOUBLE_QUOTED_SCALAR_STYLE                                 // The double-quoted scalar style.
-	yaml_LITERAL_SCALAR_STYLE                                       // The literal scalar style.
-	yaml_FOLDED_SCALAR_STYLE                                        // The folded scalar style.
+	yaml_PLAIN_SCALAR_STYLE         yamlScalarStyle = 1 << iota // The plain scalar style.
+	yaml_SINGLE_QUOTED_SCALAR_STYLE                             // The single-quoted scalar style.
+	yaml_DOUBLE_QUOTED_SCALAR_STYLE                             // The double-quoted scalar style.
+	yaml_LITERAL_SCALAR_STYLE                                   // The literal scalar style.
+	yaml_FOLDED_SCALAR_STYLE                                    // The folded scalar style.
 )
 
-type yaml_sequence_style_t yaml_style_t
+type yamlSequenceStyle yamlStyle
 
 // Sequence styles.
 const (
 	// Let the emitter choose the style.
-	yaml_ANY_SEQUENCE_STYLE yaml_sequence_style_t = iota
+	yaml_ANY_SEQUENCE_STYLE yamlSequenceStyle = iota
 
 	yaml_BLOCK_SEQUENCE_STYLE // The block sequence style.
 	yaml_FLOW_SEQUENCE_STYLE  // The flow sequence style.
 )
 
-type yaml_mapping_style_t yaml_style_t
+type yamlMappingStyle yamlStyle
 
 // Mapping styles.
 const (
 	// Let the emitter choose the style.
-	yaml_ANY_MAPPING_STYLE yaml_mapping_style_t = iota
+	yaml_ANY_MAPPING_STYLE yamlMappingStyle = iota
 
 	yaml_BLOCK_MAPPING_STYLE // The block mapping style.
 	yaml_FLOW_MAPPING_STYLE  // The flow mapping style.
@@ -128,12 +128,12 @@ const (
 
 // Tokens
 
-type yaml_token_type_t int
+type yamlTokenType int
 
 // Token types.
 const (
 	// An empty token.
-	yaml_NO_TOKEN yaml_token_type_t = iota
+	yaml_NO_TOKEN yamlTokenType = iota
 
 	yaml_STREAM_START_TOKEN // A STREAM-START token.
 	yaml_STREAM_END_TOKEN   // A STREAM-END token.
@@ -163,7 +163,7 @@ const (
 	yaml_SCALAR_TOKEN // A SCALAR token.
 )
 
-func (tt yaml_token_type_t) String() string {
+func (tt yamlTokenType) String() string {
 	switch tt {
 	case yaml_NO_TOKEN:
 		return "yaml_NO_TOKEN"
@@ -214,15 +214,15 @@ func (tt yaml_token_type_t) String() string {
 }
 
 // The token structure.
-type yaml_token_t struct {
+type yamlToken struct {
 	// The token type.
-	typ yaml_token_type_t
+	typ yamlTokenType
 
 	// The start/end of the token.
-	start_mark, end_mark yaml_mark_t
+	start_mark, end_mark yamlMark
 
 	// The stream encoding (for yaml_STREAM_START_TOKEN).
-	encoding yaml_encoding_t
+	encoding yamlEncoding
 
 	// The alias/anchor/scalar value or tag/tag directive handle
 	// (for yaml_ALIAS_TOKEN, yaml_ANCHOR_TOKEN, yaml_SCALAR_TOKEN, yaml_TAG_TOKEN, yaml_TAG_DIRECTIVE_TOKEN).
@@ -235,7 +235,7 @@ type yaml_token_t struct {
 	prefix []byte
 
 	// The scalar style (for yaml_SCALAR_TOKEN).
-	style yaml_scalar_style_t
+	style yamlScalarStyle
 
 	// The version directive major/minor (for yaml_VERSION_DIRECTIVE_TOKEN).
 	major, minor int8
@@ -243,12 +243,12 @@ type yaml_token_t struct {
 
 // Events
 
-type yaml_event_type_t int8
+type yamlEventType int8
 
 // Event types.
 const (
 	// An empty event.
-	yaml_NO_EVENT yaml_event_type_t = iota
+	yaml_NO_EVENT yamlEventType = iota
 
 	yaml_STREAM_START_EVENT   // A STREAM-START event.
 	yaml_STREAM_END_EVENT     // A STREAM-END event.
@@ -278,7 +278,7 @@ var eventStrings = []string{
 	yaml_TAIL_COMMENT_EVENT:   "tail comment",
 }
 
-func (e yaml_event_type_t) String() string {
+func (e yamlEventType) String() string {
 	if e < 0 || int(e) >= len(eventStrings) {
 		return fmt.Sprintf("unknown event %d", e)
 	}
@@ -286,22 +286,22 @@ func (e yaml_event_type_t) String() string {
 }
 
 // The event structure.
-type yaml_event_t struct {
+type yamlEvent struct {
 
 	// The event type.
-	typ yaml_event_type_t
+	typ yamlEventType
 
 	// The start and end of the event.
-	start_mark, end_mark yaml_mark_t
+	start_mark, end_mark yamlMark
 
 	// The document encoding (for yaml_STREAM_START_EVENT).
-	encoding yaml_encoding_t
+	encoding yamlEncoding
 
 	// The version directive (for yaml_DOCUMENT_START_EVENT).
-	version_directive *yaml_version_directive_t
+	version_directive *yamlVersionDirective
 
 	// The list of tag directives (for yaml_DOCUMENT_START_EVENT).
-	tag_directives []yaml_tag_directive_t
+	tag_directives []yamlTagDirective
 
 	// The comments
 	head_comment []byte
@@ -326,12 +326,12 @@ type yaml_event_t struct {
 	quoted_implicit bool
 
 	// The style (for yaml_SCALAR_EVENT, yaml_SEQUENCE_START_EVENT, yaml_MAPPING_START_EVENT).
-	style yaml_style_t
+	style yamlStyle
 }
 
-func (e *yaml_event_t) scalar_style() yaml_scalar_style_t     { return yaml_scalar_style_t(e.style) }
-func (e *yaml_event_t) sequence_style() yaml_sequence_style_t { return yaml_sequence_style_t(e.style) }
-func (e *yaml_event_t) mapping_style() yaml_mapping_style_t   { return yaml_mapping_style_t(e.style) }
+func (e *yamlEvent) scalar_style() yamlScalarStyle     { return yamlScalarStyle(e.style) }
+func (e *yamlEvent) sequence_style() yamlSequenceStyle { return yamlSequenceStyle(e.style) }
+func (e *yamlEvent) mapping_style() yamlMappingStyle   { return yamlMappingStyle(e.style) }
 
 // Nodes
 
@@ -355,12 +355,12 @@ const (
 	yaml_DEFAULT_MAPPING_TAG  = yaml_MAP_TAG // The default mapping tag is !!map.
 )
 
-type yaml_node_type_t int
+type yamlNodeType int
 
 // Node types.
 const (
 	// An empty node.
-	yaml_NO_NODE yaml_node_type_t = iota
+	yaml_NO_NODE yamlNodeType = iota
 
 	yaml_SCALAR_NODE   // A scalar node.
 	yaml_SEQUENCE_NODE // A sequence node.
@@ -368,59 +368,59 @@ const (
 )
 
 // An element of a sequence node.
-type yaml_node_item_t int
+type yamlNodeItem int
 
 // An element of a mapping node.
-type yaml_node_pair_t struct {
+type yamlNodePair struct {
 	key   int // The key of the element.
 	value int // The value of the element.
 }
 
 // The node structure.
-type yaml_node_t struct {
-	typ yaml_node_type_t // The node type.
-	tag []byte           // The node tag.
+type yamlNode struct {
+	typ yamlNodeType // The node type.
+	tag []byte       // The node tag.
 
 	// The node data.
 
 	// The scalar parameters (for yaml_SCALAR_NODE).
 	scalar struct {
-		value  []byte              // The scalar value.
-		length int                 // The length of the scalar value.
-		style  yaml_scalar_style_t // The scalar style.
+		value  []byte          // The scalar value.
+		length int             // The length of the scalar value.
+		style  yamlScalarStyle // The scalar style.
 	}
 
 	// The sequence parameters (for YAML_SEQUENCE_NODE).
 	sequence struct {
-		items_data []yaml_node_item_t    // The stack of sequence items.
-		style      yaml_sequence_style_t // The sequence style.
+		items_data []yamlNodeItem    // The stack of sequence items.
+		style      yamlSequenceStyle // The sequence style.
 	}
 
 	// The mapping parameters (for yaml_MAPPING_NODE).
 	mapping struct {
-		pairs_data  []yaml_node_pair_t   // The stack of mapping pairs (key, value).
-		pairs_start *yaml_node_pair_t    // The beginning of the stack.
-		pairs_end   *yaml_node_pair_t    // The end of the stack.
-		pairs_top   *yaml_node_pair_t    // The top of the stack.
-		style       yaml_mapping_style_t // The mapping style.
+		pairs_data  []yamlNodePair   // The stack of mapping pairs (key, value).
+		pairs_start *yamlNodePair    // The beginning of the stack.
+		pairs_end   *yamlNodePair    // The end of the stack.
+		pairs_top   *yamlNodePair    // The top of the stack.
+		style       yamlMappingStyle // The mapping style.
 	}
 
-	start_mark yaml_mark_t // The beginning of the node.
-	end_mark   yaml_mark_t // The end of the node.
+	start_mark yamlMark // The beginning of the node.
+	end_mark   yamlMark // The end of the node.
 
 }
 
 // The document structure.
-type yaml_document_t struct {
+type yamlDocument struct {
 
 	// The document nodes.
-	nodes []yaml_node_t
+	nodes []yamlNode
 
 	// The version directive.
-	version_directive *yaml_version_directive_t
+	version_directive *yamlVersionDirective
 
 	// The list of tag directives.
-	tag_directives_data  []yaml_tag_directive_t
+	tag_directives_data  []yamlTagDirective
 	tag_directives_start int // The beginning of the tag directives list.
 	tag_directives_end   int // The end of the tag directives list.
 
@@ -428,7 +428,7 @@ type yaml_document_t struct {
 	end_implicit   int // Is the document end indicator implicit?
 
 	// The start/end of the document.
-	start_mark, end_mark yaml_mark_t
+	start_mark, end_mark yamlMark
 }
 
 // The prototype of a read handler.
@@ -448,21 +448,21 @@ type yaml_document_t struct {
 // On success, the handler should return 1.  If the handler failed,
 // the returned value should be 0. On EOF, the handler should set the
 // size_read to 0 and return 1.
-type yaml_read_handler_t func(parser *yaml_parser_t, buffer []byte) (n int, err error)
+type yamlReadHandler func(parser *yamlParser, buffer []byte) (n int, err error)
 
 // This structure holds information about a potential simple key.
-type yaml_simple_key_t struct {
-	possible     bool        // Is a simple key possible?
-	required     bool        // Is a simple key required?
-	token_number int         // The number of the token.
-	mark         yaml_mark_t // The position mark.
+type yamlSimpleKey struct {
+	possible     bool     // Is a simple key possible?
+	required     bool     // Is a simple key required?
+	token_number int      // The number of the token.
+	mark         yamlMark // The position mark.
 }
 
 // The states of the parser.
-type yaml_parser_state_t int
+type yamlParserState int
 
 const (
-	yaml_PARSE_STREAM_START_STATE yaml_parser_state_t = iota
+	yaml_PARSE_STREAM_START_STATE yamlParserState = iota
 
 	yaml_PARSE_IMPLICIT_DOCUMENT_START_STATE           // Expect the beginning of an implicit document.
 	yaml_PARSE_DOCUMENT_START_STATE                    // Expect DOCUMENT-START.
@@ -489,7 +489,7 @@ const (
 	yaml_PARSE_END_STATE                               // Expect nothing.
 )
 
-func (ps yaml_parser_state_t) String() string {
+func (ps yamlParserState) String() string {
 	switch ps {
 	case yaml_PARSE_STREAM_START_STATE:
 		return "yaml_PARSE_STREAM_START_STATE"
@@ -544,36 +544,36 @@ func (ps yaml_parser_state_t) String() string {
 }
 
 // This structure holds aliases data.
-type yaml_alias_data_t struct {
-	anchor []byte      // The anchor.
-	index  int         // The node id.
-	mark   yaml_mark_t // The anchor mark.
+type yamlAliasData struct {
+	anchor []byte   // The anchor.
+	index  int      // The node id.
+	mark   yamlMark // The anchor mark.
 }
 
 // The parser structure.
 //
 // All members are internal. Manage the structure using the
 // yaml_parser_ family of functions.
-type yaml_parser_t struct {
+type yamlParser struct {
 
 	// Error handling
 
-	error yaml_error_type_t // Error type.
+	error yamlErrorType // Error type.
 
 	problem string // Error description.
 
 	// The byte about which the problem occurred.
 	problem_offset int
 	problem_value  int
-	problem_mark   yaml_mark_t
+	problem_mark   yamlMark
 
 	// The error context.
 	context      string
-	context_mark yaml_mark_t
+	context_mark yamlMark
 
 	// Reader stuff
 
-	read_handler yaml_read_handler_t // Read handler.
+	read_handler yamlReadHandler // Read handler.
 
 	input_reader io.Reader // File input data.
 	input        []byte    // String input data.
@@ -591,10 +591,10 @@ type yaml_parser_t struct {
 	raw_buffer     []byte // The raw buffer.
 	raw_buffer_pos int    // The current position of the buffer.
 
-	encoding yaml_encoding_t // The input encoding.
+	encoding yamlEncoding // The input encoding.
 
-	offset int         // The offset of the current position (in bytes).
-	mark   yaml_mark_t // The mark of the current position.
+	offset int      // The offset of the current position (in bytes).
+	mark   yamlMark // The mark of the current position.
 
 	// Comments
 
@@ -604,7 +604,7 @@ type yaml_parser_t struct {
 	tail_comment []byte // Foot comment that happens at the end of a block.
 	stem_comment []byte // Comment in item preceding a nested structure (list inside list item, etc)
 
-	comments      []yaml_comment_t // The folded comments for all parsed tokens
+	comments      []yamlComment // The folded comments for all parsed tokens
 	comments_head int
 
 	// Scanner stuff
@@ -614,37 +614,37 @@ type yaml_parser_t struct {
 
 	flow_level int // The number of unclosed '[' and '{' indicators.
 
-	tokens          []yaml_token_t // The tokens queue.
-	tokens_head     int            // The head of the tokens queue.
-	tokens_parsed   int            // The number of tokens fetched from the queue.
-	token_available bool           // Does the tokens queue contain a token ready for dequeueing.
+	tokens          []yamlToken // The tokens queue.
+	tokens_head     int         // The head of the tokens queue.
+	tokens_parsed   int         // The number of tokens fetched from the queue.
+	token_available bool        // Does the tokens queue contain a token ready for dequeueing.
 
 	indent  int   // The current indentation level.
 	indents []int // The indentation levels stack.
 
-	simple_key_allowed bool                // May a simple key occur at the current position?
-	simple_keys        []yaml_simple_key_t // The stack of simple keys.
-	simple_keys_by_tok map[int]int         // possible simple_key indexes indexed by token_number
+	simple_key_allowed bool            // May a simple key occur at the current position?
+	simple_keys        []yamlSimpleKey // The stack of simple keys.
+	simple_keys_by_tok map[int]int     // possible simple_key indexes indexed by token_number
 
 	// Parser stuff
 
-	state          yaml_parser_state_t    // The current parser state.
-	states         []yaml_parser_state_t  // The parser states stack.
-	marks          []yaml_mark_t          // The stack of marks.
-	tag_directives []yaml_tag_directive_t // The list of TAG directives.
+	state          yamlParserState    // The current parser state.
+	states         []yamlParserState  // The parser states stack.
+	marks          []yamlMark         // The stack of marks.
+	tag_directives []yamlTagDirective // The list of TAG directives.
 
 	// Dumper stuff
 
-	aliases []yaml_alias_data_t // The alias data.
+	aliases []yamlAliasData // The alias data.
 
-	document *yaml_document_t // The currently parsed document.
+	document *yamlDocument // The currently parsed document.
 }
 
-type yaml_comment_t struct {
-	scan_mark  yaml_mark_t // Position where scanning for comments started
-	token_mark yaml_mark_t // Position after which tokens will be associated with this comment
-	start_mark yaml_mark_t // Position of '#' comment mark
-	end_mark   yaml_mark_t // Position where comment terminated
+type yamlComment struct {
+	scan_mark  yamlMark // Position where scanning for comments started
+	token_mark yamlMark // Position after which tokens will be associated with this comment
+	start_mark yamlMark // Position of '#' comment mark
+	end_mark   yamlMark // Position where comment terminated
 
 	head []byte
 	line []byte
@@ -668,14 +668,14 @@ type yaml_comment_t struct {
 //
 // @returns On success, the handler should return @c 1.  If the handler failed,
 // the returned value should be @c 0.
-type yaml_write_handler_t func(emitter *yaml_emitter_t, buffer []byte) error
+type yamlWriteHandler func(emitter *yamlEmitter, buffer []byte) error
 
-type yaml_emitter_state_t int
+type yamlEmitterState int
 
 // The emitter states.
 const (
 	// Expect STREAM-START.
-	yaml_EMIT_STREAM_START_STATE yaml_emitter_state_t = iota
+	yaml_EMIT_STREAM_START_STATE yamlEmitterState = iota
 
 	yaml_EMIT_FIRST_DOCUMENT_START_STATE       // Expect the first DOCUMENT-START or STREAM-END.
 	yaml_EMIT_DOCUMENT_START_STATE             // Expect DOCUMENT-START or STREAM-END.
@@ -702,16 +702,16 @@ const (
 //
 // All members are internal.  Manage the structure using the @c yaml_emitter_
 // family of functions.
-type yaml_emitter_t struct {
+type yamlEmitter struct {
 
 	// Error handling
 
-	error   yaml_error_type_t // Error type.
-	problem string            // Error description.
+	error   yamlErrorType // Error type.
+	problem string        // Error description.
 
 	// Writer stuff
 
-	write_handler yaml_write_handler_t // Write handler.
+	write_handler yamlWriteHandler // Write handler.
 
 	output_buffer *[]byte   // String output data.
 	output_writer io.Writer // File output data.
@@ -722,25 +722,25 @@ type yaml_emitter_t struct {
 	raw_buffer     []byte // The raw buffer.
 	raw_buffer_pos int    // The current position of the buffer.
 
-	encoding yaml_encoding_t // The stream encoding.
+	encoding yamlEncoding // The stream encoding.
 
 	// Emitter stuff
 
-	canonical   bool         // If the output is in the canonical style?
-	best_indent int          // The number of indentation spaces.
-	best_width  int          // The preferred width of the output lines.
-	unicode     bool         // Allow unescaped non-ASCII characters?
-	line_break  yaml_break_t // The preferred line break.
+	canonical   bool      // If the output is in the canonical style?
+	best_indent int       // The number of indentation spaces.
+	best_width  int       // The preferred width of the output lines.
+	unicode     bool      // Allow unescaped non-ASCII characters?
+	line_break  yamlBreak // The preferred line break.
 
-	state  yaml_emitter_state_t   // The current emitter state.
-	states []yaml_emitter_state_t // The stack of states.
+	state  yamlEmitterState   // The current emitter state.
+	states []yamlEmitterState // The stack of states.
 
-	events      []yaml_event_t // The event queue.
-	events_head int            // The head of the event queue.
+	events      []yamlEvent // The event queue.
+	events_head int         // The head of the event queue.
 
 	indents []int // The stack of indentation levels.
 
-	tag_directives []yaml_tag_directive_t // The list of tag directives.
+	tag_directives []yamlTagDirective // The list of tag directives.
 
 	indent int // The current indentation level.
 
@@ -776,13 +776,13 @@ type yaml_emitter_t struct {
 
 	// Scalar analysis.
 	scalar_data struct {
-		value                 []byte              // The scalar value.
-		multiline             bool                // Does the scalar contain line breaks?
-		flow_plain_allowed    bool                // Can the scalar be expressed in the flow plain style?
-		block_plain_allowed   bool                // Can the scalar be expressed in the block plain style?
-		single_quoted_allowed bool                // Can the scalar be expressed in the single quoted style?
-		block_allowed         bool                // Can the scalar be expressed in the literal or folded styles?
-		style                 yaml_scalar_style_t // The output style.
+		value                 []byte          // The scalar value.
+		multiline             bool            // Does the scalar contain line breaks?
+		flow_plain_allowed    bool            // Can the scalar be expessed in the flow plain style?
+		block_plain_allowed   bool            // Can the scalar be expressed in the block plain style?
+		single_quoted_allowed bool            // Can the scalar be expressed in the single quoted style?
+		block_allowed         bool            // Can the scalar be expressed in the literal or folded styles?
+		style                 yamlScalarStyle // The output style.
 	}
 
 	// Comments
@@ -807,5 +807,5 @@ type yaml_emitter_t struct {
 
 	last_anchor_id int // The last assigned anchor id.
 
-	document *yaml_document_t // The currently emitted document.
+	document *yamlDocument // The currently emitted document.
 }
