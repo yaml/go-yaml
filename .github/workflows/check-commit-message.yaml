@@ -1,0 +1,35 @@
+name: Commit Message Check
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+permissions:
+  pull-requests: read  # to get list of commits from the PR
+jobs:
+  check-commit-message:
+    name: Check Commit Message
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
+    steps:
+    - name: Get PR Commits
+      id: get-pr-commits
+      uses: tim-actions/get-pr-commits@v1.3.1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Check Subject Line Length
+      uses: tim-actions/commit-message-checker-with-regex@v0.3.1
+      with:
+        commits: ${{ steps.get-pr-commits.outputs.commits }}
+        pattern: ^.{0,50}(\n.*)*$
+        error: Subject too long (max 50)
+    - name: Check Subject Ending with period
+      uses: tim-actions/commit-message-checker-with-regex@v0.3.1
+      with:
+        commits: ${{ steps.get-pr-commits.outputs.commits }}
+        pattern: ^.*[^.](\n.*)*$
+        error: Subject cannot end with a period
+    - name: Check Subject Line Starting with a capital
+      uses: tim-actions/commit-message-checker-with-regex@v0.3.1
+      with:
+        commits: ${{ steps.get-pr-commits.outputs.commits }}
+        pattern: ^[A-Z].*(\n.*)*$
+        error: Subject must start with a capital letter
