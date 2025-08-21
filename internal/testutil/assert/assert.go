@@ -73,10 +73,10 @@ func ErrorMatchesf(tb miniTB, pattern string, err error, msgFormat string, args 
 	}
 }
 
-func ErrorIs(tb miniTB, want, got error) {
+func ErrorIs(tb miniTB, got, target error) {
 	tb.Helper()
-	if !errors.Is(got, want) {
-		tb.Fatalf("got %#v; want %#v", got, want)
+	if !errors.Is(got, target) {
+		tb.Fatalf("got %#v; want %#v", got, target)
 	}
 }
 func NoError(tb miniTB, err error) {
