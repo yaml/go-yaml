@@ -79,6 +79,42 @@ func ErrorIs(tb miniTB, got, want error) {
 		tb.Fatalf("got %#v; want %#v", got, want)
 	}
 }
+
+// errorAsNoPanic calls errors.As, but catch possible panic and returns it as an error
+func errorAsNoPanic(tb miniTB, err error, target interface{}) (ok bool, panic error) {
+	defer func() {
+		if r := recover(); r != nil {
+			ok = false
+			panic = fmt.Errorf("panic: %v", r)
+			return
+		}
+	}()
+
+	return errors.As(err, target), nil
+}
+
+func ErrorAs(tb miniTB, err error, target interface{}) {
+	tb.Helper()
+
+	ok, panicErr := errorAsNoPanic(tb, err, target)
+	if panicErr != nil {
+		tb.Fatalf("%s", panicErr)
+		return
+	}
+	if ok {
+		return
+	}
+
+	reflectedType := reflect.TypeOf(target)
+	if reflectedType.Kind() != reflect.Ptr {
+		// this is not supposed to happen with the current implementation of [errors.As]
+		tb.Fatalf("a pointer was expected: got: %s; want: ptr", reflectedType.Kind())
+		return
+	}
+
+	tb.Fatalf("got %#v; want %s", err, reflectedType.Elem())
+}
+
 func NoError(tb miniTB, err error) {
 	tb.Helper()
 	NoErrorf(tb, err, "")

@@ -1,9 +1,11 @@
 package assert
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -98,6 +100,16 @@ func assertFailureMessageMatches(t *testing.T, f *fakeTB, pattern string) {
 	}
 }
 
+func assertFailureMessageContains(t *testing.T, f *fakeTB, substr string) {
+	t.Helper()
+	if !f.failed {
+		t.Fatalf("expected failure")
+	}
+	if !strings.Contains(f.msg, substr) {
+		t.Fatalf("message doesn't contain:\ngot:  `%s`\nwant: `%s`", f.msg, substr)
+	}
+}
+
 func TestAssertEqual_Fails(t *testing.T) {
 	mock := &fakeTB{}
 	Equal(mock, 2, 1)
@@ -167,6 +179,51 @@ func TestErrorIs_Fails(t *testing.T) {
 	mock3 := &fakeTB{}
 	ErrorIs(mock3, other, nil)
 	assertFailureMessageMatches(t, mock3, `got &errors.errorString{s:"other"}; want <nil>`)
+}
+
+// customErr is a custom error type for testing.
+type customErr struct {
+	msg string
+}
+
+func (e *customErr) Error() string {
+	return e.msg
+}
+
+func TestErrorAs_Success(t *testing.T) {
+	// this simulates an error returned from a function as error
+	var err error = &customErr{"foo"}
+
+	var target *customErr
+	ErrorAs(t, err, &target)
+	Equal(t, "foo", target.Error())
+}
+
+func TestErrorAs_Fails(t *testing.T) {
+	tb := &fakeTB{}
+
+	err := errors.New("foo")
+
+	var target *customErr
+	ErrorAs(tb, err, &target)
+	assertFailureMessageContains(t, tb, `got &errors.errorString{s:"foo"}; want *assert.customErr`)
+
+	tb = &fakeTB{}
+	ErrorAs(tb, nil, &target)
+	assertFailureMessageContains(t, tb, `got <nil>; want *assert.customErr`)
+
+	tb = &fakeTB{}
+	ErrorAs(tb, err, nil) // this is invalid, a panic is expected
+	assertFailureMessageContains(t, tb, `panic`)
+
+	tb = &fakeTB{}
+	ErrorAs(tb, err, 42) // this is invalid, a panic is expected
+	assertFailureMessageContains(t, tb, `panic`)
+
+	var a int
+	tb = &fakeTB{}
+	ErrorAs(tb, err, &a) // this is invalid, a panic is expected
+	assertFailureMessageContains(t, tb, `panic`)
 }
 
 func TestIsNil_Fails(t *testing.T) {
