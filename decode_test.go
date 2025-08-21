@@ -1259,6 +1259,7 @@ func TestObsoleteUnmarshalerTypeError(t *testing.T) {
 
 func TestTypeError_Unwrapping(t *testing.T) {
 	errSentinel := errors.New("foo")
+	errSentinel2 := errors.New("bar")
 
 	errUnmarshal := &yaml.UnmarshalError{
 		Line:   1,
@@ -1269,7 +1270,7 @@ func TestTypeError_Unwrapping(t *testing.T) {
 	errUnmarshal2 := &yaml.UnmarshalError{
 		Line:   2,
 		Column: 2,
-		Err:    errors.New("bar"),
+		Err:    errSentinel2,
 	}
 
 	// Simulate a TypeError
@@ -1286,6 +1287,10 @@ func TestTypeError_Unwrapping(t *testing.T) {
 
 	// check we got the first error
 	assert.ErrorIs(t, errTarget, errUnmarshal)
+
+	// check we can unwrap any sentinel error wrapped in any UnmarshalError
+	assert.ErrorIs(t, err, errSentinel)
+	assert.ErrorIs(t, err, errSentinel2)
 }
 
 func TestTypeError_Unwrapping_Failures(t *testing.T) {
