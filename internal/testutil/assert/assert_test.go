@@ -145,7 +145,7 @@ func TestErrorIs_Success(t *testing.T) {
 	// direct match
 	ErrorIs(t, base, base)
 	ErrorIs(t, wrapped, wrapped)
-	ErrorIs(t, base, wrapped)
+	ErrorIs(t, wrapped, base)
 	// both nil
 	ErrorIs(t, nil, nil)
 }
@@ -156,17 +156,17 @@ func TestErrorIs_Fails(t *testing.T) {
 	base := fmt.Errorf("base")
 	other := fmt.Errorf("other")
 	ErrorIs(mock1, base, other)
-	assertFailureMessageMatches(t, mock1, `got &errors.errorString\{s:"other"\}; want &errors.errorString\{s:"base"\}`)
+	assertFailureMessageMatches(t, mock1, `got &errors.errorString{s:"base"}; want &errors.errorString{s:"other"}`)
 
 	// expected non-nil, actual nil
 	mock2 := &fakeTB{}
-	ErrorIs(mock2, base, nil)
-	assertFailureMessageMatches(t, mock2, `got \<nil\>; want &errors.errorString\{s:"base"\}`)
+	ErrorIs(mock2, nil, base)
+	assertFailureMessageMatches(t, mock2, `got <nil>; want &errors.errorString{s:"base"}`)
 
 	// expected nil, actual non-nil
 	mock3 := &fakeTB{}
-	ErrorIs(mock3, nil, other)
-	assertFailureMessageMatches(t, mock3, `got &errors.errorString\{s:"other"\}; want \<nil\>`)
+	ErrorIs(mock3, other, nil)
+	assertFailureMessageMatches(t, mock3, `got &errors.errorString{s:"other"}; want <nil>`)
 }
 
 func TestIsNil_Fails(t *testing.T) {
