@@ -376,6 +376,11 @@ func (e *TypeError) Is(target error) bool {
 		if errors.Is(err, target) {
 			return true
 		}
+
+		// Check if the error is not wrapped in the UnmarshalError.
+		if err != nil && errors.Is(err.Err, target) {
+			return true
+		}
 	}
 	return false
 }
