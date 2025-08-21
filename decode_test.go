@@ -234,13 +234,13 @@ var unmarshalTests = []struct {
 		map[string]interface{}{"seq": []interface{}{"A", "B"}},
 	}, {
 		"seq: [A,B,C,]",
-		map[string][]string{"seq": []string{"A", "B", "C"}},
+		map[string][]string{"seq": {"A", "B", "C"}},
 	}, {
 		"seq: [A,1,C]",
-		map[string][]string{"seq": []string{"A", "1", "C"}},
+		map[string][]string{"seq": {"A", "1", "C"}},
 	}, {
 		"seq: [A,1,C]",
-		map[string][]int{"seq": []int{1}},
+		map[string][]int{"seq": {1}},
 	}, {
 		"seq: [A,1,C]",
 		map[string]interface{}{"seq": []interface{}{"A", 1, "C"}},
@@ -251,13 +251,13 @@ var unmarshalTests = []struct {
 		map[string]interface{}{"seq": []interface{}{"A", "B"}},
 	}, {
 		"seq:\n - A\n - B\n - C",
-		map[string][]string{"seq": []string{"A", "B", "C"}},
+		map[string][]string{"seq": {"A", "B", "C"}},
 	}, {
 		"seq:\n - A\n - 1\n - C",
-		map[string][]string{"seq": []string{"A", "1", "C"}},
+		map[string][]string{"seq": {"A", "1", "C"}},
 	}, {
 		"seq:\n - A\n - 1\n - C",
-		map[string][]int{"seq": []int{1}},
+		map[string][]int{"seq": {1}},
 	}, {
 		"seq:\n - A\n - 1\n - C",
 		map[string]interface{}{"seq": []interface{}{"A", 1, "C"}},
@@ -478,7 +478,7 @@ var unmarshalTests = []struct {
 		map[interface{}]interface{}{"1": "\"2\""},
 	}, {
 		"v:\n- A\n- 'B\n\n  C'\n",
-		map[string][]string{"v": []string{"A", "B\nC"}},
+		map[string][]string{"v": {"A", "B\nC"}},
 	},
 
 	// Explicit tags.
@@ -685,11 +685,11 @@ var unmarshalTests = []struct {
 	// Support encoding.TextUnmarshaler.
 	{
 		"a: 1.2.3.4\n",
-		map[string]textUnmarshaler{"a": textUnmarshaler{S: "1.2.3.4"}},
+		map[string]textUnmarshaler{"a": {S: "1.2.3.4"}},
 	},
 	{
 		"a: 2015-02-24T18:19:39Z\n",
-		map[string]textUnmarshaler{"a": textUnmarshaler{"2015-02-24T18:19:39Z"}},
+		map[string]textUnmarshaler{"a": {"2015-02-24T18:19:39Z"}},
 	},
 
 	// Timestamps
@@ -1335,12 +1335,12 @@ func TestObsoleteUnmarshalerTypeErrorProxying(t *testing.T) {
 	assert.ErrorMatches(t, expectedError, err)
 }
 
-var failingErr = errors.New("failingErr")
+var errFailing = errors.New("failingErr")
 
 type failingUnmarshaler struct{}
 
 func (ft *failingUnmarshaler) UnmarshalYAML(node *yaml.Node) error {
-	return failingErr
+	return errFailing
 }
 
 func TestUnmarshalerError(t *testing.T) {
@@ -1366,7 +1366,7 @@ func TestUnmarshalerError(t *testing.T) {
 type obsoleteFailingUnmarshaler struct{}
 
 func (ft *obsoleteFailingUnmarshaler) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	return failingErr
+	return errFailing
 }
 
 func TestObsoleteUnmarshalerError(t *testing.T) {
@@ -1679,8 +1679,8 @@ var unmarshalNullTests = []struct {
 	pristine, expected func() interface{}
 }{{
 	"null",
-	func() interface{} { var v interface{}; v = "v"; return &v },
-	func() interface{} { var v interface{}; v = nil; return &v },
+	func() interface{} { var v = "v"; return &v },
+	func() interface{} { var v interface{}; return &v },
 }, {
 	"null",
 	func() interface{} { var s = "s"; return &s },

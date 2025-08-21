@@ -295,6 +295,7 @@ func isBase60Float(s string) (result bool) {
 		return false
 	}
 	c := s[0]
+	//nolint:staticcheck // De Morgan's law does not improve readability here.
 	if !(c == '+' || c == '-' || c >= '0' && c <= '9') || strings.IndexByte(s, ':') < 0 {
 		return false
 	}
