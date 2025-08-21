@@ -94,7 +94,7 @@ func assertFailureMessageMatches(t *testing.T, f *fakeTB, pattern string) {
 	}
 	re := regexp.MustCompile(pattern)
 	if !re.MatchString(f.msg) {
-		t.Fatalf("message %q does not match %q", f.msg, pattern)
+		t.Fatalf("message does not match:\ngot: `%s`\nregexp: `%s`", f.msg, pattern)
 	}
 }
 
