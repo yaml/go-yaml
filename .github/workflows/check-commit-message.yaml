@@ -1,0 +1,22 @@
+name: Commit Message Check
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  pull-requests: read  # to get list of commits from the PR
+
+jobs:
+  check-commit-message:
+    name: Check Commit Message
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+      with:
+        fetch-depth: 0  # Fetch all history to ensure all SHAs are available
+    - name: Check PR Commits
+      run: |
+        ./tooling/check-commit-messages.sh ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
