@@ -1629,7 +1629,7 @@ func TestMergeNestedStruct(t *testing.T) {
 	//
 	// Quick summary of the fields:
 	//
-	// - A must come from outer and not overriden
+	// - A must come from outer and not overridden
 	// - B must not be set as its in the ignored merge
 	// - C should still be set as it's preset in the value
 	// - D should be set from the recursive merge
