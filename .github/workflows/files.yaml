@@ -1,0 +1,19 @@
+name: Files Lint
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read  # for actions/checkout to fetch code
+
+jobs:
+  yamllint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout-action
+      uses: actions/checkout@v5
+
+    - name: yamllint
+      uses: ibiqlik/action-yamllint@v3
