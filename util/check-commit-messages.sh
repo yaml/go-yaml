@@ -109,12 +109,12 @@ validate_commit_message() (
 		# read the message and add the line number in front of each line, and use
 		# warn_color to display a line with an error based on line_with_errors
 		i=0
-		while IFS= read -r line; do
-			((i++))
-			C=$Y
-			[[ ${lines_with_errors[$i]:-} ]] || C=''
-			echo -e "${C}Line $i: $line$Z"
-			[[ $i -lt $last_line_with_error ]] || break
+		C=$Y
+		while IFS= read -r line && [[ $((++i)) -lt $last_line_with_error ]]; do
+			(
+				[[ ${lines_with_errors[$i]:-} ]] || C=''
+				echo -e "${C}Line $i: $line$Z"
+			)
 		done <<<"$message"
 
 		echo
