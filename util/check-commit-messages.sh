@@ -30,16 +30,14 @@ main() (
 		validate_commit_message "$range_or_file" "$message" ||
 			die "Commit message in $range_or_file is invalid."
 	else
-		fail=0
+		ok=true
 		commits=$(git rev-list "$range_or_file")
 		for commit in $commits; do
 			message=$(git log --format=%B -n 1 "$commit")
-			if ! validate_commit_message "$commit" "$message"; then
-				fail=1
-			fi
+			validate_commit_message "$commit" "$message" ||
+				ok=false
 		done
-		[[ $fail -eq 0 ]] ||
-			die 'At least one commit message is invalid.'
+		$ok || die 'At least one commit message is invalid.'
 	fi
 )
 
