@@ -104,12 +104,16 @@ validate_commit_message() (
 		((i++))
 	done <<<"$body"
 
-	if [[ ${#errors[@]} -gt 0 ]]; then
+	# Return if no errors:
+	[[ ${#errors[@]} -eq 0 ]] && return
+
+	# Report errors to stderr:
+	(
 		echo -e "${R}Error: $commit_or_file has invalid message:$Z"
 		echo
+
 		# read the message and add the line number in front of each line, and use
 		# warn_color to display a line with an error based on line_with_errors
-
 		i=0
 		while IFS= read -r line; do
 			((i++))
@@ -118,12 +122,13 @@ validate_commit_message() (
 			echo -e "${C}Line $i: $line$Z"
 			[[ $i -lt $((last_line_with_error)) ]] || break
 		done <<<"$message"
+
 		echo
 		printf -- '- %s\n' "${errors[@]}"
 		echo
-		return 1
-	fi
-	return 0
+	) >&2
+
+	return 1
 )
 
 main "$@"
