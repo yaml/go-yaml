@@ -18,7 +18,7 @@ main() (
 		0) usage; exit ;;
 		1) range_or_file=$1 ;;
 		*) die \
-				"Error: Too many arguments." \
+				'Error: Too many arguments.' \
 				'' \
 				"$(usage)" ;;
 	esac
@@ -26,7 +26,7 @@ main() (
 	# Determine input type
 	range_or_file=${1:-HEAD}
 	if [[ -f $range_or_file ]]; then
-		message=$(cat "$range_or_file")
+		message=$(< "$range_or_file")
 		validate_commit_message "$range_or_file" "$message" ||
 			die "Commit message in $range_or_file is invalid."
 	else
@@ -39,7 +39,7 @@ main() (
 			fi
 		done
 		[[ $fail -eq 0 ]] ||
-			die "At least one commit message is invalid."
+			die 'At least one commit message is invalid.'
 	fi
 )
 
