@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
 
-# -u works poorly with arrays until Bash 4.4
-shopt -s compat43 2>/dev/null ||
-	{ echo "Bash 4.4 required"; exit 1; }
-set -euo pipefail
-shopt -s inherit_errexit
+# shellcheck disable=1091
+source "$(dirname "${BASH_SOURCE[0]}")"/common.bash || exit
 
 usage() {
 	cat <<-...
@@ -15,7 +12,7 @@ usage() {
 }
 
 main() (
-	init
+	require git head sed
 
 	case $# in
 		0) usage; exit ;;
@@ -45,17 +42,6 @@ main() (
 			die "At least one commit message is invalid."
 	fi
 )
-
-init() {
-	E="\033[31m"
-	W="\033[33m"
-	Z="\033[0m"
-
-	for cmd in git sed head; do
-		command -v "$cmd" >/dev/null ||
-			die "Error: $cmd is not installed or available in the PATH."
-	done
-}
 
 validate_commit_message() {
 	local commit_or_file=$1
@@ -131,7 +117,7 @@ validate_commit_message() {
 	done <<<"$body"
 
 	if [[ ${#errors[@]} -gt 0 ]]; then
-		echo -e "${E}Error: $commit_or_file has invalid message:$Z"
+		echo -e "${R}Error: $commit_or_file has invalid message:$Z"
 		echo
 		# read the message and add the line number in front of each line, and use
 		# warn_color to display a line with an error based on line_with_errors
@@ -141,7 +127,7 @@ validate_commit_message() {
 			((i++))
 			local C
 			if [[ -n ${lines_with_errors[$i]:-} ]]; then
-				C=$W
+				C=$Y
 			fi
 			echo -e "${C}Line $i: $line$Z"
 			if [[ $i -ge $((last_line_with_error)) ]]; then
@@ -149,17 +135,11 @@ validate_commit_message() {
 			fi
 		done <<<"$message"
 		echo
-		printf -- "- %s\n" "${errors[@]}"
+		printf -- '- %s\n' "${errors[@]}"
 		echo
 		return 1
 	fi
 	return 0
-}
-
-die() {
-	echo -e "${E}$1$Z" >&2; shift
-	for line; do echo -e "$line"; done >&2
-	exit 1
 }
 
 main "$@"
