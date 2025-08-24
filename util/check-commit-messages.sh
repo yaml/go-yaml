@@ -1,6 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
+# -u works poorly with arrays until Bash 4.4
+shopt -s compat43 2>/dev/null ||
+	{ echo "Bash 4.4 required"; exit 1; }
 set -euo pipefail
+shopt -s inherit_errexit
 
 usage() {
 	echo "\
