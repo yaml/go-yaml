@@ -27,7 +27,7 @@ main() (
 	range_or_file=${1:-HEAD}
 	if [[ -f $range_or_file ]]; then
 		message=$(< "$range_or_file")
-		validate_commit_message "$range_or_file" "$message" ||
+		validate-commit-message "$range_or_file" "$message" ||
 			die "Commit message in $range_or_file is invalid."
 
 	else
@@ -35,14 +35,14 @@ main() (
 		commits=$(git rev-list "$range_or_file")
 		for commit in $commits; do
 			message=$(git log --format=%B -n 1 "$commit")
-			validate_commit_message "$commit" "$message" ||
+			validate-commit-message "$commit" "$message" ||
 				ok=false
 		done
 		$ok || die 'At least one commit message is invalid.'
 	fi
 )
 
-validate_commit_message() (
+validate-commit-message() (
 	commit_or_file=$1
 	message=$2
 	subject=$(head -n1 <<<"$message")
