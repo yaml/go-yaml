@@ -50,49 +50,40 @@ validate_commit_message() {
 	local errors=()
 
 	declare -A lines_with_errors
-	local subject_has_error=false
 	local last_line_with_error=0
 
 	if [[ $subject =~ ^(feat|fix|docs|style|refactor|perf|test|chore)(\(.*\))?: ]]; then
 		errors+=('do not use conventional commit format for subject on line 1')
-		subject_has_error=true
 	fi
 
 	# subject should not start with square brackets
 	if [[ $subject =~ ^\[.*\] ]]; then
 		errors+=('subject should not start with square brackets on line 1')
-		subject_has_error=true
 	fi
 
 	if [[ ! $subject =~ ^[A-Z] ]]; then
 		errors+=('subject should start with a capital letter on line 1')
-		subject_has_error=true
 	fi
 
 	if [[ $subject == *. ]]; then
 		errors+=('subject should not end with a period on line 1')
-		subject_has_error=true
 	fi
 
 	if [[ $subject == *'  '* ]]; then
 		errors+=('subject should not contain consecutive spaces on line 1')
-		subject_has_error=true
 	fi
 
 	if [[ $subject == *' ' ]]; then
 		errors+=('subject should not have trailing space(s) on line 1')
-		subject_has_error=true
 	fi
 
 	if [[ $length -lt 20 ]]; then
 		errors+=("subject should be longer than 20 characters (current: $length) on line 1")
-		subject_has_error=true
 	elif [[ $length -gt 50 ]]; then
 		errors+=("subject should be shorter than 50 characters (current: $length) on line 1")
-		subject_has_error=true
 	fi
 
-	if $subject_has_error; then
+	if [[ ${#errors[*]} -gt 0 ]]; then
 		lines_with_errors[1]=true
 		last_line_with_error=1
 	fi
