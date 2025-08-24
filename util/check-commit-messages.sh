@@ -7,33 +7,31 @@ set -euo pipefail
 shopt -s inherit_errexit
 
 usage() {
-	echo "\
-Usage: $0 <commit-range|file>
-  <commit-range>: A range of commits in the form hash..hash
-  <file>: A file containing a list of commit hashes, one per line"
-	exit 1
+	cat <<-...
+	Usage: $0 <commit-range>|<file>
+	  <commit-range>: A range of commits in the form hash..hash
+	  <file>: A file containing a list of commit hashes, one per line"
+	...
 }
 
 main() (
 	init
 
 	case $# in
-		0) usage ;;
+		0) usage; exit ;;
 		1) range_or_file=$1 ;;
-		*)
-			echo 'Error: Too many arguments.'
-			usage
-			;;
+		*) die \
+				"Error: Too many arguments." \
+				'' \
+				"$(usage)" ;;
 	esac
 
 	# Determine input type
 	range_or_file=${1:-HEAD}
 	if [[ -f $range_or_file ]]; then
 		message=$(cat "$range_or_file")
-		if ! validate_commit_message "$range_or_file" "$message"; then
-			echo -e "${error_color}Commit message in $range_or_file is invalid.${reset_color}"
-			exit 1
-		fi
+		validate_commit_message "$range_or_file" "$message" ||
+			die "Commit message in $range_or_file is invalid."
 	else
 		fail=0
 		commits=$(git rev-list "$range_or_file")
@@ -43,23 +41,19 @@ main() (
 				fail=1
 			fi
 		done
-		if [[ $fail -eq 1 ]]; then
-			echo -e "${error_color}At least one commit message is invalid.${reset_color}"
-			exit 1
-		fi
+		[[ $fail -eq 0 ]] ||
+			die "At least one commit message is invalid."
 	fi
 )
 
 init() {
-	reset_color="\033[0m"
-	error_color="\033[31m"
-	warning_color="\033[33m"
+	E="\033[31m"
+	W="\033[33m"
+	Z="\033[0m"
 
 	for cmd in git sed head; do
-		if ! command -v "$cmd" >/dev/null 2>&1; then
-			echo "Error: $cmd is not installed or available in the PATH."
-			exit 1
-		fi
+		command -v "$cmd" >/dev/null ||
+			die "Error: $cmd is not installed or available in the PATH."
 	done
 }
 
@@ -137,18 +131,19 @@ validate_commit_message() {
 	done <<<"$body"
 
 	if [[ ${#errors[@]} -gt 0 ]]; then
-		echo -e "${error_color}Error: $commit_or_file has invalid message:${reset_color}"
+		echo -e "${E}Error: $commit_or_file has invalid message:$Z"
 		echo
-		# read the message and add the line number in front of each line, and use warn_color to display a line with an error based on line_with_errors
+		# read the message and add the line number in front of each line, and use
+		# warn_color to display a line with an error based on line_with_errors
 
 		local i=0
 		while IFS= read -r line; do
 			((i++))
-			local line_color
+			local C
 			if [[ -n ${lines_with_errors[$i]:-} ]]; then
-				line_color=$warning_color
+				C=$W
 			fi
-			echo -e "${line_color}Line $i: $line${reset_color}"
+			echo -e "${C}Line $i: $line$Z"
 			if [[ $i -ge $((last_line_with_error)) ]]; then
 				break
 			fi
@@ -159,6 +154,12 @@ validate_commit_message() {
 		return 1
 	fi
 	return 0
+}
+
+die() {
+	echo -e "${E}$1$Z" >&2; shift
+	for line; do echo -e "$line"; done >&2
+	exit 1
 }
 
 main "$@"
