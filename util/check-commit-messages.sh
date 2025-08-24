@@ -82,7 +82,7 @@ validate_commit_message() (
 		last_line_with_error=1
 	fi
 
-	if [[ $(sed -n '2p' <<<"$message") != '' ]]; then
+	if [[ $(sed -n '2p' <<<"$message") ]]; then
 		errors+=('subject and body should be separated by a single blank line on line 2')
 		lines_with_errors[2]=true
 		last_line_with_error=2
@@ -111,10 +111,10 @@ validate_commit_message() (
 		i=0
 		while IFS= read -r line; do
 			((i++))
-			C=''
-			[[ -n ${lines_with_errors[$i]:-} ]] && C=$Y
+			C=$Y
+			[[ ${lines_with_errors[$i]:-} ]] || C=''
 			echo -e "${C}Line $i: $line$Z"
-			[[ $i -lt $((last_line_with_error)) ]] || break
+			[[ $i -lt $last_line_with_error ]] || break
 		done <<<"$message"
 
 		echo
