@@ -29,6 +29,7 @@ main() (
 		message=$(< "$range_or_file")
 		validate_commit_message "$range_or_file" "$message" ||
 			die "Commit message in $range_or_file is invalid."
+
 	else
 		ok=true
 		commits=$(git rev-list "$range_or_file")
@@ -51,30 +52,24 @@ validate_commit_message() (
 	declare -A lines_with_errors
 	last_line_with_error=0
 
-	if [[ $subject =~ ^(feat|fix|docs|style|refactor|perf|test|chore)(\(.*\))?: ]]; then
+	[[ $subject =~ ^(feat|fix|docs|style|refactor|perf|test|chore)(\(.*\))?: ]] &&
 		errors+=('do not use conventional commit format for subject on line 1')
-	fi
 
 	# subject should not start with square brackets
-	if [[ $subject =~ ^\[.*\] ]]; then
+	[[ $subject =~ ^\[.*\] ]] &&
 		errors+=('subject should not start with square brackets on line 1')
-	fi
 
-	if [[ ! $subject =~ ^[A-Z] ]]; then
+	[[ $subject =~ ^[A-Z] ]] ||
 		errors+=('subject should start with a capital letter on line 1')
-	fi
 
-	if [[ $subject == *. ]]; then
+	[[ $subject == *. ]] &&
 		errors+=('subject should not end with a period on line 1')
-	fi
 
-	if [[ $subject == *'  '* ]]; then
+	[[ $subject == *'  '* ]] &&
 		errors+=('subject should not contain consecutive spaces on line 1')
-	fi
 
-	if [[ $subject == *' ' ]]; then
+	[[ $subject == *' ' ]] &&
 		errors+=('subject should not have trailing space(s) on line 1')
-	fi
 
 	if [[ $length -lt 20 ]]; then
 		errors+=("subject should be longer than 20 characters (current: $length) on line 1")
@@ -109,8 +104,7 @@ validate_commit_message() (
 
 	# Report errors to stderr:
 	(
-		echo -e "${R}Error: $commit_or_file has invalid message:$Z"
-		echo
+		echo -e "${R}Error: $commit_or_file has invalid message:$Z\n"
 
 		# read the message and add the line number in front of each line, and use
 		# warn_color to display a line with an error based on line_with_errors
