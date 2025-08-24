@@ -3,9 +3,10 @@
 set -euo pipefail
 
 usage() {
-	echo "Usage: $0 <commit-range|file>"
-	echo "  <commit-range>: A range of commits in the form hash..hash"
-	echo "  <file>: A file containing a list of commit hashes, one per line"
+	echo "\
+Usage: $0 <commit-range|file>
+  <commit-range>: A range of commits in the form hash..hash
+  <file>: A file containing a list of commit hashes, one per line"
 	exit 1
 }
 
@@ -14,10 +15,10 @@ error_color="\033[31m"
 warning_color="\033[33m"
 
 validate_commit_message() {
-	local commit_or_file="$1"
-	local message="$2"
+	local commit_or_file=$1
+	local message=$2
 	local subject
-	subject="$(echo "$message" | head -n 1)"
+	subject=$(echo "$message" | head -n 1)
 	local length=${#subject}
 	local errors=()
 
@@ -26,33 +27,33 @@ validate_commit_message() {
 	local last_line_with_error=0
 
 	if [[ $subject =~ ^(feat|fix|docs|style|refactor|perf|test|chore)(\(.*\))?: ]]; then
-		errors+=("do not use conventional commit format for subject on line 1")
+		errors+=('do not use conventional commit format for subject on line 1')
 		subject_has_error=true
 	fi
 
 	# subject should not start with square brackets
 	if [[ $subject =~ ^\[.*\] ]]; then
-		errors+=("subject should not start with square brackets on line 1")
+		errors+=('subject should not start with square brackets on line 1')
 		subject_has_error=true
 	fi
 
 	if [[ ! $subject =~ ^[A-Z] ]]; then
-		errors+=("subject should start with a capital letter on line 1")
+		errors+=('subject should start with a capital letter on line 1')
 		subject_has_error=true
 	fi
 
-	if [[ $subject == *"." ]]; then
-		errors+=("subject should not end with a period on line 1")
+	if [[ $subject == *. ]]; then
+		errors+=('subject should not end with a period on line 1')
 		subject_has_error=true
 	fi
 
-	if [[ $subject == *"  "* ]]; then
-		errors+=("subject should not contain consecutive spaces on line 1")
+	if [[ $subject == *'  '* ]]; then
+		errors+=('subject should not contain consecutive spaces on line 1')
 		subject_has_error=true
 	fi
 
-	if [[ $subject == *" " ]]; then
-		errors+=("subject should not have trailing space(s) on line 1")
+	if [[ $subject == *' ' ]]; then
+		errors+=('subject should not have trailing space(s) on line 1')
 		subject_has_error=true
 	fi
 
@@ -69,16 +70,16 @@ validate_commit_message() {
 		last_line_with_error=1
 	fi
 
-	if [[ $(echo "$message" | sed -n '2p') != "" ]]; then
-		errors+=("subject and body should be separated by a single blank line on line 2")
+	if [[ $(echo "$message" | sed -n '2p') != '' ]]; then
+		errors+=('subject and body should be separated by a single blank line on line 2')
 		lines_with_errors[2]=true
 		last_line_with_error=2
 	fi
 
-	body="$(echo "$message" | sed -n '3,$p')"
+	body=$(echo "$message" | sed -n '3,$p')
 	i=3
 	while IFS= read -r line; do
-		if [[ $line == *" " ]]; then
+		if [[ $line == *' ' ]]; then
 			errors+=("body should not have trailing space(s) on line $i")
 			lines_with_errors[$i]=true
 			last_line_with_error=$i
@@ -94,9 +95,9 @@ validate_commit_message() {
 		local i=0
 		while IFS= read -r line; do
 			((i++))
-			local line_color=""
-			if [[ -n "${lines_with_errors[$i]:-}" ]]; then
-				line_color="$warning_color"
+			local line_color
+			if [[ -n ${lines_with_errors[$i]:-} ]]; then
+				line_color=$warning_color
 			fi
 			echo -e "${line_color}Line $i: $line${reset_color}"
 			if [[ $i -ge $((last_line_with_error)) ]]; then
@@ -118,18 +119,18 @@ for cmd in git sed head; do
 	fi
 done
 
-case "$#" in
+case $# in
 0) usage ;;
-1) range_or_file="$1" ;;
+1) range_or_file=$1 ;;
 *)
-	echo "Error: Too many arguments."
+	echo 'Error: Too many arguments.'
 	usage
 	;;
 esac
 
 # Determine input type
-range_or_file="${1:-HEAD}"
-if [[ -f "$range_or_file" ]]; then
+range_or_file=${1:-HEAD}
+if [[ -f $range_or_file ]]; then
 	message=$(cat "$range_or_file")
 	if ! validate_commit_message "$range_or_file" "$message"; then
 		echo -e "${error_color}Commit message in $range_or_file is invalid.${reset_color}"
