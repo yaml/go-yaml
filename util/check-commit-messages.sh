@@ -14,9 +14,54 @@ Usage: $0 <commit-range|file>
 	exit 1
 }
 
-reset_color="\033[0m"
-error_color="\033[31m"
-warning_color="\033[33m"
+main() (
+	init
+
+	case $# in
+		0) usage ;;
+		1) range_or_file=$1 ;;
+		*)
+			echo 'Error: Too many arguments.'
+			usage
+			;;
+	esac
+
+	# Determine input type
+	range_or_file=${1:-HEAD}
+	if [[ -f $range_or_file ]]; then
+		message=$(cat "$range_or_file")
+		if ! validate_commit_message "$range_or_file" "$message"; then
+			echo -e "${error_color}Commit message in $range_or_file is invalid.${reset_color}"
+			exit 1
+		fi
+	else
+		fail=0
+		commits=$(git rev-list "$range_or_file")
+		for commit in $commits; do
+			message=$(git log --format=%B -n 1 "$commit")
+			if ! validate_commit_message "$commit" "$message"; then
+				fail=1
+			fi
+		done
+		if [[ $fail -eq 1 ]]; then
+			echo -e "${error_color}At least one commit message is invalid.${reset_color}"
+			exit 1
+		fi
+	fi
+)
+
+init() {
+	reset_color="\033[0m"
+	error_color="\033[31m"
+	warning_color="\033[33m"
+
+	for cmd in git sed head; do
+		if ! command -v "$cmd" >/dev/null 2>&1; then
+			echo "Error: $cmd is not installed or available in the PATH."
+			exit 1
+		fi
+	done
+}
 
 validate_commit_message() {
 	local commit_or_file=$1
@@ -116,41 +161,4 @@ validate_commit_message() {
 	return 0
 }
 
-for cmd in git sed head; do
-	if ! command -v "$cmd" >/dev/null 2>&1; then
-		echo "Error: $cmd is not installed or available in the PATH."
-		exit 1
-	fi
-done
-
-case $# in
-0) usage ;;
-1) range_or_file=$1 ;;
-*)
-	echo 'Error: Too many arguments.'
-	usage
-	;;
-esac
-
-# Determine input type
-range_or_file=${1:-HEAD}
-if [[ -f $range_or_file ]]; then
-	message=$(cat "$range_or_file")
-	if ! validate_commit_message "$range_or_file" "$message"; then
-		echo -e "${error_color}Commit message in $range_or_file is invalid.${reset_color}"
-		exit 1
-	fi
-else
-	fail=0
-	commits=$(git rev-list "$range_or_file")
-	for commit in $commits; do
-		message=$(git log --format=%B -n 1 "$commit")
-		if ! validate_commit_message "$commit" "$message"; then
-			fail=1
-		fi
-	done
-	if [[ $fail -eq 1 ]]; then
-		echo -e "${error_color}At least one commit message is invalid.${reset_color}"
-		exit 1
-	fi
-fi
+main "$@"
