@@ -18,5 +18,7 @@ jobs:
       with:
         fetch-depth: 0  # Fetch all history to ensure all SHAs are available
     - name: Check PR Commits
-      run: |
-        ./tooling/check-commit-messages.sh ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+      run:
+        util/check-commit-messages.sh
+        ${{ github.event.pull_request.base.sha }}..${{
+            github.event.pull_request.head.sha }}
