@@ -44,7 +44,7 @@ main() (
 validate_commit_message() (
 	commit_or_file=$1
 	message=$2
-	subject=$(echo "$message" | head -n 1)
+	subject=$(head -n1 <<<"$message")
 	length=${#subject}
 	errors=()
 
@@ -87,13 +87,13 @@ validate_commit_message() (
 		last_line_with_error=1
 	fi
 
-	if [[ $(echo "$message" | sed -n '2p') != '' ]]; then
+	if [[ $(sed -n '2p' <<<"$message") != '' ]]; then
 		errors+=('subject and body should be separated by a single blank line on line 2')
 		lines_with_errors[2]=true
 		last_line_with_error=2
 	fi
 
-	body=$(echo "$message" | sed -n '3,$p')
+	body=$(sed -n '3,$p' <<<"$message")
 	i=3
 	while IFS= read -r line; do
 		if [[ $line == *' ' ]]; then
