@@ -3,13 +3,13 @@
 # shellcheck disable=1091
 source "$(dirname "${BASH_SOURCE[0]}")"/common.bash || exit
 
-usage() {
+usage() (
 	cat <<-...
 	Usage: $0 <commit-range>|<file>
 	  <commit-range>: A range of commits in the form hash..hash
 	  <file>: A file containing a list of commit hashes, one per line"
 	...
-}
+)
 
 main() (
 	require git head sed
@@ -41,16 +41,15 @@ main() (
 	fi
 )
 
-validate_commit_message() {
-	local commit_or_file=$1
-	local message=$2
-	local subject
+validate_commit_message() (
+	commit_or_file=$1
+	message=$2
 	subject=$(echo "$message" | head -n 1)
-	local length=${#subject}
-	local errors=()
+	length=${#subject}
+	errors=()
 
 	declare -A lines_with_errors
-	local last_line_with_error=0
+	last_line_with_error=0
 
 	if [[ $subject =~ ^(feat|fix|docs|style|refactor|perf|test|chore)(\(.*\))?: ]]; then
 		errors+=('do not use conventional commit format for subject on line 1')
@@ -111,17 +110,13 @@ validate_commit_message() {
 		# read the message and add the line number in front of each line, and use
 		# warn_color to display a line with an error based on line_with_errors
 
-		local i=0
+		i=0
 		while IFS= read -r line; do
 			((i++))
-			local C
-			if [[ -n ${lines_with_errors[$i]:-} ]]; then
-				C=$Y
-			fi
+			C=''
+			[[ -n ${lines_with_errors[$i]:-} ]] && C=$Y
 			echo -e "${C}Line $i: $line$Z"
-			if [[ $i -ge $((last_line_with_error)) ]]; then
-				break
-			fi
+			[[ $i -lt $((last_line_with_error)) ]] || break
 		done <<<"$message"
 		echo
 		printf -- '- %s\n' "${errors[@]}"
@@ -129,6 +124,6 @@ validate_commit_message() {
 		return 1
 	fi
 	return 0
-}
+)
 
 main "$@"
