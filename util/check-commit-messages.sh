@@ -48,44 +48,39 @@ validate-commit-message() (
 	subject=$(head -n1 <<<"$message")
 	length=${#subject}
 	errors=()
-
-	declare -A lines_with_errors
-	last_line_with_error=0
+	error_lines=()
 
 	[[ $subject =~ ^(feat|fix|docs|style|refactor|perf|test|chore)(\(.*\))?: ]] &&
-		errors+=('do not use conventional commit format for subject on line 1')
+		errors+=('Do not use conventional commit format for subject on line 1')
 
 	# subject should not start with square brackets
 	[[ $subject =~ ^\[.*\] ]] &&
-		errors+=('subject should not start with square brackets on line 1')
+		errors+=('Subject should not start with square brackets on line 1')
 
 	[[ $subject =~ ^[A-Z] ]] ||
-		errors+=('subject should start with a capital letter on line 1')
+		errors+=('Subject should start with a capital letter on line 1')
 
 	[[ $subject == *. ]] &&
-		errors+=('subject should not end with a period on line 1')
+		errors+=('Subject should not end with a period on line 1')
 
 	[[ $subject == *'  '* ]] &&
-		errors+=('subject should not contain consecutive spaces on line 1')
+		errors+=('Subject should not contain consecutive spaces on line 1')
 
 	[[ $subject == *' ' ]] &&
-		errors+=('subject should not have trailing space(s) on line 1')
+		errors+=('Subject should not have trailing space(s) on line 1')
 
-	if [[ $length -lt 20 ]]; then
-		errors+=("subject should be longer than 20 characters (current: $length) on line 1")
-	elif [[ $length -gt 50 ]]; then
-		errors+=("subject should be shorter than 50 characters (current: $length) on line 1")
-	fi
+	[[ $length -ge 20 ]] ||
+		errors+=("Subject should be longer than 20 characters (current: $length) on line 1")
 
-	if [[ ${#errors[*]} -gt 0 ]]; then
-		lines_with_errors[1]=true
-		last_line_with_error=1
-	fi
+	[[ $length -le 50 ]] ||
+		errors+=("Subject should be shorter than 50 characters (current: $length) on line 1")
+
+	[[ ${#errors[*]} -eq 0 ]] ||
+		error_lines+=(1)
 
 	if [[ $(sed -n '2p' <<<"$message") ]]; then
-		errors+=('subject and body should be separated by a single blank line on line 2')
-		lines_with_errors[2]=true
-		last_line_with_error=2
+		errors+=('Subject and body should be separated by a single blank line on line 2')
+		error_lines+=(2)
 	fi
 
 	body=$(sed -n '3,$p' <<<"$message")
@@ -93,8 +88,11 @@ validate-commit-message() (
 	while IFS= read -r line; do
 		if [[ $line == *' ' ]]; then
 			errors+=("body should not have trailing space(s) on line $i")
-			lines_with_errors[$i]=true
-			last_line_with_error=$i
+			[[ ${error_lines[0]} == "$i" ]] || error_lines+=("$i")
+		fi
+		if [[ $line == *FOO* ]]; then
+			errors+=("body should not contain 'FOO' on line $i")
+			[[ ${error_lines[0]} == "$i" ]] || error_lines+=("$i")
 		fi
 		((i++))
 	done <<<"$body"
@@ -108,17 +106,19 @@ validate-commit-message() (
 
 		# read the message and add the line number in front of each line, and use
 		# warn_color to display a line with an error based on line_with_errors
-		i=0
-		C=$Y
-		while IFS= read -r line && [[ $((++i)) -lt $last_line_with_error ]]; do
-			(
-				[[ ${lines_with_errors[$i]:-} ]] || C=''
-				echo -e "${C}Line $i: $line$Z"
-			)
+		i=1
+		while IFS= read -r line && [[ ${#error_lines[*]} -gt 0 ]]; do
+			C=$Z
+			if [[ $i == "${error_lines[0]}" ]]; then
+				C="\e[1;33m"  # Bold yellow
+				error_lines=("${error_lines[@]:1}")
+			fi
+			echo -e "${C}Line $(printf '%2d' $i): $line$Z"
+			((i++))
 		done <<<"$message"
 
 		echo
-		printf -- '- %s\n' "${errors[@]}"
+		printf -- '* %s' "${errors[@]}"
 		echo
 	) >&2
 

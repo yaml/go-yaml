@@ -9,9 +9,8 @@ set -euo pipefail
 shopt -s inherit_errexit
 
 # ANSI color code vars:
-R="\033[31m"
-Y="\033[33m"
-Z="\033[0m"
+R="\e[31m"
+Z="\e[0m"
 
 require() (
 	for cmd; do
