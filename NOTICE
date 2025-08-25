@@ -1,13 +1,21 @@
-Copyright 2011-2016 Canonical Ltd.
+The following files were ported to Go from C files of libyaml, and thus are
+still covered by their original MIT license, with the additional copyright
+starting in 2011 when the project was ported over:
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+- apic.go
+- emitterc.go
+- parserc.go
+- readerc.go
+- scannerc.go
+- writerc.go
+- yamlh.go
+- yamlprivateh.go
 
-    http://www.apache.org/licenses/LICENSE-2.0
+Copyright 2006-2011 - Kirill Simonov
+https://opensource.org/license/mit
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+All the remaining project files are covered by the Apache license:
+
+Copyright 2011-2019 - Canonical Ltd
+Copyright 2025 - The go-yaml Project Contributors
+http://www.apache.org/licenses/LICENSE-2.0
