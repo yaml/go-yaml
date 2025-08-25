@@ -791,7 +791,7 @@ func ParserGetEvents(in []byte) (string, error) {
 	p := newParser(in)
 	defer p.destroy()
 	var events strings.Builder
-	var event yaml_event_t
+	var event yamlEvent
 	for {
 		if !yaml_parser_parse(&p.parser, &event) {
 			return "", errors.New(p.parser.problem)
@@ -808,7 +808,7 @@ func ParserGetEvents(in []byte) (string, error) {
 	return events.String(), nil
 }
 
-func formatEvent(e *yaml_event_t) string {
+func formatEvent(e *yamlEvent) string {
 	var b strings.Builder
 	switch e.typ {
 	case yaml_STREAM_START_EVENT:
