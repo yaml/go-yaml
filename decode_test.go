@@ -1257,6 +1257,76 @@ func TestObsoleteUnmarshalerTypeError(t *testing.T) {
 	assert.Equal(t, 3, v.M["ghi"].value)
 }
 
+func TestTypeError_Unwrapping(t *testing.T) {
+	errSentinel := errors.New("foo")
+	errSentinel2 := errors.New("bar")
+
+	errUnmarshal := &yaml.UnmarshalError{
+		Line:   1,
+		Column: 2,
+		Err:    errSentinel,
+	}
+
+	errUnmarshal2 := &yaml.UnmarshalError{
+		Line:   2,
+		Column: 2,
+		Err:    errSentinel2,
+	}
+
+	// Simulate a TypeError
+	err := &yaml.TypeError{
+		Errors: []*yaml.UnmarshalError{
+			errUnmarshal,
+			errUnmarshal2,
+		},
+	}
+
+	var errTarget *yaml.UnmarshalError
+	// check we can unwrap an error
+	assert.ErrorAs(t, err, &errTarget)
+
+	// check we got the first error
+	assert.ErrorIs(t, errTarget, errUnmarshal)
+
+	// check we can unwrap any sentinel error wrapped in any UnmarshalError
+	assert.ErrorIs(t, err, errSentinel)
+	assert.ErrorIs(t, err, errSentinel2)
+}
+
+func TestTypeError_Unwrapping_Failures(t *testing.T) {
+	errSentinel := errors.New("foo")
+
+	errUnmarshal := &yaml.UnmarshalError{
+		Line:   1,
+		Column: 2,
+		Err:    errSentinel,
+	}
+
+	errUnmarshal2 := &yaml.UnmarshalError{
+		Line:   2,
+		Column: 2,
+		Err:    errors.New("bar"),
+	}
+
+	// Simulate a TypeError
+	err := &yaml.TypeError{
+		Errors: []*yaml.UnmarshalError{
+			errUnmarshal,
+			errUnmarshal2,
+		},
+	}
+
+	var errTarget *yaml.UnmarshalError
+	// check we can unwrap an error
+	assert.ErrorAs(t, err, &errTarget)
+
+	// check we got the first error
+	assert.ErrorIs(t, errTarget, errUnmarshal)
+
+	// check we can still unwrap the error wrapped in UnmarshalError
+	assert.ErrorIs(t, errTarget, errSentinel)
+}
+
 type proxyTypeError struct{}
 
 func (v *proxyTypeError) UnmarshalYAML(node *yaml.Node) error {
@@ -1415,6 +1485,18 @@ func TestTextUnmarshalerError(t *testing.T) {
 	assert.Equal(t, 123, dst.Foo)
 	assert.DeepEqual(t, &failingTextUnmarshaler{}, dst.Bar)
 	assert.Equal(t, "test", dst.Spam)
+}
+
+func TestUnmarshalError_Unwrapping(t *testing.T) {
+	errSentinel := errors.New("foo")
+
+	errUnmarshal := &yaml.UnmarshalError{
+		Line:   1,
+		Column: 2,
+		Err:    errSentinel,
+	}
+
+	assert.ErrorIs(t, errUnmarshal, errSentinel)
 }
 
 type sliceUnmarshaler []int
