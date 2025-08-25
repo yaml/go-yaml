@@ -97,7 +97,7 @@ import (
 //      %TAG    !yaml!  tag:yaml.org,2002:
 //      ---
 //
-// The correspoding sequence of tokens:
+// The corresponding sequence of tokens:
 //
 //      STREAM-START(utf-8)
 //      VERSION-DIRECTIVE(1,1)
@@ -300,7 +300,7 @@ import (
 // The tokens BLOCK-SEQUENCE-START and BLOCK-MAPPING-START denote indentation
 // increase that precedes a block collection (cf. the INDENT token in Python).
 // The token BLOCK-END denote indentation decrease that ends a block collection
-// (cf. the DEDENT token in Python).  However YAML has some syntax pecularities
+// (cf. the DEDENT token in Python).  However YAML has some syntax peculiarities
 // that makes detections of these tokens more complex.
 //
 // The tokens BLOCK-ENTRY, KEY, and VALUE are used to represent the indicators
@@ -1331,7 +1331,7 @@ func yaml_parser_fetch_key(parser *yaml_parser_t) bool {
 
 	// In the block context, additional checks are required.
 	if parser.flow_level == 0 {
-		// Check if we are allowed to start a new key (not nessesary simple).
+		// Check if we are allowed to start a new key (not necessary simple).
 		if !parser.simple_key_allowed {
 			return yaml_parser_set_scanner_error(parser, "", parser.mark,
 				"mapping keys are not allowed in this context")
@@ -2564,7 +2564,7 @@ func yaml_parser_scan_flow_scalar(parser *yaml_parser_t, token *yaml_token_t, si
 					for k := 0; k < code_length; k++ {
 						if !is_hex(parser.buffer, parser.buffer_pos+k) {
 							yaml_parser_set_scanner_error(parser, "while parsing a quoted scalar",
-								start_mark, "did not find expected hexdecimal number")
+								start_mark, "did not find expected hexadecimal number")
 							return false
 						}
 						value = (value << 4) + as_hex(parser.buffer, parser.buffer_pos+k)
