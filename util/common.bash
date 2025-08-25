@@ -1,4 +1,4 @@
-#! bash
+#!/bash
 
 # Strict settings:
 # -u works poorly with arrays until Bash 4.4
@@ -9,9 +9,8 @@ set -euo pipefail
 shopt -s inherit_errexit
 
 # ANSI color code vars:
-R="\033[31m"
-Y="\033[33m"
-Z="\033[0m"
+RED="\e[1;31m"
+RESET="\e[0m"
 
 require() (
 	for cmd; do
@@ -22,7 +21,7 @@ require() (
 
 # General error function:
 die() {
-	echo -e "$R$1$Z" >&2
+	echo -e "$RED$1$RESET" >&2
 	shift
 
 	for line; do
