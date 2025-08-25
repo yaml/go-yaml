@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
+# https://www.shellcheck.net/wiki/SC1091
 # shellcheck disable=1091
 source "$(dirname "${BASH_SOURCE[0]}")"/common.bash || exit
+require-bash-4.4+
 
 usage() (
 	cat <<-...
@@ -12,7 +14,7 @@ usage() (
 )
 
 main() (
-	require git head sed
+	require-commands git head sed
 
 	case $# in
 		0) usage; exit ;;
