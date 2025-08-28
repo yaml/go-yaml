@@ -852,7 +852,7 @@ func (d *decoder) mapping(n *Node, out reflect.Value) (good bool) {
 				kkind = k.Elem().Kind()
 			}
 			if kkind == reflect.Map || kkind == reflect.Slice {
-				failf("invalid map key: %#v", k.Interface())
+				failf("cannot use '%#v' as a map key; try decoding into yaml.Node", k.Interface())
 			}
 			e := reflect.New(et).Elem()
 			if d.unmarshal(n.Content[i+1], e) || n.Content[i+1].ShortTag() == nullTag && (mapIsNew || !out.MapIndex(k).IsValid()) {
