@@ -1,0 +1,22 @@
+# this is the configuration file of typos (spell checker)
+# https://github.com/crate-ci/typos
+
+[files]
+# excluded file
+extend-exclude = [
+	"go.sum", "go.mod", # go.sum and go.mod contains URLs with hash, they can provide false positive
+	"yts/testdata",    # third-party test data
+	]
+
+# setting for Go files configuration
+[type.go]
+extend-ignore-re = [
+	'ba-dum-tss\W+',
+	'"yYnNtTfFoO',
+	'ba\?r',
+]
+
+[type.go.extend-words]
+# Here is a list of words we want to ignore in Go files
+typ = "typ"  # commonly used abbreviation for "type" in Go as "type" is a reserved identifier
+
