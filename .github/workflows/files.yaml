@@ -26,3 +26,12 @@ jobs:
 
     - name: yamllint
       uses: ibiqlik/action-yamllint@v3
+
+  typos:
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout-action
+      uses: actions/checkout@v5
+
+    - name: typos-action
+      uses: crate-ci/typos@v1
