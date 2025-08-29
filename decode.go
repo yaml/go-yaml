@@ -791,6 +791,18 @@ func (d *decoder) mapping(n *Node, out reflect.Value) (good bool) {
 			return false
 		}
 	}
+	if out.CanAddr() {
+		_, ok := out.Addr().Interface().(encoding.TextUnmarshaler)
+		if ok {
+			err := fmt.Errorf("cannot unmarshal %s%s into %s (TextUnmarshaler)", shortTag(n.Tag), n.Value, out.Type())
+			d.terrors = append(d.terrors, &UnmarshalError{
+				Err:    err,
+				Line:   n.Line,
+				Column: n.Column,
+			})
+			return false
+		}
+	}
 	switch out.Kind() {
 	case reflect.Struct:
 		return d.mappingStruct(n, out)
