@@ -9,6 +9,15 @@ permissions:
   contents: read  # for actions/checkout to fetch code
 
 jobs:
+  action-lint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout-action
+      uses: actions/checkout@v5
+
+    - name: actionlint
+      uses: raven-actions/actionlint@v2.0.1
+
   yamllint:
     runs-on: ubuntu-latest
     steps:
