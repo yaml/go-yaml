@@ -1089,7 +1089,7 @@ func TestWhitespaceWithContent(t *testing.T) {
 		},
 		{
 			" \nhello",
-			"\" \\nhello\"\n",
+			"|4-\n     \n    hello\n",
 			"Space + newline + text - should be double quoted (short, starts with whitespace)",
 		},
 		{
@@ -1104,18 +1104,23 @@ func TestWhitespaceWithContent(t *testing.T) {
 		},
 		{
 			"  hello  \n",
-			"\"  hello  \\n\"\n",
+			"|4\n      hello  \n",
 			"Multiple spaces + text + spaces + newline - should be double quoted (ends with spaces)",
 		},
 		{
 			"hello  \n",
-			"\"hello  \\n\"\n",
+			"|\n    hello  \n",
 			"Text + spaces + newline - should be double quoted (ends with spaces)",
 		},
 		{
 			"hello\n  ",
 			"\"hello\\n  \"\n",
 			"Text + newline + spaces - should be double quoted (ends with spaces)",
+		},
+		{
+			"one\ntwo  \nthree\n",
+			"|\n    one\n    two  \n    three\n",
+			"Middle line ends with spaces",
 		},
 	}
 

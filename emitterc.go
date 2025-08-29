@@ -1026,7 +1026,6 @@ func yaml_emitter_check_simple_key(emitter *yaml_emitter_t) bool {
 
 // Determine an acceptable scalar style.
 func yaml_emitter_select_scalar_style(emitter *yaml_emitter_t, event *yaml_event_t) bool {
-
 	no_tag := len(emitter.tag_data.handle) == 0 && len(emitter.tag_data.suffix) == 0
 	if no_tag && !event.implicit && !event.quoted_implicit {
 		return yaml_emitter_set_emitter_error(emitter, "neither tag nor implicit flags are specified")
@@ -1283,7 +1282,7 @@ func yaml_emitter_analyze_tag(emitter *yaml_emitter_t, tag []byte) bool {
 }
 
 // Check if a scalar is valid.
-func yaml_emitter_analyze_scalar(emitter *yaml_emitter_t, value []byte) bool {
+func yaml_emitter_analyze_scalar(emitter *yaml_emitter_t, event *yaml_event_t) bool {
 	var (
 		block_indicators   = false
 		flow_indicators    = false
@@ -1304,6 +1303,7 @@ func yaml_emitter_analyze_scalar(emitter *yaml_emitter_t, value []byte) bool {
 		previous_break         = false
 	)
 
+	value := event.value
 	emitter.scalar_data.value = value
 
 	if len(value) == 0 {
@@ -1407,8 +1407,13 @@ func yaml_emitter_analyze_scalar(emitter *yaml_emitter_t, value []byte) bool {
 		emitter.scalar_data.flow_plain_allowed = false
 		emitter.scalar_data.block_plain_allowed = false
 	}
-	if trailing_space {
+	if trailing_space || special_characters {
 		emitter.scalar_data.block_allowed = false
+	}
+	if space_break {
+		if event.scalar_style() != yaml_LITERAL_SCALAR_STYLE {
+			emitter.scalar_data.block_allowed = false
+		}
 	}
 	if break_space {
 		emitter.scalar_data.flow_plain_allowed = false
@@ -1419,9 +1424,6 @@ func yaml_emitter_analyze_scalar(emitter *yaml_emitter_t, value []byte) bool {
 		emitter.scalar_data.flow_plain_allowed = false
 		emitter.scalar_data.block_plain_allowed = false
 		emitter.scalar_data.single_quoted_allowed = false
-	}
-	if space_break || special_characters {
-		emitter.scalar_data.block_allowed = false
 	}
 	if line_breaks {
 		emitter.scalar_data.flow_plain_allowed = false
@@ -1474,7 +1476,7 @@ func yaml_emitter_analyze_event(emitter *yaml_emitter_t, event *yaml_event_t) bo
 				return false
 			}
 		}
-		if !yaml_emitter_analyze_scalar(emitter, event.value) {
+		if !yaml_emitter_analyze_scalar(emitter, event) {
 			return false
 		}
 
