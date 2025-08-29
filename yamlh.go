@@ -329,9 +329,9 @@ type yamlEvent struct {
 	style yamlStyle
 }
 
-func (e *yamlEvent) scalar_style() yamlScalarStyle     { return yamlScalarStyle(e.style) }
-func (e *yamlEvent) sequence_style() yamlSequenceStyle { return yamlSequenceStyle(e.style) }
-func (e *yamlEvent) mapping_style() yamlMappingStyle   { return yamlMappingStyle(e.style) }
+func (e *yamlEvent) scalarStyle() yamlScalarStyle     { return yamlScalarStyle(e.style) }
+func (e *yamlEvent) sequenceStyle() yamlSequenceStyle { return yamlSequenceStyle(e.style) }
+func (e *yamlEvent) mappingStyle() yamlMappingStyle   { return yamlMappingStyle(e.style) }
 
 // Nodes
 

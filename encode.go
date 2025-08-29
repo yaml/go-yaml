@@ -39,17 +39,17 @@ type encoder struct {
 
 func newEncoder() *encoder {
 	e := &encoder{}
-	yaml_emitter_initialize(&e.emitter)
-	yaml_emitter_set_output_string(&e.emitter, &e.out)
-	yaml_emitter_set_unicode(&e.emitter, true)
+	(&e.emitter).initialize()
+	(&e.emitter).setOutputString(&e.out)
+	(&e.emitter).setUnicode(true)
 	return e
 }
 
 func newEncoderWithWriter(w io.Writer) *encoder {
 	e := &encoder{}
-	yaml_emitter_initialize(&e.emitter)
-	yaml_emitter_set_output_writer(&e.emitter, w)
-	yaml_emitter_set_unicode(&e.emitter, true)
+	(&e.emitter).initialize()
+	(&e.emitter).setOutputWriter(w)
+	(&e.emitter).setUnicode(true)
 	return e
 }
 
@@ -61,24 +61,24 @@ func (e *encoder) init() {
 		e.indent = 4
 	}
 	e.emitter.best_indent = e.indent
-	yaml_stream_start_event_initialize(&e.event, yaml_UTF8_ENCODING)
+	yamlStreamStartEventInitialize(&e.event, yaml_UTF8_ENCODING)
 	e.emit()
 	e.doneInit = true
 }
 
 func (e *encoder) finish() {
 	e.emitter.open_ended = false
-	yaml_stream_end_event_initialize(&e.event)
+	yamlStreamEndEventInitialize(&e.event)
 	e.emit()
 }
 
 func (e *encoder) destroy() {
-	yaml_emitter_delete(&e.emitter)
+	(&e.emitter).delete()
 }
 
 func (e *encoder) emit() {
 	// This will internally delete the e.event value.
-	e.must(yaml_emitter_emit(&e.emitter, &e.event))
+	e.must((&e.emitter).emit(&e.event))
 }
 
 func (e *encoder) must(ok bool) {
@@ -100,10 +100,10 @@ func (e *encoder) marshalDoc(tag string, in reflect.Value) {
 	if node != nil && node.Kind == DocumentNode {
 		e.nodev(in)
 	} else {
-		yaml_document_start_event_initialize(&e.event, nil, nil, true)
+		yamlDocumentStartEventInitialize(&e.event, nil, nil, true)
 		e.emit()
 		e.marshal(tag, in)
-		yaml_document_end_event_initialize(&e.event, true)
+		yamlDocumentEndEventInitialize(&e.event, true)
 		e.emit()
 	}
 }
@@ -260,10 +260,10 @@ func (e *encoder) mappingv(tag string, f func()) {
 		e.flow = false
 		style = yaml_FLOW_MAPPING_STYLE
 	}
-	yaml_mapping_start_event_initialize(&e.event, nil, []byte(tag), implicit, style)
+	yamlMappingStartEventInitialize(&e.event, nil, []byte(tag), implicit, style)
 	e.emit()
 	f()
-	yaml_mapping_end_event_initialize(&e.event)
+	yamlMappingEndEventInitialize(&e.event)
 	e.emit()
 }
 
@@ -274,13 +274,13 @@ func (e *encoder) slicev(tag string, in reflect.Value) {
 		e.flow = false
 		style = yaml_FLOW_SEQUENCE_STYLE
 	}
-	e.must(yaml_sequence_start_event_initialize(&e.event, nil, []byte(tag), implicit, style))
+	e.must(yamlSequenceStartEventInitialize(&e.event, nil, []byte(tag), implicit, style))
 	e.emit()
 	n := in.Len()
 	for i := 0; i < n; i++ {
 		e.marshal("", in.Index(i))
 	}
-	e.must(yaml_sequence_end_event_initialize(&e.event))
+	e.must(yamlSequenceEndEventInitialize(&e.event))
 	e.emit()
 }
 
@@ -428,7 +428,7 @@ func (e *encoder) emitScalar(value, anchor, tag string, style yamlScalarStyle, h
 	if !implicit {
 		tag = longTag(tag)
 	}
-	e.must(yaml_scalar_event_initialize(&e.event, []byte(anchor), []byte(tag), []byte(value), implicit, implicit, style))
+	e.must(yamlScalarEventInitialize(&e.event, []byte(anchor), []byte(tag), []byte(value), implicit, implicit, style))
 	e.event.head_comment = head
 	e.event.line_comment = line
 	e.event.foot_comment = foot
@@ -481,13 +481,13 @@ func (e *encoder) node(node *Node, tail string) {
 
 	switch node.Kind {
 	case DocumentNode:
-		yaml_document_start_event_initialize(&e.event, nil, nil, true)
+		yamlDocumentStartEventInitialize(&e.event, nil, nil, true)
 		e.event.head_comment = []byte(node.HeadComment)
 		e.emit()
 		for _, node := range node.Content {
 			e.node(node, "")
 		}
-		yaml_document_end_event_initialize(&e.event, true)
+		yamlDocumentEndEventInitialize(&e.event, true)
 		e.event.foot_comment = []byte(node.FootComment)
 		e.emit()
 
@@ -496,13 +496,13 @@ func (e *encoder) node(node *Node, tail string) {
 		if node.Style&FlowStyle != 0 {
 			style = yaml_FLOW_SEQUENCE_STYLE
 		}
-		e.must(yaml_sequence_start_event_initialize(&e.event, []byte(node.Anchor), []byte(longTag(tag)), tag == "", style))
+		e.must(yamlSequenceStartEventInitialize(&e.event, []byte(node.Anchor), []byte(longTag(tag)), tag == "", style))
 		e.event.head_comment = []byte(node.HeadComment)
 		e.emit()
 		for _, node := range node.Content {
 			e.node(node, "")
 		}
-		e.must(yaml_sequence_end_event_initialize(&e.event))
+		e.must(yamlSequenceEndEventInitialize(&e.event))
 		e.event.line_comment = []byte(node.LineComment)
 		e.event.foot_comment = []byte(node.FootComment)
 		e.emit()
@@ -512,7 +512,7 @@ func (e *encoder) node(node *Node, tail string) {
 		if node.Style&FlowStyle != 0 {
 			style = yaml_FLOW_MAPPING_STYLE
 		}
-		yaml_mapping_start_event_initialize(&e.event, []byte(node.Anchor), []byte(longTag(tag)), tag == "", style)
+		yamlMappingStartEventInitialize(&e.event, []byte(node.Anchor), []byte(longTag(tag)), tag == "", style)
 		e.event.tail_comment = []byte(tail)
 		e.event.head_comment = []byte(node.HeadComment)
 		e.emit()
@@ -537,14 +537,14 @@ func (e *encoder) node(node *Node, tail string) {
 			e.node(v, "")
 		}
 
-		yaml_mapping_end_event_initialize(&e.event)
+		yamlMappingEndEventInitialize(&e.event)
 		e.event.tail_comment = []byte(tail)
 		e.event.line_comment = []byte(node.LineComment)
 		e.event.foot_comment = []byte(node.FootComment)
 		e.emit()
 
 	case AliasNode:
-		yaml_alias_event_initialize(&e.event, []byte(node.Value))
+		yamlAliasEventInitialize(&e.event, []byte(node.Value))
 		e.event.head_comment = []byte(node.HeadComment)
 		e.event.line_comment = []byte(node.LineComment)
 		e.event.foot_comment = []byte(node.FootComment)

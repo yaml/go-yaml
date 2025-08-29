@@ -39,22 +39,22 @@ type parser struct {
 
 func newParser(b []byte) *parser {
 	p := parser{}
-	if !yaml_parser_initialize(&p.parser) {
+	if !(&p.parser).initialize() {
 		panic("failed to initialize YAML emitter")
 	}
 	if len(b) == 0 {
 		b = []byte{'\n'}
 	}
-	yaml_parser_set_input_string(&p.parser, b)
+	(&p.parser).setInputString(b)
 	return &p
 }
 
 func newParserFromReader(r io.Reader) *parser {
 	p := parser{}
-	if !yaml_parser_initialize(&p.parser) {
+	if !(&p.parser).initialize() {
 		panic("failed to initialize YAML emitter")
 	}
-	yaml_parser_set_input_reader(&p.parser, r)
+	(&p.parser).setInputReader(r)
 	return &p
 }
 
@@ -69,16 +69,16 @@ func (p *parser) init() {
 
 func (p *parser) destroy() {
 	if p.event.typ != yaml_NO_EVENT {
-		yaml_event_delete(&p.event)
+		yamlEventDelete(&p.event)
 	}
-	yaml_parser_delete(&p.parser)
+	(&p.parser).delete()
 }
 
 // expect consumes an event from the event stream and
 // checks that it's of the expected type.
 func (p *parser) expect(e yamlEventType) {
 	if p.event.typ == yaml_NO_EVENT {
-		if !yaml_parser_parse(&p.parser, &p.event) {
+		if !(&p.parser).parse(&p.event) {
 			p.fail()
 		}
 	}
@@ -89,7 +89,7 @@ func (p *parser) expect(e yamlEventType) {
 		p.parser.problem = fmt.Sprintf("expected %s event but got %s", e, p.event.typ)
 		p.fail()
 	}
-	yaml_event_delete(&p.event)
+	yamlEventDelete(&p.event)
 	p.event.typ = yaml_NO_EVENT
 }
 
@@ -102,7 +102,7 @@ func (p *parser) peek() yamlEventType {
 	// It's curious choice from the underlying API to generally return a
 	// positive result on success, but on this case return true in an error
 	// scenario. This was the source of bugs in the past (issue #666).
-	if !yaml_parser_parse(&p.parser, &p.event) || p.parser.error != yaml_NO_ERROR {
+	if !(&p.parser).parse(&p.event) || p.parser.error != yaml_NO_ERROR {
 		p.fail()
 	}
 	return p.event.typ
@@ -217,7 +217,7 @@ func (p *parser) alias() *Node {
 }
 
 func (p *parser) scalar() *Node {
-	var parsedStyle = p.event.scalar_style()
+	var parsedStyle = p.event.scalarStyle()
 	var nodeStyle Style
 	switch {
 	case parsedStyle&yaml_DOUBLE_QUOTED_SCALAR_STYLE != 0:
@@ -248,7 +248,7 @@ func (p *parser) scalar() *Node {
 
 func (p *parser) sequence() *Node {
 	n := p.node(SequenceNode, seqTag, string(p.event.tag), "")
-	if p.event.sequence_style()&yaml_FLOW_SEQUENCE_STYLE != 0 {
+	if p.event.sequenceStyle()&yaml_FLOW_SEQUENCE_STYLE != 0 {
 		n.Style |= FlowStyle
 	}
 	p.anchor(n, p.event.anchor)
@@ -265,7 +265,7 @@ func (p *parser) sequence() *Node {
 func (p *parser) mapping() *Node {
 	n := p.node(MappingNode, mapTag, string(p.event.tag), "")
 	block := true
-	if p.event.mapping_style()&yaml_FLOW_MAPPING_STYLE != 0 {
+	if p.event.mappingStyle()&yaml_FLOW_MAPPING_STYLE != 0 {
 		block = false
 		n.Style |= FlowStyle
 	}

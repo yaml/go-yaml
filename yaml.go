@@ -793,16 +793,16 @@ func ParserGetEvents(in []byte) (string, error) {
 	var events strings.Builder
 	var event yamlEvent
 	for {
-		if !yaml_parser_parse(&p.parser, &event) {
+		if !(&p.parser).parse(&event) {
 			return "", errors.New(p.parser.problem)
 		}
 		formatted := formatEvent(&event)
 		events.WriteString(formatted)
 		if event.typ == yaml_STREAM_END_EVENT {
-			yaml_event_delete(&event)
+			yamlEventDelete(&event)
 			break
 		}
-		yaml_event_delete(&event)
+		yamlEventDelete(&event)
 		events.WriteByte('\n')
 	}
 	return events.String(), nil
@@ -839,7 +839,7 @@ func formatEvent(e *yamlEvent) string {
 			b.Write(e.tag)
 			b.WriteString(">")
 		}
-		switch e.scalar_style() {
+		switch e.scalarStyle() {
 		case yaml_PLAIN_SCALAR_STYLE:
 			b.WriteString(" :")
 		case yaml_LITERAL_SCALAR_STYLE:
@@ -870,7 +870,7 @@ func formatEvent(e *yamlEvent) string {
 			b.Write(e.tag)
 			b.WriteString(">")
 		}
-		if e.sequence_style() == yaml_FLOW_SEQUENCE_STYLE {
+		if e.sequenceStyle() == yaml_FLOW_SEQUENCE_STYLE {
 			b.WriteString(" []")
 		}
 	case yaml_SEQUENCE_END_EVENT:
@@ -886,7 +886,7 @@ func formatEvent(e *yamlEvent) string {
 			b.Write(e.tag)
 			b.WriteString(">")
 		}
-		if e.mapping_style() == yaml_FLOW_MAPPING_STYLE {
+		if e.mappingStyle() == yaml_FLOW_MAPPING_STYLE {
 			b.WriteString(" {}")
 		}
 	case yaml_MAPPING_END_EVENT:
