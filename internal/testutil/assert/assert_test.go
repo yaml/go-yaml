@@ -1,9 +1,11 @@
 package assert
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -94,7 +96,17 @@ func assertFailureMessageMatches(t *testing.T, f *fakeTB, pattern string) {
 	}
 	re := regexp.MustCompile(pattern)
 	if !re.MatchString(f.msg) {
-		t.Fatalf("message %q does not match %q", f.msg, pattern)
+		t.Fatalf("message does not match:\ngot: `%s`\nregexp: `%s`", f.msg, pattern)
+	}
+}
+
+func assertFailureMessageContains(t *testing.T, f *fakeTB, substr string) {
+	t.Helper()
+	if !f.failed {
+		t.Fatalf("expected failure")
+	}
+	if !strings.Contains(f.msg, substr) {
+		t.Fatalf("message doesn't contain:\ngot:  `%s`\nwant: `%s`", f.msg, substr)
 	}
 }
 
@@ -145,7 +157,7 @@ func TestErrorIs_Success(t *testing.T) {
 	// direct match
 	ErrorIs(t, base, base)
 	ErrorIs(t, wrapped, wrapped)
-	ErrorIs(t, base, wrapped)
+	ErrorIs(t, wrapped, base)
 	// both nil
 	ErrorIs(t, nil, nil)
 }
@@ -156,17 +168,62 @@ func TestErrorIs_Fails(t *testing.T) {
 	base := fmt.Errorf("base")
 	other := fmt.Errorf("other")
 	ErrorIs(mock1, base, other)
-	assertFailureMessageMatches(t, mock1, `got &errors.errorString\{s:"other"\}; want &errors.errorString\{s:"base"\}`)
+	assertFailureMessageMatches(t, mock1, `got &errors.errorString{s:"base"}; want &errors.errorString{s:"other"}`)
 
 	// expected non-nil, actual nil
 	mock2 := &fakeTB{}
-	ErrorIs(mock2, base, nil)
-	assertFailureMessageMatches(t, mock2, `got \<nil\>; want &errors.errorString\{s:"base"\}`)
+	ErrorIs(mock2, nil, base)
+	assertFailureMessageMatches(t, mock2, `got <nil>; want &errors.errorString{s:"base"}`)
 
 	// expected nil, actual non-nil
 	mock3 := &fakeTB{}
-	ErrorIs(mock3, nil, other)
-	assertFailureMessageMatches(t, mock3, `got &errors.errorString\{s:"other"\}; want \<nil\>`)
+	ErrorIs(mock3, other, nil)
+	assertFailureMessageMatches(t, mock3, `got &errors.errorString{s:"other"}; want <nil>`)
+}
+
+// customErr is a custom error type for testing.
+type customErr struct {
+	msg string
+}
+
+func (e *customErr) Error() string {
+	return e.msg
+}
+
+func TestErrorAs_Success(t *testing.T) {
+	// this simulates an error returned from a function as error
+	var err error = &customErr{"foo"}
+
+	var target *customErr
+	ErrorAs(t, err, &target)
+	Equal(t, "foo", target.Error())
+}
+
+func TestErrorAs_Fails(t *testing.T) {
+	tb := &fakeTB{}
+
+	err := errors.New("foo")
+
+	var target *customErr
+	ErrorAs(tb, err, &target)
+	assertFailureMessageContains(t, tb, `got &errors.errorString{s:"foo"}; want *assert.customErr`)
+
+	tb = &fakeTB{}
+	ErrorAs(tb, nil, &target)
+	assertFailureMessageContains(t, tb, `got <nil>; want *assert.customErr`)
+
+	tb = &fakeTB{}
+	ErrorAs(tb, err, nil) // this is invalid, a panic is expected
+	assertFailureMessageContains(t, tb, `panic`)
+
+	tb = &fakeTB{}
+	ErrorAs(tb, err, 42) // this is invalid, a panic is expected
+	assertFailureMessageContains(t, tb, `panic`)
+
+	var a int
+	tb = &fakeTB{}
+	ErrorAs(tb, err, &a) // this is invalid, a panic is expected
+	assertFailureMessageContains(t, tb, `panic`)
 }
 
 func TestIsNil_Fails(t *testing.T) {
