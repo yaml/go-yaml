@@ -1,0 +1,22 @@
+version: '2'
+
+linters:
+  enable:
+  - govet
+  disable:
+  - errcheck
+  - ineffassign
+  - staticcheck
+  - unused
+  exclusions:
+    generated: lax
+    presets:
+    - comments
+    - common-false-positives
+    - legacy
+    - std-error-handling
+
+formatters:
+  enable: []
+  exclusions:
+    generated: lax
