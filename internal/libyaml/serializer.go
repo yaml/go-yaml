@@ -86,7 +86,7 @@ func (s *Serializer) init() {
 
 // Finish completes serialization by emitting a STREAM_END event.
 func (s *Serializer) Finish() {
-	s.Emitter.OpenEnded = false
+	s.Emitter.EndType = END_EXPLICIT_TYPE
 	s.emit(NewStreamEndEvent())
 }
 
