@@ -469,6 +469,7 @@ func (emitter *yamlEmitter) emitDocumentStart(event *yamlEvent, first bool) bool
 			if !emitter.writeIndicator([]byte("..."), true, false, false) {
 				return false
 			}
+			emitter.open_ended = false
 			if !emitter.writeIndent() {
 				return false
 			}
