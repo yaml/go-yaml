@@ -793,16 +793,16 @@ func ParserGetEvents(in []byte) (string, error) {
 	var events strings.Builder
 	var event yamlEvent
 	for {
-		if !(&p.parser).parse(&event) {
+		if !p.parser.parse(&event) {
 			return "", errors.New(p.parser.problem)
 		}
 		formatted := formatEvent(&event)
 		events.WriteString(formatted)
 		if event.typ == yaml_STREAM_END_EVENT {
-			yamlEventDelete(&event)
+			event.delete()
 			break
 		}
-		yamlEventDelete(&event)
+		event.delete()
 		events.WriteByte('\n')
 	}
 	return events.String(), nil

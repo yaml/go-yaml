@@ -47,7 +47,7 @@ func (emitter *yamlEmitter) put(value byte) bool {
 }
 
 // Put a line break to the output buffer.
-func (emitter *yamlEmitter) putBreak() bool {
+func (emitter *yamlEmitter) putLineBreak() bool {
 	if emitter.buffer_pos+5 >= len(emitter.buffer) && !emitter.flush() {
 		return false
 	}
@@ -116,7 +116,7 @@ func (emitter *yamlEmitter) writeAll(s []byte) bool {
 // Copy a line break character from a string into buffer.
 func (emitter *yamlEmitter) writeBreak(s []byte, i *int) bool {
 	if s[*i] == '\n' {
-		if !emitter.putBreak() {
+		if !emitter.putLineBreak() {
 			return false
 		}
 		*i++
@@ -153,7 +153,7 @@ func (emitter *yamlEmitter) emit(event *yamlEvent) bool {
 		if !emitter.stateMachine(event) {
 			return false
 		}
-		yamlEventDelete(event)
+		event.delete()
 		emitter.events_head++
 	}
 	return true
@@ -453,7 +453,7 @@ func (emitter *yamlEmitter) emitDocumentStart(event *yamlEvent, first bool) bool
 			if !emitter.processHeadComment() {
 				return false
 			}
-			if !emitter.putBreak() {
+			if !emitter.putLineBreak() {
 				return false
 			}
 		}
@@ -1174,7 +1174,7 @@ func (emitter *yamlEmitter) processLineCommentLinebreak(linebreak bool) bool {
 		// See https://github.com/go-yaml/yaml/issues/755
 		// When linebreak is set to true, put_break will be called and will add
 		// the needed newline.
-		if linebreak && !emitter.putBreak() {
+		if linebreak && !emitter.putLineBreak() {
 			return false
 		}
 		return true
@@ -1375,7 +1375,7 @@ func (emitter *yamlEmitter) analyzeScalar(value []byte) bool {
 			}
 			previous_space = true
 			previous_break = false
-		} else if isBreak(value, i) {
+		} else if isLineBreak(value, i) {
 			line_breaks = true
 			if i == 0 {
 				leading_break = true
@@ -1394,7 +1394,7 @@ func (emitter *yamlEmitter) analyzeScalar(value []byte) bool {
 		}
 
 		// [Go]: Why 'z'? Couldn't be the end of the string as that's the loop condition.
-		preceded_by_whitespace = isBlankz(value, i)
+		preceded_by_whitespace = isBlankOrZero(value, i)
 	}
 
 	emitter.scalar_data.multiline = line_breaks
@@ -1524,12 +1524,12 @@ func (emitter *yamlEmitter) writeIndent() bool {
 		indent = 0
 	}
 	if !emitter.indention || emitter.column > indent || (emitter.column == indent && !emitter.whitespace) {
-		if !emitter.putBreak() {
+		if !emitter.putLineBreak() {
 			return false
 		}
 	}
 	if emitter.foot_indent == indent {
-		if !emitter.putBreak() {
+		if !emitter.putLineBreak() {
 			return false
 		}
 	}
@@ -1659,9 +1659,9 @@ func (emitter *yamlEmitter) writePlainScalar(value []byte, allow_breaks bool) bo
 				}
 			}
 			spaces = true
-		} else if isBreak(value, i) {
+		} else if isLineBreak(value, i) {
 			if !breaks && value[i] == '\n' {
-				if !emitter.putBreak() {
+				if !emitter.putLineBreak() {
 					return false
 				}
 			}
@@ -1717,9 +1717,9 @@ func (emitter *yamlEmitter) writeSingleQuotedScalar(value []byte, allow_breaks b
 				}
 			}
 			spaces = true
-		} else if isBreak(value, i) {
+		} else if isLineBreak(value, i) {
 			if !breaks && value[i] == '\n' {
-				if !emitter.putBreak() {
+				if !emitter.putLineBreak() {
 					return false
 				}
 			}
@@ -1763,7 +1763,7 @@ func (emitter *yamlEmitter) writeDoubleQuotedScalar(value []byte, allow_breaks b
 
 	for i := 0; i < len(value); {
 		if !isPrintable(value, i) || (!emitter.unicode && !isAscii(value, i)) ||
-			isBOM(value, i) || isBreak(value, i) ||
+			isBOM(value, i) || isLineBreak(value, i) ||
 			value[i] == '"' || value[i] == '\\' {
 
 			octet := value[i]
@@ -1877,7 +1877,7 @@ func (emitter *yamlEmitter) writeDoubleQuotedScalar(value []byte, allow_breaks b
 }
 
 func (emitter *yamlEmitter) writeBlockScalarHints(value []byte) bool {
-	if isSpace(value, 0) || isBreak(value, 0) {
+	if isSpace(value, 0) || isLineBreak(value, 0) {
 		indent_hint := []byte{'0' + byte(emitter.best_indent)}
 		if !emitter.writeIndicator(indent_hint, false, false, false) {
 			return false
@@ -1894,7 +1894,7 @@ func (emitter *yamlEmitter) writeBlockScalarHints(value []byte) bool {
 		for value[i]&0xC0 == 0x80 {
 			i--
 		}
-		if !isBreak(value, i) {
+		if !isLineBreak(value, i) {
 			chomp_hint[0] = '-'
 		} else if i == 0 {
 			chomp_hint[0] = '+'
@@ -1904,7 +1904,7 @@ func (emitter *yamlEmitter) writeBlockScalarHints(value []byte) bool {
 			for value[i]&0xC0 == 0x80 {
 				i--
 			}
-			if isBreak(value, i) {
+			if isLineBreak(value, i) {
 				chomp_hint[0] = '+'
 				emitter.open_ended = true
 			}
@@ -1932,7 +1932,7 @@ func (emitter *yamlEmitter) writeLiteralScalar(value []byte) bool {
 	emitter.whitespace = true
 	breaks := true
 	for i := 0; i < len(value); {
-		if isBreak(value, i) {
+		if isLineBreak(value, i) {
 			if !emitter.writeBreak(value, &i) {
 				return false
 			}
@@ -1972,14 +1972,14 @@ func (emitter *yamlEmitter) writeFoldedScalar(value []byte) bool {
 	breaks := true
 	leading_spaces := true
 	for i := 0; i < len(value); {
-		if isBreak(value, i) {
+		if isLineBreak(value, i) {
 			if !breaks && !leading_spaces && value[i] == '\n' {
 				k := 0
-				for isBreak(value, k) {
+				for isLineBreak(value, k) {
 					k += width(value[k])
 				}
-				if !isBlankz(value, k) {
-					if !emitter.putBreak() {
+				if !isBlankOrZero(value, k) {
+					if !emitter.putLineBreak() {
 						return false
 					}
 				}
@@ -2017,7 +2017,7 @@ func (emitter *yamlEmitter) writeComment(comment []byte) bool {
 	breaks := false
 	pound := false
 	for i := 0; i < len(comment); {
-		if isBreak(comment, i) {
+		if isLineBreak(comment, i) {
 			if !emitter.writeBreak(comment, &i) {
 				return false
 			}
@@ -2041,7 +2041,7 @@ func (emitter *yamlEmitter) writeComment(comment []byte) bool {
 			breaks = false
 		}
 	}
-	if !breaks && !emitter.putBreak() {
+	if !breaks && !emitter.putLineBreak() {
 		return false
 	}
 

@@ -38,23 +38,21 @@ type parser struct {
 }
 
 func newParser(b []byte) *parser {
-	p := parser{}
-	if !(&p.parser).initialize() {
-		panic("failed to initialize YAML emitter")
+	p := parser{
+		parser: newYAMLParser(),
 	}
 	if len(b) == 0 {
 		b = []byte{'\n'}
 	}
-	(&p.parser).setInputString(b)
+	p.parser.setInputString(b)
 	return &p
 }
 
 func newParserFromReader(r io.Reader) *parser {
-	p := parser{}
-	if !(&p.parser).initialize() {
-		panic("failed to initialize YAML emitter")
+	p := parser{
+		parser: newYAMLParser(),
 	}
-	(&p.parser).setInputReader(r)
+	p.parser.setInputReader(r)
 	return &p
 }
 
@@ -69,16 +67,16 @@ func (p *parser) init() {
 
 func (p *parser) destroy() {
 	if p.event.typ != yaml_NO_EVENT {
-		yamlEventDelete(&p.event)
+		p.event.delete()
 	}
-	(&p.parser).delete()
+	p.parser.delete()
 }
 
 // expect consumes an event from the event stream and
 // checks that it's of the expected type.
 func (p *parser) expect(e yamlEventType) {
 	if p.event.typ == yaml_NO_EVENT {
-		if !(&p.parser).parse(&p.event) {
+		if !p.parser.parse(&p.event) {
 			p.fail()
 		}
 	}
@@ -89,7 +87,7 @@ func (p *parser) expect(e yamlEventType) {
 		p.parser.problem = fmt.Sprintf("expected %s event but got %s", e, p.event.typ)
 		p.fail()
 	}
-	yamlEventDelete(&p.event)
+	p.event.delete()
 	p.event.typ = yaml_NO_EVENT
 }
 
@@ -102,7 +100,7 @@ func (p *parser) peek() yamlEventType {
 	// It's curious choice from the underlying API to generally return a
 	// positive result on success, but on this case return true in an error
 	// scenario. This was the source of bugs in the past (issue #666).
-	if !(&p.parser).parse(&p.event) || p.parser.error != yaml_NO_ERROR {
+	if !p.parser.parse(&p.event) || p.parser.error != yaml_NO_ERROR {
 		p.fail()
 	}
 	return p.event.typ
