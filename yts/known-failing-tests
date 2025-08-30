@@ -110,8 +110,6 @@ TestYAMLSuite/JEF9-02/EventComparisonTest
 TestYAMLSuite/JEF9-02/JSONComparisonTest
 TestYAMLSuite/JEF9-02/MarshalTest
 TestYAMLSuite/JHB9/JSONComparisonTest
-TestYAMLSuite/JR7V/EventComparisonTest
-TestYAMLSuite/JR7V/LoadTest
 TestYAMLSuite/K3WX/EventComparisonTest
 TestYAMLSuite/K3WX/LoadTest
 TestYAMLSuite/K4SU/JSONComparisonTest
