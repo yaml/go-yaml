@@ -319,6 +319,7 @@ func (emitter *yamlEmitter) stateMachine(event *yamlEvent) bool {
 
 // Expect STREAM-START.
 func (emitter *yamlEmitter) emitStreamStart(event *yamlEvent) bool {
+	emitter.end_type = yaml_END_EXPLICIT_TYPE
 	if event.typ != yaml_STREAM_START_EVENT {
 		return emitter.setEmitterError("expected STREAM-START")
 	}
@@ -391,15 +392,15 @@ func (emitter *yamlEmitter) emitDocumentStart(event *yamlEvent, first bool) bool
 			implicit = false
 		}
 
-		if emitter.open_ended && (event.version_directive != nil || len(event.tag_directives) > 0) {
+		if (emitter.end_type != yaml_END_EXPLICIT_TYPE) && (event.version_directive != nil || len(event.tag_directives) > 0) {
 			if !emitter.writeIndicator([]byte("..."), true, false, false) {
 				return false
 			}
-			emitter.open_ended = false
 			if !emitter.writeIndent() {
 				return false
 			}
 		}
+		emitter.end_type = yaml_END_EXPLICIT_TYPE
 
 		if event.version_directive != nil {
 			implicit = false
@@ -460,16 +461,16 @@ func (emitter *yamlEmitter) emitDocumentStart(event *yamlEvent, first bool) bool
 		}
 
 		emitter.state = yaml_EMIT_DOCUMENT_CONTENT_STATE
-		emitter.open_ended = false
+		emitter.end_type = yaml_END_EXPLICIT_TYPE
 		return true
 	}
 
 	if event.typ == yaml_STREAM_END_EVENT {
-		if emitter.open_ended {
+		if emitter.end_type == yaml_END_IMPLICIT_WITH_TRAILING_TYPE {
 			if !emitter.writeIndicator([]byte("..."), true, false, false) {
 				return false
 			}
-			emitter.open_ended = false
+			emitter.end_type = yaml_END_EXPLICIT_TYPE
 			if !emitter.writeIndent() {
 				return false
 			}
@@ -534,10 +535,12 @@ func (emitter *yamlEmitter) emitDocumentEnd(event *yamlEvent) bool {
 		if !emitter.writeIndicator([]byte("..."), true, false, false) {
 			return false
 		}
-		emitter.open_ended = false
+		emitter.end_type = yaml_END_EXPLICIT_TYPE
 		if !emitter.writeIndent() {
 			return false
 		}
+	} else if emitter.end_type == yaml_END_EXPLICIT_TYPE {
+		emitter.end_type = yaml_END_IMPLICIT_TYPE
 	}
 	if !emitter.flush() {
 		return false
@@ -1884,7 +1887,7 @@ func (emitter *yamlEmitter) writeBlockScalarHints(value []byte) bool {
 		}
 	}
 
-	emitter.open_ended = false
+	emitter.end_type = yaml_END_EXPLICIT_TYPE
 
 	var chomp_hint [1]byte
 	if len(value) == 0 {
@@ -1898,7 +1901,7 @@ func (emitter *yamlEmitter) writeBlockScalarHints(value []byte) bool {
 			chomp_hint[0] = '-'
 		} else if i == 0 {
 			chomp_hint[0] = '+'
-			emitter.open_ended = true
+			emitter.end_type = yaml_END_IMPLICIT_WITH_TRAILING_TYPE
 		} else {
 			i--
 			for value[i]&0xC0 == 0x80 {
@@ -1906,7 +1909,7 @@ func (emitter *yamlEmitter) writeBlockScalarHints(value []byte) bool {
 			}
 			if isLineBreak(value, i) {
 				chomp_hint[0] = '+'
-				emitter.open_ended = true
+				emitter.end_type = yaml_END_IMPLICIT_WITH_TRAILING_TYPE
 			}
 		}
 	}

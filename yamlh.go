@@ -697,6 +697,14 @@ const (
 	yaml_EMIT_END_STATE                        // Expect nothing.
 )
 
+type yamlEndType int
+
+const (
+	yaml_END_EXPLICIT_TYPE               yamlEndType = iota // The previous document was ended explicitly with '...'
+	yaml_END_IMPLICIT_TYPE                                  // The previous document wasn't ended with '...'
+	yaml_END_IMPLICIT_WITH_TRAILING_TYPE                    // The last scalar event was a block scalar with trailing empty lines |+, and last document wasn't ended with '...' (Important at stream end)
+)
+
 // The emitter structure.
 //
 // All members are internal.
@@ -751,11 +759,11 @@ type yamlEmitter struct {
 	mapping_context    bool // Is it a mapping context?
 	simple_key_context bool // Is it a simple mapping key context?
 
-	line       int  // The current line.
-	column     int  // The current column.
-	whitespace bool // If the last character was a whitespace?
-	indention  bool // If the last character was an indentation character (' ', '-', '?', ':')?
-	open_ended bool // If an explicit document end is required?
+	line       int         // The current line.
+	column     int         // The current column.
+	whitespace bool        // If the last character was a whitespace?
+	indention  bool        // If the last character was an indentation character (' ', '-', '?', ':')?
+	end_type   yamlEndType // If an explicit document end is required?
 
 	space_above bool // Is there's an empty line above?
 	foot_indent int  // The indent used to write the foot comment above, or -1 if none.
