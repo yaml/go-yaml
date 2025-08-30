@@ -2732,7 +2732,6 @@ func (parser *yamlParser) scanPlainScalar(token *yamlToken) bool {
 			if (parser.buffer[parser.buffer_pos] == ':' && isBlankOrZero(parser.buffer, parser.buffer_pos+1)) ||
 				(parser.flow_level > 0 &&
 					(parser.buffer[parser.buffer_pos] == ',' ||
-						(parser.buffer[parser.buffer_pos] == '?' && isBlankOrZero(parser.buffer, parser.buffer_pos+1)) ||
 						parser.buffer[parser.buffer_pos] == '[' ||
 						parser.buffer[parser.buffer_pos] == ']' || parser.buffer[parser.buffer_pos] == '{' ||
 						parser.buffer[parser.buffer_pos] == '}')) {
