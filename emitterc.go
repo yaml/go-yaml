@@ -917,6 +917,11 @@ func (emitter *yamlEmitter) emitAlias(event *yamlEvent) bool {
 	if !emitter.processAnchor() {
 		return false
 	}
+	if emitter.simple_key_context {
+		if !emitter.put(' ') {
+			return false
+		}
+	}
 	emitter.state = emitter.states[len(emitter.states)-1]
 	emitter.states = emitter.states[:len(emitter.states)-1]
 	return true
