@@ -1789,7 +1789,9 @@ func (emitter *Emitter) writeTagContent(value []byte, need_whitespace bool) erro
 // writePlainScalar writes a plain (unquoted) scalar to the output, handling
 // line breaks and wrapping as needed.
 func (emitter *Emitter) writePlainScalar(value []byte, allow_breaks bool) error {
-	if len(value) > 0 && !emitter.whitespace {
+	// Avoid trailing spaces for empty values in block mode.
+	// In flow mode, keep the space to prevent ambiguous output like {a:}.
+	if !emitter.whitespace && (len(value) > 0 || emitter.flow_level > 0) {
 		if err := emitter.put(' '); err != nil {
 			return err
 		}
