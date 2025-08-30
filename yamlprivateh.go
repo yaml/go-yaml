@@ -72,7 +72,7 @@ func isAnchorChar(b []byte, i int) bool {
 		!isBlank(b, i) &&
 		!isBOM(b, i) &&
 		!isFlowIndicator(b, i) &&
-		isAscii(b, i)
+		isASCII(b, i)
 }
 
 // Check if the character at the specified position is a digit.
@@ -104,7 +104,7 @@ func asHex(b []byte, i int) int {
 }
 
 // Check if the character is ASCII.
-func isAscii(b []byte, i int) bool {
+func isASCII(b []byte, i int) bool {
 	return b[i] <= 0x7F
 }
 

@@ -114,7 +114,7 @@ func (emitter *yamlEmitter) writeAll(s []byte) bool {
 }
 
 // Copy a line break character from a string into buffer.
-func (emitter *yamlEmitter) writeBreak(s []byte, i *int) bool {
+func (emitter *yamlEmitter) writeLineBreak(s []byte, i *int) bool {
 	if s[*i] == '\n' {
 		if !emitter.putLineBreak() {
 			return false
@@ -1360,7 +1360,7 @@ func (emitter *yamlEmitter) analyzeScalar(value []byte) bool {
 
 		if value[i] == '\t' {
 			tab_characters = true
-		} else if !isPrintable(value, i) || !isAscii(value, i) && !emitter.unicode {
+		} else if !isPrintable(value, i) || !isASCII(value, i) && !emitter.unicode {
 			special_characters = true
 		}
 		if isSpace(value, i) {
@@ -1665,7 +1665,7 @@ func (emitter *yamlEmitter) writePlainScalar(value []byte, allow_breaks bool) bo
 					return false
 				}
 			}
-			if !emitter.writeBreak(value, &i) {
+			if !emitter.writeLineBreak(value, &i) {
 				return false
 			}
 			//emitter.indention = true
@@ -1723,7 +1723,7 @@ func (emitter *yamlEmitter) writeSingleQuotedScalar(value []byte, allow_breaks b
 					return false
 				}
 			}
-			if !emitter.writeBreak(value, &i) {
+			if !emitter.writeLineBreak(value, &i) {
 				return false
 			}
 			//emitter.indention = true
@@ -1762,7 +1762,7 @@ func (emitter *yamlEmitter) writeDoubleQuotedScalar(value []byte, allow_breaks b
 	}
 
 	for i := 0; i < len(value); {
-		if !isPrintable(value, i) || (!emitter.unicode && !isAscii(value, i)) ||
+		if !isPrintable(value, i) || (!emitter.unicode && !isASCII(value, i)) ||
 			isBOM(value, i) || isLineBreak(value, i) ||
 			value[i] == '"' || value[i] == '\\' {
 
@@ -1933,7 +1933,7 @@ func (emitter *yamlEmitter) writeLiteralScalar(value []byte) bool {
 	breaks := true
 	for i := 0; i < len(value); {
 		if isLineBreak(value, i) {
-			if !emitter.writeBreak(value, &i) {
+			if !emitter.writeLineBreak(value, &i) {
 				return false
 			}
 			//emitter.indention = true
@@ -1984,7 +1984,7 @@ func (emitter *yamlEmitter) writeFoldedScalar(value []byte) bool {
 					}
 				}
 			}
-			if !emitter.writeBreak(value, &i) {
+			if !emitter.writeLineBreak(value, &i) {
 				return false
 			}
 			//emitter.indention = true
@@ -2018,7 +2018,7 @@ func (emitter *yamlEmitter) writeComment(comment []byte) bool {
 	pound := false
 	for i := 0; i < len(comment); {
 		if isLineBreak(comment, i) {
-			if !emitter.writeBreak(comment, &i) {
+			if !emitter.writeLineBreak(comment, &i) {
 				return false
 			}
 			//emitter.indention = true
