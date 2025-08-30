@@ -1018,6 +1018,11 @@ func (parser *yamlParser) parseFlowSequenceEntryMappingKey(event *yamlEvent) boo
 		parser.states = append(parser.states, yaml_PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_VALUE_STATE)
 		return parser.parseNode(event, false, false)
 	}
+	if token.typ == yaml_FLOW_SEQUENCE_END_TOKEN {
+		mark := token.start_mark
+		parser.state = yaml_PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_VALUE_STATE
+		return parser.processEmptyScalar(event, mark)
+	}
 	mark := token.end_mark
 	parser.skipToken()
 	parser.state = yaml_PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_VALUE_STATE

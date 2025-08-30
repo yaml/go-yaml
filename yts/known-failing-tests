@@ -221,3 +221,7 @@ TestYAMLSuite/UGM3/MarshalTest
 TestYAMLSuite/YD5X/JSONComparisonTest
 TestYAMLSuite/ZF4X/JSONComparisonTest
 TestYAMLSuite/ZWK4/JSONComparisonTest
+TestYAMLSuite/EB22/EventComparisonTest
+TestYAMLSuite/01#12/UnmarshalTest
+TestYAMLSuite/01#12/EventComparisonTest
+TestYAMLSuite/RHX7/EventComparisonTest
