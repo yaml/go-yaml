@@ -395,6 +395,7 @@ func (emitter *yamlEmitter) emitDocumentStart(event *yamlEvent, first bool) bool
 			if !emitter.writeIndicator([]byte("..."), true, false, false) {
 				return false
 			}
+			emitter.open_ended = false
 			if !emitter.writeIndent() {
 				return false
 			}
@@ -459,6 +460,7 @@ func (emitter *yamlEmitter) emitDocumentStart(event *yamlEvent, first bool) bool
 		}
 
 		emitter.state = yaml_EMIT_DOCUMENT_CONTENT_STATE
+		emitter.open_ended = false
 		return true
 	}
 
@@ -531,6 +533,7 @@ func (emitter *yamlEmitter) emitDocumentEnd(event *yamlEvent) bool {
 		if !emitter.writeIndicator([]byte("..."), true, false, false) {
 			return false
 		}
+		emitter.open_ended = false
 		if !emitter.writeIndent() {
 			return false
 		}
@@ -1556,7 +1559,6 @@ func (emitter *yamlEmitter) writeIndicator(indicator []byte, need_whitespace, is
 	}
 	emitter.whitespace = is_whitespace
 	emitter.indention = (emitter.indention && is_indention)
-	emitter.open_ended = false
 	return true
 }
 
@@ -1689,9 +1691,6 @@ func (emitter *yamlEmitter) writePlainScalar(value []byte, allow_breaks bool) bo
 		emitter.whitespace = false
 	}
 	emitter.indention = false
-	if emitter.root_context {
-		emitter.open_ended = true
-	}
 
 	return true
 }
