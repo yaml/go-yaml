@@ -69,7 +69,7 @@ func (e *encoder) init() {
 }
 
 func (e *encoder) finish() {
-	e.emitter.open_ended = false
+	e.emitter.end_type = yaml_END_EXPLICIT_TYPE
 	e.event = newStreamEndEvent()
 	e.emit()
 }
