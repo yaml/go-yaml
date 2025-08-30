@@ -972,6 +972,11 @@ func (emitter *Emitter) emitAlias(event *Event) error {
 	if err := emitter.processAnchor(); err != nil {
 		return err
 	}
+	if emitter.simple_key_context {
+		if err := emitter.put(' '); err != nil {
+			return err
+		}
+	}
 	emitter.state = emitter.states[len(emitter.states)-1]
 	emitter.states = emitter.states[:len(emitter.states)-1]
 	return nil
