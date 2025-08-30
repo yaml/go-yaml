@@ -51,12 +51,12 @@ const (
 	yaml_UTF16BE_ENCODING // The UTF-16-BE encoding with BOM.
 )
 
-type yamlBreak int
+type yamlLineBreak int
 
 // Line break types.
 const (
 	// Let the parser choose the break type.
-	yaml_ANY_BREAK yamlBreak = iota
+	yaml_ANY_BREAK yamlLineBreak = iota
 
 	yaml_CR_BREAK   // Use CR for line breaks (Mac style).
 	yaml_LN_BREAK   // Use LN for line breaks (Unix style).
@@ -726,11 +726,11 @@ type yamlEmitter struct {
 
 	// Emitter stuff
 
-	canonical   bool      // If the output is in the canonical style?
-	best_indent int       // The number of indentation spaces.
-	best_width  int       // The preferred width of the output lines.
-	unicode     bool      // Allow unescaped non-ASCII characters?
-	line_break  yamlBreak // The preferred line break.
+	canonical   bool          // If the output is in the canonical style?
+	best_indent int           // The number of indentation spaces.
+	best_width  int           // The preferred width of the output lines.
+	unicode     bool          // Allow unescaped non-ASCII characters?
+	line_break  yamlLineBreak // The preferred line break.
 
 	state  yamlEmitterState   // The current emitter state.
 	states []yamlEmitterState // The stack of states.

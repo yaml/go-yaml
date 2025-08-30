@@ -528,7 +528,7 @@ func (parser *yamlParser) skipLine() {
 		parser.unread -= 2
 		parser.buffer_pos += 2
 		parser.newlines++
-	} else if isBreak(parser.buffer, parser.buffer_pos) {
+	} else if isLineBreak(parser.buffer, parser.buffer_pos) {
 		parser.mark.index++
 		parser.mark.column = 0
 		parser.mark.line++
@@ -718,7 +718,7 @@ func (parser *yamlParser) fetchNextToken() (ok bool) {
 	}
 
 	// Is it the end of the stream?
-	if isZ(parser.buffer, parser.buffer_pos) {
+	if isZeroChar(parser.buffer, parser.buffer_pos) {
 		return parser.fetchStreamEnd()
 	}
 
@@ -731,12 +731,12 @@ func (parser *yamlParser) fetchNextToken() (ok bool) {
 	pos := parser.buffer_pos
 
 	// Is it the document start indicator?
-	if parser.mark.column == 0 && buf[pos] == '-' && buf[pos+1] == '-' && buf[pos+2] == '-' && isBlankz(buf, pos+3) {
+	if parser.mark.column == 0 && buf[pos] == '-' && buf[pos+1] == '-' && buf[pos+2] == '-' && isBlankOrZero(buf, pos+3) {
 		return parser.fetchDocumentIndicator(yaml_DOCUMENT_START_TOKEN)
 	}
 
 	// Is it the document end indicator?
-	if parser.mark.column == 0 && buf[pos] == '.' && buf[pos+1] == '.' && buf[pos+2] == '.' && isBlankz(buf, pos+3) {
+	if parser.mark.column == 0 && buf[pos] == '.' && buf[pos+1] == '.' && buf[pos+2] == '.' && isBlankOrZero(buf, pos+3) {
 		return parser.fetchDocumentIndicator(yaml_DOCUMENT_END_TOKEN)
 	}
 
@@ -788,17 +788,17 @@ func (parser *yamlParser) fetchNextToken() (ok bool) {
 	}
 
 	// Is it the block entry indicator?
-	if parser.buffer[parser.buffer_pos] == '-' && isBlankz(parser.buffer, parser.buffer_pos+1) {
+	if parser.buffer[parser.buffer_pos] == '-' && isBlankOrZero(parser.buffer, parser.buffer_pos+1) {
 		return parser.fetchBlockEntry()
 	}
 
 	// Is it the key indicator?
-	if parser.buffer[parser.buffer_pos] == '?' && isBlankz(parser.buffer, parser.buffer_pos+1) {
+	if parser.buffer[parser.buffer_pos] == '?' && isBlankOrZero(parser.buffer, parser.buffer_pos+1) {
 		return parser.fetchKey()
 	}
 
 	// Is it the value indicator?
-	if parser.buffer[parser.buffer_pos] == ':' && (parser.flow_level > 0 || isBlankz(parser.buffer, parser.buffer_pos+1)) {
+	if parser.buffer[parser.buffer_pos] == ':' && (parser.flow_level > 0 || isBlankOrZero(parser.buffer, parser.buffer_pos+1)) {
 		return parser.fetchValue()
 	}
 
@@ -857,7 +857,7 @@ func (parser *yamlParser) fetchNextToken() (ok bool) {
 	//switch parser.buffer[parser.buffer_pos] {
 	//case '-', '?', ':', ',', '?', '-', ',', ':', ']', '[', '}', '{', '&', '#', '!', '*', '>', '|', '"', '\'', '@', '%', '-', '`':
 	//}
-	if !(isBlankz(parser.buffer, parser.buffer_pos) || parser.buffer[parser.buffer_pos] == '-' ||
+	if !(isBlankOrZero(parser.buffer, parser.buffer_pos) || parser.buffer[parser.buffer_pos] == '-' ||
 		parser.buffer[parser.buffer_pos] == '?' || parser.buffer[parser.buffer_pos] == ':' ||
 		parser.buffer[parser.buffer_pos] == ',' || parser.buffer[parser.buffer_pos] == '[' ||
 		parser.buffer[parser.buffer_pos] == ']' || parser.buffer[parser.buffer_pos] == '{' ||
@@ -869,7 +869,7 @@ func (parser *yamlParser) fetchNextToken() (ok bool) {
 		parser.buffer[parser.buffer_pos] == '@' || parser.buffer[parser.buffer_pos] == '`') ||
 		(parser.buffer[parser.buffer_pos] == '-' && !isBlank(parser.buffer, parser.buffer_pos+1)) ||
 		((parser.buffer[parser.buffer_pos] == '?' || parser.buffer[parser.buffer_pos] == ':') &&
-			!isBlankz(parser.buffer, parser.buffer_pos+1)) {
+			!isBlankOrZero(parser.buffer, parser.buffer_pos+1)) {
 		return parser.fetchPlainScalar()
 	}
 
@@ -1572,7 +1572,7 @@ func (parser *yamlParser) scanToNextToken() bool {
 			tokenA := parser.tokens[len(parser.tokens)-2]
 			tokenB := parser.tokens[len(parser.tokens)-1]
 			comment := &parser.comments[len(parser.comments)-1]
-			if tokenA.typ == yaml_BLOCK_SEQUENCE_START_TOKEN && tokenB.typ == yaml_BLOCK_ENTRY_TOKEN && len(comment.line) > 0 && !isBreak(parser.buffer, parser.buffer_pos) {
+			if tokenA.typ == yaml_BLOCK_SEQUENCE_START_TOKEN && tokenB.typ == yaml_BLOCK_ENTRY_TOKEN && len(comment.line) > 0 && !isLineBreak(parser.buffer, parser.buffer_pos) {
 				// If it was in the prior line, reposition so it becomes a
 				// header of the follow up token. Otherwise, keep it in place
 				// so it becomes a header of the former.
@@ -1592,7 +1592,7 @@ func (parser *yamlParser) scanToNextToken() bool {
 		}
 
 		// If it is a line break, eat it.
-		if isBreak(parser.buffer, parser.buffer_pos) {
+		if isLineBreak(parser.buffer, parser.buffer_pos) {
 			if parser.unread < 2 && !parser.updateBuffer(2) {
 				return false
 			}
@@ -1689,7 +1689,7 @@ func (parser *yamlParser) scanDirective(token *yamlToken) bool {
 		//if !parser.ScanLineComment(start_mark) {
 		//	return false
 		//}
-		for !isBreakz(parser.buffer, parser.buffer_pos) {
+		for !isBreakOrZero(parser.buffer, parser.buffer_pos) {
 			parser.skip()
 			if parser.unread < 1 && !parser.updateBuffer(1) {
 				return false
@@ -1698,14 +1698,14 @@ func (parser *yamlParser) scanDirective(token *yamlToken) bool {
 	}
 
 	// Check if we are at the end of the line.
-	if !isBreakz(parser.buffer, parser.buffer_pos) {
+	if !isBreakOrZero(parser.buffer, parser.buffer_pos) {
 		parser.setScannerError("while scanning a directive",
 			start_mark, "did not find expected comment or line break")
 		return false
 	}
 
 	// Eat a line break.
-	if isBreak(parser.buffer, parser.buffer_pos) {
+	if isLineBreak(parser.buffer, parser.buffer_pos) {
 		if parser.unread < 2 && !parser.updateBuffer(2) {
 			return false
 		}
@@ -1745,7 +1745,7 @@ func (parser *yamlParser) scanDirectiveName(start_mark yamlMark, name *[]byte) b
 	}
 
 	// Check for an blank character after the name.
-	if !isBlankz(parser.buffer, parser.buffer_pos) {
+	if !isBlankOrZero(parser.buffer, parser.buffer_pos) {
 		parser.setScannerError("while scanning a directive",
 			start_mark, "found unexpected non-alphabetical character")
 		return false
@@ -1885,7 +1885,7 @@ func (parser *yamlParser) scanTagDirectiveValue(start_mark yamlMark, handle, pre
 	if parser.unread < 1 && !parser.updateBuffer(1) {
 		return false
 	}
-	if !isBlankz(parser.buffer, parser.buffer_pos) {
+	if !isBlankOrZero(parser.buffer, parser.buffer_pos) {
 		parser.setScannerError("while scanning a %TAG directive",
 			start_mark, "did not find expected whitespace or line break")
 		return false
@@ -1925,7 +1925,7 @@ func (parser *yamlParser) scanAnchor(token *yamlToken, typ yamlTokenType) bool {
 	 */
 
 	if len(s) == 0 ||
-		!(isBlankz(parser.buffer, parser.buffer_pos) || parser.buffer[parser.buffer_pos] == '?' ||
+		!(isBlankOrZero(parser.buffer, parser.buffer_pos) || parser.buffer[parser.buffer_pos] == '?' ||
 			parser.buffer[parser.buffer_pos] == ':' || parser.buffer[parser.buffer_pos] == ',' ||
 			parser.buffer[parser.buffer_pos] == ']' || parser.buffer[parser.buffer_pos] == '}' ||
 			parser.buffer[parser.buffer_pos] == '%' || parser.buffer[parser.buffer_pos] == '@' ||
@@ -2019,7 +2019,7 @@ func (parser *yamlParser) scanTag(token *yamlToken) bool {
 	if parser.unread < 1 && !parser.updateBuffer(1) {
 		return false
 	}
-	if !isBlankz(parser.buffer, parser.buffer_pos) {
+	if !isBlankOrZero(parser.buffer, parser.buffer_pos) {
 		parser.setScannerError("while scanning a tag",
 			start_mark, "did not find expected whitespace or line break")
 		return false
@@ -2264,7 +2264,7 @@ func (parser *yamlParser) scanBlockScalar(token *yamlToken, literal bool) bool {
 		if !parser.scanLineComment(start_mark) {
 			return false
 		}
-		for !isBreakz(parser.buffer, parser.buffer_pos) {
+		for !isBreakOrZero(parser.buffer, parser.buffer_pos) {
 			parser.skip()
 			if parser.unread < 1 && !parser.updateBuffer(1) {
 				return false
@@ -2273,14 +2273,14 @@ func (parser *yamlParser) scanBlockScalar(token *yamlToken, literal bool) bool {
 	}
 
 	// Check if we are at the end of the line.
-	if !isBreakz(parser.buffer, parser.buffer_pos) {
+	if !isBreakOrZero(parser.buffer, parser.buffer_pos) {
 		parser.setScannerError("while scanning a block scalar",
 			start_mark, "did not find expected comment or line break")
 		return false
 	}
 
 	// Eat a line break.
-	if isBreak(parser.buffer, parser.buffer_pos) {
+	if isLineBreak(parser.buffer, parser.buffer_pos) {
 		if parser.unread < 2 && !parser.updateBuffer(2) {
 			return false
 		}
@@ -2310,7 +2310,7 @@ func (parser *yamlParser) scanBlockScalar(token *yamlToken, literal bool) bool {
 		return false
 	}
 	var leading_blank, trailing_blank bool
-	for parser.mark.column == indent && !isZ(parser.buffer, parser.buffer_pos) {
+	for parser.mark.column == indent && !isZeroChar(parser.buffer, parser.buffer_pos) {
 		// We are at the beginning of a non-empty line.
 
 		// Is it a trailing whitespace?
@@ -2335,7 +2335,7 @@ func (parser *yamlParser) scanBlockScalar(token *yamlToken, literal bool) bool {
 		leading_blank = isBlank(parser.buffer, parser.buffer_pos)
 
 		// Consume the current line.
-		for !isBreakz(parser.buffer, parser.buffer_pos) {
+		for !isBreakOrZero(parser.buffer, parser.buffer_pos) {
 			s = parser.read(s)
 			if parser.unread < 1 && !parser.updateBuffer(1) {
 				return false
@@ -2406,7 +2406,7 @@ func (parser *yamlParser) scanBlockScalarBreaks(indent *int, breaks *[]byte, sta
 		}
 
 		// Have we found a non-empty line?
-		if !isBreak(parser.buffer, parser.buffer_pos) {
+		if !isLineBreak(parser.buffer, parser.buffer_pos) {
 			break
 		}
 
@@ -2453,14 +2453,14 @@ func (parser *yamlParser) scanFlowScalar(token *yamlToken, single bool) bool {
 				(parser.buffer[parser.buffer_pos+0] == '.' &&
 					parser.buffer[parser.buffer_pos+1] == '.' &&
 					parser.buffer[parser.buffer_pos+2] == '.')) &&
-			isBlankz(parser.buffer, parser.buffer_pos+3) {
+			isBlankOrZero(parser.buffer, parser.buffer_pos+3) {
 			parser.setScannerError("while scanning a quoted scalar",
 				start_mark, "found unexpected document indicator")
 			return false
 		}
 
 		// Check for EOF.
-		if isZ(parser.buffer, parser.buffer_pos) {
+		if isZeroChar(parser.buffer, parser.buffer_pos) {
 			parser.setScannerError("while scanning a quoted scalar",
 				start_mark, "found unexpected end of stream")
 			return false
@@ -2468,7 +2468,7 @@ func (parser *yamlParser) scanFlowScalar(token *yamlToken, single bool) bool {
 
 		// Consume non-blank characters.
 		leading_blanks := false
-		for !isBlankz(parser.buffer, parser.buffer_pos) {
+		for !isBlankOrZero(parser.buffer, parser.buffer_pos) {
 			if single && parser.buffer[parser.buffer_pos] == '\'' && parser.buffer[parser.buffer_pos+1] == '\'' {
 				// Is is an escaped single quote.
 				s = append(s, '\'')
@@ -2482,7 +2482,7 @@ func (parser *yamlParser) scanFlowScalar(token *yamlToken, single bool) bool {
 				// It is a right double quote.
 				break
 
-			} else if !single && parser.buffer[parser.buffer_pos] == '\\' && isBreak(parser.buffer, parser.buffer_pos+1) {
+			} else if !single && parser.buffer[parser.buffer_pos] == '\\' && isLineBreak(parser.buffer, parser.buffer_pos+1) {
 				// It is an escaped line break.
 				if parser.unread < 3 && !parser.updateBuffer(3) {
 					return false
@@ -2622,7 +2622,7 @@ func (parser *yamlParser) scanFlowScalar(token *yamlToken, single bool) bool {
 		}
 
 		// Consume blank characters.
-		for isBlank(parser.buffer, parser.buffer_pos) || isBreak(parser.buffer, parser.buffer_pos) {
+		for isBlank(parser.buffer, parser.buffer_pos) || isLineBreak(parser.buffer, parser.buffer_pos) {
 			if isBlank(parser.buffer, parser.buffer_pos) {
 				// Consume a space or a tab character.
 				if !leading_blanks {
@@ -2711,7 +2711,7 @@ func (parser *yamlParser) scanPlainScalar(token *yamlToken) bool {
 				(parser.buffer[parser.buffer_pos+0] == '.' &&
 					parser.buffer[parser.buffer_pos+1] == '.' &&
 					parser.buffer[parser.buffer_pos+2] == '.')) &&
-			isBlankz(parser.buffer, parser.buffer_pos+3) {
+			isBlankOrZero(parser.buffer, parser.buffer_pos+3) {
 			break
 		}
 
@@ -2721,13 +2721,13 @@ func (parser *yamlParser) scanPlainScalar(token *yamlToken) bool {
 		}
 
 		// Consume non-blank characters.
-		for !isBlankz(parser.buffer, parser.buffer_pos) {
+		for !isBlankOrZero(parser.buffer, parser.buffer_pos) {
 
 			// Check for indicators that may end a plain scalar.
-			if (parser.buffer[parser.buffer_pos] == ':' && isBlankz(parser.buffer, parser.buffer_pos+1)) ||
+			if (parser.buffer[parser.buffer_pos] == ':' && isBlankOrZero(parser.buffer, parser.buffer_pos+1)) ||
 				(parser.flow_level > 0 &&
 					(parser.buffer[parser.buffer_pos] == ',' ||
-						(parser.buffer[parser.buffer_pos] == '?' && isBlankz(parser.buffer, parser.buffer_pos+1)) ||
+						(parser.buffer[parser.buffer_pos] == '?' && isBlankOrZero(parser.buffer, parser.buffer_pos+1)) ||
 						parser.buffer[parser.buffer_pos] == '[' ||
 						parser.buffer[parser.buffer_pos] == ']' || parser.buffer[parser.buffer_pos] == '{' ||
 						parser.buffer[parser.buffer_pos] == '}')) {
@@ -2767,7 +2767,7 @@ func (parser *yamlParser) scanPlainScalar(token *yamlToken) bool {
 		}
 
 		// Is it the end?
-		if !(isBlank(parser.buffer, parser.buffer_pos) || isBreak(parser.buffer, parser.buffer_pos)) {
+		if !(isBlank(parser.buffer, parser.buffer_pos) || isLineBreak(parser.buffer, parser.buffer_pos)) {
 			break
 		}
 
@@ -2776,7 +2776,7 @@ func (parser *yamlParser) scanPlainScalar(token *yamlToken) bool {
 			return false
 		}
 
-		for isBlank(parser.buffer, parser.buffer_pos) || isBreak(parser.buffer, parser.buffer_pos) {
+		for isBlank(parser.buffer, parser.buffer_pos) || isLineBreak(parser.buffer, parser.buffer_pos) {
 			if isBlank(parser.buffer, parser.buffer_pos) {
 
 				// Check for tab characters that abuse indentation.
@@ -2854,7 +2854,7 @@ func (parser *yamlParser) scanLineComment(token_mark yamlMark) bool {
 				if parser.unread < 1 && !parser.updateBuffer(1) {
 					return false
 				}
-				if isBreakz(parser.buffer, parser.buffer_pos) {
+				if isBreakOrZero(parser.buffer, parser.buffer_pos) {
 					if parser.mark.index >= seen {
 						break
 					}
@@ -2929,7 +2929,7 @@ func (parser *yamlParser) scanComments(scan_mark yamlMark) bool {
 		}
 		c := parser.buffer[parser.buffer_pos+peek]
 		var close_flow = parser.flow_level > 0 && (c == ']' || c == '}')
-		if close_flow || isBreakz(parser.buffer, parser.buffer_pos+peek) {
+		if close_flow || isBreakOrZero(parser.buffer, parser.buffer_pos+peek) {
 			// Got line break or terminator.
 			if close_flow || !recent_empty {
 				if close_flow || first_empty && (start_mark.line == foot_line && token.typ != yaml_VALUE_TOKEN || start_mark.column-1 < next_indent) {
@@ -2960,7 +2960,7 @@ func (parser *yamlParser) scanComments(scan_mark yamlMark) bool {
 					}
 				}
 			}
-			if !isBreak(parser.buffer, parser.buffer_pos+peek) {
+			if !isLineBreak(parser.buffer, parser.buffer_pos+peek) {
 				break
 			}
 			first_empty = false
@@ -3003,7 +3003,7 @@ func (parser *yamlParser) scanComments(scan_mark yamlMark) bool {
 			if parser.unread < 1 && !parser.updateBuffer(1) {
 				return false
 			}
-			if isBreakz(parser.buffer, parser.buffer_pos) {
+			if isBreakOrZero(parser.buffer, parser.buffer_pos) {
 				if parser.mark.index >= seen {
 					break
 				}
