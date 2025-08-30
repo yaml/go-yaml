@@ -164,8 +164,6 @@ TestYAMLSuite/01#13/UnmarshalTest
 TestYAMLSuite/01#13/EventComparisonTest
 TestYAMLSuite/SU5Z/UnmarshalTest
 TestYAMLSuite/SU5Z/EventComparisonTest
-TestYAMLSuite/U99R/UnmarshalTest
-TestYAMLSuite/U99R/EventComparisonTest
 TestYAMLSuite/U9NS/JSONComparisonTest
 TestYAMLSuite/UGM3/JSONComparisonTest
 TestYAMLSuite/00#14/UnmarshalTest
