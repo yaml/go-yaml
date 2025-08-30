@@ -122,7 +122,7 @@ func yamlStringWriteHandler(emitter *yamlEmitter, buffer []byte) error {
 	return nil
 }
 
-// yaml_writer_write_handler uses emitter.output_writer to write the
+// yamlWriterWriteHandler uses emitter.output_writer to write the
 // emitted text.
 func yamlWriterWriteHandler(emitter *yamlEmitter, buffer []byte) error {
 	_, err := emitter.output_writer.Write(buffer)
@@ -372,7 +372,7 @@ func (event *yamlEvent) delete() {
 // */
 //
 //YAML_DECLARE(int)
-//yaml_document_(document *yaml_document_t,
+//yaml_document_initialize(document *yaml_document_t,
 //        version_directive *yaml_version_directive_t,
 //        tag_directives_start *yaml_tag_directive_t,
 //        tag_directives_end *yaml_tag_directive_t,

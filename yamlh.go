@@ -439,7 +439,7 @@ type yamlDocument struct {
 //
 // [in,out]   data        A pointer to an application data specified by
 //
-//	yaml_parser_set_input().
+//	yamlParser.setInput().
 //
 // [out]      buffer      The buffer to write the data from the source.
 // [in]       size        The size of the buffer.
@@ -552,8 +552,7 @@ type yamlAliasData struct {
 
 // The parser structure.
 //
-// All members are internal. Manage the structure using the
-// yaml_parser_ family of functions.
+// All members are internal.
 type yamlParser struct {
 
 	// Error handling
@@ -661,7 +660,7 @@ type yamlComment struct {
 //
 // @param[in,out]   data        A pointer to an application data specified by
 //
-//	yaml_emitter_set_output().
+//	yamlEmitter.setOutput().
 //
 // @param[in]       buffer      The buffer with bytes to be written.
 // @param[in]       size        The size of the buffer.
@@ -700,8 +699,7 @@ const (
 
 // The emitter structure.
 //
-// All members are internal.  Manage the structure using the @c yaml_emitter_
-// family of functions.
+// All members are internal.
 type yamlEmitter struct {
 
 	// Error handling
