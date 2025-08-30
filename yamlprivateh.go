@@ -45,7 +45,7 @@ const (
 
 // Check if the character at the specified position is an alphabetical
 // character, a digit, '_', or '-'.
-func is_alpha(b []byte, i int) bool {
+func isAlpha(b []byte, i int) bool {
 	return b[i] >= '0' && b[i] <= '9' || b[i] >= 'A' && b[i] <= 'Z' ||
 		b[i] >= 'a' && b[i] <= 'z' || b[i] == '_' || b[i] == '-'
 }
@@ -54,7 +54,7 @@ func is_alpha(b []byte, i int) bool {
 // defined by spec production [23] c-flow-indicator ::=
 // c-collect-entry | c-sequence-start | c-sequence-end |
 // c-mapping-start | c-mapping-end
-func is_flow_indicator(b []byte, i int) bool {
+func isFlowIndicator(b []byte, i int) bool {
 	return b[i] == '[' || b[i] == ']' ||
 		b[i] == '{' || b[i] == '}' || b[i] == ','
 }
@@ -66,33 +66,33 @@ func is_flow_indicator(b []byte, i int) bool {
 // ']', '{', '}', ','.
 // We further limit it to ascii chars only, which is a subset of the spec
 // production but is usually what most people expect.
-func is_anchor_char(b []byte, i int) bool {
-	return is_printable(b, i) &&
-		!is_break(b, i) &&
-		!is_blank(b, i) &&
-		!is_bom(b, i) &&
-		!is_flow_indicator(b, i) &&
-		is_ascii(b, i)
+func isAnchorChar(b []byte, i int) bool {
+	return isPrintable(b, i) &&
+		!isLineBreak(b, i) &&
+		!isBlank(b, i) &&
+		!isBOM(b, i) &&
+		!isFlowIndicator(b, i) &&
+		isAscii(b, i)
 }
 
 // Check if the character at the specified position is a digit.
-func is_digit(b []byte, i int) bool {
+func isDigit(b []byte, i int) bool {
 	return b[i] >= '0' && b[i] <= '9'
 }
 
 // Get the value of a digit.
-func as_digit(b []byte, i int) int {
+func asDigit(b []byte, i int) int {
 	return int(b[i]) - '0'
 }
 
 // Check if the character at the specified position is a hex-digit.
-func is_hex(b []byte, i int) bool {
+func isHex(b []byte, i int) bool {
 	return b[i] >= '0' && b[i] <= '9' || b[i] >= 'A' && b[i] <= 'F' ||
 		b[i] >= 'a' && b[i] <= 'f'
 }
 
 // Get the value of a hex-digit.
-func as_hex(b []byte, i int) int {
+func asHex(b []byte, i int) int {
 	bi := b[i]
 	if bi >= 'A' && bi <= 'F' {
 		return int(bi) - 'A' + 10
@@ -104,12 +104,12 @@ func as_hex(b []byte, i int) int {
 }
 
 // Check if the character is ASCII.
-func is_ascii(b []byte, i int) bool {
+func isAscii(b []byte, i int) bool {
 	return b[i] <= 0x7F
 }
 
 // Check if the character at the start of the buffer can be printed unescaped.
-func is_printable(b []byte, i int) bool {
+func isPrintable(b []byte, i int) bool {
 	return ((b[i] == 0x0A) || // . == #x0A
 		(b[i] >= 0x20 && b[i] <= 0x7E) || // #x20 <= . <= #x7E
 		(b[i] == 0xC2 && b[i+1] >= 0xA0) || // #0xA0 <= . <= #xD7FF
@@ -122,33 +122,33 @@ func is_printable(b []byte, i int) bool {
 }
 
 // Check if the character at the specified position is NUL.
-func is_z(b []byte, i int) bool {
+func isZeroChar(b []byte, i int) bool {
 	return b[i] == 0x00
 }
 
 // Check if the beginning of the buffer is a BOM.
-func is_bom(b []byte, i int) bool {
+func isBOM(b []byte, i int) bool {
 	return b[0] == 0xEF && b[1] == 0xBB && b[2] == 0xBF
 }
 
 // Check if the character at the specified position is space.
-func is_space(b []byte, i int) bool {
+func isSpace(b []byte, i int) bool {
 	return b[i] == ' '
 }
 
 // Check if the character at the specified position is tab.
-func is_tab(b []byte, i int) bool {
+func isTab(b []byte, i int) bool {
 	return b[i] == '\t'
 }
 
 // Check if the character at the specified position is blank (space or tab).
-func is_blank(b []byte, i int) bool {
-	//return is_space(b, i) || is_tab(b, i)
+func isBlank(b []byte, i int) bool {
+	//return isSpace(b, i) || isTab(b, i)
 	return b[i] == ' ' || b[i] == '\t'
 }
 
 // Check if the character at the specified position is a line break.
-func is_break(b []byte, i int) bool {
+func isLineBreak(b []byte, i int) bool {
 	return (b[i] == '\r' || // CR (#xD)
 		b[i] == '\n' || // LF (#xA)
 		b[i] == 0xC2 && b[i+1] == 0x85 || // NEL (#x85)
@@ -156,31 +156,31 @@ func is_break(b []byte, i int) bool {
 		b[i] == 0xE2 && b[i+1] == 0x80 && b[i+2] == 0xA9) // PS (#x2029)
 }
 
-func is_crlf(b []byte, i int) bool {
+func isCRLF(b []byte, i int) bool {
 	return b[i] == '\r' && b[i+1] == '\n'
 }
 
 // Check if the character is a line break or NUL.
-func is_breakz(b []byte, i int) bool {
-	//return is_break(b, i) || is_z(b, i)
+func isBreakOrZero(b []byte, i int) bool {
+	//return isLineBreak(b, i) || isZeroChar(b, i)
 	return (
-	// is_break:
+	// isBreak:
 	b[i] == '\r' || // CR (#xD)
 		b[i] == '\n' || // LF (#xA)
 		b[i] == 0xC2 && b[i+1] == 0x85 || // NEL (#x85)
 		b[i] == 0xE2 && b[i+1] == 0x80 && b[i+2] == 0xA8 || // LS (#x2028)
 		b[i] == 0xE2 && b[i+1] == 0x80 && b[i+2] == 0xA9 || // PS (#x2029)
-		// is_z:
+		// isZeroChar:
 		b[i] == 0)
 }
 
 // Check if the character is a line break, space, or NUL.
-func is_spacez(b []byte, i int) bool {
-	//return is_space(b, i) || is_breakz(b, i)
+func isSpaceOrZero(b []byte, i int) bool {
+	//return isSpace(b, i) || isBreakOrZero(b, i)
 	return (
-	// is_space:
+	// isSpace:
 	b[i] == ' ' ||
-		// is_breakz:
+		// isBreakOrZero:
 		b[i] == '\r' || // CR (#xD)
 		b[i] == '\n' || // LF (#xA)
 		b[i] == 0xC2 && b[i+1] == 0x85 || // NEL (#x85)
@@ -190,12 +190,12 @@ func is_spacez(b []byte, i int) bool {
 }
 
 // Check if the character is a line break, space, tab, or NUL.
-func is_blankz(b []byte, i int) bool {
-	//return is_blank(b, i) || is_breakz(b, i)
+func isBlankOrZero(b []byte, i int) bool {
+	//return isBlank(b, i) || isBreakOrZero(b, i)
 	return (
-	// is_blank:
+	// isBlank:
 	b[i] == ' ' || b[i] == '\t' ||
-		// is_breakz:
+		// isBreakOrZero:
 		b[i] == '\r' || // CR (#xD)
 		b[i] == '\n' || // LF (#xA)
 		b[i] == 0xC2 && b[i+1] == 0x85 || // NEL (#x85)

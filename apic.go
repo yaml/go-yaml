@@ -26,7 +26,7 @@ import (
 	"io"
 )
 
-func yaml_insert_token(parser *yamlParser, pos int, token *yamlToken) {
+func (parser *yamlParser) insertToken(pos int, token *yamlToken) {
 	//fmt.Println("yaml_insert_token", "pos:", pos, "typ:", token.typ, "head:", parser.tokens_head, "len:", len(parser.tokens))
 
 	// Check if we can move the queue at the beginning of the buffer.
@@ -46,21 +46,20 @@ func yaml_insert_token(parser *yamlParser, pos int, token *yamlToken) {
 }
 
 // Create a new parser object.
-func yaml_parser_initialize(parser *yamlParser) bool {
-	*parser = yamlParser{
+func newYAMLParser() yamlParser {
+	return yamlParser{
 		raw_buffer: make([]byte, 0, input_raw_buffer_size),
 		buffer:     make([]byte, 0, input_buffer_size),
 	}
-	return true
 }
 
 // Destroy a parser object.
-func yaml_parser_delete(parser *yamlParser) {
+func (parser *yamlParser) delete() {
 	*parser = yamlParser{}
 }
 
 // String read handler.
-func yaml_string_read_handler(parser *yamlParser, buffer []byte) (n int, err error) {
+func yamlStringReadHandler(parser *yamlParser, buffer []byte) (n int, err error) {
 	if parser.input_pos == len(parser.input) {
 		return 0, io.EOF
 	}
@@ -70,31 +69,31 @@ func yaml_string_read_handler(parser *yamlParser, buffer []byte) (n int, err err
 }
 
 // Reader read handler.
-func yaml_reader_read_handler(parser *yamlParser, buffer []byte) (n int, err error) {
+func yamlReaderReadHandler(parser *yamlParser, buffer []byte) (n int, err error) {
 	return parser.input_reader.Read(buffer)
 }
 
 // Set a string input.
-func yaml_parser_set_input_string(parser *yamlParser, input []byte) {
+func (parser *yamlParser) setInputString(input []byte) {
 	if parser.read_handler != nil {
 		panic("must set the input source only once")
 	}
-	parser.read_handler = yaml_string_read_handler
+	parser.read_handler = yamlStringReadHandler
 	parser.input = input
 	parser.input_pos = 0
 }
 
 // Set a file input.
-func yaml_parser_set_input_reader(parser *yamlParser, r io.Reader) {
+func (parser *yamlParser) setInputReader(r io.Reader) {
 	if parser.read_handler != nil {
 		panic("must set the input source only once")
 	}
-	parser.read_handler = yaml_reader_read_handler
+	parser.read_handler = yamlReaderReadHandler
 	parser.input_reader = r
 }
 
 // Set the source encoding.
-func yaml_parser_set_encoding(parser *yamlParser, encoding yamlEncoding) {
+func (parser *yamlParser) setEncoding(encoding yamlEncoding) {
 	if parser.encoding != yaml_ANY_ENCODING {
 		panic("must set the encoding only once")
 	}
@@ -102,8 +101,8 @@ func yaml_parser_set_encoding(parser *yamlParser, encoding yamlEncoding) {
 }
 
 // Create a new emitter object.
-func yaml_emitter_initialize(emitter *yamlEmitter) {
-	*emitter = yamlEmitter{
+func newYAMLEmitter() yamlEmitter {
+	return yamlEmitter{
 		buffer:     make([]byte, output_buffer_size),
 		raw_buffer: make([]byte, 0, output_raw_buffer_size),
 		states:     make([]yamlEmitterState, 0, initial_stack_size),
@@ -113,43 +112,43 @@ func yaml_emitter_initialize(emitter *yamlEmitter) {
 }
 
 // Destroy an emitter object.
-func yaml_emitter_delete(emitter *yamlEmitter) {
+func (emitter *yamlEmitter) delete() {
 	*emitter = yamlEmitter{}
 }
 
 // String write handler.
-func yaml_string_write_handler(emitter *yamlEmitter, buffer []byte) error {
+func yamlStringWriteHandler(emitter *yamlEmitter, buffer []byte) error {
 	*emitter.output_buffer = append(*emitter.output_buffer, buffer...)
 	return nil
 }
 
 // yaml_writer_write_handler uses emitter.output_writer to write the
 // emitted text.
-func yaml_writer_write_handler(emitter *yamlEmitter, buffer []byte) error {
+func yamlWriterWriteHandler(emitter *yamlEmitter, buffer []byte) error {
 	_, err := emitter.output_writer.Write(buffer)
 	return err
 }
 
 // Set a string output.
-func yaml_emitter_set_output_string(emitter *yamlEmitter, output_buffer *[]byte) {
+func (emitter *yamlEmitter) setOutputString(output_buffer *[]byte) {
 	if emitter.write_handler != nil {
 		panic("must set the output target only once")
 	}
-	emitter.write_handler = yaml_string_write_handler
+	emitter.write_handler = yamlStringWriteHandler
 	emitter.output_buffer = output_buffer
 }
 
 // Set a file output.
-func yaml_emitter_set_output_writer(emitter *yamlEmitter, w io.Writer) {
+func (emitter *yamlEmitter) setOutputWriter(w io.Writer) {
 	if emitter.write_handler != nil {
 		panic("must set the output target only once")
 	}
-	emitter.write_handler = yaml_writer_write_handler
+	emitter.write_handler = yamlWriterWriteHandler
 	emitter.output_writer = w
 }
 
 // Set the output encoding.
-func yaml_emitter_set_encoding(emitter *yamlEmitter, encoding yamlEncoding) {
+func (emitter *yamlEmitter) setEncoding(encoding yamlEncoding) {
 	if emitter.encoding != yaml_ANY_ENCODING {
 		panic("must set the output encoding only once")
 	}
@@ -157,12 +156,12 @@ func yaml_emitter_set_encoding(emitter *yamlEmitter, encoding yamlEncoding) {
 }
 
 // Set the canonical output style.
-func yaml_emitter_set_canonical(emitter *yamlEmitter, canonical bool) {
+func (emitter *yamlEmitter) setCanonical(canonical bool) {
 	emitter.canonical = canonical
 }
 
 // Set the indentation increment.
-func yaml_emitter_set_indent(emitter *yamlEmitter, indent int) {
+func (emitter *yamlEmitter) setIndent(indent int) {
 	if indent < 2 || indent > 9 {
 		indent = 2
 	}
@@ -170,7 +169,7 @@ func yaml_emitter_set_indent(emitter *yamlEmitter, indent int) {
 }
 
 // Set the preferred line width.
-func yaml_emitter_set_width(emitter *yamlEmitter, width int) {
+func (emitter *yamlEmitter) setWidth(width int) {
 	if width < 0 {
 		width = -1
 	}
@@ -178,12 +177,12 @@ func yaml_emitter_set_width(emitter *yamlEmitter, width int) {
 }
 
 // Set if unescaped non-ASCII characters are allowed.
-func yaml_emitter_set_unicode(emitter *yamlEmitter, unicode bool) {
+func (emitter *yamlEmitter) setUnicode(unicode bool) {
 	emitter.unicode = unicode
 }
 
 // Set the preferred line break character.
-func yaml_emitter_set_break(emitter *yamlEmitter, line_break yamlBreak) {
+func (emitter *yamlEmitter) setLineBreak(line_break yamlLineBreak) {
 	emitter.line_break = line_break
 }
 
@@ -274,28 +273,23 @@ func yaml_emitter_set_break(emitter *yamlEmitter, line_break yamlBreak) {
 //
 
 // Create STREAM-START.
-func yaml_stream_start_event_initialize(event *yamlEvent, encoding yamlEncoding) {
-	*event = yamlEvent{
+func newStreamStartEvent(encoding yamlEncoding) yamlEvent {
+	return yamlEvent{
 		typ:      yaml_STREAM_START_EVENT,
 		encoding: encoding,
 	}
 }
 
 // Create STREAM-END.
-func yaml_stream_end_event_initialize(event *yamlEvent) {
-	*event = yamlEvent{
+func newStreamEndEvent() yamlEvent {
+	return yamlEvent{
 		typ: yaml_STREAM_END_EVENT,
 	}
 }
 
 // Create DOCUMENT-START.
-func yaml_document_start_event_initialize(
-	event *yamlEvent,
-	version_directive *yamlVersionDirective,
-	tag_directives []yamlTagDirective,
-	implicit bool,
-) {
-	*event = yamlEvent{
+func newDocumentStartEvent(version_directive *yamlVersionDirective, tag_directives []yamlTagDirective, implicit bool) yamlEvent {
+	return yamlEvent{
 		typ:               yaml_DOCUMENT_START_EVENT,
 		version_directive: version_directive,
 		tag_directives:    tag_directives,
@@ -304,25 +298,24 @@ func yaml_document_start_event_initialize(
 }
 
 // Create DOCUMENT-END.
-func yaml_document_end_event_initialize(event *yamlEvent, implicit bool) {
-	*event = yamlEvent{
+func newDocumentEndEvent(implicit bool) yamlEvent {
+	return yamlEvent{
 		typ:      yaml_DOCUMENT_END_EVENT,
 		implicit: implicit,
 	}
 }
 
 // Create ALIAS.
-func yaml_alias_event_initialize(event *yamlEvent, anchor []byte) bool {
-	*event = yamlEvent{
+func newAliasEvent(anchor []byte) yamlEvent {
+	return yamlEvent{
 		typ:    yaml_ALIAS_EVENT,
 		anchor: anchor,
 	}
-	return true
 }
 
 // Create SCALAR.
-func yaml_scalar_event_initialize(event *yamlEvent, anchor, tag, value []byte, plain_implicit, quoted_implicit bool, style yamlScalarStyle) bool {
-	*event = yamlEvent{
+func newScalarEvent(anchor, tag, value []byte, plain_implicit, quoted_implicit bool, style yamlScalarStyle) yamlEvent {
+	return yamlEvent{
 		typ:             yaml_SCALAR_EVENT,
 		anchor:          anchor,
 		tag:             tag,
@@ -331,32 +324,29 @@ func yaml_scalar_event_initialize(event *yamlEvent, anchor, tag, value []byte, p
 		quoted_implicit: quoted_implicit,
 		style:           yamlStyle(style),
 	}
-	return true
 }
 
 // Create SEQUENCE-START.
-func yaml_sequence_start_event_initialize(event *yamlEvent, anchor, tag []byte, implicit bool, style yamlSequenceStyle) bool {
-	*event = yamlEvent{
+func newSequenceStartEvent(anchor, tag []byte, implicit bool, style yamlSequenceStyle) yamlEvent {
+	return yamlEvent{
 		typ:      yaml_SEQUENCE_START_EVENT,
 		anchor:   anchor,
 		tag:      tag,
 		implicit: implicit,
 		style:    yamlStyle(style),
 	}
-	return true
 }
 
 // Create SEQUENCE-END.
-func yaml_sequence_end_event_initialize(event *yamlEvent) bool {
-	*event = yamlEvent{
+func newSequenceEndEvent() yamlEvent {
+	return yamlEvent{
 		typ: yaml_SEQUENCE_END_EVENT,
 	}
-	return true
 }
 
 // Create MAPPING-START.
-func yaml_mapping_start_event_initialize(event *yamlEvent, anchor, tag []byte, implicit bool, style yamlMappingStyle) {
-	*event = yamlEvent{
+func newMappingStartEvent(anchor, tag []byte, implicit bool, style yamlMappingStyle) yamlEvent {
+	return yamlEvent{
 		typ:      yaml_MAPPING_START_EVENT,
 		anchor:   anchor,
 		tag:      tag,
@@ -366,14 +356,14 @@ func yaml_mapping_start_event_initialize(event *yamlEvent, anchor, tag []byte, i
 }
 
 // Create MAPPING-END.
-func yaml_mapping_end_event_initialize(event *yamlEvent) {
-	*event = yamlEvent{
+func newMappingEndEvent() yamlEvent {
+	return yamlEvent{
 		typ: yaml_MAPPING_END_EVENT,
 	}
 }
 
 // Destroy an event object.
-func yaml_event_delete(event *yamlEvent) {
+func (event *yamlEvent) delete() {
 	*event = yamlEvent{}
 }
 
@@ -382,7 +372,7 @@ func yaml_event_delete(event *yamlEvent) {
 // */
 //
 //YAML_DECLARE(int)
-//yaml_document_initialize(document *yaml_document_t,
+//yaml_document_(document *yaml_document_t,
 //        version_directive *yaml_version_directive_t,
 //        tag_directives_start *yaml_tag_directive_t,
 //        tag_directives_end *yaml_tag_directive_t,
