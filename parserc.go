@@ -74,7 +74,7 @@ func (parser *yamlParser) peekToken() *yamlToken {
 	return nil
 }
 
-// yaml_parser_unfold_comments walks through the comments queue and joins all
+// unfoldComments walks through the comments queue and joins all
 // comments behind the position of the provided token into the respective
 // top-level comment slices in the parser.
 func (parser *yamlParser) unfoldComments(token *yamlToken) {

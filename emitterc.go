@@ -481,14 +481,14 @@ func (emitter *yamlEmitter) emitDocumentStart(event *yamlEvent, first bool) bool
 	return emitter.setEmitterError("expected DOCUMENT-START or STREAM-END")
 }
 
-// yaml_emitter_increase_indent preserves the original signature and delegates to
-// yaml_emitter_increase_indent_compact without compact-sequence indentation
+// emitter preserves the original signature and delegates to
+// increaseIndentCompact without compact-sequence indentation
 func (emitter *yamlEmitter) increaseIndent(flow, indentless bool) bool {
 	return emitter.increaseIndentCompact(flow, indentless, false)
 }
 
-// yaml_emitter_process_line_comment preserves the original signature and delegates to
-// yaml_emitter_process_line_comment_linebreak passing false for linebreak
+// processLineComment preserves the original signature and delegates to
+// processLineCommentLinebreak passing false for linebreak
 func (emitter *yamlEmitter) processLineComment() bool {
 	return emitter.processLineCommentLinebreak(false)
 }
