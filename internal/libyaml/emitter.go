@@ -521,6 +521,7 @@ func (emitter *Emitter) emitDocumentStart(event *Event, first bool) error {
 			if err := emitter.writeIndicator([]byte("..."), true, false, false); err != nil {
 				return err
 			}
+			emitter.OpenEnded = false
 			if err := emitter.writeIndent(); err != nil {
 				return err
 			}
