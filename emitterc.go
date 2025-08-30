@@ -406,8 +406,14 @@ func (emitter *yamlEmitter) emitDocumentStart(event *yamlEvent, first bool) bool
 			if !emitter.writeIndicator([]byte("%YAML"), true, false, false) {
 				return false
 			}
-			if !emitter.writeIndicator([]byte("1.1"), true, false, false) {
-				return false
+			if event.version_directive.minor == 1 {
+				if !emitter.writeIndicator([]byte("1.1"), true, false, false) {
+					return false
+				}
+			} else {
+				if !emitter.writeIndicator([]byte("1.2"), true, false, false) {
+					return false
+				}
 			}
 			if !emitter.writeIndent() {
 				return false
