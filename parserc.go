@@ -1204,7 +1204,7 @@ func (parser *yamlParser) processDirectives(version_directive_ref **yamlVersionD
 					"found duplicate %YAML directive", token.start_mark)
 				return false
 			}
-			if token.major != 1 || token.minor != 1 {
+			if token.major != 1 || (token.minor != 1 && token.minor != 2) {
 				parser.setParserError(
 					"found incompatible YAML document", token.start_mark)
 				return false

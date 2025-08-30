@@ -1,5 +1,3 @@
-TestYAMLSuite/27NA/UnmarshalTest
-TestYAMLSuite/27NA/EventComparisonTest
 TestYAMLSuite/2JQS/UnmarshalTest
 TestYAMLSuite/2JQS/EventComparisonTest
 TestYAMLSuite/2LFX/UnmarshalTest
@@ -40,7 +38,6 @@ TestYAMLSuite/6M2F/EventComparisonTest
 TestYAMLSuite/6PBE/UnmarshalTest
 TestYAMLSuite/6WLZ/JSONComparisonTest
 TestYAMLSuite/6XDY/JSONComparisonTest
-TestYAMLSuite/6ZKB/EventComparisonTest
 TestYAMLSuite/6ZKB/JSONComparisonTest
 TestYAMLSuite/7Z25/EventComparisonTest
 TestYAMLSuite/7Z25/JSONComparisonTest
@@ -54,7 +51,6 @@ TestYAMLSuite/01#03/EventComparisonTest
 TestYAMLSuite/98YD/JSONComparisonTest
 TestYAMLSuite/9C9N/UnmarshalTest
 TestYAMLSuite/9C9N/EventComparisonTest
-TestYAMLSuite/9DXL/EventComparisonTest
 TestYAMLSuite/9DXL/JSONComparisonTest
 TestYAMLSuite/9HCY/UnmarshalTest
 TestYAMLSuite/9HCY/EventComparisonTest
@@ -94,8 +90,6 @@ TestYAMLSuite/03#03/EventComparisonTest
 TestYAMLSuite/04#02/UnmarshalTest
 TestYAMLSuite/04#02/EventComparisonTest
 TestYAMLSuite/06/JSONComparisonTest
-TestYAMLSuite/07/UnmarshalTest
-TestYAMLSuite/07/EventComparisonTest
 TestYAMLSuite/EB22/UnmarshalTest
 TestYAMLSuite/EHF6/EventComparisonTest
 TestYAMLSuite/FP8R/EventComparisonTest
@@ -158,8 +152,6 @@ TestYAMLSuite/QT73/EventComparisonTest
 TestYAMLSuite/R4YG/UnmarshalTest
 TestYAMLSuite/R4YG/EventComparisonTest
 TestYAMLSuite/RHX7/UnmarshalTest
-TestYAMLSuite/RTP8/UnmarshalTest
-TestYAMLSuite/RTP8/EventComparisonTest
 TestYAMLSuite/RZP5/UnmarshalTest
 TestYAMLSuite/RZT7/JSONComparisonTest
 TestYAMLSuite/S3PD/UnmarshalTest
