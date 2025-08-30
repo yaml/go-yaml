@@ -1877,7 +1877,7 @@ func (parser *yamlParser) scanTagDirectiveValue(start_mark yamlMark, handle, pre
 	}
 
 	// Scan a prefix.
-	if !parser.scanTagUri(true, nil, start_mark, &prefix_value) {
+	if !parser.scanTagURI(true, nil, start_mark, &prefix_value) {
 		return false
 	}
 
@@ -1972,7 +1972,7 @@ func (parser *yamlParser) scanTag(token *yamlToken) bool {
 		parser.skip()
 
 		// Consume the tag value.
-		if !parser.scanTagUri(false, nil, start_mark, &suffix) {
+		if !parser.scanTagURI(false, nil, start_mark, &suffix) {
 			return false
 		}
 
@@ -1995,12 +1995,12 @@ func (parser *yamlParser) scanTag(token *yamlToken) bool {
 		// Check if it is, indeed, handle.
 		if handle[0] == '!' && len(handle) > 1 && handle[len(handle)-1] == '!' {
 			// Scan the suffix now.
-			if !parser.scanTagUri(false, nil, start_mark, &suffix) {
+			if !parser.scanTagURI(false, nil, start_mark, &suffix) {
 				return false
 			}
 		} else {
 			// It wasn't a handle after all.  Scan the rest of the tag.
-			if !parser.scanTagUri(false, handle, start_mark, &suffix) {
+			if !parser.scanTagURI(false, handle, start_mark, &suffix) {
 				return false
 			}
 
@@ -2084,7 +2084,7 @@ func (parser *yamlParser) scanTagHandle(directive bool, start_mark yamlMark, han
 }
 
 // Scan a tag.
-func (parser *yamlParser) scanTagUri(directive bool, head []byte, start_mark yamlMark, uri *[]byte) bool {
+func (parser *yamlParser) scanTagURI(directive bool, head []byte, start_mark yamlMark, uri *[]byte) bool {
 	//size_t length = head ? strlen((char *)head) : 0
 	var s []byte
 	hasTag := len(head) > 0
@@ -2120,7 +2120,7 @@ func (parser *yamlParser) scanTagUri(directive bool, head []byte, start_mark yam
 		parser.buffer[parser.buffer_pos] == '%' {
 		// Check if it is a URI-escape sequence.
 		if parser.buffer[parser.buffer_pos] == '%' {
-			if !parser.scanUriEscapes(directive, start_mark, &s) {
+			if !parser.scanURIEscapes(directive, start_mark, &s) {
 				return false
 			}
 		} else {
@@ -2142,7 +2142,7 @@ func (parser *yamlParser) scanTagUri(directive bool, head []byte, start_mark yam
 }
 
 // Decode an URI-escape sequence corresponding to a single UTF-8 character.
-func (parser *yamlParser) scanUriEscapes(directive bool, start_mark yamlMark, s *[]byte) bool {
+func (parser *yamlParser) scanURIEscapes(directive bool, start_mark yamlMark, s *[]byte) bool {
 
 	// Decode the required number of characters.
 	w := 1024
