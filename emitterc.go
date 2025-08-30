@@ -1655,7 +1655,15 @@ func (emitter *yamlEmitter) writeTagContent(value []byte, need_whitespace bool) 
 }
 
 func (emitter *yamlEmitter) writePlainScalar(value []byte, allow_breaks bool) bool {
-	if len(value) > 0 && !emitter.whitespace {
+	// Avoid trailing spaces for empty values in block mode.
+	// In flow mode, we still want the space to prevent ambiguous things
+	// like {a:}.
+	// Currently, the emitter forbids any plain empty scalar in flow mode
+	// (e.g. it outputs {a: ''} instead), so emitter->flow_level will
+	// never be true here.
+	// But if the emitter is ever changed to allow emitting empty values,
+	// the check for flow_level is already here.
+	if !emitter.whitespace && (len(value) > 0 || emitter.flow_level > 0) {
 		if !emitter.put(' ') {
 			return false
 		}
