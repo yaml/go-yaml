@@ -46,12 +46,11 @@ func (parser *yamlParser) insertToken(pos int, token *yamlToken) {
 }
 
 // Create a new parser object.
-func (parser *yamlParser) initialize() bool {
-	*parser = yamlParser{
+func newYAMLParser() yamlParser {
+	return yamlParser{
 		raw_buffer: make([]byte, 0, input_raw_buffer_size),
 		buffer:     make([]byte, 0, input_buffer_size),
 	}
-	return true
 }
 
 // Destroy a parser object.
@@ -102,8 +101,8 @@ func (parser *yamlParser) setEncoding(encoding yamlEncoding) {
 }
 
 // Create a new emitter object.
-func (emitter *yamlEmitter) initialize() {
-	*emitter = yamlEmitter{
+func newYAMLEmitter() yamlEmitter {
+	return yamlEmitter{
 		buffer:     make([]byte, output_buffer_size),
 		raw_buffer: make([]byte, 0, output_raw_buffer_size),
 		states:     make([]yamlEmitterState, 0, initial_stack_size),
@@ -183,7 +182,7 @@ func (emitter *yamlEmitter) setUnicode(unicode bool) {
 }
 
 // Set the preferred line break character.
-func (emitter *yamlEmitter) setBreak(line_break yamlBreak) {
+func (emitter *yamlEmitter) setLineBreak(line_break yamlLineBreak) {
 	emitter.line_break = line_break
 }
 
@@ -274,25 +273,23 @@ func (emitter *yamlEmitter) setBreak(line_break yamlBreak) {
 //
 
 // Create STREAM-START.
-func yamlStreamStartEventInitialize(event *yamlEvent, encoding yamlEncoding) {
-	*event = yamlEvent{
+func newStreamStartEvent(encoding yamlEncoding) yamlEvent {
+	return yamlEvent{
 		typ:      yaml_STREAM_START_EVENT,
 		encoding: encoding,
 	}
 }
 
 // Create STREAM-END.
-func yamlStreamEndEventInitialize(event *yamlEvent) {
-	*event = yamlEvent{
+func newStreamEndEvent() yamlEvent {
+	return yamlEvent{
 		typ: yaml_STREAM_END_EVENT,
 	}
 }
 
 // Create DOCUMENT-START.
-func yamlDocumentStartEventInitialize(event *yamlEvent, version_directive *yamlVersionDirective,
-	tag_directives []yamlTagDirective,
-	implicit bool) {
-	*event = yamlEvent{
+func newDocumentStartEvent(version_directive *yamlVersionDirective, tag_directives []yamlTagDirective, implicit bool) yamlEvent {
+	return yamlEvent{
 		typ:               yaml_DOCUMENT_START_EVENT,
 		version_directive: version_directive,
 		tag_directives:    tag_directives,
@@ -301,25 +298,24 @@ func yamlDocumentStartEventInitialize(event *yamlEvent, version_directive *yamlV
 }
 
 // Create DOCUMENT-END.
-func yamlDocumentEndEventInitialize(event *yamlEvent, implicit bool) {
-	*event = yamlEvent{
+func newDocumentEndEvent(implicit bool) yamlEvent {
+	return yamlEvent{
 		typ:      yaml_DOCUMENT_END_EVENT,
 		implicit: implicit,
 	}
 }
 
 // Create ALIAS.
-func yamlAliasEventInitialize(event *yamlEvent, anchor []byte) bool {
-	*event = yamlEvent{
+func newAliasEvent(anchor []byte) yamlEvent {
+	return yamlEvent{
 		typ:    yaml_ALIAS_EVENT,
 		anchor: anchor,
 	}
-	return true
 }
 
 // Create SCALAR.
-func yamlScalarEventInitialize(event *yamlEvent, anchor, tag, value []byte, plain_implicit, quoted_implicit bool, style yamlScalarStyle) bool {
-	*event = yamlEvent{
+func newScalarEvent(anchor, tag, value []byte, plain_implicit, quoted_implicit bool, style yamlScalarStyle) yamlEvent {
+	return yamlEvent{
 		typ:             yaml_SCALAR_EVENT,
 		anchor:          anchor,
 		tag:             tag,
@@ -328,32 +324,29 @@ func yamlScalarEventInitialize(event *yamlEvent, anchor, tag, value []byte, plai
 		quoted_implicit: quoted_implicit,
 		style:           yamlStyle(style),
 	}
-	return true
 }
 
 // Create SEQUENCE-START.
-func yamlSequenceStartEventInitialize(event *yamlEvent, anchor, tag []byte, implicit bool, style yamlSequenceStyle) bool {
-	*event = yamlEvent{
+func newSequenceStartEvent(anchor, tag []byte, implicit bool, style yamlSequenceStyle) yamlEvent {
+	return yamlEvent{
 		typ:      yaml_SEQUENCE_START_EVENT,
 		anchor:   anchor,
 		tag:      tag,
 		implicit: implicit,
 		style:    yamlStyle(style),
 	}
-	return true
 }
 
 // Create SEQUENCE-END.
-func yamlSequenceEndEventInitialize(event *yamlEvent) bool {
-	*event = yamlEvent{
+func newSequenceEndEvent() yamlEvent {
+	return yamlEvent{
 		typ: yaml_SEQUENCE_END_EVENT,
 	}
-	return true
 }
 
 // Create MAPPING-START.
-func yamlMappingStartEventInitialize(event *yamlEvent, anchor, tag []byte, implicit bool, style yamlMappingStyle) {
-	*event = yamlEvent{
+func newMappingStartEvent(anchor, tag []byte, implicit bool, style yamlMappingStyle) yamlEvent {
+	return yamlEvent{
 		typ:      yaml_MAPPING_START_EVENT,
 		anchor:   anchor,
 		tag:      tag,
@@ -363,14 +356,14 @@ func yamlMappingStartEventInitialize(event *yamlEvent, anchor, tag []byte, impli
 }
 
 // Create MAPPING-END.
-func yamlMappingEndEventInitialize(event *yamlEvent) {
-	*event = yamlEvent{
+func newMappingEndEvent() yamlEvent {
+	return yamlEvent{
 		typ: yaml_MAPPING_END_EVENT,
 	}
 }
 
 // Destroy an event object.
-func yamlEventDelete(event *yamlEvent) {
+func (event *yamlEvent) delete() {
 	*event = yamlEvent{}
 }
 
@@ -379,7 +372,7 @@ func yamlEventDelete(event *yamlEvent) {
 // */
 //
 //YAML_DECLARE(int)
-//yaml_document_initialize(document *yaml_document_t,
+//yaml_document_(document *yaml_document_t,
 //        version_directive *yaml_version_directive_t,
 //        tag_directives_start *yaml_tag_directive_t,
 //        tag_directives_end *yaml_tag_directive_t,
