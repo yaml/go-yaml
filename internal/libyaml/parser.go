@@ -1333,6 +1333,10 @@ func (parser *Parser) parseFlowSequenceEntryMappingKey(event *Event) error {
 		parser.states = append(parser.states, PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_VALUE_STATE)
 		return parser.parseNode(event, false, false)
 	}
+	if token.Type == FLOW_SEQUENCE_END_TOKEN {
+		parser.state = PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_VALUE_STATE
+		return parser.processEmptyScalar(event, token.StartMark)
+	}
 	mark := token.EndMark
 	parser.skipToken()
 	parser.state = PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_VALUE_STATE
