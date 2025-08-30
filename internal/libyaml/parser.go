@@ -693,7 +693,7 @@ func (parser *Parser) processDirectives(version_directive_ref **VersionDirective
 				return formatParserError(
 					"found duplicate %YAML directive", token.StartMark)
 			}
-			if token.major != 1 || token.minor != 1 {
+			if token.major != 1 || (token.minor != 1 && token.minor != 2) {
 				return formatParserError(
 					"found incompatible YAML document", token.StartMark)
 			}
