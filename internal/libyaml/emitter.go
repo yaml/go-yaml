@@ -445,6 +445,7 @@ func (emitter *Emitter) emitDocumentStart(event *Event, first bool) error {
 			if err := emitter.writeIndicator([]byte("..."), true, false, false); err != nil {
 				return err
 			}
+			emitter.OpenEnded = false
 			if err := emitter.writeIndent(); err != nil {
 				return err
 			}
@@ -511,6 +512,7 @@ func (emitter *Emitter) emitDocumentStart(event *Event, first bool) error {
 		}
 
 		emitter.state = EMIT_DOCUMENT_CONTENT_STATE
+		emitter.OpenEnded = false
 		return nil
 	}
 
@@ -575,6 +577,7 @@ func (emitter *Emitter) emitDocumentEnd(event *Event) error {
 		if err := emitter.writeIndicator([]byte("..."), true, false, false); err != nil {
 			return err
 		}
+		emitter.OpenEnded = false
 		if err := emitter.writeIndent(); err != nil {
 			return err
 		}
@@ -1687,7 +1690,6 @@ func (emitter *Emitter) writeIndicator(indicator []byte, need_whitespace, is_whi
 	}
 	emitter.whitespace = is_whitespace
 	emitter.indention = (emitter.indention && is_indention)
-	emitter.OpenEnded = false
 	return nil
 }
 
@@ -1828,9 +1830,6 @@ func (emitter *Emitter) writePlainScalar(value []byte, allow_breaks bool) error 
 		emitter.whitespace = false
 	}
 	emitter.indention = false
-	if emitter.root_context {
-		emitter.OpenEnded = true
-	}
 
 	return nil
 }
