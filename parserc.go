@@ -315,10 +315,9 @@ func (parser *yamlParser) parseDocumentStart(event *yamlEvent, implicit bool) bo
 
 	} else if token.typ != yaml_STREAM_END_TOKEN {
 		// Parse an explicit document.
-		var version_directive *yamlVersionDirective
 		var tag_directives []yamlTagDirective
 		start_mark := token.start_mark
-		if !parser.processDirectives(&version_directive, &tag_directives) {
+		if !parser.processDirectives(&parser.explicit_version_directive, &tag_directives) {
 			return false
 		}
 		token = parser.peekToken()
@@ -338,7 +337,7 @@ func (parser *yamlParser) parseDocumentStart(event *yamlEvent, implicit bool) bo
 			typ:               yaml_DOCUMENT_START_EVENT,
 			start_mark:        start_mark,
 			end_mark:          end_mark,
-			version_directive: version_directive,
+			version_directive: parser.explicit_version_directive,
 			tag_directives:    tag_directives,
 			implicit:          false,
 		}
@@ -401,6 +400,14 @@ func (parser *yamlParser) parseDocumentEnd(event *yamlEvent) bool {
 		end_mark = token.end_mark
 		parser.skipToken()
 		implicit = false
+	}
+
+	if (token.typ == yaml_VERSION_DIRECTIVE_TOKEN || token.typ == yaml_TAG_DIRECTIVE_TOKEN) &&
+		!(parser.explicit_version_directive != nil && parser.explicit_version_directive.major == 1 &&
+			parser.explicit_version_directive.minor == 1) {
+		// YAML 1.1 allows directives without document end, so only error for other versions.
+		return parser.setParserErrorContext("while parsing a document end", start_mark,
+			"missing explicit document end marker before directive(s)", token.start_mark)
 	}
 
 	parser.tag_directives = parser.tag_directives[:0]
@@ -1195,6 +1202,9 @@ var default_tag_directives = []yamlTagDirective{
 // Parse directives.
 func (parser *yamlParser) processDirectives(version_directive_ref **yamlVersionDirective, tag_directives_ref *[]yamlTagDirective) bool {
 	var version_directive *yamlVersionDirective
+	if version_directive_ref != nil {
+		version_directive = *version_directive_ref
+	}
 	var tag_directives []yamlTagDirective
 
 	token := parser.peekToken()

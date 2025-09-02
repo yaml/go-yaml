@@ -625,6 +625,8 @@ type yamlParser struct {
 	simple_keys        []yamlSimpleKey // The stack of simple keys.
 	simple_keys_by_tok map[int]int     // possible simple_key indexes indexed by token_number
 
+	explicit_version_directive *yamlVersionDirective
+
 	// Parser stuff
 
 	state          yamlParserState    // The current parser state.
