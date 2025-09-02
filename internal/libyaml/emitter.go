@@ -101,10 +101,10 @@ type Emitter struct {
 	mapping_context    bool // Is it a mapping context?
 	simple_key_context bool // Is it a simple mapping key context?
 
-	line       int  // The current line.
-	column     int  // The current column.
-	whitespace bool // If the last character was a whitespace?
-	indention  bool // If the last character was an indentation character (' ', '-', '?', ':')?
+	line       int     // The current line.
+	column     int     // The current column.
+	whitespace bool    // If the last character was a whitespace?
+	indention  bool    // If the last character was an indentation character (' ', '-', '?', ':')?
 	EndType    EndType // Whether an explicit document end is required.
 
 	space_above bool // Is there's an empty line above?

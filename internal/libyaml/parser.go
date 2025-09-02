@@ -249,6 +249,8 @@ type Parser struct {
 
 	// Parser stuff
 
+	explicit_version_directive *VersionDirective
+
 	state          ParserState    // The current parser state.
 	states         []ParserState  // The parser states stack.
 	marks          []Mark         // The stack of marks.
@@ -565,10 +567,9 @@ func (parser *Parser) parseDocumentStart(event *Event, implicit bool) error {
 
 	} else if token.Type != STREAM_END_TOKEN {
 		// Parse an explicit document.
-		var version_directive *VersionDirective
 		var tag_directives []TagDirective
 		start_mark := token.StartMark
-		if err := parser.processDirectives(&version_directive, &tag_directives); err != nil {
+		if err := parser.processDirectives(&parser.explicit_version_directive, &tag_directives); err != nil {
 			return err
 		}
 		if err := parser.peekToken(&token); err != nil {
@@ -586,7 +587,7 @@ func (parser *Parser) parseDocumentStart(event *Event, implicit bool) error {
 			Type:             DOCUMENT_START_EVENT,
 			StartMark:        start_mark,
 			EndMark:          end_mark,
-			versionDirective: version_directive,
+			versionDirective: parser.explicit_version_directive,
 			tagDirectives:    tag_directives,
 			Implicit:         false,
 		}
@@ -659,6 +660,15 @@ func (parser *Parser) parseDocumentEnd(event *Event) error {
 			"did not find expected <document start>", token.StartMark)
 	}
 
+	if (token.Type == VERSION_DIRECTIVE_TOKEN || token.Type == TAG_DIRECTIVE_TOKEN) &&
+		!(parser.explicit_version_directive != nil &&
+			parser.explicit_version_directive.major == 1 &&
+			parser.explicit_version_directive.minor == 1) {
+		// YAML 1.1 allows directives without an explicit document end.
+		return formatParserErrorContext("while parsing a document end", start_mark,
+			"missing explicit document end marker before directive(s)", token.StartMark)
+	}
+
 	parser.tag_directives = parser.tag_directives[:0]
 
 	parser.state = PARSE_DOCUMENT_START_STATE
@@ -679,6 +689,9 @@ func (parser *Parser) parseDocumentEnd(event *Event) error {
 // Parse directives.
 func (parser *Parser) processDirectives(version_directive_ref **VersionDirective, tag_directives_ref *[]TagDirective) error {
 	var version_directive *VersionDirective
+	if version_directive_ref != nil {
+		version_directive = *version_directive_ref
+	}
 	var tag_directives []TagDirective
 
 	var token *Token
