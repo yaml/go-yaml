@@ -18,6 +18,6 @@ linters:
 
 formatters:
   enable:
-  - gofmt
+  - gofumpt
   exclusions:
     generated: lax
