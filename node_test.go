@@ -1065,13 +1065,14 @@ var nodeTests = []struct {
 				Line:   1,
 				Column: 1,
 				Tag:    "!!map",
-				Content: []*yaml.Node{{
-					Kind:   yaml.ScalarNode,
-					Value:  "a",
-					Tag:    "!!str",
-					Line:   1,
-					Column: 1,
-				},
+				Content: []*yaml.Node{
+					{
+						Kind:   yaml.ScalarNode,
+						Value:  "a",
+						Tag:    "!!str",
+						Line:   1,
+						Column: 1,
+					},
 					saveNode("x", &yaml.Node{
 						Kind:   yaml.ScalarNode,
 						Value:  "1",
@@ -1101,26 +1102,30 @@ var nodeTests = []struct {
 						Tag:    "!!str",
 						Line:   3,
 						Column: 1,
-					}, {
+					},
+					{
 						Kind:   yaml.AliasNode,
 						Value:  "x",
 						Alias:  dropNode("x"),
 						Line:   3,
 						Column: 4,
-					}, {
+					},
+					{
 						Kind:   yaml.ScalarNode,
 						Value:  "d",
 						Tag:    "!!str",
 						Line:   4,
 						Column: 1,
-					}, {
+					},
+					{
 						Kind:   yaml.AliasNode,
 						Value:  "y",
 						Tag:    "",
 						Alias:  dropNode("y"),
 						Line:   4,
 						Column: 4,
-					}},
+					},
+				},
 			}},
 		},
 	}, {
@@ -1134,13 +1139,14 @@ var nodeTests = []struct {
 				Line:   1,
 				Column: 1,
 				Tag:    "!!map",
-				Content: []*yaml.Node{{
-					Kind:   yaml.ScalarNode,
-					Value:  "a",
-					Tag:    "!!str",
-					Line:   1,
-					Column: 1,
-				},
+				Content: []*yaml.Node{
+					{
+						Kind:   yaml.ScalarNode,
+						Value:  "a",
+						Tag:    "!!str",
+						Line:   1,
+						Column: 1,
+					},
 					saveNode("anchor(.!@#$%^&*+=?:;)name", &yaml.Node{
 						Kind:   yaml.SequenceNode,
 						Style:  yaml.FlowStyle,
@@ -1161,23 +1167,25 @@ var nodeTests = []struct {
 							Line:   1,
 							Column: 36,
 						}},
-					}), {
+					}),
+					{
 						Kind:   yaml.ScalarNode,
 						Value:  "b",
 						Tag:    "!!str",
 						Line:   2,
 						Column: 1,
-					}, {
+					},
+					{
 						Kind:   yaml.AliasNode,
 						Value:  "anchor(.!@#$%^&*+=?:;)name",
 						Alias:  dropNode("anchor(.!@#$%^&*+=?:;)name"),
 						Line:   2,
 						Column: 4,
-					}},
+					},
+				},
 			}},
 		},
 	}, {
-
 		"# One\n# Two\ntrue # Three\n# Four\n# Five\n",
 		yaml.Node{
 			Kind:   yaml.DocumentNode,
@@ -1195,7 +1203,6 @@ var nodeTests = []struct {
 			}},
 		},
 	}, {
-
 		"# š\ntrue # š\n",
 		yaml.Node{
 			Kind:   yaml.DocumentNode,
@@ -1212,7 +1219,6 @@ var nodeTests = []struct {
 			}},
 		},
 	}, {
-
 		"[decode]\n# One\n\n# Two\n\n# Three\ntrue # Four\n# Five\n\n# Six\n\n# Seven\n",
 		yaml.Node{
 			Kind:        yaml.DocumentNode,

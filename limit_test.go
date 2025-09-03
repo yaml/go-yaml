@@ -17,19 +17,23 @@ var limitTests = []struct {
 		name:  "1000kb of maps with 100 aliases",
 		data:  []byte(`{a: &a [{a}` + strings.Repeat(`,{a}`, 1000*1024/4-100) + `], b: &b [*a` + strings.Repeat(`,*a`, 99) + `]}`),
 		error: "yaml: document contains excessive aliasing",
-	}, {
+	},
+	{
 		name:  "1000kb of deeply nested slices",
 		data:  []byte(strings.Repeat(`[`, 1000*1024)),
 		error: "yaml: exceeded max depth of 10000",
-	}, {
+	},
+	{
 		name:  "1000kb of deeply nested maps",
 		data:  []byte("x: " + strings.Repeat(`{`, 1000*1024)),
 		error: "yaml: exceeded max depth of 10000",
-	}, {
+	},
+	{
 		name:  "1000kb of deeply nested indents",
 		data:  []byte(strings.Repeat(`- `, 1000*1024)),
 		error: "yaml: exceeded max depth of 10000",
-	}, {
+	},
+	{
 		name: "1000kb of 1000-indent lines",
 		data: []byte(strings.Repeat(strings.Repeat(`- `, 1000)+"\n", 1024/2)),
 	},
@@ -60,27 +64,35 @@ func TestLimits(t *testing.T) {
 func Benchmark1000KB100Aliases(b *testing.B) {
 	benchmark(b, "1000kb of maps with 100 aliases")
 }
+
 func Benchmark1000KBDeeplyNestedSlices(b *testing.B) {
 	benchmark(b, "1000kb of deeply nested slices")
 }
+
 func Benchmark1000KBDeeplyNestedMaps(b *testing.B) {
 	benchmark(b, "1000kb of deeply nested maps")
 }
+
 func Benchmark1000KBDeeplyNestedIndents(b *testing.B) {
 	benchmark(b, "1000kb of deeply nested indents")
 }
+
 func Benchmark1000KB1000IndentLines(b *testing.B) {
 	benchmark(b, "1000kb of 1000-indent lines")
 }
+
 func Benchmark1KBMaps(b *testing.B) {
 	benchmark(b, "1kb of maps")
 }
+
 func Benchmark10KBMaps(b *testing.B) {
 	benchmark(b, "10kb of maps")
 }
+
 func Benchmark100KBMaps(b *testing.B) {
 	benchmark(b, "100kb of maps")
 }
+
 func Benchmark1000KBMaps(b *testing.B) {
 	benchmark(b, "1000kb of maps")
 }

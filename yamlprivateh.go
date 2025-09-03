@@ -143,7 +143,7 @@ func isTab(b []byte, i int) bool {
 
 // Check if the character at the specified position is blank (space or tab).
 func isBlank(b []byte, i int) bool {
-	//return isSpace(b, i) || isTab(b, i)
+	// return isSpace(b, i) || isTab(b, i)
 	return b[i] == ' ' || b[i] == '\t'
 }
 
@@ -162,7 +162,7 @@ func isCRLF(b []byte, i int) bool {
 
 // Check if the character is a line break or NUL.
 func isBreakOrZero(b []byte, i int) bool {
-	//return isLineBreak(b, i) || isZeroChar(b, i)
+	// return isLineBreak(b, i) || isZeroChar(b, i)
 	return (
 	// isBreak:
 	b[i] == '\r' || // CR (#xD)
@@ -176,7 +176,7 @@ func isBreakOrZero(b []byte, i int) bool {
 
 // Check if the character is a line break, space, or NUL.
 func isSpaceOrZero(b []byte, i int) bool {
-	//return isSpace(b, i) || isBreakOrZero(b, i)
+	// return isSpace(b, i) || isBreakOrZero(b, i)
 	return (
 	// isSpace:
 	b[i] == ' ' ||
@@ -191,7 +191,7 @@ func isSpaceOrZero(b []byte, i int) bool {
 
 // Check if the character is a line break, space, tab, or NUL.
 func isBlankOrZero(b []byte, i int) bool {
-	//return isBlank(b, i) || isBreakOrZero(b, i)
+	// return isBlank(b, i) || isBreakOrZero(b, i)
 	return (
 	// isBlank:
 	b[i] == ' ' || b[i] == '\t' ||
@@ -221,5 +221,4 @@ func width(b byte) int {
 		return 4
 	}
 	return 0
-
 }
