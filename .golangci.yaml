@@ -21,3 +21,8 @@ formatters:
   - gofmt
   exclusions:
     generated: lax
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  uniq-by-line: false
