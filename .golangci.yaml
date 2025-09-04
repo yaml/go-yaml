@@ -30,6 +30,11 @@ linters:
       allow-unused: false
       require-specific: true
       require-explanation: true
+    govet:
+      enable-all: true
+      disable:
+      - fieldalignment
+      - shadow
 
 formatters:
   enable:
