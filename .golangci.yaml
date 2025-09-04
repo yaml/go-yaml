@@ -2,7 +2,10 @@ version: '2'
 
 linters:
   enable:
+  - dupword
   - govet
+  - misspell
+  - nolintlint
   disable:
   - errcheck
   - ineffassign
@@ -15,6 +18,18 @@ linters:
     - common-false-positives
     - legacy
     - std-error-handling
+  settings:
+    dupword:
+      ignore:
+      - 'NULL'
+      - DOCUMENT-START
+      - BLOCK-END
+    misspell:
+      locale: US
+    nolintlint:
+      allow-unused: false
+      require-specific: true
+      require-explanation: true
 
 formatters:
   enable:

@@ -913,7 +913,7 @@ func TestDecoderSingleDocument(t *testing.T) {
 	for i, item := range unmarshalTests {
 		t.Run(fmt.Sprintf("test %d: %q", i, item.data), func(t *testing.T) {
 			if item.data == "" {
-				// Behaviour differs when there's no YAML.
+				// Behavior differs when there's no YAML.
 				return
 			}
 			typ := reflect.ValueOf(item.value).Type()
