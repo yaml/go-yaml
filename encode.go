@@ -289,7 +289,7 @@ func (e *encoder) slicev(tag string, in reflect.Value) {
 // isBase60 returns whether s is in base 60 notation as defined in YAML 1.1.
 //
 // The base 60 float notation in YAML 1.1 is a terrible idea and is unsupported
-// in YAML 1.2 and by this package, but these should be marshalled quoted for
+// in YAML 1.2 and by this package, but these should be marshaled quoted for
 // the time being for compatibility with other parsers.
 func isBase60Float(s string) (result bool) {
 	// Fast path.
@@ -311,7 +311,7 @@ var base60float = regexp.MustCompile(`^[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+(?:\.[0
 // isOldBool returns whether s is bool notation as defined in YAML 1.1.
 //
 // We continue to force strings that YAML 1.1 would interpret as booleans to be
-// rendered as quotes strings so that the marshalled output valid for YAML 1.1
+// rendered as quotes strings so that the marshaled output valid for YAML 1.1
 // parsing.
 func isOldBool(s string) (result bool) {
 	switch s {

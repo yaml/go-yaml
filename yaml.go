@@ -71,7 +71,7 @@ type Marshaler interface {
 // lowercased as the default key. Custom keys may be defined via the
 // "yaml" name in the field tag: the content preceding the first comma
 // is used as the key, and the following comma-separated options are
-// used to tweak the marshalling process (see Marshal).
+// used to tweak the marshaling process (see Marshal).
 // Conflicting names result in a runtime error.
 //
 // For example:
@@ -176,11 +176,11 @@ func unmarshal(in []byte, out any, strict bool) (err error) {
 // of the generated document will reflect the structure of the value itself.
 // Maps and pointers (to struct, string, int, etc) are accepted as the in value.
 //
-// Struct fields are only marshalled if they are exported (have an upper case
-// first letter), and are marshalled using the field name lowercased as the
+// Struct fields are only marshaled if they are exported (have an upper case
+// first letter), and are marshaled using the field name lowercased as the
 // default key. Custom keys may be defined via the "yaml" name in the field
 // tag: the content preceding the first comma is used as the key, and the
-// following comma-separated options are used to tweak the marshalling process.
+// following comma-separated options are used to tweak the marshaling process.
 // Conflicting names result in a runtime error.
 //
 // The field tag format accepted is:
