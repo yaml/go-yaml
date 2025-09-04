@@ -581,6 +581,7 @@ var marshalErrorTests = []struct {
 		B       int
 		inlineB `yaml:",inline"`
 	}{1, inlineB{2, inlineC{3}}},
+	//nolint:dupword // struct is duplicated here as the first one is the struct and the second is the name of the inline struct
 	panic: `duplicated key 'b' in struct struct \{ B int; .*`,
 }, {
 	value: &struct {

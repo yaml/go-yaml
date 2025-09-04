@@ -2,6 +2,7 @@ version: '2'
 
 linters:
   enable:
+  - dupword
   - govet
   disable:
   - errcheck
@@ -15,6 +16,12 @@ linters:
     - common-false-positives
     - legacy
     - std-error-handling
+  settings:
+    dupword:
+      ignore:
+      - 'NULL'
+      - DOCUMENT-START
+      - BLOCK-END
 
 formatters:
   enable:
