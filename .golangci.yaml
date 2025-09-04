@@ -23,6 +23,8 @@ linters:
       - 'NULL'
       - DOCUMENT-START
       - BLOCK-END
+    misspell:
+      locale: US
 
 formatters:
   enable:
