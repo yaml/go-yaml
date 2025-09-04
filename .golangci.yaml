@@ -5,6 +5,7 @@ linters:
   - dupword
   - govet
   - misspell
+  - nolintlint
   disable:
   - errcheck
   - ineffassign
@@ -25,6 +26,10 @@ linters:
       - BLOCK-END
     misspell:
       locale: US
+    nolintlint:
+      allow-unused: false
+      require-specific: true
+      require-explanation: true
 
 formatters:
   enable:
