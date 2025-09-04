@@ -744,7 +744,7 @@ func (emitter *yamlEmitter) emitFlowMappingValue(event *yamlEvent, simple bool) 
 func (emitter *yamlEmitter) emitBlockSequenceItem(event *yamlEvent, first bool) bool {
 	if first {
 		// emitter.mapping context tells us if we are currently in a mapping context.
-		// emiiter.column tells us which column we are in the yaml output. 0 is the first char of the column.
+		// emitter.column tells us which column we are in the yaml output. 0 is the first char of the column.
 		// emitter.indentation tells us if the last character was an indentation character.
 		// emitter.compact_sequence_indent tells us if '- ' is considered part of the indentation for sequence elements.
 		// So, `seq` means that we are in a mapping context, and we are either at the first char of the column or

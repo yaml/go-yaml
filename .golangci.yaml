@@ -4,6 +4,7 @@ linters:
   enable:
   - dupword
   - govet
+  - misspell
   disable:
   - errcheck
   - ineffassign
