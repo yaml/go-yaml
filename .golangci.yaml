@@ -15,6 +15,12 @@ linters:
     - common-false-positives
     - legacy
     - std-error-handling
+  settings:
+    govet:
+      enable-all: true
+      disable:
+      - fieldalignment
+      - shadow
 
 formatters:
   enable:
