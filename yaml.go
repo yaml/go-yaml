@@ -125,7 +125,7 @@ func (dec *Decoder) Decode(v any) (err error) {
 		return io.EOF
 	}
 	out := reflect.ValueOf(v)
-	if out.Kind() == reflect.Ptr && !out.IsNil() {
+	if out.Kind() == reflect.Pointer && !out.IsNil() {
 		out = out.Elem()
 	}
 	d.unmarshal(node, out)
@@ -143,7 +143,7 @@ func (n *Node) Decode(v any) (err error) {
 	d := newDecoder()
 	defer handleErr(&err)
 	out := reflect.ValueOf(v)
-	if out.Kind() == reflect.Ptr && !out.IsNil() {
+	if out.Kind() == reflect.Pointer && !out.IsNil() {
 		out = out.Elem()
 	}
 	d.unmarshal(n, out)
@@ -161,7 +161,7 @@ func unmarshal(in []byte, out any, strict bool) (err error) {
 	node := p.parse()
 	if node != nil {
 		v := reflect.ValueOf(out)
-		if v.Kind() == reflect.Ptr && !v.IsNil() {
+		if v.Kind() == reflect.Pointer && !v.IsNil() {
 			v = v.Elem()
 		}
 		d.unmarshal(node, v)
@@ -675,15 +675,15 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 					return nil, errors.New("option ,inline needs a map with string keys in struct " + st.String())
 				}
 				inlineMap = info.Num
-			case reflect.Struct, reflect.Ptr:
+			case reflect.Struct, reflect.Pointer:
 				ftype := field.Type
-				for ftype.Kind() == reflect.Ptr {
+				for ftype.Kind() == reflect.Pointer {
 					ftype = ftype.Elem()
 				}
 				if ftype.Kind() != reflect.Struct {
 					return nil, errors.New("option ,inline may only be used on a struct or map field")
 				}
-				if reflect.PtrTo(ftype).Implements(unmarshalerType) {
+				if reflect.PointerTo(ftype).Implements(unmarshalerType) {
 					inlineUnmarshalers = append(inlineUnmarshalers, []int{i})
 				} else {
 					sinfo, err := getStructInfo(ftype)
@@ -754,7 +754,7 @@ type IsZeroer interface {
 func isZero(v reflect.Value) bool {
 	kind := v.Kind()
 	if z, ok := v.Interface().(IsZeroer); ok {
-		if (kind == reflect.Ptr || kind == reflect.Interface) && v.IsNil() {
+		if (kind == reflect.Pointer || kind == reflect.Interface) && v.IsNil() {
 			return true
 		}
 		return z.IsZero()
@@ -762,7 +762,7 @@ func isZero(v reflect.Value) bool {
 	switch kind {
 	case reflect.String:
 		return len(v.String()) == 0
-	case reflect.Interface, reflect.Ptr:
+	case reflect.Interface, reflect.Pointer:
 		return v.IsNil()
 	case reflect.Slice:
 		return v.Len() == 0

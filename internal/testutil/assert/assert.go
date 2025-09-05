@@ -106,7 +106,7 @@ func ErrorAs(tb miniTB, err error, target interface{}) {
 	}
 
 	reflectedType := reflect.TypeOf(target)
-	if reflectedType.Kind() != reflect.Ptr {
+	if reflectedType.Kind() != reflect.Pointer {
 		// this is not supposed to happen with the current implementation of [errors.As]
 		tb.Fatalf("a pointer was expected: got: %s; want: ptr", reflectedType.Kind())
 		return
@@ -224,7 +224,7 @@ func isNil(v any) bool {
 	}
 	rv := reflect.ValueOf(v)
 	switch rv.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Map, reflect.Ptr, reflect.Slice, reflect.Interface, reflect.UnsafePointer:
+	case reflect.Chan, reflect.Func, reflect.Map, reflect.Pointer, reflect.Slice, reflect.Interface, reflect.UnsafePointer:
 		return rv.IsNil()
 	default:
 		return false
