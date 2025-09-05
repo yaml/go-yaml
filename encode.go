@@ -112,7 +112,7 @@ func (e *encoder) marshalDoc(tag string, in reflect.Value) {
 
 func (e *encoder) marshal(tag string, in reflect.Value) {
 	tag = shortTag(tag)
-	if !in.IsValid() || in.Kind() == reflect.Ptr && in.IsNil() {
+	if !in.IsValid() || in.Kind() == reflect.Pointer && in.IsNil() {
 		e.nilv()
 		return
 	}
@@ -164,7 +164,7 @@ func (e *encoder) marshal(tag string, in reflect.Value) {
 		e.marshal(tag, in.Elem())
 	case reflect.Map:
 		e.mapv(tag, in)
-	case reflect.Ptr:
+	case reflect.Pointer:
 		e.marshal(tag, in.Elem())
 	case reflect.Struct:
 		e.structv(tag, in)
@@ -199,7 +199,7 @@ func (e *encoder) mapv(tag string, in reflect.Value) {
 func (e *encoder) fieldByIndex(v reflect.Value, index []int) (field reflect.Value) {
 	for _, num := range index {
 		for {
-			if v.Kind() == reflect.Ptr {
+			if v.Kind() == reflect.Pointer {
 				if v.IsNil() {
 					return reflect.Value{}
 				}
