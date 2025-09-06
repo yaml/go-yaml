@@ -319,6 +319,7 @@ func (emitter *yamlEmitter) stateMachine(event *yamlEvent) bool {
 
 // Expect STREAM-START.
 func (emitter *yamlEmitter) emitStreamStart(event *yamlEvent) bool {
+	emitter.end_type = yaml_END_EXPLICIT_TYPE
 	if event.typ != yaml_STREAM_START_EVENT {
 		return emitter.setEmitterError("expected STREAM-START")
 	}
@@ -391,7 +392,7 @@ func (emitter *yamlEmitter) emitDocumentStart(event *yamlEvent, first bool) bool
 			implicit = false
 		}
 
-		if emitter.open_ended && (event.version_directive != nil || len(event.tag_directives) > 0) {
+		if (emitter.end_type != yaml_END_EXPLICIT_TYPE) && (event.version_directive != nil || len(event.tag_directives) > 0) {
 			if !emitter.writeIndicator([]byte("..."), true, false, false) {
 				return false
 			}
@@ -399,14 +400,21 @@ func (emitter *yamlEmitter) emitDocumentStart(event *yamlEvent, first bool) bool
 				return false
 			}
 		}
+		emitter.end_type = yaml_END_EXPLICIT_TYPE
 
 		if event.version_directive != nil {
 			implicit = false
 			if !emitter.writeIndicator([]byte("%YAML"), true, false, false) {
 				return false
 			}
-			if !emitter.writeIndicator([]byte("1.1"), true, false, false) {
-				return false
+			if event.version_directive.minor == 1 {
+				if !emitter.writeIndicator([]byte("1.1"), true, false, false) {
+					return false
+				}
+			} else {
+				if !emitter.writeIndicator([]byte("1.2"), true, false, false) {
+					return false
+				}
 			}
 			if !emitter.writeIndent() {
 				return false
@@ -459,14 +467,16 @@ func (emitter *yamlEmitter) emitDocumentStart(event *yamlEvent, first bool) bool
 		}
 
 		emitter.state = yaml_EMIT_DOCUMENT_CONTENT_STATE
+		emitter.end_type = yaml_END_EXPLICIT_TYPE
 		return true
 	}
 
 	if event.typ == yaml_STREAM_END_EVENT {
-		if emitter.open_ended {
+		if emitter.end_type == yaml_END_IMPLICIT_WITH_TRAILING_TYPE {
 			if !emitter.writeIndicator([]byte("..."), true, false, false) {
 				return false
 			}
+			emitter.end_type = yaml_END_EXPLICIT_TYPE
 			if !emitter.writeIndent() {
 				return false
 			}
@@ -531,9 +541,12 @@ func (emitter *yamlEmitter) emitDocumentEnd(event *yamlEvent) bool {
 		if !emitter.writeIndicator([]byte("..."), true, false, false) {
 			return false
 		}
+		emitter.end_type = yaml_END_EXPLICIT_TYPE
 		if !emitter.writeIndent() {
 			return false
 		}
+	} else if emitter.end_type == yaml_END_EXPLICIT_TYPE {
+		emitter.end_type = yaml_END_IMPLICIT_TYPE
 	}
 	if !emitter.flush() {
 		return false
@@ -904,6 +917,11 @@ func (emitter *yamlEmitter) emitAlias(event *yamlEvent) bool {
 	if !emitter.processAnchor() {
 		return false
 	}
+	if emitter.simple_key_context {
+		if !emitter.put(' ') {
+			return false
+		}
+	}
 	emitter.state = emitter.states[len(emitter.states)-1]
 	emitter.states = emitter.states[:len(emitter.states)-1]
 	return true
@@ -1212,7 +1230,7 @@ func (emitter *yamlEmitter) processFootComment() bool {
 
 // Check if a %YAML directive is valid.
 func (emitter *yamlEmitter) analyzeVersionDirective(version_directive *yamlVersionDirective) bool {
-	if version_directive.major != 1 || version_directive.minor != 1 {
+	if version_directive.major != 1 || (version_directive.minor != 1 && version_directive.minor != 2) {
 		return emitter.setEmitterError("incompatible %YAML directive")
 	}
 	return true
@@ -1556,7 +1574,6 @@ func (emitter *yamlEmitter) writeIndicator(indicator []byte, need_whitespace, is
 	}
 	emitter.whitespace = is_whitespace
 	emitter.indention = (emitter.indention && is_indention)
-	emitter.open_ended = false
 	return true
 }
 
@@ -1638,7 +1655,15 @@ func (emitter *yamlEmitter) writeTagContent(value []byte, need_whitespace bool) 
 }
 
 func (emitter *yamlEmitter) writePlainScalar(value []byte, allow_breaks bool) bool {
-	if len(value) > 0 && !emitter.whitespace {
+	// Avoid trailing spaces for empty values in block mode.
+	// In flow mode, we still want the space to prevent ambiguous things
+	// like {a:}.
+	// Currently, the emitter forbids any plain empty scalar in flow mode
+	// (e.g. it outputs {a: ''} instead), so emitter->flow_level will
+	// never be true here.
+	// But if the emitter is ever changed to allow emitting empty values,
+	// the check for flow_level is already here.
+	if !emitter.whitespace && (len(value) > 0 || emitter.flow_level > 0) {
 		if !emitter.put(' ') {
 			return false
 		}
@@ -1689,9 +1714,6 @@ func (emitter *yamlEmitter) writePlainScalar(value []byte, allow_breaks bool) bo
 		emitter.whitespace = false
 	}
 	emitter.indention = false
-	if emitter.root_context {
-		emitter.open_ended = true
-	}
 
 	return true
 }
@@ -1884,7 +1906,7 @@ func (emitter *yamlEmitter) writeBlockScalarHints(value []byte) bool {
 		}
 	}
 
-	emitter.open_ended = false
+	emitter.end_type = yaml_END_EXPLICIT_TYPE
 
 	var chomp_hint [1]byte
 	if len(value) == 0 {
@@ -1898,7 +1920,7 @@ func (emitter *yamlEmitter) writeBlockScalarHints(value []byte) bool {
 			chomp_hint[0] = '-'
 		} else if i == 0 {
 			chomp_hint[0] = '+'
-			emitter.open_ended = true
+			emitter.end_type = yaml_END_IMPLICIT_WITH_TRAILING_TYPE
 		} else {
 			i--
 			for value[i]&0xC0 == 0x80 {
@@ -1906,7 +1928,7 @@ func (emitter *yamlEmitter) writeBlockScalarHints(value []byte) bool {
 			}
 			if isLineBreak(value, i) {
 				chomp_hint[0] = '+'
-				emitter.open_ended = true
+				emitter.end_type = yaml_END_IMPLICIT_WITH_TRAILING_TYPE
 			}
 		}
 	}

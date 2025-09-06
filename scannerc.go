@@ -1877,7 +1877,7 @@ func (parser *yamlParser) scanTagDirectiveValue(start_mark yamlMark, handle, pre
 	}
 
 	// Scan a prefix.
-	if !parser.scanTagURI(true, nil, start_mark, &prefix_value) {
+	if !parser.scanTagURI(true, true, nil, start_mark, &prefix_value) {
 		return false
 	}
 
@@ -1886,8 +1886,10 @@ func (parser *yamlParser) scanTagDirectiveValue(start_mark yamlMark, handle, pre
 		return false
 	}
 	if !isBlankOrZero(parser.buffer, parser.buffer_pos) {
-		parser.setScannerError("while scanning a %TAG directive",
-			start_mark, "did not find expected whitespace or line break")
+		if parser.flow_level == 0 || parser.buffer[parser.buffer_pos] != ',' {
+			parser.setScannerError("while scanning a %TAG directive",
+				start_mark, "did not find expected whitespace or line break")
+		}
 		return false
 	}
 
@@ -1972,7 +1974,7 @@ func (parser *yamlParser) scanTag(token *yamlToken) bool {
 		parser.skip()
 
 		// Consume the tag value.
-		if !parser.scanTagURI(false, nil, start_mark, &suffix) {
+		if !parser.scanTagURI(true, false, nil, start_mark, &suffix) {
 			return false
 		}
 
@@ -1995,12 +1997,12 @@ func (parser *yamlParser) scanTag(token *yamlToken) bool {
 		// Check if it is, indeed, handle.
 		if handle[0] == '!' && len(handle) > 1 && handle[len(handle)-1] == '!' {
 			// Scan the suffix now.
-			if !parser.scanTagURI(false, nil, start_mark, &suffix) {
+			if !parser.scanTagURI(false, false, nil, start_mark, &suffix) {
 				return false
 			}
 		} else {
 			// It wasn't a handle after all.  Scan the rest of the tag.
-			if !parser.scanTagURI(false, handle, start_mark, &suffix) {
+			if !parser.scanTagURI(false, false, handle, start_mark, &suffix) {
 				return false
 			}
 
@@ -2084,7 +2086,7 @@ func (parser *yamlParser) scanTagHandle(directive bool, start_mark yamlMark, han
 }
 
 // Scan a tag.
-func (parser *yamlParser) scanTagURI(directive bool, head []byte, start_mark yamlMark, uri *[]byte) bool {
+func (parser *yamlParser) scanTagURI(uri_char bool, directive bool, head []byte, start_mark yamlMark, uri *[]byte) bool {
 	//size_t length = head ? strlen((char *)head) : 0
 	var s []byte
 	hasTag := len(head) > 0
@@ -2104,20 +2106,23 @@ func (parser *yamlParser) scanTagURI(directive bool, head []byte, start_mark yam
 	// The set of characters that may appear in URI is as follows:
 	//
 	//      '0'-'9', 'A'-'Z', 'a'-'z', '_', '-', ';', '/', '?', ':', '@', '&',
-	//      '=', '+', '$', ',', '.', '!', '~', '*', '\'', '(', ')', '[', ']',
-	//      '%'.
+	//      '=', '+', '$', '.', '!', '~', '*', '\'', '(', ')', '%'.
+	//
+	// If we are inside a verbatim tag <...> (parameter uri_char is true)
+	// then also the following flow indicators are allowed:
+	//      ',', '[', ']'
 	// [Go] TODO Convert this into more reasonable logic.
 	for isAlpha(parser.buffer, parser.buffer_pos) || parser.buffer[parser.buffer_pos] == ';' ||
 		parser.buffer[parser.buffer_pos] == '/' || parser.buffer[parser.buffer_pos] == '?' ||
 		parser.buffer[parser.buffer_pos] == ':' || parser.buffer[parser.buffer_pos] == '@' ||
 		parser.buffer[parser.buffer_pos] == '&' || parser.buffer[parser.buffer_pos] == '=' ||
 		parser.buffer[parser.buffer_pos] == '+' || parser.buffer[parser.buffer_pos] == '$' ||
-		parser.buffer[parser.buffer_pos] == ',' || parser.buffer[parser.buffer_pos] == '.' ||
+		parser.buffer[parser.buffer_pos] == '.' || parser.buffer[parser.buffer_pos] == '%' ||
 		parser.buffer[parser.buffer_pos] == '!' || parser.buffer[parser.buffer_pos] == '~' ||
 		parser.buffer[parser.buffer_pos] == '*' || parser.buffer[parser.buffer_pos] == '\'' ||
 		parser.buffer[parser.buffer_pos] == '(' || parser.buffer[parser.buffer_pos] == ')' ||
-		parser.buffer[parser.buffer_pos] == '[' || parser.buffer[parser.buffer_pos] == ']' ||
-		parser.buffer[parser.buffer_pos] == '%' {
+		(uri_char && (parser.buffer[parser.buffer_pos] == ',' || parser.buffer[parser.buffer_pos] == '[' ||
+			parser.buffer[parser.buffer_pos] == ']')) {
 		// Check if it is a URI-escape sequence.
 		if parser.buffer[parser.buffer_pos] == '%' {
 			if !parser.scanURIEscapes(directive, start_mark, &s) {
@@ -2727,7 +2732,6 @@ func (parser *yamlParser) scanPlainScalar(token *yamlToken) bool {
 			if (parser.buffer[parser.buffer_pos] == ':' && isBlankOrZero(parser.buffer, parser.buffer_pos+1)) ||
 				(parser.flow_level > 0 &&
 					(parser.buffer[parser.buffer_pos] == ',' ||
-						(parser.buffer[parser.buffer_pos] == '?' && isBlankOrZero(parser.buffer, parser.buffer_pos+1)) ||
 						parser.buffer[parser.buffer_pos] == '[' ||
 						parser.buffer[parser.buffer_pos] == ']' || parser.buffer[parser.buffer_pos] == '{' ||
 						parser.buffer[parser.buffer_pos] == '}')) {
