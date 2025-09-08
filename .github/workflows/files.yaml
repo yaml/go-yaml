@@ -27,6 +27,17 @@ jobs:
     - name: yamllint
       uses: ibiqlik/action-yamllint@v3
 
+  ls-lint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout-action
+      uses: actions/checkout@v5
+
+    - name: ls-lint
+      uses: ls-lint/action@v2
+      with:
+        config: .ls-lint.yaml
+
   typos:
     runs-on: ubuntu-latest
     steps:
