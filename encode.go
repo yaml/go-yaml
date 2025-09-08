@@ -26,11 +26,13 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"go.yaml.in/yaml/v4/internal/libyaml"
 )
 
 type encoder struct {
-	emitter  yamlEmitter
-	event    yamlEvent
+	emitter  libyaml.Emitter
+	event    libyaml.Event
 	out      []byte
 	flow     bool
 	indent   int
@@ -39,19 +41,19 @@ type encoder struct {
 
 func newEncoder() *encoder {
 	e := &encoder{
-		emitter: newYAMLEmitter(),
+		emitter: libyaml.NewEmitter(),
 	}
-	e.emitter.setOutputString(&e.out)
-	e.emitter.setUnicode(true)
+	e.emitter.SetOutputString(&e.out)
+	e.emitter.SetUnicode(true)
 	return e
 }
 
 func newEncoderWithWriter(w io.Writer) *encoder {
 	e := &encoder{
-		emitter: newYAMLEmitter(),
+		emitter: libyaml.NewEmitter(),
 	}
-	e.emitter.setOutputWriter(w)
-	e.emitter.setUnicode(true)
+	e.emitter.SetOutputWriter(w)
+	e.emitter.SetUnicode(true)
 	return e
 }
 
@@ -62,30 +64,30 @@ func (e *encoder) init() {
 	if e.indent == 0 {
 		e.indent = 4
 	}
-	e.emitter.best_indent = e.indent
-	e.event = newStreamStartEvent(yaml_UTF8_ENCODING)
+	e.emitter.Best_indent = e.indent
+	e.event = libyaml.NewStreamStartEvent(libyaml.UTF8_ENCODING)
 	e.emit()
 	e.doneInit = true
 }
 
 func (e *encoder) finish() {
-	e.emitter.open_ended = false
-	e.event = newStreamEndEvent()
+	e.emitter.Open_ended = false
+	e.event = libyaml.NewStreamEndEvent()
 	e.emit()
 }
 
 func (e *encoder) destroy() {
-	e.emitter.delete()
+	e.emitter.Delete()
 }
 
 func (e *encoder) emit() {
 	// This will internally delete the e.event value.
-	e.must(e.emitter.emit(&e.event))
+	e.must(e.emitter.Emit(&e.event))
 }
 
 func (e *encoder) must(ok bool) {
 	if !ok {
-		msg := e.emitter.problem
+		msg := e.emitter.Problem
 		if msg == "" {
 			msg = "unknown problem generating YAML content"
 		}
@@ -102,10 +104,10 @@ func (e *encoder) marshalDoc(tag string, in reflect.Value) {
 	if node != nil && node.Kind == DocumentNode {
 		e.nodev(in)
 	} else {
-		e.event = newDocumentStartEvent(nil, nil, true)
+		e.event = libyaml.NewDocumentStartEvent(nil, nil, true)
 		e.emit()
 		e.marshal(tag, in)
-		e.event = newDocumentEndEvent(true)
+		e.event = libyaml.NewDocumentEndEvent(true)
 		e.emit()
 	}
 }
@@ -257,32 +259,32 @@ func (e *encoder) structv(tag string, in reflect.Value) {
 
 func (e *encoder) mappingv(tag string, f func()) {
 	implicit := tag == ""
-	style := yaml_BLOCK_MAPPING_STYLE
+	style := libyaml.BLOCK_MAPPING_STYLE
 	if e.flow {
 		e.flow = false
-		style = yaml_FLOW_MAPPING_STYLE
+		style = libyaml.FLOW_MAPPING_STYLE
 	}
-	e.event = newMappingStartEvent(nil, []byte(tag), implicit, style)
+	e.event = libyaml.NewMappingStartEvent(nil, []byte(tag), implicit, style)
 	e.emit()
 	f()
-	e.event = newMappingEndEvent()
+	e.event = libyaml.NewMappingEndEvent()
 	e.emit()
 }
 
 func (e *encoder) slicev(tag string, in reflect.Value) {
 	implicit := tag == ""
-	style := yaml_BLOCK_SEQUENCE_STYLE
+	style := libyaml.BLOCK_SEQUENCE_STYLE
 	if e.flow {
 		e.flow = false
-		style = yaml_FLOW_SEQUENCE_STYLE
+		style = libyaml.FLOW_SEQUENCE_STYLE
 	}
-	e.event = newSequenceStartEvent(nil, []byte(tag), implicit, style)
+	e.event = libyaml.NewSequenceStartEvent(nil, []byte(tag), implicit, style)
 	e.emit()
 	n := in.Len()
 	for i := 0; i < n; i++ {
 		e.marshal("", in.Index(i))
 	}
-	e.event = newSequenceEndEvent()
+	e.event = libyaml.NewSequenceEndEvent()
 	e.emit()
 }
 
@@ -332,7 +334,7 @@ func looksLikeMerge(s string) (result bool) {
 }
 
 func (e *encoder) stringv(tag string, in reflect.Value) {
-	var style yamlScalarStyle
+	var style libyaml.ScalarStyle
 	s := in.String()
 	canUsePlain := true
 	switch {
@@ -363,14 +365,14 @@ func (e *encoder) stringv(tag string, in reflect.Value) {
 	switch {
 	case strings.Contains(s, "\n"):
 		if e.flow || !shouldUseLiteralStyle(s) {
-			style = yaml_DOUBLE_QUOTED_SCALAR_STYLE
+			style = libyaml.DOUBLE_QUOTED_SCALAR_STYLE
 		} else {
-			style = yaml_LITERAL_SCALAR_STYLE
+			style = libyaml.LITERAL_SCALAR_STYLE
 		}
 	case canUsePlain:
-		style = yaml_PLAIN_SCALAR_STYLE
+		style = libyaml.PLAIN_SCALAR_STYLE
 	default:
-		style = yaml_DOUBLE_QUOTED_SCALAR_STYLE
+		style = libyaml.DOUBLE_QUOTED_SCALAR_STYLE
 	}
 	e.emitScalar(s, "", tag, style, nil, nil, nil, nil)
 }
@@ -382,23 +384,23 @@ func (e *encoder) boolv(tag string, in reflect.Value) {
 	} else {
 		s = "false"
 	}
-	e.emitScalar(s, "", tag, yaml_PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
+	e.emitScalar(s, "", tag, libyaml.PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
 func (e *encoder) intv(tag string, in reflect.Value) {
 	s := strconv.FormatInt(in.Int(), 10)
-	e.emitScalar(s, "", tag, yaml_PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
+	e.emitScalar(s, "", tag, libyaml.PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
 func (e *encoder) uintv(tag string, in reflect.Value) {
 	s := strconv.FormatUint(in.Uint(), 10)
-	e.emitScalar(s, "", tag, yaml_PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
+	e.emitScalar(s, "", tag, libyaml.PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
 func (e *encoder) timev(tag string, in reflect.Value) {
 	t := in.Interface().(time.Time)
 	s := t.Format(time.RFC3339Nano)
-	e.emitScalar(s, "", tag, yaml_PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
+	e.emitScalar(s, "", tag, libyaml.PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
 func (e *encoder) floatv(tag string, in reflect.Value) {
@@ -417,24 +419,24 @@ func (e *encoder) floatv(tag string, in reflect.Value) {
 	case "NaN":
 		s = ".nan"
 	}
-	e.emitScalar(s, "", tag, yaml_PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
+	e.emitScalar(s, "", tag, libyaml.PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
 func (e *encoder) nilv() {
-	e.emitScalar("null", "", "", yaml_PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
+	e.emitScalar("null", "", "", libyaml.PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
-func (e *encoder) emitScalar(value, anchor, tag string, style yamlScalarStyle, head, line, foot, tail []byte) {
+func (e *encoder) emitScalar(value, anchor, tag string, style libyaml.ScalarStyle, head, line, foot, tail []byte) {
 	// TODO Kill this function. Replace all initialize calls by their underlining Go literals.
 	implicit := tag == ""
 	if !implicit {
 		tag = longTag(tag)
 	}
-	e.event = newScalarEvent([]byte(anchor), []byte(tag), []byte(value), implicit, implicit, style)
-	e.event.head_comment = head
-	e.event.line_comment = line
-	e.event.foot_comment = foot
-	e.event.tail_comment = tail
+	e.event = libyaml.NewScalarEvent([]byte(anchor), []byte(tag), []byte(value), implicit, implicit, style)
+	e.event.Head_comment = head
+	e.event.Line_comment = line
+	e.event.Foot_comment = foot
+	e.event.Tail_comment = tail
 	e.emit()
 }
 
@@ -483,40 +485,40 @@ func (e *encoder) node(node *Node, tail string) {
 
 	switch node.Kind {
 	case DocumentNode:
-		e.event = newDocumentStartEvent(nil, nil, true)
-		e.event.head_comment = []byte(node.HeadComment)
+		e.event = libyaml.NewDocumentStartEvent(nil, nil, true)
+		e.event.Head_comment = []byte(node.HeadComment)
 		e.emit()
 		for _, node := range node.Content {
 			e.node(node, "")
 		}
-		e.event = newDocumentEndEvent(true)
-		e.event.foot_comment = []byte(node.FootComment)
+		e.event = libyaml.NewDocumentEndEvent(true)
+		e.event.Foot_comment = []byte(node.FootComment)
 		e.emit()
 
 	case SequenceNode:
-		style := yaml_BLOCK_SEQUENCE_STYLE
+		style := libyaml.BLOCK_SEQUENCE_STYLE
 		if node.Style&FlowStyle != 0 {
-			style = yaml_FLOW_SEQUENCE_STYLE
+			style = libyaml.FLOW_SEQUENCE_STYLE
 		}
-		e.event = newSequenceStartEvent([]byte(node.Anchor), []byte(longTag(tag)), tag == "", style)
-		e.event.head_comment = []byte(node.HeadComment)
+		e.event = libyaml.NewSequenceStartEvent([]byte(node.Anchor), []byte(longTag(tag)), tag == "", style)
+		e.event.Head_comment = []byte(node.HeadComment)
 		e.emit()
 		for _, node := range node.Content {
 			e.node(node, "")
 		}
-		e.event = newSequenceEndEvent()
-		e.event.line_comment = []byte(node.LineComment)
-		e.event.foot_comment = []byte(node.FootComment)
+		e.event = libyaml.NewSequenceEndEvent()
+		e.event.Line_comment = []byte(node.LineComment)
+		e.event.Foot_comment = []byte(node.FootComment)
 		e.emit()
 
 	case MappingNode:
-		style := yaml_BLOCK_MAPPING_STYLE
+		style := libyaml.BLOCK_MAPPING_STYLE
 		if node.Style&FlowStyle != 0 {
-			style = yaml_FLOW_MAPPING_STYLE
+			style = libyaml.FLOW_MAPPING_STYLE
 		}
-		e.event = newMappingStartEvent([]byte(node.Anchor), []byte(longTag(tag)), tag == "", style)
-		e.event.tail_comment = []byte(tail)
-		e.event.head_comment = []byte(node.HeadComment)
+		e.event = libyaml.NewMappingStartEvent([]byte(node.Anchor), []byte(longTag(tag)), tag == "", style)
+		e.event.Tail_comment = []byte(tail)
+		e.event.Head_comment = []byte(node.HeadComment)
 		e.emit()
 
 		// The tail logic below moves the foot comment of prior keys to the following key,
@@ -539,17 +541,17 @@ func (e *encoder) node(node *Node, tail string) {
 			e.node(v, "")
 		}
 
-		e.event = newMappingEndEvent()
-		e.event.tail_comment = []byte(tail)
-		e.event.line_comment = []byte(node.LineComment)
-		e.event.foot_comment = []byte(node.FootComment)
+		e.event = libyaml.NewMappingEndEvent()
+		e.event.Tail_comment = []byte(tail)
+		e.event.Line_comment = []byte(node.LineComment)
+		e.event.Foot_comment = []byte(node.FootComment)
 		e.emit()
 
 	case AliasNode:
-		e.event = newAliasEvent([]byte(node.Value))
-		e.event.head_comment = []byte(node.HeadComment)
-		e.event.line_comment = []byte(node.LineComment)
-		e.event.foot_comment = []byte(node.FootComment)
+		e.event = libyaml.NewAliasEvent([]byte(node.Value))
+		e.event.Head_comment = []byte(node.HeadComment)
+		e.event.Line_comment = []byte(node.LineComment)
+		e.event.Foot_comment = []byte(node.FootComment)
 		e.emit()
 
 	case ScalarNode:
@@ -567,20 +569,20 @@ func (e *encoder) node(node *Node, tail string) {
 			value = encodeBase64(value)
 		}
 
-		style := yaml_PLAIN_SCALAR_STYLE
+		style := libyaml.PLAIN_SCALAR_STYLE
 		switch {
 		case node.Style&DoubleQuotedStyle != 0:
-			style = yaml_DOUBLE_QUOTED_SCALAR_STYLE
+			style = libyaml.DOUBLE_QUOTED_SCALAR_STYLE
 		case node.Style&SingleQuotedStyle != 0:
-			style = yaml_SINGLE_QUOTED_SCALAR_STYLE
+			style = libyaml.SINGLE_QUOTED_SCALAR_STYLE
 		case node.Style&LiteralStyle != 0:
-			style = yaml_LITERAL_SCALAR_STYLE
+			style = libyaml.LITERAL_SCALAR_STYLE
 		case node.Style&FoldedStyle != 0:
-			style = yaml_FOLDED_SCALAR_STYLE
+			style = libyaml.FOLDED_SCALAR_STYLE
 		case strings.Contains(value, "\n"):
-			style = yaml_LITERAL_SCALAR_STYLE
+			style = libyaml.LITERAL_SCALAR_STYLE
 		case forceQuoting:
-			style = yaml_DOUBLE_QUOTED_SCALAR_STYLE
+			style = libyaml.DOUBLE_QUOTED_SCALAR_STYLE
 		}
 
 		e.emitScalar(value, node.Anchor, tag, style, []byte(node.HeadComment), []byte(node.LineComment), []byte(node.FootComment), []byte(tail))

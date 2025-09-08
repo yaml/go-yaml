@@ -30,6 +30,8 @@ import (
 	"sync"
 	"unicode"
 	"unicode/utf8"
+
+	"go.yaml.in/yaml/v4/internal/libyaml"
 )
 
 // The Unmarshaler interface may be implemented by types to customize their
@@ -279,12 +281,12 @@ func (e *Encoder) SetIndent(spaces int) {
 
 // CompactSeqIndent makes it so that '- ' is considered part of the indentation.
 func (e *Encoder) CompactSeqIndent() {
-	e.encoder.emitter.compact_sequence_indent = true
+	e.encoder.emitter.Compact_sequence_indent = true
 }
 
 // DefaultSeqIndent makes it so that '- ' is not considered part of the indentation.
 func (e *Encoder) DefaultSeqIndent() {
-	e.encoder.emitter.compact_sequence_indent = false
+	e.encoder.emitter.Compact_sequence_indent = false
 }
 
 // Close closes the encoder by writing any remaining data.
@@ -797,64 +799,64 @@ func ParserGetEvents(in []byte) (string, error) {
 	p := newParser(in)
 	defer p.destroy()
 	var events strings.Builder
-	var event yamlEvent
+	var event libyaml.Event
 	for {
-		if !p.parser.parse(&event) {
-			return "", errors.New(p.parser.problem)
+		if !p.parser.Parse(&event) {
+			return "", errors.New(p.parser.Problem)
 		}
 		formatted := formatEvent(&event)
 		events.WriteString(formatted)
-		if event.typ == yaml_STREAM_END_EVENT {
-			event.delete()
+		if event.Typ == libyaml.STREAM_END_EVENT {
+			event.Delete()
 			break
 		}
-		event.delete()
+		event.Delete()
 		events.WriteByte('\n')
 	}
 	return events.String(), nil
 }
 
-func formatEvent(e *yamlEvent) string {
+func formatEvent(e *libyaml.Event) string {
 	var b strings.Builder
-	switch e.typ {
-	case yaml_STREAM_START_EVENT:
+	switch e.Typ {
+	case libyaml.STREAM_START_EVENT:
 		b.WriteString("+STR")
-	case yaml_STREAM_END_EVENT:
+	case libyaml.STREAM_END_EVENT:
 		b.WriteString("-STR")
-	case yaml_DOCUMENT_START_EVENT:
+	case libyaml.DOCUMENT_START_EVENT:
 		b.WriteString("+DOC")
-		if !e.implicit {
+		if !e.Implicit {
 			b.WriteString(" ---")
 		}
-	case yaml_DOCUMENT_END_EVENT:
+	case libyaml.DOCUMENT_END_EVENT:
 		b.WriteString("-DOC")
-		if !e.implicit {
+		if !e.Implicit {
 			b.WriteString(" ...")
 		}
-	case yaml_ALIAS_EVENT:
+	case libyaml.ALIAS_EVENT:
 		b.WriteString("=ALI *")
-		b.Write(e.anchor)
-	case yaml_SCALAR_EVENT:
+		b.Write(e.Anchor)
+	case libyaml.SCALAR_EVENT:
 		b.WriteString("=VAL")
-		if len(e.anchor) > 0 {
+		if len(e.Anchor) > 0 {
 			b.WriteString(" &")
-			b.Write(e.anchor)
+			b.Write(e.Anchor)
 		}
-		if len(e.tag) > 0 {
+		if len(e.Tag) > 0 {
 			b.WriteString(" <")
-			b.Write(e.tag)
+			b.Write(e.Tag)
 			b.WriteString(">")
 		}
-		switch e.scalarStyle() {
-		case yaml_PLAIN_SCALAR_STYLE:
+		switch e.ScalarStyle() {
+		case libyaml.PLAIN_SCALAR_STYLE:
 			b.WriteString(" :")
-		case yaml_LITERAL_SCALAR_STYLE:
+		case libyaml.LITERAL_SCALAR_STYLE:
 			b.WriteString(" |")
-		case yaml_FOLDED_SCALAR_STYLE:
+		case libyaml.FOLDED_SCALAR_STYLE:
 			b.WriteString(" >")
-		case yaml_SINGLE_QUOTED_SCALAR_STYLE:
+		case libyaml.SINGLE_QUOTED_SCALAR_STYLE:
 			b.WriteString(" '")
-		case yaml_DOUBLE_QUOTED_SCALAR_STYLE:
+		case libyaml.DOUBLE_QUOTED_SCALAR_STYLE:
 			b.WriteString(` "`)
 		}
 		// Escape special characters for consistent event output.
@@ -862,40 +864,40 @@ func formatEvent(e *yamlEvent) string {
 			`\`, `\\`,
 			"\n", `\n`,
 			"\t", `\t`,
-		).Replace(string(e.value))
+		).Replace(string(e.Value))
 		b.WriteString(val)
 
-	case yaml_SEQUENCE_START_EVENT:
+	case libyaml.SEQUENCE_START_EVENT:
 		b.WriteString("+SEQ")
-		if len(e.anchor) > 0 {
+		if len(e.Anchor) > 0 {
 			b.WriteString(" &")
-			b.Write(e.anchor)
+			b.Write(e.Anchor)
 		}
-		if len(e.tag) > 0 {
+		if len(e.Tag) > 0 {
 			b.WriteString(" <")
-			b.Write(e.tag)
+			b.Write(e.Tag)
 			b.WriteString(">")
 		}
-		if e.sequenceStyle() == yaml_FLOW_SEQUENCE_STYLE {
+		if e.SequenceStyle() == libyaml.FLOW_SEQUENCE_STYLE {
 			b.WriteString(" []")
 		}
-	case yaml_SEQUENCE_END_EVENT:
+	case libyaml.SEQUENCE_END_EVENT:
 		b.WriteString("-SEQ")
-	case yaml_MAPPING_START_EVENT:
+	case libyaml.MAPPING_START_EVENT:
 		b.WriteString("+MAP")
-		if len(e.anchor) > 0 {
+		if len(e.Anchor) > 0 {
 			b.WriteString(" &")
-			b.Write(e.anchor)
+			b.Write(e.Anchor)
 		}
-		if len(e.tag) > 0 {
+		if len(e.Tag) > 0 {
 			b.WriteString(" <")
-			b.Write(e.tag)
+			b.Write(e.Tag)
 			b.WriteString(">")
 		}
-		if e.mappingStyle() == yaml_FLOW_MAPPING_STYLE {
+		if e.MappingStyle() == libyaml.FLOW_MAPPING_STYLE {
 			b.WriteString(" {}")
 		}
-	case yaml_MAPPING_END_EVENT:
+	case libyaml.MAPPING_END_EVENT:
 		b.WriteString("-MAP")
 	}
 	return b.String()

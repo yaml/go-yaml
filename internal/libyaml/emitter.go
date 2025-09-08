@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package yaml
+package libyaml
 
 import (
 	"bytes"
@@ -28,7 +28,7 @@ import (
 )
 
 // Flush the buffer if needed.
-func (emitter *yamlEmitter) flushIfNeeded() bool {
+func (emitter *Emitter) flushIfNeeded() bool {
 	if emitter.buffer_pos+5 >= len(emitter.buffer) {
 		return emitter.flush()
 	}
@@ -36,7 +36,7 @@ func (emitter *yamlEmitter) flushIfNeeded() bool {
 }
 
 // Put a character to the output buffer.
-func (emitter *yamlEmitter) put(value byte) bool {
+func (emitter *Emitter) put(value byte) bool {
 	if emitter.buffer_pos+5 >= len(emitter.buffer) && !emitter.flush() {
 		return false
 	}
@@ -47,18 +47,18 @@ func (emitter *yamlEmitter) put(value byte) bool {
 }
 
 // Put a line break to the output buffer.
-func (emitter *yamlEmitter) putLineBreak() bool {
+func (emitter *Emitter) putLineBreak() bool {
 	if emitter.buffer_pos+5 >= len(emitter.buffer) && !emitter.flush() {
 		return false
 	}
 	switch emitter.line_break {
-	case yaml_CR_BREAK:
+	case CR_BREAK:
 		emitter.buffer[emitter.buffer_pos] = '\r'
 		emitter.buffer_pos += 1
-	case yaml_LN_BREAK:
+	case LN_BREAK:
 		emitter.buffer[emitter.buffer_pos] = '\n'
 		emitter.buffer_pos += 1
-	case yaml_CRLN_BREAK:
+	case CRLN_BREAK:
 		emitter.buffer[emitter.buffer_pos+0] = '\r'
 		emitter.buffer[emitter.buffer_pos+1] = '\n'
 		emitter.buffer_pos += 2
@@ -76,7 +76,7 @@ func (emitter *yamlEmitter) putLineBreak() bool {
 }
 
 // Copy a character from a string into buffer.
-func (emitter *yamlEmitter) write(s []byte, i *int) bool {
+func (emitter *Emitter) write(s []byte, i *int) bool {
 	if emitter.buffer_pos+5 >= len(emitter.buffer) && !emitter.flush() {
 		return false
 	}
@@ -104,7 +104,7 @@ func (emitter *yamlEmitter) write(s []byte, i *int) bool {
 }
 
 // Write a whole string into buffer.
-func (emitter *yamlEmitter) writeAll(s []byte) bool {
+func (emitter *Emitter) writeAll(s []byte) bool {
 	for i := 0; i < len(s); {
 		if !emitter.write(s, &i) {
 			return false
@@ -114,7 +114,7 @@ func (emitter *yamlEmitter) writeAll(s []byte) bool {
 }
 
 // Copy a line break character from a string into buffer.
-func (emitter *yamlEmitter) writeLineBreak(s []byte, i *int) bool {
+func (emitter *Emitter) writeLineBreak(s []byte, i *int) bool {
 	if s[*i] == '\n' {
 		if !emitter.putLineBreak() {
 			return false
@@ -136,14 +136,14 @@ func (emitter *yamlEmitter) writeLineBreak(s []byte, i *int) bool {
 }
 
 // Set an emitter error and return false.
-func (emitter *yamlEmitter) setEmitterError(problem string) bool {
-	emitter.error = yaml_EMITTER_ERROR
-	emitter.problem = problem
+func (emitter *Emitter) setEmitterError(problem string) bool {
+	emitter.error = EMITTER_ERROR
+	emitter.Problem = problem
 	return false
 }
 
 // Emit an event.
-func (emitter *yamlEmitter) emit(event *yamlEvent) bool {
+func (emitter *Emitter) Emit(event *Event) bool {
 	emitter.events = append(emitter.events, *event)
 	for !emitter.needMoreEvents() {
 		event := &emitter.events[emitter.events_head]
@@ -153,7 +153,7 @@ func (emitter *yamlEmitter) emit(event *yamlEvent) bool {
 		if !emitter.stateMachine(event) {
 			return false
 		}
-		event.delete()
+		event.Delete()
 		emitter.events_head++
 	}
 	return true
@@ -165,17 +165,17 @@ func (emitter *yamlEmitter) emit(event *yamlEvent) bool {
 //   - 1 event for DOCUMENT-START
 //   - 2 events for SEQUENCE-START
 //   - 3 events for MAPPING-START
-func (emitter *yamlEmitter) needMoreEvents() bool {
+func (emitter *Emitter) needMoreEvents() bool {
 	if emitter.events_head == len(emitter.events) {
 		return true
 	}
 	var accumulate int
-	switch emitter.events[emitter.events_head].typ {
-	case yaml_DOCUMENT_START_EVENT:
+	switch emitter.events[emitter.events_head].Typ {
+	case DOCUMENT_START_EVENT:
 		accumulate = 1
-	case yaml_SEQUENCE_START_EVENT:
+	case SEQUENCE_START_EVENT:
 		accumulate = 2
-	case yaml_MAPPING_START_EVENT:
+	case MAPPING_START_EVENT:
 		accumulate = 3
 	default:
 		return false
@@ -185,10 +185,10 @@ func (emitter *yamlEmitter) needMoreEvents() bool {
 	}
 	var level int
 	for i := emitter.events_head; i < len(emitter.events); i++ {
-		switch emitter.events[i].typ {
-		case yaml_STREAM_START_EVENT, yaml_DOCUMENT_START_EVENT, yaml_SEQUENCE_START_EVENT, yaml_MAPPING_START_EVENT:
+		switch emitter.events[i].Typ {
+		case STREAM_START_EVENT, DOCUMENT_START_EVENT, SEQUENCE_START_EVENT, MAPPING_START_EVENT:
 			level++
-		case yaml_STREAM_END_EVENT, yaml_DOCUMENT_END_EVENT, yaml_SEQUENCE_END_EVENT, yaml_MAPPING_END_EVENT:
+		case STREAM_END_EVENT, DOCUMENT_END_EVENT, SEQUENCE_END_EVENT, MAPPING_END_EVENT:
 			level--
 		}
 		if level == 0 {
@@ -199,7 +199,7 @@ func (emitter *yamlEmitter) needMoreEvents() bool {
 }
 
 // Append a directive to the directives stack.
-func (emitter *yamlEmitter) appendTagDirective(value *yamlTagDirective, allow_duplicates bool) bool {
+func (emitter *Emitter) appendTagDirective(value *TagDirective, allow_duplicates bool) bool {
 	for i := 0; i < len(emitter.tag_directives); i++ {
 		if bytes.Equal(value.handle, emitter.tag_directives[i].handle) {
 			if allow_duplicates {
@@ -211,7 +211,7 @@ func (emitter *yamlEmitter) appendTagDirective(value *yamlTagDirective, allow_du
 
 	// [Go] Do we actually need to copy this given garbage collection
 	// and the lack of deallocating destructors?
-	tag_copy := yamlTagDirective{
+	tag_copy := TagDirective{
 		handle: make([]byte, len(value.handle)),
 		prefix: make([]byte, len(value.prefix)),
 	}
@@ -222,22 +222,22 @@ func (emitter *yamlEmitter) appendTagDirective(value *yamlTagDirective, allow_du
 }
 
 // Increase the indentation level.
-func (emitter *yamlEmitter) increaseIndentCompact(flow, indentless bool, compact_seq bool) bool {
+func (emitter *Emitter) increaseIndentCompact(flow, indentless bool, compact_seq bool) bool {
 	emitter.indents = append(emitter.indents, emitter.indent)
 	if emitter.indent < 0 {
 		if flow {
-			emitter.indent = emitter.best_indent
+			emitter.indent = emitter.Best_indent
 		} else {
 			emitter.indent = 0
 		}
 	} else if !indentless {
 		// [Go] This was changed so that indentations are more regular.
-		if emitter.states[len(emitter.states)-1] == yaml_EMIT_BLOCK_SEQUENCE_ITEM_STATE {
+		if emitter.states[len(emitter.states)-1] == EMIT_BLOCK_SEQUENCE_ITEM_STATE {
 			// The first indent inside a sequence will just skip the "- " indicator.
 			emitter.indent += 2
 		} else {
 			// Everything else aligns to the chosen indentation.
-			emitter.indent = emitter.best_indent * ((emitter.indent + emitter.best_indent) / emitter.best_indent)
+			emitter.indent = emitter.Best_indent * ((emitter.indent + emitter.Best_indent) / emitter.Best_indent)
 			if compact_seq {
 				// The value compact_seq passed in is almost always set to `false` when this function is called,
 				// except when we are dealing with sequence nodes. So this gets triggered to subtract 2 only when we
@@ -251,94 +251,94 @@ func (emitter *yamlEmitter) increaseIndentCompact(flow, indentless bool, compact
 }
 
 // State dispatcher.
-func (emitter *yamlEmitter) stateMachine(event *yamlEvent) bool {
+func (emitter *Emitter) stateMachine(event *Event) bool {
 	switch emitter.state {
 	default:
-	case yaml_EMIT_STREAM_START_STATE:
+	case EMIT_STREAM_START_STATE:
 		return emitter.emitStreamStart(event)
 
-	case yaml_EMIT_FIRST_DOCUMENT_START_STATE:
+	case EMIT_FIRST_DOCUMENT_START_STATE:
 		return emitter.emitDocumentStart(event, true)
 
-	case yaml_EMIT_DOCUMENT_START_STATE:
+	case EMIT_DOCUMENT_START_STATE:
 		return emitter.emitDocumentStart(event, false)
 
-	case yaml_EMIT_DOCUMENT_CONTENT_STATE:
+	case EMIT_DOCUMENT_CONTENT_STATE:
 		return emitter.emitDocumentContent(event)
 
-	case yaml_EMIT_DOCUMENT_END_STATE:
+	case EMIT_DOCUMENT_END_STATE:
 		return emitter.emitDocumentEnd(event)
 
-	case yaml_EMIT_FLOW_SEQUENCE_FIRST_ITEM_STATE:
+	case EMIT_FLOW_SEQUENCE_FIRST_ITEM_STATE:
 		return emitter.emitFlowSequenceItem(event, true, false)
 
-	case yaml_EMIT_FLOW_SEQUENCE_TRAIL_ITEM_STATE:
+	case EMIT_FLOW_SEQUENCE_TRAIL_ITEM_STATE:
 		return emitter.emitFlowSequenceItem(event, false, true)
 
-	case yaml_EMIT_FLOW_SEQUENCE_ITEM_STATE:
+	case EMIT_FLOW_SEQUENCE_ITEM_STATE:
 		return emitter.emitFlowSequenceItem(event, false, false)
 
-	case yaml_EMIT_FLOW_MAPPING_FIRST_KEY_STATE:
+	case EMIT_FLOW_MAPPING_FIRST_KEY_STATE:
 		return emitter.emitFlowMappingKey(event, true, false)
 
-	case yaml_EMIT_FLOW_MAPPING_TRAIL_KEY_STATE:
+	case EMIT_FLOW_MAPPING_TRAIL_KEY_STATE:
 		return emitter.emitFlowMappingKey(event, false, true)
 
-	case yaml_EMIT_FLOW_MAPPING_KEY_STATE:
+	case EMIT_FLOW_MAPPING_KEY_STATE:
 		return emitter.emitFlowMappingKey(event, false, false)
 
-	case yaml_EMIT_FLOW_MAPPING_SIMPLE_VALUE_STATE:
+	case EMIT_FLOW_MAPPING_SIMPLE_VALUE_STATE:
 		return emitter.emitFlowMappingValue(event, true)
 
-	case yaml_EMIT_FLOW_MAPPING_VALUE_STATE:
+	case EMIT_FLOW_MAPPING_VALUE_STATE:
 		return emitter.emitFlowMappingValue(event, false)
 
-	case yaml_EMIT_BLOCK_SEQUENCE_FIRST_ITEM_STATE:
+	case EMIT_BLOCK_SEQUENCE_FIRST_ITEM_STATE:
 		return emitter.emitBlockSequenceItem(event, true)
 
-	case yaml_EMIT_BLOCK_SEQUENCE_ITEM_STATE:
+	case EMIT_BLOCK_SEQUENCE_ITEM_STATE:
 		return emitter.emitBlockSequenceItem(event, false)
 
-	case yaml_EMIT_BLOCK_MAPPING_FIRST_KEY_STATE:
+	case EMIT_BLOCK_MAPPING_FIRST_KEY_STATE:
 		return emitter.emitBlockMappingKey(event, true)
 
-	case yaml_EMIT_BLOCK_MAPPING_KEY_STATE:
+	case EMIT_BLOCK_MAPPING_KEY_STATE:
 		return emitter.emitBlockMappingKey(event, false)
 
-	case yaml_EMIT_BLOCK_MAPPING_SIMPLE_VALUE_STATE:
+	case EMIT_BLOCK_MAPPING_SIMPLE_VALUE_STATE:
 		return emitter.emitBlockMappingValue(event, true)
 
-	case yaml_EMIT_BLOCK_MAPPING_VALUE_STATE:
+	case EMIT_BLOCK_MAPPING_VALUE_STATE:
 		return emitter.emitBlockMappingValue(event, false)
 
-	case yaml_EMIT_END_STATE:
+	case EMIT_END_STATE:
 		return emitter.setEmitterError("expected nothing after STREAM-END")
 	}
 	panic("invalid emitter state")
 }
 
 // Expect STREAM-START.
-func (emitter *yamlEmitter) emitStreamStart(event *yamlEvent) bool {
-	if event.typ != yaml_STREAM_START_EVENT {
+func (emitter *Emitter) emitStreamStart(event *Event) bool {
+	if event.Typ != STREAM_START_EVENT {
 		return emitter.setEmitterError("expected STREAM-START")
 	}
-	if emitter.encoding == yaml_ANY_ENCODING {
+	if emitter.encoding == ANY_ENCODING {
 		emitter.encoding = event.encoding
-		if emitter.encoding == yaml_ANY_ENCODING {
-			emitter.encoding = yaml_UTF8_ENCODING
+		if emitter.encoding == ANY_ENCODING {
+			emitter.encoding = UTF8_ENCODING
 		}
 	}
-	if emitter.best_indent < 2 || emitter.best_indent > 9 {
-		emitter.best_indent = 2
+	if emitter.Best_indent < 2 || emitter.Best_indent > 9 {
+		emitter.Best_indent = 2
 	}
-	if emitter.best_width >= 0 && emitter.best_width <= emitter.best_indent*2 {
+	if emitter.best_width >= 0 && emitter.best_width <= emitter.Best_indent*2 {
 		emitter.best_width = 80
 	}
 	if emitter.best_width < 0 {
 		emitter.best_width = 1<<31 - 1
 	}
-	if emitter.line_break == yaml_ANY_BREAK {
-		emitter.line_break = yaml_LN_BREAK
+	if emitter.line_break == ANY_BREAK {
+		emitter.line_break = LN_BREAK
 	}
 
 	emitter.indent = -1
@@ -349,18 +349,18 @@ func (emitter *yamlEmitter) emitStreamStart(event *yamlEvent) bool {
 	emitter.space_above = true
 	emitter.foot_indent = -1
 
-	if emitter.encoding != yaml_UTF8_ENCODING {
+	if emitter.encoding != UTF8_ENCODING {
 		if !emitter.writeBom() {
 			return false
 		}
 	}
-	emitter.state = yaml_EMIT_FIRST_DOCUMENT_START_STATE
+	emitter.state = EMIT_FIRST_DOCUMENT_START_STATE
 	return true
 }
 
 // Expect DOCUMENT-START or STREAM-END.
-func (emitter *yamlEmitter) emitDocumentStart(event *yamlEvent, first bool) bool {
-	if event.typ == yaml_DOCUMENT_START_EVENT {
+func (emitter *Emitter) emitDocumentStart(event *Event, first bool) bool {
+	if event.Typ == DOCUMENT_START_EVENT {
 
 		if event.version_directive != nil {
 			if !emitter.analyzeVersionDirective(event.version_directive) {
@@ -385,12 +385,12 @@ func (emitter *yamlEmitter) emitDocumentStart(event *yamlEvent, first bool) bool
 			}
 		}
 
-		implicit := event.implicit
+		implicit := event.Implicit
 		if !first || emitter.canonical {
 			implicit = false
 		}
 
-		if emitter.open_ended && (event.version_directive != nil || len(event.tag_directives) > 0) {
+		if emitter.Open_ended && (event.version_directive != nil || len(event.tag_directives) > 0) {
 			if !emitter.writeIndicator([]byte("..."), true, false, false) {
 				return false
 			}
@@ -448,7 +448,7 @@ func (emitter *yamlEmitter) emitDocumentStart(event *yamlEvent, first bool) bool
 			}
 		}
 
-		if len(emitter.head_comment) > 0 {
+		if len(emitter.Head_comment) > 0 {
 			if !emitter.processHeadComment() {
 				return false
 			}
@@ -457,12 +457,12 @@ func (emitter *yamlEmitter) emitDocumentStart(event *yamlEvent, first bool) bool
 			}
 		}
 
-		emitter.state = yaml_EMIT_DOCUMENT_CONTENT_STATE
+		emitter.state = EMIT_DOCUMENT_CONTENT_STATE
 		return true
 	}
 
-	if event.typ == yaml_STREAM_END_EVENT {
-		if emitter.open_ended {
+	if event.Typ == STREAM_END_EVENT {
+		if emitter.Open_ended {
 			if !emitter.writeIndicator([]byte("..."), true, false, false) {
 				return false
 			}
@@ -473,7 +473,7 @@ func (emitter *yamlEmitter) emitDocumentStart(event *yamlEvent, first bool) bool
 		if !emitter.flush() {
 			return false
 		}
-		emitter.state = yaml_EMIT_END_STATE
+		emitter.state = EMIT_END_STATE
 		return true
 	}
 
@@ -482,19 +482,19 @@ func (emitter *yamlEmitter) emitDocumentStart(event *yamlEvent, first bool) bool
 
 // emitter preserves the original signature and delegates to
 // increaseIndentCompact without compact-sequence indentation
-func (emitter *yamlEmitter) increaseIndent(flow, indentless bool) bool {
+func (emitter *Emitter) increaseIndent(flow, indentless bool) bool {
 	return emitter.increaseIndentCompact(flow, indentless, false)
 }
 
 // processLineComment preserves the original signature and delegates to
 // processLineCommentLinebreak passing false for linebreak
-func (emitter *yamlEmitter) processLineComment() bool {
+func (emitter *Emitter) processLineComment() bool {
 	return emitter.processLineCommentLinebreak(false)
 }
 
 // Expect the root node.
-func (emitter *yamlEmitter) emitDocumentContent(event *yamlEvent) bool {
-	emitter.states = append(emitter.states, yaml_EMIT_DOCUMENT_END_STATE)
+func (emitter *Emitter) emitDocumentContent(event *Event) bool {
+	emitter.states = append(emitter.states, EMIT_DOCUMENT_END_STATE)
 
 	if !emitter.processHeadComment() {
 		return false
@@ -512,8 +512,8 @@ func (emitter *yamlEmitter) emitDocumentContent(event *yamlEvent) bool {
 }
 
 // Expect DOCUMENT-END.
-func (emitter *yamlEmitter) emitDocumentEnd(event *yamlEvent) bool {
-	if event.typ != yaml_DOCUMENT_END_EVENT {
+func (emitter *Emitter) emitDocumentEnd(event *Event) bool {
+	if event.Typ != DOCUMENT_END_EVENT {
 		return emitter.setEmitterError("expected DOCUMENT-END")
 	}
 	// [Go] Force document foot separation.
@@ -525,7 +525,7 @@ func (emitter *yamlEmitter) emitDocumentEnd(event *yamlEvent) bool {
 	if !emitter.writeIndent() {
 		return false
 	}
-	if !event.implicit {
+	if !event.Implicit {
 		// [Go] Allocate the slice elsewhere.
 		if !emitter.writeIndicator([]byte("..."), true, false, false) {
 			return false
@@ -537,13 +537,13 @@ func (emitter *yamlEmitter) emitDocumentEnd(event *yamlEvent) bool {
 	if !emitter.flush() {
 		return false
 	}
-	emitter.state = yaml_EMIT_DOCUMENT_START_STATE
+	emitter.state = EMIT_DOCUMENT_START_STATE
 	emitter.tag_directives = emitter.tag_directives[:0]
 	return true
 }
 
 // Expect a flow item node.
-func (emitter *yamlEmitter) emitFlowSequenceItem(event *yamlEvent, first, trail bool) bool {
+func (emitter *Emitter) emitFlowSequenceItem(event *Event, first, trail bool) bool {
 	if first {
 		if !emitter.writeIndicator([]byte{'['}, true, true, false) {
 			return false
@@ -554,7 +554,7 @@ func (emitter *yamlEmitter) emitFlowSequenceItem(event *yamlEvent, first, trail 
 		emitter.flow_level++
 	}
 
-	if event.typ == yaml_SEQUENCE_END_EVENT {
+	if event.Typ == SEQUENCE_END_EVENT {
 		if emitter.canonical && !first && !trail {
 			if !emitter.writeIndicator([]byte{','}, false, false, false) {
 				return false
@@ -603,15 +603,15 @@ func (emitter *yamlEmitter) emitFlowSequenceItem(event *yamlEvent, first, trail 
 			return false
 		}
 	}
-	if len(emitter.line_comment)+len(emitter.foot_comment)+len(emitter.tail_comment) > 0 {
-		emitter.states = append(emitter.states, yaml_EMIT_FLOW_SEQUENCE_TRAIL_ITEM_STATE)
+	if len(emitter.Line_comment)+len(emitter.Foot_comment)+len(emitter.Tail_comment) > 0 {
+		emitter.states = append(emitter.states, EMIT_FLOW_SEQUENCE_TRAIL_ITEM_STATE)
 	} else {
-		emitter.states = append(emitter.states, yaml_EMIT_FLOW_SEQUENCE_ITEM_STATE)
+		emitter.states = append(emitter.states, EMIT_FLOW_SEQUENCE_ITEM_STATE)
 	}
 	if !emitter.emitNode(event, false, true, false, false) {
 		return false
 	}
-	if len(emitter.line_comment)+len(emitter.foot_comment)+len(emitter.tail_comment) > 0 {
+	if len(emitter.Line_comment)+len(emitter.Foot_comment)+len(emitter.Tail_comment) > 0 {
 		if !emitter.writeIndicator([]byte{','}, false, false, false) {
 			return false
 		}
@@ -626,7 +626,7 @@ func (emitter *yamlEmitter) emitFlowSequenceItem(event *yamlEvent, first, trail 
 }
 
 // Expect a flow key node.
-func (emitter *yamlEmitter) emitFlowMappingKey(event *yamlEvent, first, trail bool) bool {
+func (emitter *Emitter) emitFlowMappingKey(event *Event, first, trail bool) bool {
 	if first {
 		if !emitter.writeIndicator([]byte{'{'}, true, true, false) {
 			return false
@@ -637,8 +637,8 @@ func (emitter *yamlEmitter) emitFlowMappingKey(event *yamlEvent, first, trail bo
 		emitter.flow_level++
 	}
 
-	if event.typ == yaml_MAPPING_END_EVENT {
-		if (emitter.canonical || len(emitter.head_comment)+len(emitter.foot_comment)+len(emitter.tail_comment) > 0) && !first && !trail {
+	if event.Typ == MAPPING_END_EVENT {
+		if (emitter.canonical || len(emitter.Head_comment)+len(emitter.Foot_comment)+len(emitter.Tail_comment) > 0) && !first && !trail {
 			if !emitter.writeIndicator([]byte{','}, false, false, false) {
 				return false
 			}
@@ -691,18 +691,18 @@ func (emitter *yamlEmitter) emitFlowMappingKey(event *yamlEvent, first, trail bo
 	}
 
 	if !emitter.canonical && emitter.checkSimpleKey() {
-		emitter.states = append(emitter.states, yaml_EMIT_FLOW_MAPPING_SIMPLE_VALUE_STATE)
+		emitter.states = append(emitter.states, EMIT_FLOW_MAPPING_SIMPLE_VALUE_STATE)
 		return emitter.emitNode(event, false, false, true, true)
 	}
 	if !emitter.writeIndicator([]byte{'?'}, true, false, false) {
 		return false
 	}
-	emitter.states = append(emitter.states, yaml_EMIT_FLOW_MAPPING_VALUE_STATE)
+	emitter.states = append(emitter.states, EMIT_FLOW_MAPPING_VALUE_STATE)
 	return emitter.emitNode(event, false, false, true, false)
 }
 
 // Expect a flow value node.
-func (emitter *yamlEmitter) emitFlowMappingValue(event *yamlEvent, simple bool) bool {
+func (emitter *Emitter) emitFlowMappingValue(event *Event, simple bool) bool {
 	if simple {
 		if !emitter.writeIndicator([]byte{':'}, false, false, false) {
 			return false
@@ -717,15 +717,15 @@ func (emitter *yamlEmitter) emitFlowMappingValue(event *yamlEvent, simple bool) 
 			return false
 		}
 	}
-	if len(emitter.line_comment)+len(emitter.foot_comment)+len(emitter.tail_comment) > 0 {
-		emitter.states = append(emitter.states, yaml_EMIT_FLOW_MAPPING_TRAIL_KEY_STATE)
+	if len(emitter.Line_comment)+len(emitter.Foot_comment)+len(emitter.Tail_comment) > 0 {
+		emitter.states = append(emitter.states, EMIT_FLOW_MAPPING_TRAIL_KEY_STATE)
 	} else {
-		emitter.states = append(emitter.states, yaml_EMIT_FLOW_MAPPING_KEY_STATE)
+		emitter.states = append(emitter.states, EMIT_FLOW_MAPPING_KEY_STATE)
 	}
 	if !emitter.emitNode(event, false, false, true, false) {
 		return false
 	}
-	if len(emitter.line_comment)+len(emitter.foot_comment)+len(emitter.tail_comment) > 0 {
+	if len(emitter.Line_comment)+len(emitter.Foot_comment)+len(emitter.Tail_comment) > 0 {
 		if !emitter.writeIndicator([]byte{','}, false, false, false) {
 			return false
 		}
@@ -740,7 +740,7 @@ func (emitter *yamlEmitter) emitFlowMappingValue(event *yamlEvent, simple bool) 
 }
 
 // Expect a block item node.
-func (emitter *yamlEmitter) emitBlockSequenceItem(event *yamlEvent, first bool) bool {
+func (emitter *Emitter) emitBlockSequenceItem(event *Event, first bool) bool {
 	if first {
 		// emitter.mapping context tells us if we are currently in a mapping context.
 		// emitter.column tells us which column we are in the yaml output. 0 is the first char of the column.
@@ -750,12 +750,12 @@ func (emitter *yamlEmitter) emitBlockSequenceItem(event *yamlEvent, first bool) 
 		//  the last character was not an indentation character, and we consider '- ' part of the indentation
 		//  for sequence elements.
 		seq := emitter.mapping_context && (emitter.column == 0 || !emitter.indention) &&
-			emitter.compact_sequence_indent
+			emitter.Compact_sequence_indent
 		if !emitter.increaseIndentCompact(false, false, seq) {
 			return false
 		}
 	}
-	if event.typ == yaml_SEQUENCE_END_EVENT {
+	if event.Typ == SEQUENCE_END_EVENT {
 		emitter.indent = emitter.indents[len(emitter.indents)-1]
 		emitter.indents = emitter.indents[:len(emitter.indents)-1]
 		emitter.state = emitter.states[len(emitter.states)-1]
@@ -771,7 +771,7 @@ func (emitter *yamlEmitter) emitBlockSequenceItem(event *yamlEvent, first bool) 
 	if !emitter.writeIndicator([]byte{'-'}, true, false, true) {
 		return false
 	}
-	emitter.states = append(emitter.states, yaml_EMIT_BLOCK_SEQUENCE_ITEM_STATE)
+	emitter.states = append(emitter.states, EMIT_BLOCK_SEQUENCE_ITEM_STATE)
 	if !emitter.emitNode(event, false, true, false, false) {
 		return false
 	}
@@ -785,7 +785,7 @@ func (emitter *yamlEmitter) emitBlockSequenceItem(event *yamlEvent, first bool) 
 }
 
 // Expect a block key node.
-func (emitter *yamlEmitter) emitBlockMappingKey(event *yamlEvent, first bool) bool {
+func (emitter *Emitter) emitBlockMappingKey(event *Event, first bool) bool {
 	if first {
 		if !emitter.increaseIndent(false, false) {
 			return false
@@ -794,7 +794,7 @@ func (emitter *yamlEmitter) emitBlockMappingKey(event *yamlEvent, first bool) bo
 	if !emitter.processHeadComment() {
 		return false
 	}
-	if event.typ == yaml_MAPPING_END_EVENT {
+	if event.Typ == MAPPING_END_EVENT {
 		emitter.indent = emitter.indents[len(emitter.indents)-1]
 		emitter.indents = emitter.indents[:len(emitter.indents)-1]
 		emitter.state = emitter.states[len(emitter.states)-1]
@@ -804,26 +804,26 @@ func (emitter *yamlEmitter) emitBlockMappingKey(event *yamlEvent, first bool) bo
 	if !emitter.writeIndent() {
 		return false
 	}
-	if len(emitter.line_comment) > 0 {
+	if len(emitter.Line_comment) > 0 {
 		// [Go] A line comment was provided for the key. That's unusual as the
 		//      scanner associates line comments with the value. Either way,
 		//      save the line comment and render it appropriately later.
-		emitter.key_line_comment = emitter.line_comment
-		emitter.line_comment = nil
+		emitter.key_line_comment = emitter.Line_comment
+		emitter.Line_comment = nil
 	}
 	if emitter.checkSimpleKey() {
-		emitter.states = append(emitter.states, yaml_EMIT_BLOCK_MAPPING_SIMPLE_VALUE_STATE)
+		emitter.states = append(emitter.states, EMIT_BLOCK_MAPPING_SIMPLE_VALUE_STATE)
 		return emitter.emitNode(event, false, false, true, true)
 	}
 	if !emitter.writeIndicator([]byte{'?'}, true, false, true) {
 		return false
 	}
-	emitter.states = append(emitter.states, yaml_EMIT_BLOCK_MAPPING_VALUE_STATE)
+	emitter.states = append(emitter.states, EMIT_BLOCK_MAPPING_VALUE_STATE)
 	return emitter.emitNode(event, false, false, true, false)
 }
 
 // Expect a block value node.
-func (emitter *yamlEmitter) emitBlockMappingValue(event *yamlEvent, simple bool) bool {
+func (emitter *Emitter) emitBlockMappingValue(event *Event, simple bool) bool {
 	if simple {
 		if !emitter.writeIndicator([]byte{':'}, false, false, false) {
 			return false
@@ -840,24 +840,24 @@ func (emitter *yamlEmitter) emitBlockMappingValue(event *yamlEvent, simple bool)
 		// [Go] Line comments are generally associated with the value, but when there's
 		//      no value on the same line as a mapping key they end up attached to the
 		//      key itself.
-		if event.typ == yaml_SCALAR_EVENT {
-			if len(emitter.line_comment) == 0 {
+		if event.Typ == SCALAR_EVENT {
+			if len(emitter.Line_comment) == 0 {
 				// A scalar is coming and it has no line comments by itself yet,
 				// so just let it handle the line comment as usual. If it has a
 				// line comment, we can't have both so the one from the key is lost.
-				emitter.line_comment = emitter.key_line_comment
+				emitter.Line_comment = emitter.key_line_comment
 				emitter.key_line_comment = nil
 			}
-		} else if event.sequenceStyle() != yaml_FLOW_SEQUENCE_STYLE && (event.typ == yaml_MAPPING_START_EVENT || event.typ == yaml_SEQUENCE_START_EVENT) {
+		} else if event.SequenceStyle() != FLOW_SEQUENCE_STYLE && (event.Typ == MAPPING_START_EVENT || event.Typ == SEQUENCE_START_EVENT) {
 			// An indented block follows, so write the comment right now.
-			emitter.line_comment, emitter.key_line_comment = emitter.key_line_comment, emitter.line_comment
+			emitter.Line_comment, emitter.key_line_comment = emitter.key_line_comment, emitter.Line_comment
 			if !emitter.processLineComment() {
 				return false
 			}
-			emitter.line_comment, emitter.key_line_comment = emitter.key_line_comment, emitter.line_comment
+			emitter.Line_comment, emitter.key_line_comment = emitter.key_line_comment, emitter.Line_comment
 		}
 	}
-	emitter.states = append(emitter.states, yaml_EMIT_BLOCK_MAPPING_KEY_STATE)
+	emitter.states = append(emitter.states, EMIT_BLOCK_MAPPING_KEY_STATE)
 	if !emitter.emitNode(event, false, false, true, false) {
 		return false
 	}
@@ -870,12 +870,12 @@ func (emitter *yamlEmitter) emitBlockMappingValue(event *yamlEvent, simple bool)
 	return true
 }
 
-func (emitter *yamlEmitter) silentNilEvent(event *yamlEvent) bool {
-	return event.typ == yaml_SCALAR_EVENT && event.implicit && !emitter.canonical && len(emitter.scalar_data.value) == 0
+func (emitter *Emitter) silentNilEvent(event *Event) bool {
+	return event.Typ == SCALAR_EVENT && event.Implicit && !emitter.canonical && len(emitter.scalar_data.value) == 0
 }
 
 // Expect a node.
-func (emitter *yamlEmitter) emitNode(event *yamlEvent,
+func (emitter *Emitter) emitNode(event *Event,
 	root bool, sequence bool, mapping bool, simple_key bool,
 ) bool {
 	emitter.root_context = root
@@ -883,23 +883,23 @@ func (emitter *yamlEmitter) emitNode(event *yamlEvent,
 	emitter.mapping_context = mapping
 	emitter.simple_key_context = simple_key
 
-	switch event.typ {
-	case yaml_ALIAS_EVENT:
+	switch event.Typ {
+	case ALIAS_EVENT:
 		return emitter.emitAlias(event)
-	case yaml_SCALAR_EVENT:
+	case SCALAR_EVENT:
 		return emitter.emitScalar(event)
-	case yaml_SEQUENCE_START_EVENT:
+	case SEQUENCE_START_EVENT:
 		return emitter.emitSequenceStart(event)
-	case yaml_MAPPING_START_EVENT:
+	case MAPPING_START_EVENT:
 		return emitter.emitMappingStart(event)
 	default:
 		return emitter.setEmitterError(
-			fmt.Sprintf("expected SCALAR, SEQUENCE-START, MAPPING-START, or ALIAS, but got %v", event.typ))
+			fmt.Sprintf("expected SCALAR, SEQUENCE-START, MAPPING-START, or ALIAS, but got %v", event.Typ))
 	}
 }
 
 // Expect ALIAS.
-func (emitter *yamlEmitter) emitAlias(event *yamlEvent) bool {
+func (emitter *Emitter) emitAlias(event *Event) bool {
 	if !emitter.processAnchor() {
 		return false
 	}
@@ -909,7 +909,7 @@ func (emitter *yamlEmitter) emitAlias(event *yamlEvent) bool {
 }
 
 // Expect SCALAR.
-func (emitter *yamlEmitter) emitScalar(event *yamlEvent) bool {
+func (emitter *Emitter) emitScalar(event *Event) bool {
 	if !emitter.selectScalarStyle(event) {
 		return false
 	}
@@ -933,69 +933,69 @@ func (emitter *yamlEmitter) emitScalar(event *yamlEvent) bool {
 }
 
 // Expect SEQUENCE-START.
-func (emitter *yamlEmitter) emitSequenceStart(event *yamlEvent) bool {
+func (emitter *Emitter) emitSequenceStart(event *Event) bool {
 	if !emitter.processAnchor() {
 		return false
 	}
 	if !emitter.processTag() {
 		return false
 	}
-	if emitter.flow_level > 0 || emitter.canonical || event.sequenceStyle() == yaml_FLOW_SEQUENCE_STYLE ||
+	if emitter.flow_level > 0 || emitter.canonical || event.SequenceStyle() == FLOW_SEQUENCE_STYLE ||
 		emitter.checkEmptySequence() {
-		emitter.state = yaml_EMIT_FLOW_SEQUENCE_FIRST_ITEM_STATE
+		emitter.state = EMIT_FLOW_SEQUENCE_FIRST_ITEM_STATE
 	} else {
-		emitter.state = yaml_EMIT_BLOCK_SEQUENCE_FIRST_ITEM_STATE
+		emitter.state = EMIT_BLOCK_SEQUENCE_FIRST_ITEM_STATE
 	}
 	return true
 }
 
 // Expect MAPPING-START.
-func (emitter *yamlEmitter) emitMappingStart(event *yamlEvent) bool {
+func (emitter *Emitter) emitMappingStart(event *Event) bool {
 	if !emitter.processAnchor() {
 		return false
 	}
 	if !emitter.processTag() {
 		return false
 	}
-	if emitter.flow_level > 0 || emitter.canonical || event.mappingStyle() == yaml_FLOW_MAPPING_STYLE ||
+	if emitter.flow_level > 0 || emitter.canonical || event.MappingStyle() == FLOW_MAPPING_STYLE ||
 		emitter.checkEmptyMapping() {
-		emitter.state = yaml_EMIT_FLOW_MAPPING_FIRST_KEY_STATE
+		emitter.state = EMIT_FLOW_MAPPING_FIRST_KEY_STATE
 	} else {
-		emitter.state = yaml_EMIT_BLOCK_MAPPING_FIRST_KEY_STATE
+		emitter.state = EMIT_BLOCK_MAPPING_FIRST_KEY_STATE
 	}
 	return true
 }
 
 // Check if the document content is an empty scalar.
-func (emitter *yamlEmitter) checkEmptyDocument() bool {
+func (emitter *Emitter) checkEmptyDocument() bool {
 	return false // [Go] Huh?
 }
 
 // Check if the next events represent an empty sequence.
-func (emitter *yamlEmitter) checkEmptySequence() bool {
+func (emitter *Emitter) checkEmptySequence() bool {
 	if len(emitter.events)-emitter.events_head < 2 {
 		return false
 	}
-	return emitter.events[emitter.events_head].typ == yaml_SEQUENCE_START_EVENT &&
-		emitter.events[emitter.events_head+1].typ == yaml_SEQUENCE_END_EVENT
+	return emitter.events[emitter.events_head].Typ == SEQUENCE_START_EVENT &&
+		emitter.events[emitter.events_head+1].Typ == SEQUENCE_END_EVENT
 }
 
 // Check if the next events represent an empty mapping.
-func (emitter *yamlEmitter) checkEmptyMapping() bool {
+func (emitter *Emitter) checkEmptyMapping() bool {
 	if len(emitter.events)-emitter.events_head < 2 {
 		return false
 	}
-	return emitter.events[emitter.events_head].typ == yaml_MAPPING_START_EVENT &&
-		emitter.events[emitter.events_head+1].typ == yaml_MAPPING_END_EVENT
+	return emitter.events[emitter.events_head].Typ == MAPPING_START_EVENT &&
+		emitter.events[emitter.events_head+1].Typ == MAPPING_END_EVENT
 }
 
 // Check if the next node can be expressed as a simple key.
-func (emitter *yamlEmitter) checkSimpleKey() bool {
+func (emitter *Emitter) checkSimpleKey() bool {
 	length := 0
-	switch emitter.events[emitter.events_head].typ {
-	case yaml_ALIAS_EVENT:
+	switch emitter.events[emitter.events_head].Typ {
+	case ALIAS_EVENT:
 		length += len(emitter.anchor_data.anchor)
-	case yaml_SCALAR_EVENT:
+	case SCALAR_EVENT:
 		if emitter.scalar_data.multiline {
 			return false
 		}
@@ -1003,14 +1003,14 @@ func (emitter *yamlEmitter) checkSimpleKey() bool {
 			len(emitter.tag_data.handle) +
 			len(emitter.tag_data.suffix) +
 			len(emitter.scalar_data.value)
-	case yaml_SEQUENCE_START_EVENT:
+	case SEQUENCE_START_EVENT:
 		if !emitter.checkEmptySequence() {
 			return false
 		}
 		length += len(emitter.anchor_data.anchor) +
 			len(emitter.tag_data.handle) +
 			len(emitter.tag_data.suffix)
-	case yaml_MAPPING_START_EVENT:
+	case MAPPING_START_EVENT:
 		if !emitter.checkEmptyMapping() {
 			return false
 		}
@@ -1024,47 +1024,47 @@ func (emitter *yamlEmitter) checkSimpleKey() bool {
 }
 
 // Determine an acceptable scalar style.
-func (emitter *yamlEmitter) selectScalarStyle(event *yamlEvent) bool {
+func (emitter *Emitter) selectScalarStyle(event *Event) bool {
 	no_tag := len(emitter.tag_data.handle) == 0 && len(emitter.tag_data.suffix) == 0
-	if no_tag && !event.implicit && !event.quoted_implicit {
+	if no_tag && !event.Implicit && !event.quoted_implicit {
 		return emitter.setEmitterError("neither tag nor implicit flags are specified")
 	}
 
-	style := event.scalarStyle()
-	if style == yaml_ANY_SCALAR_STYLE {
-		style = yaml_PLAIN_SCALAR_STYLE
+	style := event.ScalarStyle()
+	if style == ANY_SCALAR_STYLE {
+		style = PLAIN_SCALAR_STYLE
 	}
 	if emitter.canonical {
-		style = yaml_DOUBLE_QUOTED_SCALAR_STYLE
+		style = DOUBLE_QUOTED_SCALAR_STYLE
 	}
 	if emitter.simple_key_context && emitter.scalar_data.multiline {
-		style = yaml_DOUBLE_QUOTED_SCALAR_STYLE
+		style = DOUBLE_QUOTED_SCALAR_STYLE
 	}
 
-	if style == yaml_PLAIN_SCALAR_STYLE {
+	if style == PLAIN_SCALAR_STYLE {
 		if emitter.flow_level > 0 && !emitter.scalar_data.flow_plain_allowed ||
 			emitter.flow_level == 0 && !emitter.scalar_data.block_plain_allowed {
-			style = yaml_SINGLE_QUOTED_SCALAR_STYLE
+			style = SINGLE_QUOTED_SCALAR_STYLE
 		}
 		if len(emitter.scalar_data.value) == 0 && (emitter.flow_level > 0 || emitter.simple_key_context) {
-			style = yaml_SINGLE_QUOTED_SCALAR_STYLE
+			style = SINGLE_QUOTED_SCALAR_STYLE
 		}
-		if no_tag && !event.implicit {
-			style = yaml_SINGLE_QUOTED_SCALAR_STYLE
+		if no_tag && !event.Implicit {
+			style = SINGLE_QUOTED_SCALAR_STYLE
 		}
 	}
-	if style == yaml_SINGLE_QUOTED_SCALAR_STYLE {
+	if style == SINGLE_QUOTED_SCALAR_STYLE {
 		if !emitter.scalar_data.single_quoted_allowed {
-			style = yaml_DOUBLE_QUOTED_SCALAR_STYLE
+			style = DOUBLE_QUOTED_SCALAR_STYLE
 		}
 	}
-	if style == yaml_LITERAL_SCALAR_STYLE || style == yaml_FOLDED_SCALAR_STYLE {
+	if style == LITERAL_SCALAR_STYLE || style == FOLDED_SCALAR_STYLE {
 		if !emitter.scalar_data.block_allowed || emitter.flow_level > 0 || emitter.simple_key_context {
-			style = yaml_DOUBLE_QUOTED_SCALAR_STYLE
+			style = DOUBLE_QUOTED_SCALAR_STYLE
 		}
 	}
 
-	if no_tag && !event.quoted_implicit && style != yaml_PLAIN_SCALAR_STYLE {
+	if no_tag && !event.quoted_implicit && style != PLAIN_SCALAR_STYLE {
 		emitter.tag_data.handle = []byte{'!'}
 	}
 	emitter.scalar_data.style = style
@@ -1072,7 +1072,7 @@ func (emitter *yamlEmitter) selectScalarStyle(event *yamlEvent) bool {
 }
 
 // Write an anchor.
-func (emitter *yamlEmitter) processAnchor() bool {
+func (emitter *Emitter) processAnchor() bool {
 	if emitter.anchor_data.anchor == nil {
 		return true
 	}
@@ -1087,7 +1087,7 @@ func (emitter *yamlEmitter) processAnchor() bool {
 }
 
 // Write a tag.
-func (emitter *yamlEmitter) processTag() bool {
+func (emitter *Emitter) processTag() bool {
 	if len(emitter.tag_data.handle) == 0 && len(emitter.tag_data.suffix) == 0 {
 		return true
 	}
@@ -1116,58 +1116,58 @@ func (emitter *yamlEmitter) processTag() bool {
 }
 
 // Write a scalar.
-func (emitter *yamlEmitter) processScalar() bool {
+func (emitter *Emitter) processScalar() bool {
 	switch emitter.scalar_data.style {
-	case yaml_PLAIN_SCALAR_STYLE:
+	case PLAIN_SCALAR_STYLE:
 		return emitter.writePlainScalar(emitter.scalar_data.value, !emitter.simple_key_context)
 
-	case yaml_SINGLE_QUOTED_SCALAR_STYLE:
+	case SINGLE_QUOTED_SCALAR_STYLE:
 		return emitter.writeSingleQuotedScalar(emitter.scalar_data.value, !emitter.simple_key_context)
 
-	case yaml_DOUBLE_QUOTED_SCALAR_STYLE:
+	case DOUBLE_QUOTED_SCALAR_STYLE:
 		return emitter.writeDoubleQuotedScalar(emitter.scalar_data.value, !emitter.simple_key_context)
 
-	case yaml_LITERAL_SCALAR_STYLE:
+	case LITERAL_SCALAR_STYLE:
 		return emitter.writeLiteralScalar(emitter.scalar_data.value)
 
-	case yaml_FOLDED_SCALAR_STYLE:
+	case FOLDED_SCALAR_STYLE:
 		return emitter.writeFoldedScalar(emitter.scalar_data.value)
 	}
 	panic("unknown scalar style")
 }
 
 // Write a head comment.
-func (emitter *yamlEmitter) processHeadComment() bool {
-	if len(emitter.tail_comment) > 0 {
+func (emitter *Emitter) processHeadComment() bool {
+	if len(emitter.Tail_comment) > 0 {
 		if !emitter.writeIndent() {
 			return false
 		}
-		if !emitter.writeComment(emitter.tail_comment) {
+		if !emitter.writeComment(emitter.Tail_comment) {
 			return false
 		}
-		emitter.tail_comment = emitter.tail_comment[:0]
+		emitter.Tail_comment = emitter.Tail_comment[:0]
 		emitter.foot_indent = emitter.indent
 		if emitter.foot_indent < 0 {
 			emitter.foot_indent = 0
 		}
 	}
 
-	if len(emitter.head_comment) == 0 {
+	if len(emitter.Head_comment) == 0 {
 		return true
 	}
 	if !emitter.writeIndent() {
 		return false
 	}
-	if !emitter.writeComment(emitter.head_comment) {
+	if !emitter.writeComment(emitter.Head_comment) {
 		return false
 	}
-	emitter.head_comment = emitter.head_comment[:0]
+	emitter.Head_comment = emitter.Head_comment[:0]
 	return true
 }
 
 // Write an line comment.
-func (emitter *yamlEmitter) processLineCommentLinebreak(linebreak bool) bool {
-	if len(emitter.line_comment) == 0 {
+func (emitter *Emitter) processLineCommentLinebreak(linebreak bool) bool {
+	if len(emitter.Line_comment) == 0 {
 		// The next 3 lines are needed to resolve an issue with leading newlines
 		// See https://github.com/go-yaml/yaml/issues/755
 		// When linebreak is set to true, put_break will be called and will add
@@ -1182,25 +1182,25 @@ func (emitter *yamlEmitter) processLineCommentLinebreak(linebreak bool) bool {
 			return false
 		}
 	}
-	if !emitter.writeComment(emitter.line_comment) {
+	if !emitter.writeComment(emitter.Line_comment) {
 		return false
 	}
-	emitter.line_comment = emitter.line_comment[:0]
+	emitter.Line_comment = emitter.Line_comment[:0]
 	return true
 }
 
 // Write a foot comment.
-func (emitter *yamlEmitter) processFootComment() bool {
-	if len(emitter.foot_comment) == 0 {
+func (emitter *Emitter) processFootComment() bool {
+	if len(emitter.Foot_comment) == 0 {
 		return true
 	}
 	if !emitter.writeIndent() {
 		return false
 	}
-	if !emitter.writeComment(emitter.foot_comment) {
+	if !emitter.writeComment(emitter.Foot_comment) {
 		return false
 	}
-	emitter.foot_comment = emitter.foot_comment[:0]
+	emitter.Foot_comment = emitter.Foot_comment[:0]
 	emitter.foot_indent = emitter.indent
 	if emitter.foot_indent < 0 {
 		emitter.foot_indent = 0
@@ -1209,7 +1209,7 @@ func (emitter *yamlEmitter) processFootComment() bool {
 }
 
 // Check if a %YAML directive is valid.
-func (emitter *yamlEmitter) analyzeVersionDirective(version_directive *yamlVersionDirective) bool {
+func (emitter *Emitter) analyzeVersionDirective(version_directive *VersionDirective) bool {
 	if version_directive.major != 1 || version_directive.minor != 1 {
 		return emitter.setEmitterError("incompatible %YAML directive")
 	}
@@ -1217,7 +1217,7 @@ func (emitter *yamlEmitter) analyzeVersionDirective(version_directive *yamlVersi
 }
 
 // Check if a %TAG directive is valid.
-func (emitter *yamlEmitter) analyzeTagDirective(tag_directive *yamlTagDirective) bool {
+func (emitter *Emitter) analyzeTagDirective(tag_directive *TagDirective) bool {
 	handle := tag_directive.handle
 	prefix := tag_directive.prefix
 	if len(handle) == 0 {
@@ -1241,7 +1241,7 @@ func (emitter *yamlEmitter) analyzeTagDirective(tag_directive *yamlTagDirective)
 }
 
 // Check if an anchor is valid.
-func (emitter *yamlEmitter) analyzeAnchor(anchor []byte, alias bool) bool {
+func (emitter *Emitter) analyzeAnchor(anchor []byte, alias bool) bool {
 	if len(anchor) == 0 {
 		problem := "anchor value must not be empty"
 		if alias {
@@ -1264,7 +1264,7 @@ func (emitter *yamlEmitter) analyzeAnchor(anchor []byte, alias bool) bool {
 }
 
 // Check if a tag is valid.
-func (emitter *yamlEmitter) analyzeTag(tag []byte) bool {
+func (emitter *Emitter) analyzeTag(tag []byte) bool {
 	if len(tag) == 0 {
 		return emitter.setEmitterError("tag value must not be empty")
 	}
@@ -1281,7 +1281,7 @@ func (emitter *yamlEmitter) analyzeTag(tag []byte) bool {
 }
 
 // Check if a scalar is valid.
-func (emitter *yamlEmitter) analyzeScalar(value []byte) bool {
+func (emitter *Emitter) analyzeScalar(value []byte) bool {
 	var block_indicators,
 		flow_indicators,
 		line_breaks,
@@ -1433,66 +1433,66 @@ func (emitter *yamlEmitter) analyzeScalar(value []byte) bool {
 }
 
 // Check if the event data is valid.
-func (emitter *yamlEmitter) analyzeEvent(event *yamlEvent) bool {
+func (emitter *Emitter) analyzeEvent(event *Event) bool {
 	emitter.anchor_data.anchor = nil
 	emitter.tag_data.handle = nil
 	emitter.tag_data.suffix = nil
 	emitter.scalar_data.value = nil
 
-	if len(event.head_comment) > 0 {
-		emitter.head_comment = event.head_comment
+	if len(event.Head_comment) > 0 {
+		emitter.Head_comment = event.Head_comment
 	}
-	if len(event.line_comment) > 0 {
-		emitter.line_comment = event.line_comment
+	if len(event.Line_comment) > 0 {
+		emitter.Line_comment = event.Line_comment
 	}
-	if len(event.foot_comment) > 0 {
-		emitter.foot_comment = event.foot_comment
+	if len(event.Foot_comment) > 0 {
+		emitter.Foot_comment = event.Foot_comment
 	}
-	if len(event.tail_comment) > 0 {
-		emitter.tail_comment = event.tail_comment
+	if len(event.Tail_comment) > 0 {
+		emitter.Tail_comment = event.Tail_comment
 	}
 
-	switch event.typ {
-	case yaml_ALIAS_EVENT:
-		if !emitter.analyzeAnchor(event.anchor, true) {
+	switch event.Typ {
+	case ALIAS_EVENT:
+		if !emitter.analyzeAnchor(event.Anchor, true) {
 			return false
 		}
 
-	case yaml_SCALAR_EVENT:
-		if len(event.anchor) > 0 {
-			if !emitter.analyzeAnchor(event.anchor, false) {
+	case SCALAR_EVENT:
+		if len(event.Anchor) > 0 {
+			if !emitter.analyzeAnchor(event.Anchor, false) {
 				return false
 			}
 		}
-		if len(event.tag) > 0 && (emitter.canonical || (!event.implicit && !event.quoted_implicit)) {
-			if !emitter.analyzeTag(event.tag) {
+		if len(event.Tag) > 0 && (emitter.canonical || (!event.Implicit && !event.quoted_implicit)) {
+			if !emitter.analyzeTag(event.Tag) {
 				return false
 			}
 		}
-		if !emitter.analyzeScalar(event.value) {
+		if !emitter.analyzeScalar(event.Value) {
 			return false
 		}
 
-	case yaml_SEQUENCE_START_EVENT:
-		if len(event.anchor) > 0 {
-			if !emitter.analyzeAnchor(event.anchor, false) {
+	case SEQUENCE_START_EVENT:
+		if len(event.Anchor) > 0 {
+			if !emitter.analyzeAnchor(event.Anchor, false) {
 				return false
 			}
 		}
-		if len(event.tag) > 0 && (emitter.canonical || !event.implicit) {
-			if !emitter.analyzeTag(event.tag) {
+		if len(event.Tag) > 0 && (emitter.canonical || !event.Implicit) {
+			if !emitter.analyzeTag(event.Tag) {
 				return false
 			}
 		}
 
-	case yaml_MAPPING_START_EVENT:
-		if len(event.anchor) > 0 {
-			if !emitter.analyzeAnchor(event.anchor, false) {
+	case MAPPING_START_EVENT:
+		if len(event.Anchor) > 0 {
+			if !emitter.analyzeAnchor(event.Anchor, false) {
 				return false
 			}
 		}
-		if len(event.tag) > 0 && (emitter.canonical || !event.implicit) {
-			if !emitter.analyzeTag(event.tag) {
+		if len(event.Tag) > 0 && (emitter.canonical || !event.Implicit) {
+			if !emitter.analyzeTag(event.Tag) {
 				return false
 			}
 		}
@@ -1501,7 +1501,7 @@ func (emitter *yamlEmitter) analyzeEvent(event *yamlEvent) bool {
 }
 
 // Write the BOM character.
-func (emitter *yamlEmitter) writeBom() bool {
+func (emitter *Emitter) writeBom() bool {
 	if !emitter.flushIfNeeded() {
 		return false
 	}
@@ -1513,7 +1513,7 @@ func (emitter *yamlEmitter) writeBom() bool {
 	return true
 }
 
-func (emitter *yamlEmitter) writeIndent() bool {
+func (emitter *Emitter) writeIndent() bool {
 	indent := emitter.indent
 	if indent < 0 {
 		indent = 0
@@ -1540,7 +1540,7 @@ func (emitter *yamlEmitter) writeIndent() bool {
 	return true
 }
 
-func (emitter *yamlEmitter) writeIndicator(indicator []byte, need_whitespace, is_whitespace, is_indention bool) bool {
+func (emitter *Emitter) writeIndicator(indicator []byte, need_whitespace, is_whitespace, is_indention bool) bool {
 	if need_whitespace && !emitter.whitespace {
 		if !emitter.put(' ') {
 			return false
@@ -1551,11 +1551,11 @@ func (emitter *yamlEmitter) writeIndicator(indicator []byte, need_whitespace, is
 	}
 	emitter.whitespace = is_whitespace
 	emitter.indention = (emitter.indention && is_indention)
-	emitter.open_ended = false
+	emitter.Open_ended = false
 	return true
 }
 
-func (emitter *yamlEmitter) writeAnchor(value []byte) bool {
+func (emitter *Emitter) writeAnchor(value []byte) bool {
 	if !emitter.writeAll(value) {
 		return false
 	}
@@ -1564,7 +1564,7 @@ func (emitter *yamlEmitter) writeAnchor(value []byte) bool {
 	return true
 }
 
-func (emitter *yamlEmitter) writeTagHandle(value []byte) bool {
+func (emitter *Emitter) writeTagHandle(value []byte) bool {
 	if !emitter.whitespace {
 		if !emitter.put(' ') {
 			return false
@@ -1578,7 +1578,7 @@ func (emitter *yamlEmitter) writeTagHandle(value []byte) bool {
 	return true
 }
 
-func (emitter *yamlEmitter) writeTagContent(value []byte, need_whitespace bool) bool {
+func (emitter *Emitter) writeTagContent(value []byte, need_whitespace bool) bool {
 	if need_whitespace && !emitter.whitespace {
 		if !emitter.put(' ') {
 			return false
@@ -1632,7 +1632,7 @@ func (emitter *yamlEmitter) writeTagContent(value []byte, need_whitespace bool) 
 	return true
 }
 
-func (emitter *yamlEmitter) writePlainScalar(value []byte, allow_breaks bool) bool {
+func (emitter *Emitter) writePlainScalar(value []byte, allow_breaks bool) bool {
 	if len(value) > 0 && !emitter.whitespace {
 		if !emitter.put(' ') {
 			return false
@@ -1685,13 +1685,13 @@ func (emitter *yamlEmitter) writePlainScalar(value []byte, allow_breaks bool) bo
 	}
 	emitter.indention = false
 	if emitter.root_context {
-		emitter.open_ended = true
+		emitter.Open_ended = true
 	}
 
 	return true
 }
 
-func (emitter *yamlEmitter) writeSingleQuotedScalar(value []byte, allow_breaks bool) bool {
+func (emitter *Emitter) writeSingleQuotedScalar(value []byte, allow_breaks bool) bool {
 	if !emitter.writeIndicator([]byte{'\''}, true, false, false) {
 		return false
 	}
@@ -1749,7 +1749,7 @@ func (emitter *yamlEmitter) writeSingleQuotedScalar(value []byte, allow_breaks b
 	return true
 }
 
-func (emitter *yamlEmitter) writeDoubleQuotedScalar(value []byte, allow_breaks bool) bool {
+func (emitter *Emitter) writeDoubleQuotedScalar(value []byte, allow_breaks bool) bool {
 	spaces := false
 	if !emitter.writeIndicator([]byte{'"'}, true, false, false) {
 		return false
@@ -1870,15 +1870,15 @@ func (emitter *yamlEmitter) writeDoubleQuotedScalar(value []byte, allow_breaks b
 	return true
 }
 
-func (emitter *yamlEmitter) writeBlockScalarHints(value []byte) bool {
+func (emitter *Emitter) writeBlockScalarHints(value []byte) bool {
 	if isSpace(value, 0) || isLineBreak(value, 0) {
-		indent_hint := []byte{'0' + byte(emitter.best_indent)}
+		indent_hint := []byte{'0' + byte(emitter.Best_indent)}
 		if !emitter.writeIndicator(indent_hint, false, false, false) {
 			return false
 		}
 	}
 
-	emitter.open_ended = false
+	emitter.Open_ended = false
 
 	var chomp_hint [1]byte
 	if len(value) == 0 {
@@ -1892,7 +1892,7 @@ func (emitter *yamlEmitter) writeBlockScalarHints(value []byte) bool {
 			chomp_hint[0] = '-'
 		} else if i == 0 {
 			chomp_hint[0] = '+'
-			emitter.open_ended = true
+			emitter.Open_ended = true
 		} else {
 			i--
 			for value[i]&0xC0 == 0x80 {
@@ -1900,7 +1900,7 @@ func (emitter *yamlEmitter) writeBlockScalarHints(value []byte) bool {
 			}
 			if isLineBreak(value, i) {
 				chomp_hint[0] = '+'
-				emitter.open_ended = true
+				emitter.Open_ended = true
 			}
 		}
 	}
@@ -1912,7 +1912,7 @@ func (emitter *yamlEmitter) writeBlockScalarHints(value []byte) bool {
 	return true
 }
 
-func (emitter *yamlEmitter) writeLiteralScalar(value []byte) bool {
+func (emitter *Emitter) writeLiteralScalar(value []byte) bool {
 	if !emitter.writeIndicator([]byte{'|'}, true, false, false) {
 		return false
 	}
@@ -1949,7 +1949,7 @@ func (emitter *yamlEmitter) writeLiteralScalar(value []byte) bool {
 	return true
 }
 
-func (emitter *yamlEmitter) writeFoldedScalar(value []byte) bool {
+func (emitter *Emitter) writeFoldedScalar(value []byte) bool {
 	if !emitter.writeIndicator([]byte{'>'}, true, false, false) {
 		return false
 	}
@@ -2007,7 +2007,7 @@ func (emitter *yamlEmitter) writeFoldedScalar(value []byte) bool {
 	return true
 }
 
-func (emitter *yamlEmitter) writeComment(comment []byte) bool {
+func (emitter *Emitter) writeComment(comment []byte) bool {
 	breaks := false
 	pound := false
 	for i := 0; i < len(comment); {

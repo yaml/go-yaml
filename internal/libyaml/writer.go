@@ -20,17 +20,17 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package yaml
+package libyaml
 
 // Set the writer error and return false.
-func (emitter *yamlEmitter) setWriterError(problem string) bool {
-	emitter.error = yaml_WRITER_ERROR
-	emitter.problem = problem
+func (emitter *Emitter) setWriterError(problem string) bool {
+	emitter.error = WRITER_ERROR
+	emitter.Problem = problem
 	return false
 }
 
 // Flush the output buffer.
-func (emitter *yamlEmitter) flush() bool {
+func (emitter *Emitter) flush() bool {
 	if emitter.write_handler == nil {
 		panic("write handler not set")
 	}
