@@ -3018,7 +3018,7 @@ func TestNodeZeroEncodeDecode(t *testing.T) {
 	assert.Equal(t, "null\n", string(data))
 
 	// ... and decoding.
-	var v *struct{} = &struct{}{}
+	v := &struct{}{}
 	err = n.Decode(&v)
 	assert.NoError(t, err)
 	assert.IsNil(t, v)

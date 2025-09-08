@@ -641,7 +641,7 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 		info := fieldInfo{Num: i}
 
 		tag := field.Tag.Get("yaml")
-		if tag == "" && strings.Index(string(field.Tag), ":") < 0 {
+		if tag == "" && !strings.Contains(string(field.Tag), ":") {
 			tag = string(field.Tag)
 		}
 		if tag == "-" {
@@ -660,7 +660,7 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 				case "inline":
 					inline = true
 				default:
-					return nil, errors.New(fmt.Sprintf("unsupported flag %q in tag %q of type %s", flag, tag, st))
+					return nil, fmt.Errorf("unsupported flag %q in tag %q of type %s", flag, tag, st)
 				}
 			}
 			tag = fields[0]
