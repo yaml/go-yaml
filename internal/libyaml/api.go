@@ -20,13 +20,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package yaml
+package libyaml
 
 import (
 	"io"
 )
 
-func (parser *yamlParser) insertToken(pos int, token *yamlToken) {
+func (parser *Parser) insertToken(pos int, token *Token) {
 	// fmt.Println("yaml_insert_token", "pos:", pos, "typ:", token.typ, "head:", parser.tokens_head, "len:", len(parser.tokens))
 
 	// Check if we can move the queue at the beginning of the buffer.
@@ -46,20 +46,20 @@ func (parser *yamlParser) insertToken(pos int, token *yamlToken) {
 }
 
 // Create a new parser object.
-func newYAMLParser() yamlParser {
-	return yamlParser{
+func NewParser() Parser {
+	return Parser{
 		raw_buffer: make([]byte, 0, input_raw_buffer_size),
 		buffer:     make([]byte, 0, input_buffer_size),
 	}
 }
 
 // Destroy a parser object.
-func (parser *yamlParser) delete() {
-	*parser = yamlParser{}
+func (parser *Parser) Delete() {
+	*parser = Parser{}
 }
 
 // String read handler.
-func yamlStringReadHandler(parser *yamlParser, buffer []byte) (n int, err error) {
+func yamlStringReadHandler(parser *Parser, buffer []byte) (n int, err error) {
 	if parser.input_pos == len(parser.input) {
 		return 0, io.EOF
 	}
@@ -69,12 +69,12 @@ func yamlStringReadHandler(parser *yamlParser, buffer []byte) (n int, err error)
 }
 
 // Reader read handler.
-func yamlReaderReadHandler(parser *yamlParser, buffer []byte) (n int, err error) {
+func yamlReaderReadHandler(parser *Parser, buffer []byte) (n int, err error) {
 	return parser.input_reader.Read(buffer)
 }
 
 // Set a string input.
-func (parser *yamlParser) setInputString(input []byte) {
+func (parser *Parser) SetInputString(input []byte) {
 	if parser.read_handler != nil {
 		panic("must set the input source only once")
 	}
@@ -84,7 +84,7 @@ func (parser *yamlParser) setInputString(input []byte) {
 }
 
 // Set a file input.
-func (parser *yamlParser) setInputReader(r io.Reader) {
+func (parser *Parser) SetInputReader(r io.Reader) {
 	if parser.read_handler != nil {
 		panic("must set the input source only once")
 	}
@@ -93,44 +93,44 @@ func (parser *yamlParser) setInputReader(r io.Reader) {
 }
 
 // Set the source encoding.
-func (parser *yamlParser) setEncoding(encoding yamlEncoding) {
-	if parser.encoding != yaml_ANY_ENCODING {
+func (parser *Parser) SetEncoding(encoding Encoding) {
+	if parser.encoding != ANY_ENCODING {
 		panic("must set the encoding only once")
 	}
 	parser.encoding = encoding
 }
 
 // Create a new emitter object.
-func newYAMLEmitter() yamlEmitter {
-	return yamlEmitter{
+func NewEmitter() Emitter {
+	return Emitter{
 		buffer:     make([]byte, output_buffer_size),
 		raw_buffer: make([]byte, 0, output_raw_buffer_size),
-		states:     make([]yamlEmitterState, 0, initial_stack_size),
-		events:     make([]yamlEvent, 0, initial_queue_size),
+		states:     make([]EmitterState, 0, initial_stack_size),
+		events:     make([]Event, 0, initial_queue_size),
 		best_width: -1,
 	}
 }
 
 // Destroy an emitter object.
-func (emitter *yamlEmitter) delete() {
-	*emitter = yamlEmitter{}
+func (emitter *Emitter) Delete() {
+	*emitter = Emitter{}
 }
 
 // String write handler.
-func yamlStringWriteHandler(emitter *yamlEmitter, buffer []byte) error {
+func yamlStringWriteHandler(emitter *Emitter, buffer []byte) error {
 	*emitter.output_buffer = append(*emitter.output_buffer, buffer...)
 	return nil
 }
 
 // yamlWriterWriteHandler uses emitter.output_writer to write the
 // emitted text.
-func yamlWriterWriteHandler(emitter *yamlEmitter, buffer []byte) error {
+func yamlWriterWriteHandler(emitter *Emitter, buffer []byte) error {
 	_, err := emitter.output_writer.Write(buffer)
 	return err
 }
 
 // Set a string output.
-func (emitter *yamlEmitter) setOutputString(output_buffer *[]byte) {
+func (emitter *Emitter) SetOutputString(output_buffer *[]byte) {
 	if emitter.write_handler != nil {
 		panic("must set the output target only once")
 	}
@@ -139,7 +139,7 @@ func (emitter *yamlEmitter) setOutputString(output_buffer *[]byte) {
 }
 
 // Set a file output.
-func (emitter *yamlEmitter) setOutputWriter(w io.Writer) {
+func (emitter *Emitter) SetOutputWriter(w io.Writer) {
 	if emitter.write_handler != nil {
 		panic("must set the output target only once")
 	}
@@ -148,28 +148,28 @@ func (emitter *yamlEmitter) setOutputWriter(w io.Writer) {
 }
 
 // Set the output encoding.
-func (emitter *yamlEmitter) setEncoding(encoding yamlEncoding) {
-	if emitter.encoding != yaml_ANY_ENCODING {
+func (emitter *Emitter) SetEncoding(encoding Encoding) {
+	if emitter.encoding != ANY_ENCODING {
 		panic("must set the output encoding only once")
 	}
 	emitter.encoding = encoding
 }
 
 // Set the canonical output style.
-func (emitter *yamlEmitter) setCanonical(canonical bool) {
+func (emitter *Emitter) SetCanonical(canonical bool) {
 	emitter.canonical = canonical
 }
 
 // Set the indentation increment.
-func (emitter *yamlEmitter) setIndent(indent int) {
+func (emitter *Emitter) SetIndent(indent int) {
 	if indent < 2 || indent > 9 {
 		indent = 2
 	}
-	emitter.best_indent = indent
+	emitter.Best_indent = indent
 }
 
 // Set the preferred line width.
-func (emitter *yamlEmitter) setWidth(width int) {
+func (emitter *Emitter) SetWidth(width int) {
 	if width < 0 {
 		width = -1
 	}
@@ -177,12 +177,12 @@ func (emitter *yamlEmitter) setWidth(width int) {
 }
 
 // Set if unescaped non-ASCII characters are allowed.
-func (emitter *yamlEmitter) setUnicode(unicode bool) {
+func (emitter *Emitter) SetUnicode(unicode bool) {
 	emitter.unicode = unicode
 }
 
 // Set the preferred line break character.
-func (emitter *yamlEmitter) setLineBreak(line_break yamlLineBreak) {
+func (emitter *Emitter) SetLineBreak(line_break LineBreak) {
 	emitter.line_break = line_break
 }
 
@@ -273,98 +273,98 @@ func (emitter *yamlEmitter) setLineBreak(line_break yamlLineBreak) {
 //
 
 // Create STREAM-START.
-func newStreamStartEvent(encoding yamlEncoding) yamlEvent {
-	return yamlEvent{
-		typ:      yaml_STREAM_START_EVENT,
+func NewStreamStartEvent(encoding Encoding) Event {
+	return Event{
+		Typ:      STREAM_START_EVENT,
 		encoding: encoding,
 	}
 }
 
 // Create STREAM-END.
-func newStreamEndEvent() yamlEvent {
-	return yamlEvent{
-		typ: yaml_STREAM_END_EVENT,
+func NewStreamEndEvent() Event {
+	return Event{
+		Typ: STREAM_END_EVENT,
 	}
 }
 
 // Create DOCUMENT-START.
-func newDocumentStartEvent(version_directive *yamlVersionDirective, tag_directives []yamlTagDirective, implicit bool) yamlEvent {
-	return yamlEvent{
-		typ:               yaml_DOCUMENT_START_EVENT,
+func NewDocumentStartEvent(version_directive *VersionDirective, tag_directives []TagDirective, implicit bool) Event {
+	return Event{
+		Typ:               DOCUMENT_START_EVENT,
 		version_directive: version_directive,
 		tag_directives:    tag_directives,
-		implicit:          implicit,
+		Implicit:          implicit,
 	}
 }
 
 // Create DOCUMENT-END.
-func newDocumentEndEvent(implicit bool) yamlEvent {
-	return yamlEvent{
-		typ:      yaml_DOCUMENT_END_EVENT,
-		implicit: implicit,
+func NewDocumentEndEvent(implicit bool) Event {
+	return Event{
+		Typ:      DOCUMENT_END_EVENT,
+		Implicit: implicit,
 	}
 }
 
 // Create ALIAS.
-func newAliasEvent(anchor []byte) yamlEvent {
-	return yamlEvent{
-		typ:    yaml_ALIAS_EVENT,
-		anchor: anchor,
+func NewAliasEvent(anchor []byte) Event {
+	return Event{
+		Typ:    ALIAS_EVENT,
+		Anchor: anchor,
 	}
 }
 
 // Create SCALAR.
-func newScalarEvent(anchor, tag, value []byte, plain_implicit, quoted_implicit bool, style yamlScalarStyle) yamlEvent {
-	return yamlEvent{
-		typ:             yaml_SCALAR_EVENT,
-		anchor:          anchor,
-		tag:             tag,
-		value:           value,
-		implicit:        plain_implicit,
+func NewScalarEvent(anchor, tag, value []byte, plain_implicit, quoted_implicit bool, style ScalarStyle) Event {
+	return Event{
+		Typ:             SCALAR_EVENT,
+		Anchor:          anchor,
+		Tag:             tag,
+		Value:           value,
+		Implicit:        plain_implicit,
 		quoted_implicit: quoted_implicit,
-		style:           yamlStyle(style),
+		Style:           Style(style),
 	}
 }
 
 // Create SEQUENCE-START.
-func newSequenceStartEvent(anchor, tag []byte, implicit bool, style yamlSequenceStyle) yamlEvent {
-	return yamlEvent{
-		typ:      yaml_SEQUENCE_START_EVENT,
-		anchor:   anchor,
-		tag:      tag,
-		implicit: implicit,
-		style:    yamlStyle(style),
+func NewSequenceStartEvent(anchor, tag []byte, implicit bool, style SequenceStyle) Event {
+	return Event{
+		Typ:      SEQUENCE_START_EVENT,
+		Anchor:   anchor,
+		Tag:      tag,
+		Implicit: implicit,
+		Style:    Style(style),
 	}
 }
 
 // Create SEQUENCE-END.
-func newSequenceEndEvent() yamlEvent {
-	return yamlEvent{
-		typ: yaml_SEQUENCE_END_EVENT,
+func NewSequenceEndEvent() Event {
+	return Event{
+		Typ: SEQUENCE_END_EVENT,
 	}
 }
 
 // Create MAPPING-START.
-func newMappingStartEvent(anchor, tag []byte, implicit bool, style yamlMappingStyle) yamlEvent {
-	return yamlEvent{
-		typ:      yaml_MAPPING_START_EVENT,
-		anchor:   anchor,
-		tag:      tag,
-		implicit: implicit,
-		style:    yamlStyle(style),
+func NewMappingStartEvent(anchor, tag []byte, implicit bool, style MappingStyle) Event {
+	return Event{
+		Typ:      MAPPING_START_EVENT,
+		Anchor:   anchor,
+		Tag:      tag,
+		Implicit: implicit,
+		Style:    Style(style),
 	}
 }
 
 // Create MAPPING-END.
-func newMappingEndEvent() yamlEvent {
-	return yamlEvent{
-		typ: yaml_MAPPING_END_EVENT,
+func NewMappingEndEvent() Event {
+	return Event{
+		Typ: MAPPING_END_EVENT,
 	}
 }
 
 // Destroy an event object.
-func (e *yamlEvent) delete() {
-	*e = yamlEvent{}
+func (event *Event) Delete() {
+	*event = Event{}
 }
 
 ///*

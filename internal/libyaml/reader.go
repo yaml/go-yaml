@@ -20,18 +20,18 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package yaml
+package libyaml
 
 import (
 	"io"
 )
 
 // Set the reader error and return 0.
-func (parser *yamlParser) setReaderError(problem string, offset int, value int) bool {
-	parser.error = yaml_READER_ERROR
-	parser.problem = problem
-	parser.problem_offset = offset
-	parser.problem_value = value
+func (parser *Parser) setReaderError(problem string, offset int, value int) bool {
+	parser.Err = READER_ERROR
+	parser.Problem = problem
+	parser.Problem_offset = offset
+	parser.Problem_value = value
 	return false
 }
 
@@ -44,7 +44,7 @@ const (
 
 // Determine the input stream encoding by checking the BOM symbol. If no BOM is
 // found, the UTF-8 encoding is assumed. Return 1 on success, 0 on failure.
-func (parser *yamlParser) determineEncoding() bool {
+func (parser *Parser) determineEncoding() bool {
 	// Ensure that we had enough bytes in the raw buffer.
 	for !parser.eof && len(parser.raw_buffer)-parser.raw_buffer_pos < 3 {
 		if !parser.updateRawBuffer() {
@@ -57,25 +57,25 @@ func (parser *yamlParser) determineEncoding() bool {
 	pos := parser.raw_buffer_pos
 	avail := len(buf) - pos
 	if avail >= 2 && buf[pos] == bom_UTF16LE[0] && buf[pos+1] == bom_UTF16LE[1] {
-		parser.encoding = yaml_UTF16LE_ENCODING
+		parser.encoding = UTF16LE_ENCODING
 		parser.raw_buffer_pos += 2
 		parser.offset += 2
 	} else if avail >= 2 && buf[pos] == bom_UTF16BE[0] && buf[pos+1] == bom_UTF16BE[1] {
-		parser.encoding = yaml_UTF16BE_ENCODING
+		parser.encoding = UTF16BE_ENCODING
 		parser.raw_buffer_pos += 2
 		parser.offset += 2
 	} else if avail >= 3 && buf[pos] == bom_UTF8[0] && buf[pos+1] == bom_UTF8[1] && buf[pos+2] == bom_UTF8[2] {
-		parser.encoding = yaml_UTF8_ENCODING
+		parser.encoding = UTF8_ENCODING
 		parser.raw_buffer_pos += 3
 		parser.offset += 3
 	} else {
-		parser.encoding = yaml_UTF8_ENCODING
+		parser.encoding = UTF8_ENCODING
 	}
 	return true
 }
 
 // Update the raw buffer.
-func (parser *yamlParser) updateRawBuffer() bool {
+func (parser *Parser) updateRawBuffer() bool {
 	size_read := 0
 
 	// Return if the raw buffer is full.
@@ -110,7 +110,7 @@ func (parser *yamlParser) updateRawBuffer() bool {
 // Return true on success, false on failure.
 //
 // The length is supposed to be significantly less that the buffer size.
-func (parser *yamlParser) updateBuffer(length int) bool {
+func (parser *Parser) updateBuffer(length int) bool {
 	if parser.read_handler == nil {
 		panic("read handler must be set")
 	}
@@ -137,7 +137,7 @@ func (parser *yamlParser) updateBuffer(length int) bool {
 	}
 
 	// Determine the input encoding if it is not known yet.
-	if parser.encoding == yaml_ANY_ENCODING {
+	if parser.encoding == ANY_ENCODING {
 		if !parser.determineEncoding() {
 			return false
 		}
@@ -180,7 +180,7 @@ func (parser *yamlParser) updateBuffer(length int) bool {
 
 			// Decode the next character.
 			switch parser.encoding {
-			case yaml_UTF8_ENCODING:
+			case UTF8_ENCODING:
 				// Decode a UTF-8 character.  Check RFC 3629
 				// (http://www.ietf.org/rfc/rfc3629.txt) for more details.
 				//
@@ -275,9 +275,9 @@ func (parser *yamlParser) updateBuffer(length int) bool {
 						parser.offset, int(value))
 				}
 
-			case yaml_UTF16LE_ENCODING, yaml_UTF16BE_ENCODING:
+			case UTF16LE_ENCODING, UTF16BE_ENCODING:
 				var low, high int
-				if parser.encoding == yaml_UTF16LE_ENCODING {
+				if parser.encoding == UTF16LE_ENCODING {
 					low, high = 0, 1
 				} else {
 					low, high = 1, 0
