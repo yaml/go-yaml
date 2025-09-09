@@ -23,6 +23,8 @@ import (
 	"math"
 	"reflect"
 	"time"
+
+	"go.yaml.in/yaml/v4/option"
 )
 
 // ----------------------------------------------------------------------------
@@ -328,12 +330,12 @@ var (
 	ifaceType      = generalMapType.Elem()
 )
 
-func newDecoder(options Options) *decoder {
+func newDecoder(config *option.Config) *decoder {
 	d := &decoder{
 		stringMapType:  stringMapType,
 		generalMapType: generalMapType,
 		uniqueKeys:     true,
-		knownFields:    options.getKnownFields(),
+		knownFields:    config.GetKnownFields(),
 	}
 	d.aliases = make(map[*Node]bool)
 	return d

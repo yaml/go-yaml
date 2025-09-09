@@ -26,6 +26,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"go.yaml.in/yaml/v4/option"
 )
 
 type encoder struct {
@@ -37,20 +39,20 @@ type encoder struct {
 	doneInit bool
 }
 
-func newEncoder(options Options) *encoder {
+func newEncoder(config *option.Config) *encoder {
 	e := &encoder{
 		emitter: newYAMLEmitter(),
-		indent:  options.getIndent(),
+		indent:  config.GetIndent(),
 	}
 	e.emitter.setOutputString(&e.out)
 	e.emitter.setUnicode(true)
 	return e
 }
 
-func newEncoderWithWriter(w io.Writer, options Options) *encoder {
+func newEncoderWithWriter(w io.Writer, config *option.Config) *encoder {
 	e := &encoder{
 		emitter: newYAMLEmitter(),
-		indent:  options.getIndent(),
+		indent:  config.GetIndent(),
 	}
 	e.emitter.setOutputWriter(w)
 	e.emitter.setUnicode(true)
@@ -62,7 +64,7 @@ func (e *encoder) init() {
 		return
 	}
 	if e.indent == 0 {
-		e.indent = defaultIndent
+		e.indent = 4 // default indent
 	}
 	e.emitter.best_indent = e.indent
 	e.event = newStreamStartEvent(yaml_UTF8_ENCODING)
