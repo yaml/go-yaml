@@ -37,18 +37,20 @@ type encoder struct {
 	doneInit bool
 }
 
-func newEncoder() *encoder {
+func newEncoder(options Options) *encoder {
 	e := &encoder{
 		emitter: newYAMLEmitter(),
+		indent:  options.getIndent(),
 	}
 	e.emitter.setOutputString(&e.out)
 	e.emitter.setUnicode(true)
 	return e
 }
 
-func newEncoderWithWriter(w io.Writer) *encoder {
+func newEncoderWithWriter(w io.Writer, options Options) *encoder {
 	e := &encoder{
 		emitter: newYAMLEmitter(),
+		indent:  options.getIndent(),
 	}
 	e.emitter.setOutputWriter(w)
 	e.emitter.setUnicode(true)
@@ -60,7 +62,7 @@ func (e *encoder) init() {
 		return
 	}
 	if e.indent == 0 {
-		e.indent = 4
+		e.indent = defaultIndent
 	}
 	e.emitter.best_indent = e.indent
 	e.event = newStreamStartEvent(yaml_UTF8_ENCODING)

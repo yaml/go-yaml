@@ -328,11 +328,12 @@ var (
 	ifaceType      = generalMapType.Elem()
 )
 
-func newDecoder() *decoder {
+func newDecoder(options Options) *decoder {
 	d := &decoder{
 		stringMapType:  stringMapType,
 		generalMapType: generalMapType,
 		uniqueKeys:     true,
+		knownFields:    options.getKnownFields(),
 	}
 	d.aliases = make(map[*Node]bool)
 	return d
