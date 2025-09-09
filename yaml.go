@@ -86,7 +86,7 @@ type Marshaler interface {
 // See the documentation of Marshal for the format of tags and a list of
 // supported tag options.
 func Unmarshal(in []byte, out any) (err error) {
-	return unmarshal(in, out, false)
+	return unmarshal(in, out)
 }
 
 // A Decoder reads and decodes YAML values from an input stream.
@@ -153,7 +153,7 @@ func (n *Node) Decode(v any) (err error) {
 	return nil
 }
 
-func unmarshal(in []byte, out any, strict bool) (err error) {
+func unmarshal(in []byte, out any) (err error) {
 	defer handleErr(&err)
 	d := newDecoder()
 	p := newParser(in)
