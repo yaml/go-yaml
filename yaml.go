@@ -85,7 +85,7 @@ type Marshaler interface {
 //
 // See the documentation of Marshal for the format of tags and a list of
 // supported tag options.
-func Unmarshal(in []byte, out any) (err error) {
+func Unmarshal(in []byte, out any, opts ...Options) (err error) {
 	return unmarshal(in, out)
 }
 
@@ -99,7 +99,7 @@ type Decoder struct {
 //
 // The decoder introduces its own buffering and may read
 // data from r beyond the YAML values requested.
-func NewDecoder(r io.Reader) *Decoder {
+func NewDecoder(r io.Reader, opts ...Options) *Decoder {
 	return &Decoder{
 		parser: newParserFromReader(r),
 	}
@@ -139,7 +139,7 @@ func (dec *Decoder) Decode(v any) (err error) {
 //
 // See the documentation for Unmarshal for details about the
 // conversion of YAML into a Go value.
-func (n *Node) Decode(v any) (err error) {
+func (n *Node) Decode(v any, opts ...Options) (err error) {
 	d := newDecoder()
 	defer handleErr(&err)
 	out := reflect.ValueOf(v)
@@ -214,7 +214,7 @@ func unmarshal(in []byte, out any) (err error) {
 //	}
 //	yaml.Marshal(&T{B: 2}) // Returns "b: 2\n"
 //	yaml.Marshal(&T{F: 1}} // Returns "a: 1\nb: 0\n"
-func Marshal(in any) (out []byte, err error) {
+func Marshal(in any, opts ...Options) (out []byte, err error) {
 	defer handleErr(&err)
 	e := newEncoder()
 	defer e.destroy()
@@ -232,7 +232,7 @@ type Encoder struct {
 // NewEncoder returns a new encoder that writes to w.
 // The Encoder should be closed after use to flush all data
 // to w.
-func NewEncoder(w io.Writer) *Encoder {
+func NewEncoder(w io.Writer, opts ...Options) *Encoder {
 	return &Encoder{
 		encoder: newEncoderWithWriter(w),
 	}
@@ -255,7 +255,7 @@ func (e *Encoder) Encode(v any) (err error) {
 //
 // See the documentation for Marshal for details about the
 // conversion of Go values into YAML.
-func (n *Node) Encode(v any) (err error) {
+func (n *Node) Encode(v any, opts ...Options) (err error) {
 	defer handleErr(&err)
 	e := newEncoder()
 	defer e.destroy()
