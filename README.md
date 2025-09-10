@@ -199,6 +199,28 @@ Some `make` commands are:
 * `make distclean` - Removes `.cache/`
 
 
+## The `go-yaml` CLI Tool
+
+This repository includes a `go-yaml` CLI tool which can be used to understand
+the internal stages and final results of YAML processing with the go-yaml
+library.
+
+```bash
+make go-yaml
+./go-yaml --help
+./go-yaml -t <<< '
+foo: &a1 bar
+*a1: baz
+'
+```
+
+You can also install it with:
+
+```bash
+go install go.yaml.in/yaml/v4/cmd/go-yaml@latest
+```
+
+
 ## License
 
 The yaml package is licensed under the MIT and Apache License 2.0 licenses.
