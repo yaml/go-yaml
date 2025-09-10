@@ -1,7 +1,7 @@
 # Auto-install https://github.com/makeplus/makes at specific commit:
 MAKES := .cache/makes
 MAKES-LOCAL := .cache/local
-MAKES-COMMIT ?= 74a4d03223cdaf39140613d48d3f1d8c0a0840e5
+MAKES-COMMIT ?= 840c40310d5b93b977e7d516d37ea9a2137c2d96
 $(shell [ -d $(MAKES) ] || ( \
   git clone -q https://github.com/makeplus/makes $(MAKES) && \
   git -C $(MAKES) reset -q --hard $(MAKES-COMMIT)))
@@ -10,6 +10,7 @@ ifneq ($(shell git -C $(MAKES) rev-parse HEAD), \
 $(error $(MAKES) is not at the correct commit: $(MAKES-COMMIT))
 endif
 include $(MAKES)/init.mk
+include $(MAKES)/clean.mk
 
 # Only auto-install go if no go exists or GO-VERSION specified:
 ifeq (,$(shell which go))
@@ -23,8 +24,15 @@ YTS-DIR := yts/testdata/$(YTS-TAG)
 YTS-URL := https://github.com/yaml/yaml-test-suite
 TEST-DEPS := $(YTS-DIR)
 
+CLI-BINARY := go-yaml
+
+MAKES-NO-CLEAN := true
+MAKES-CLEAN := $(CLI-BINARY)
+MAKES-REALCLEAN := $(dir $(YTS-DIR))
+
 # Setup and include go.mk and shell.mk:
-GO-CMDS-SKIP := test
+GO-FILES := $(shell find -not \( -path ./.cache -prune \) -name '*.go' | sort)
+GO-CMDS-SKIP := test fmt vet
 ifndef GO-VERSION-NEEDED
 GO-NO-DEP-GO := true
 endif
@@ -60,13 +68,20 @@ test-yts-fail: $(TEST-DEPS)
 	@echo 'Testing yaml-test-suite failures'
 	@export RUNFAILING=1; $(call yts-pass-fail)
 
+fmt: $(GO)
+	gofmt -l -w $(GO-FILES)
 
-# Clean rules:
-realclean:
-	$(RM) -r $(dir $(YTS-DIR))
+fumpt: $(GO)
+	@go install mvdan.cc/gofumpt@latest
+	gofumpt -l -w $(GO-FILES)
 
-distclean: realclean
-	$(RM) -r $(ROOT)/.cache
+vet: $(GO)
+	go vet ./...
+
+cli: $(CLI-BINARY)
+
+$(CLI-BINARY): $(GO)
+	go build -o $@ ./cmd/$@
 
 
 # Setup rules:

@@ -29,6 +29,7 @@ Before submitting an issue, please:
 - Provide detailed steps to reproduce the issue
 - Include relevant code samples and error messages
 - Specify your Go version and operating system
+- Use the `go-yaml` CLI tool described below
 
 
 ### Pull Requests
@@ -43,6 +44,33 @@ Before submitting an issue, please:
 1. Submit a pull request
 
 
+### Using the `go-yaml` CLI Tool
+
+This tool can be used to inspect both the internal stages and final results of
+YAML processing with the go-yaml library.
+It should be used when reporting most bugs.
+
+The `go-yaml` CLI tool uses the `go-yaml.in/yaml/v4` library to decode and
+encode YAML.
+Decoding YAML is a multi-stage process that involves tokens, events, and nodes.
+The `go-yaml` CLI tool lets you see all of these intermediate stages of the
+decoding process.
+This is crucial for understanding what go-yaml is doing internally.
+
+The `go-yaml` CLI tool can be built with the `make go-yaml` command or installed
+with the `go install go.yaml.in/yaml/v4/cmd/go-yaml@latest` command.
+
+You can learn about all of its options with the `go-yaml -h` command.
+
+Here is an example of using it on a small piece of YAML:
+
+```bash
+./go-yaml -t <<< '
+foo: &a1 bar
+*a1: baz
+```
+
+
 ### Coding Conventions
 
 - Follow standard Go coding conventions
@@ -52,6 +80,7 @@ Before submitting an issue, please:
 - Keep line length to 80 characters
 - Use meaningful variable and function names
 - Start doc and comment sentences on a new line
+- Test your changes with the `go-yaml` CLI tool when working on parsing logic
 
 
 ### Commit Conventions
