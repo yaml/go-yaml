@@ -899,3 +899,131 @@ func formatEvent(e *yamlEvent) string {
 	}
 	return b.String()
 }
+
+// Token represents a YAML token
+type Token struct {
+	Type      string
+	Value     string
+	Style     string
+	StartLine int
+	StartCol  int
+	EndLine   int
+	EndCol    int
+}
+
+// Convert a yamlScalarStyle to a string representation
+func scalarStyleToString(style yamlScalarStyle) string {
+	switch style {
+	case yaml_PLAIN_SCALAR_STYLE:
+		return "Plain"
+	case yaml_SINGLE_QUOTED_SCALAR_STYLE:
+		return "Single"
+	case yaml_DOUBLE_QUOTED_SCALAR_STYLE:
+		return "Double"
+	case yaml_LITERAL_SCALAR_STYLE:
+		return "Literal"
+	case yaml_FOLDED_SCALAR_STYLE:
+		return "Folded"
+	default:
+		return ""
+	}
+}
+
+// Parser provides access to the internal YAML parser
+type Parser struct {
+	parser yamlParser
+	done   bool
+}
+
+// NewParser creates a new YAML parser reading from the given reader
+func NewParser(reader io.Reader) (*Parser, error) {
+	p := &Parser{
+		parser: newYAMLParser(),
+	}
+	p.parser.setInputReader(reader)
+	return p, nil
+}
+
+// Next returns the next token in the YAML stream
+func (p *Parser) Next() (*Token, error) {
+	if p.done {
+		return nil, nil
+	}
+
+	var yamlToken yamlToken
+	if !p.parser.scan(&yamlToken) {
+		if p.parser.error != yaml_NO_ERROR {
+			return nil,
+				fmt.Errorf("parser error: %v", p.parser.problem)
+		}
+		p.done = true
+		return nil, nil
+	}
+
+	token := &Token{
+		StartLine: int(yamlToken.start_mark.line) + 1,
+		StartCol:  int(yamlToken.start_mark.column),
+		EndLine:   int(yamlToken.end_mark.line) + 1,
+		EndCol:    int(yamlToken.end_mark.column),
+	}
+
+	switch yamlToken.typ {
+	case yaml_STREAM_START_TOKEN:
+		token.Type = "STREAM-START"
+	case yaml_STREAM_END_TOKEN:
+		token.Type = "STREAM-END"
+		p.done = true
+	case yaml_DOCUMENT_START_TOKEN:
+		token.Type = "DOCUMENT-START"
+	case yaml_DOCUMENT_END_TOKEN:
+		token.Type = "DOCUMENT-END"
+	case yaml_BLOCK_SEQUENCE_START_TOKEN:
+		token.Type = "BLOCK-SEQUENCE-START"
+	case yaml_BLOCK_MAPPING_START_TOKEN:
+		token.Type = "BLOCK-MAPPING-START"
+	case yaml_BLOCK_END_TOKEN:
+		token.Type = "BLOCK-END"
+	case yaml_FLOW_SEQUENCE_START_TOKEN:
+		token.Type = "FLOW-SEQUENCE-START"
+	case yaml_FLOW_SEQUENCE_END_TOKEN:
+		token.Type = "FLOW-SEQUENCE-END"
+	case yaml_FLOW_MAPPING_START_TOKEN:
+		token.Type = "FLOW-MAPPING-START"
+	case yaml_FLOW_MAPPING_END_TOKEN:
+		token.Type = "FLOW-MAPPING-END"
+	case yaml_BLOCK_ENTRY_TOKEN:
+		token.Type = "BLOCK-ENTRY"
+	case yaml_FLOW_ENTRY_TOKEN:
+		token.Type = "FLOW-ENTRY"
+	case yaml_KEY_TOKEN:
+		token.Type = "KEY"
+	case yaml_VALUE_TOKEN:
+		token.Type = "VALUE"
+	case yaml_ALIAS_TOKEN:
+		token.Type = "ALIAS"
+		token.Value = string(yamlToken.value)
+	case yaml_ANCHOR_TOKEN:
+		token.Type = "ANCHOR"
+		token.Value = string(yamlToken.value)
+	case yaml_TAG_TOKEN:
+		token.Type = "TAG"
+		token.Value = string(yamlToken.value)
+	case yaml_SCALAR_TOKEN:
+		token.Type = "SCALAR"
+		token.Value = string(yamlToken.value)
+		token.Style = scalarStyleToString(yamlToken.style)
+	case yaml_VERSION_DIRECTIVE_TOKEN:
+		token.Type = "VERSION-DIRECTIVE"
+	case yaml_TAG_DIRECTIVE_TOKEN:
+		token.Type = "TAG-DIRECTIVE"
+	default:
+		token.Type = "UNKNOWN"
+	}
+
+	return token, nil
+}
+
+// Close releases the parser resources
+func (p *Parser) Close() {
+	p.parser.delete()
+}
