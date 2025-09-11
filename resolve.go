@@ -198,7 +198,7 @@ func resolve(tag string, in string) (rtag string, out any) {
 				}
 			}
 
-			plain := strings.Replace(in, "_", "", -1)
+			plain := strings.ReplaceAll(in, "_", "")
 			intv, err := strconv.ParseInt(plain, 0, 64)
 			if err == nil {
 				if intv == int64(int(intv)) {

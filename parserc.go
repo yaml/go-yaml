@@ -495,7 +495,8 @@ func (parser *yamlParser) parseNode(event *yamlEvent, block, indentless_sequence
 	var tag_token bool
 	var tag_handle, tag_suffix, anchor []byte
 	var tag_mark yamlMark
-	if token.typ == yaml_ANCHOR_TOKEN {
+	switch token.typ {
+	case yaml_ANCHOR_TOKEN:
 		anchor = token.value
 		start_mark = token.start_mark
 		end_mark = token.end_mark
@@ -516,7 +517,7 @@ func (parser *yamlParser) parseNode(event *yamlEvent, block, indentless_sequence
 				return false
 			}
 		}
-	} else if token.typ == yaml_TAG_TOKEN {
+	case yaml_TAG_TOKEN:
 		tag_token = true
 		tag_handle = token.value
 		tag_suffix = token.suffix
@@ -856,7 +857,8 @@ func (parser *yamlParser) parseBlockMappingKey(event *yamlEvent, first bool) boo
 		return true
 	}
 
-	if token.typ == yaml_KEY_TOKEN {
+	switch token.typ {
+	case yaml_KEY_TOKEN:
 		mark := token.end_mark
 		parser.skipToken()
 		token = parser.peekToken()
@@ -872,7 +874,7 @@ func (parser *yamlParser) parseBlockMappingKey(event *yamlEvent, first bool) boo
 			parser.state = yaml_PARSE_BLOCK_MAPPING_VALUE_STATE
 			return parser.processEmptyScalar(event, mark)
 		}
-	} else if token.typ == yaml_BLOCK_END_TOKEN {
+	case yaml_BLOCK_END_TOKEN:
 		parser.state = parser.states[len(parser.states)-1]
 		parser.states = parser.states[:len(parser.states)-1]
 		parser.marks = parser.marks[:len(parser.marks)-1]
@@ -1197,7 +1199,8 @@ func (parser *yamlParser) processDirectives(version_directive_ref **yamlVersionD
 	}
 
 	for token.typ == yaml_VERSION_DIRECTIVE_TOKEN || token.typ == yaml_TAG_DIRECTIVE_TOKEN {
-		if token.typ == yaml_VERSION_DIRECTIVE_TOKEN {
+		switch token.typ {
+		case yaml_VERSION_DIRECTIVE_TOKEN:
 			if version_directive != nil {
 				parser.setParserError(
 					"found duplicate %YAML directive", token.start_mark)
@@ -1212,7 +1215,7 @@ func (parser *yamlParser) processDirectives(version_directive_ref **yamlVersionD
 				major: token.major,
 				minor: token.minor,
 			}
-		} else if token.typ == yaml_TAG_DIRECTIVE_TOKEN {
+		case yaml_TAG_DIRECTIVE_TOKEN:
 			value := yamlTagDirective{
 				handle: token.value,
 				prefix: token.prefix,

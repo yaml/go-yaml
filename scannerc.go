@@ -1294,7 +1294,8 @@ func (parser *yamlParser) fetchBlockEntry() bool {
 		if !parser.rollIndent(parser.mark.column, -1, yaml_BLOCK_SEQUENCE_START_TOKEN, parser.mark) {
 			return false
 		}
-	} else {
+	} else { //nolint:staticcheck // there is no problem with this empty branch as it's documentation.
+
 		// It is an error for the '-' indicator to occur in the flow context,
 		// but we let the Parser detect and report about it because the Parser
 		// is able to point to the context.

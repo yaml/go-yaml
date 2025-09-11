@@ -1,3 +1,7 @@
+// Package assert provides assertion functions for tests.
+// This is an internal package that was created to provide a simple way to write tests.
+//
+// The idea was to do not add a dependency on a testing framework.
 package assert
 
 import (
@@ -21,12 +25,17 @@ func formatSuffix(msgFormat string, args ...any) string {
 	return " - " + fmt.Sprintf(msgFormat, args...)
 }
 
-// Comparable types (numbers, strings, pointers to the same object, etc.).
+// Equal asserts that two values are equal.
+//
+// It can be used with comparable types: numbers, strings, pointers to the same object, etc.
+//
+// For any other types, use [DeepEqual].
 func Equal(tb miniTB, want, got any) {
 	tb.Helper()
 	Equalf(tb, want, got, "")
 }
 
+// Equalf asserts that two values are equal, and reports a message if they are not.
 func Equalf(tb miniTB, want, got any, msgFormat string, args ...any) {
 	tb.Helper()
 	if got != want {
@@ -35,12 +44,17 @@ func Equalf(tb miniTB, want, got any, msgFormat string, args ...any) {
 	}
 }
 
-// Anything else (slices, maps, structs with slices...).
+// DeepEqual asserts that two values are deeply equal.
+//
+// It can be used with slices, maps, structs with slices...
+//
+// Please consider [Equal] for other types.
 func DeepEqual(tb miniTB, want, got any) {
 	tb.Helper()
 	DeepEqualf(tb, want, got, "")
 }
 
+// DeepEqualf asserts that two values are deeply equal, and reports a message if they are not.
 func DeepEqualf(tb miniTB, want, got any, msgFormat string, args ...any) {
 	tb.Helper()
 	if !reflect.DeepEqual(got, want) {
@@ -49,11 +63,13 @@ func DeepEqualf(tb miniTB, want, got any, msgFormat string, args ...any) {
 	}
 }
 
+// ErrorMatches asserts that an error matches a regular expression.
 func ErrorMatches(tb miniTB, pattern string, err error) {
 	tb.Helper()
 	ErrorMatchesf(tb, pattern, err, "")
 }
 
+// ErrorMatchesf asserts that an error matches a regular expression, and reports a message if it does not.
 func ErrorMatchesf(tb miniTB, pattern string, err error, msgFormat string, args ...any) {
 	tb.Helper()
 	if err == nil {
@@ -73,6 +89,7 @@ func ErrorMatchesf(tb miniTB, pattern string, err error, msgFormat string, args 
 	}
 }
 
+// ErrorIs asserts that two errors are equal by using [errors.Is].
 func ErrorIs(tb miniTB, got, want error) {
 	tb.Helper()
 	if !errors.Is(got, want) {
@@ -80,7 +97,7 @@ func ErrorIs(tb miniTB, got, want error) {
 	}
 }
 
-// errorAsNoPanic calls errors.As, but catch possible panic and returns it as an error
+// errorAsNoPanic calls [errors.As], but catch possible panic and returns it as an error
 func errorAsNoPanic(tb miniTB, err error, target interface{}) (ok bool, panic error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -93,6 +110,7 @@ func errorAsNoPanic(tb miniTB, err error, target interface{}) (ok bool, panic er
 	return errors.As(err, target), nil
 }
 
+// ErrorAs asserts that an error can be assigned to a target variable by using [errors.As].
 func ErrorAs(tb miniTB, err error, target interface{}) {
 	tb.Helper()
 
@@ -115,11 +133,13 @@ func ErrorAs(tb miniTB, err error, target interface{}) {
 	tb.Fatalf("got %#v; want %s", err, reflectedType.Elem())
 }
 
+// NoError asserts that an error is nil.
 func NoError(tb miniTB, err error) {
 	tb.Helper()
 	NoErrorf(tb, err, "")
 }
 
+// NoErrorf asserts that an error is nil, and reports a message if it is not.
 func NoErrorf(tb miniTB, err error, msgFormat string, args ...any) {
 	tb.Helper()
 	if err != nil {
@@ -128,11 +148,13 @@ func NoErrorf(tb miniTB, err error, msgFormat string, args ...any) {
 	}
 }
 
+// IsNil asserts that a value is nil.
 func IsNil(tb miniTB, v any) {
 	tb.Helper()
 	IsNilf(tb, v, "")
 }
 
+// IsNilf asserts that a value is nil, and reports a message if it is not.
 func IsNilf(tb miniTB, v any, msgFormat string, args ...any) {
 	tb.Helper()
 	if !isNil(v) {
@@ -141,11 +163,13 @@ func IsNilf(tb miniTB, v any, msgFormat string, args ...any) {
 	}
 }
 
+// NotNil asserts that a value is not nil.
 func NotNil(tb miniTB, v any) {
 	tb.Helper()
 	NotNilf(tb, v, "")
 }
 
+// NotNilf asserts that a value is not nil, and reports a message if it is.
 func NotNilf(tb miniTB, v any, msgFormat string, args ...any) {
 	tb.Helper()
 	if isNil(v) {
@@ -154,11 +178,13 @@ func NotNilf(tb miniTB, v any, msgFormat string, args ...any) {
 	}
 }
 
+// True asserts that a value is true.
 func True(tb miniTB, got bool) {
 	tb.Helper()
 	Truef(tb, got, "")
 }
 
+// Truef asserts that a value is true, and reports a message if it is not.
 func Truef(tb miniTB, got bool, msgFormat string, args ...any) {
 	tb.Helper()
 	if !got {
@@ -167,11 +193,13 @@ func Truef(tb miniTB, got bool, msgFormat string, args ...any) {
 	}
 }
 
+// False asserts that a value is false.
 func False(tb miniTB, got bool) {
 	tb.Helper()
 	Falsef(tb, got, "")
 }
 
+// Falsef asserts that a value is false, and reports a message if it is not.
 func Falsef(tb miniTB, got bool, msgFormat string, args ...any) {
 	tb.Helper()
 	if got {
@@ -180,11 +208,14 @@ func Falsef(tb miniTB, got bool, msgFormat string, args ...any) {
 	}
 }
 
+// PanicMatches asserts that a function panics with a message matching the given pattern.
 func PanicMatches(tb miniTB, pattern string, f func()) {
 	tb.Helper()
 	PanicMatchesf(tb, pattern, f, "")
 }
 
+// PanicMatchesf asserts that a function panics with a message matching the given pattern,
+// and reports a message if it does not.
 func PanicMatchesf(tb miniTB, pattern string, f func(), msgFormat string, args ...any) {
 	tb.Helper()
 	var pan any

@@ -120,6 +120,8 @@ func (parser *yamlParser) updateBuffer(length int) bool {
 	// for that to be the case, and there are tests
 
 	// If the EOF flag is set and the raw buffer is empty, do nothing.
+	//
+	//nolint:staticcheck // there is no problem with this empty branch as it's documentation.
 	if parser.eof && parser.raw_buffer_pos == len(parser.raw_buffer) {
 		// [Go] ACTUALLY! Read the documentation of this function above.
 		// This is just broken. To return true, we need to have the

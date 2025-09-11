@@ -1502,12 +1502,12 @@ func TestObsoleteUnmarshalerTypeErrorProxying(t *testing.T) {
 	assert.ErrorMatches(t, expectedError, err)
 }
 
-var failingErr = errors.New("failingErr")
+var errFailing = errors.New("failingErr")
 
 type failingUnmarshaler struct{}
 
 func (ft *failingUnmarshaler) UnmarshalYAML(node *yaml.Node) error {
-	return failingErr
+	return errFailing
 }
 
 func TestUnmarshalerError(t *testing.T) {
@@ -1520,7 +1520,7 @@ func TestUnmarshalerError(t *testing.T) {
 	err := yaml.Unmarshal([]byte(data), &dst)
 	expectedErr := &yaml.TypeError{
 		Errors: []*yaml.UnmarshalError{
-			{Line: 1, Column: 17, Err: failingErr},
+			{Line: 1, Column: 17, Err: errFailing},
 		},
 	}
 	assert.DeepEqual(t, expectedErr, err)
@@ -1533,7 +1533,7 @@ func TestUnmarshalerError(t *testing.T) {
 type obsoleteFailingUnmarshaler struct{}
 
 func (ft *obsoleteFailingUnmarshaler) UnmarshalYAML(unmarshal func(any) error) error {
-	return failingErr
+	return errFailing
 }
 
 func TestObsoleteUnmarshalerError(t *testing.T) {
@@ -1546,7 +1546,7 @@ func TestObsoleteUnmarshalerError(t *testing.T) {
 	err := yaml.Unmarshal([]byte(data), &dst)
 	expectedErr := &yaml.TypeError{
 		Errors: []*yaml.UnmarshalError{
-			{Line: 1, Column: 17, Err: failingErr},
+			{Line: 1, Column: 17, Err: errFailing},
 		},
 	}
 	assert.DeepEqual(t, expectedErr, err)
@@ -1561,7 +1561,7 @@ type failingTextUnmarshaler struct{}
 var _ encoding.TextUnmarshaler = &failingTextUnmarshaler{}
 
 func (ft *failingTextUnmarshaler) UnmarshalText(b []byte) error {
-	return failingErr
+	return errFailing
 }
 
 func TestTextUnmarshalerError(t *testing.T) {
@@ -1574,7 +1574,7 @@ func TestTextUnmarshalerError(t *testing.T) {
 	err := yaml.Unmarshal([]byte(data), &dst)
 	expectedErr := &yaml.TypeError{
 		Errors: []*yaml.UnmarshalError{
-			{Line: 1, Column: 17, Err: failingErr},
+			{Line: 1, Column: 17, Err: errFailing},
 		},
 	}
 	assert.DeepEqual(t, expectedErr, err)
@@ -1858,8 +1858,8 @@ var unmarshalNullTests = []struct {
 	pristine, expected func() any
 }{{
 	"null",
-	func() any { var v any; v = "v"; return &v },
-	func() any { var v any; v = nil; return &v },
+	func() any { var v any = "v"; return &v },
+	func() any { var v any = nil; return &v },
 }, {
 	"null",
 	func() any { s := "s"; return &s },

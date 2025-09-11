@@ -363,8 +363,8 @@ func newMappingEndEvent() yamlEvent {
 }
 
 // Destroy an event object.
-func (event *yamlEvent) delete() {
-	*event = yamlEvent{}
+func (e *yamlEvent) delete() {
+	*e = yamlEvent{}
 }
 
 ///*

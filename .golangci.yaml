@@ -6,18 +6,11 @@ linters:
   - govet
   - misspell
   - nolintlint
+  - staticcheck
   disable:
   - errcheck
   - ineffassign
-  - staticcheck
   - unused
-  exclusions:
-    generated: lax
-    presets:
-    - comments
-    - common-false-positives
-    - legacy
-    - std-error-handling
   settings:
     dupword:
       ignore:
@@ -35,12 +28,17 @@ linters:
       disable:
       - fieldalignment
       - shadow
+    staticcheck:
+      checks:
+      # enable all rules
+      - all
+      # disable some of them
+      - -QF1001  # De Morgan's laws is too opinionated.
+      - -ST1003  # The codebase has too many underscores in identifiers for now.
 
 formatters:
   enable:
   - gofumpt
-  exclusions:
-    generated: lax
 
 issues:
   max-issues-per-linter: 0

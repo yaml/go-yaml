@@ -732,12 +732,12 @@ func TestMarshalerWholeDocument(t *testing.T) {
 type failingMarshaler struct{}
 
 func (ft *failingMarshaler) MarshalYAML() (any, error) {
-	return nil, failingErr
+	return nil, errFailing
 }
 
 func TestMarshalerError(t *testing.T) {
 	_, err := yaml.Marshal(&failingMarshaler{})
-	assert.ErrorIs(t, failingErr, err)
+	assert.ErrorIs(t, errFailing, err)
 }
 
 func TestSetIndent(t *testing.T) {
