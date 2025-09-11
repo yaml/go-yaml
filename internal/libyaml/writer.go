@@ -24,7 +24,7 @@ package libyaml
 
 // Set the writer error and return false.
 func (emitter *Emitter) setWriterError(problem string) bool {
-	emitter.error = WRITER_ERROR
+	emitter.ErrorType = WRITER_ERROR
 	emitter.Problem = problem
 	return false
 }

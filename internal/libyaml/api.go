@@ -45,7 +45,7 @@ func (parser *Parser) insertToken(pos int, token *Token) {
 	parser.tokens[parser.tokens_head+pos] = *token
 }
 
-// Create a new parser object.
+// NewParser creates a new parser object.
 func NewParser() Parser {
 	return Parser{
 		raw_buffer: make([]byte, 0, input_raw_buffer_size),
@@ -53,7 +53,7 @@ func NewParser() Parser {
 	}
 }
 
-// Destroy a parser object.
+// Delete a parser object.
 func (parser *Parser) Delete() {
 	*parser = Parser{}
 }
@@ -73,7 +73,7 @@ func yamlReaderReadHandler(parser *Parser, buffer []byte) (n int, err error) {
 	return parser.input_reader.Read(buffer)
 }
 
-// Set a string input.
+// SetInputString sets a string input.
 func (parser *Parser) SetInputString(input []byte) {
 	if parser.read_handler != nil {
 		panic("must set the input source only once")
@@ -83,7 +83,7 @@ func (parser *Parser) SetInputString(input []byte) {
 	parser.input_pos = 0
 }
 
-// Set a file input.
+// SetInputReader sets a file input.
 func (parser *Parser) SetInputReader(r io.Reader) {
 	if parser.read_handler != nil {
 		panic("must set the input source only once")
@@ -92,7 +92,7 @@ func (parser *Parser) SetInputReader(r io.Reader) {
 	parser.input_reader = r
 }
 
-// Set the source encoding.
+// SetEncoding sets the source encoding.
 func (parser *Parser) SetEncoding(encoding Encoding) {
 	if parser.encoding != ANY_ENCODING {
 		panic("must set the encoding only once")
@@ -100,7 +100,7 @@ func (parser *Parser) SetEncoding(encoding Encoding) {
 	parser.encoding = encoding
 }
 
-// Create a new emitter object.
+// NewEmitter creates a new emitter object.
 func NewEmitter() Emitter {
 	return Emitter{
 		buffer:     make([]byte, output_buffer_size),
@@ -111,7 +111,7 @@ func NewEmitter() Emitter {
 	}
 }
 
-// Destroy an emitter object.
+// Delete an emitter object.
 func (emitter *Emitter) Delete() {
 	*emitter = Emitter{}
 }
@@ -129,7 +129,7 @@ func yamlWriterWriteHandler(emitter *Emitter, buffer []byte) error {
 	return err
 }
 
-// Set a string output.
+// SetOutputString sets a string output.
 func (emitter *Emitter) SetOutputString(output_buffer *[]byte) {
 	if emitter.write_handler != nil {
 		panic("must set the output target only once")
@@ -138,7 +138,7 @@ func (emitter *Emitter) SetOutputString(output_buffer *[]byte) {
 	emitter.output_buffer = output_buffer
 }
 
-// Set a file output.
+// SetOutputWriter sets a file output.
 func (emitter *Emitter) SetOutputWriter(w io.Writer) {
 	if emitter.write_handler != nil {
 		panic("must set the output target only once")
@@ -147,7 +147,7 @@ func (emitter *Emitter) SetOutputWriter(w io.Writer) {
 	emitter.output_writer = w
 }
 
-// Set the output encoding.
+// SetEncoding sets the output encoding.
 func (emitter *Emitter) SetEncoding(encoding Encoding) {
 	if emitter.encoding != ANY_ENCODING {
 		panic("must set the output encoding only once")
@@ -155,20 +155,20 @@ func (emitter *Emitter) SetEncoding(encoding Encoding) {
 	emitter.encoding = encoding
 }
 
-// Set the canonical output style.
+// SetCanonical sets the canonical output style.
 func (emitter *Emitter) SetCanonical(canonical bool) {
 	emitter.canonical = canonical
 }
 
-// Set the indentation increment.
+// SetIndent sets the indentation increment.
 func (emitter *Emitter) SetIndent(indent int) {
 	if indent < 2 || indent > 9 {
 		indent = 2
 	}
-	emitter.Best_indent = indent
+	emitter.BestIndent = indent
 }
 
-// Set the preferred line width.
+// SetWidth sets the preferred line width.
 func (emitter *Emitter) SetWidth(width int) {
 	if width < 0 {
 		width = -1
@@ -176,12 +176,12 @@ func (emitter *Emitter) SetWidth(width int) {
 	emitter.best_width = width
 }
 
-// Set if unescaped non-ASCII characters are allowed.
+// SetUnicode sets if unescaped non-ASCII characters are allowed.
 func (emitter *Emitter) SetUnicode(unicode bool) {
 	emitter.unicode = unicode
 }
 
-// Set the preferred line break character.
+// SetLineBreak sets the preferred line break character.
 func (emitter *Emitter) SetLineBreak(line_break LineBreak) {
 	emitter.line_break = line_break
 }
@@ -272,51 +272,51 @@ func (emitter *Emitter) SetLineBreak(line_break LineBreak) {
 //}
 //
 
-// Create STREAM-START.
+// NewStreamStartEvent creates a new STREAM-START event.
 func NewStreamStartEvent(encoding Encoding) Event {
 	return Event{
-		Typ:      STREAM_START_EVENT,
+		Type:     STREAM_START_EVENT,
 		encoding: encoding,
 	}
 }
 
-// Create STREAM-END.
+// NewStreamEndEvent creates a new STREAM-END event.
 func NewStreamEndEvent() Event {
 	return Event{
-		Typ: STREAM_END_EVENT,
+		Type: STREAM_END_EVENT,
 	}
 }
 
-// Create DOCUMENT-START.
+// NewDocumentStartEvent creates a new DOCUMENT-START event.
 func NewDocumentStartEvent(version_directive *VersionDirective, tag_directives []TagDirective, implicit bool) Event {
 	return Event{
-		Typ:               DOCUMENT_START_EVENT,
+		Type:              DOCUMENT_START_EVENT,
 		version_directive: version_directive,
 		tag_directives:    tag_directives,
 		Implicit:          implicit,
 	}
 }
 
-// Create DOCUMENT-END.
+// NewDocumentEndEvent creates a new DOCUMENT-END event.
 func NewDocumentEndEvent(implicit bool) Event {
 	return Event{
-		Typ:      DOCUMENT_END_EVENT,
+		Type:     DOCUMENT_END_EVENT,
 		Implicit: implicit,
 	}
 }
 
-// Create ALIAS.
+// NewAliasEvent creates a new ALIAS event.
 func NewAliasEvent(anchor []byte) Event {
 	return Event{
-		Typ:    ALIAS_EVENT,
+		Type:   ALIAS_EVENT,
 		Anchor: anchor,
 	}
 }
 
-// Create SCALAR.
+// NewScalarEvent creates a new SCALAR event.
 func NewScalarEvent(anchor, tag, value []byte, plain_implicit, quoted_implicit bool, style ScalarStyle) Event {
 	return Event{
-		Typ:             SCALAR_EVENT,
+		Type:            SCALAR_EVENT,
 		Anchor:          anchor,
 		Tag:             tag,
 		Value:           value,
@@ -326,10 +326,10 @@ func NewScalarEvent(anchor, tag, value []byte, plain_implicit, quoted_implicit b
 	}
 }
 
-// Create SEQUENCE-START.
+// NewSequenceStartEvent creates a new SEQUENCE-START event.
 func NewSequenceStartEvent(anchor, tag []byte, implicit bool, style SequenceStyle) Event {
 	return Event{
-		Typ:      SEQUENCE_START_EVENT,
+		Type:     SEQUENCE_START_EVENT,
 		Anchor:   anchor,
 		Tag:      tag,
 		Implicit: implicit,
@@ -337,17 +337,17 @@ func NewSequenceStartEvent(anchor, tag []byte, implicit bool, style SequenceStyl
 	}
 }
 
-// Create SEQUENCE-END.
+// NewSequenceEndEvent creates a new SEQUENCE-END event.
 func NewSequenceEndEvent() Event {
 	return Event{
-		Typ: SEQUENCE_END_EVENT,
+		Type: SEQUENCE_END_EVENT,
 	}
 }
 
-// Create MAPPING-START.
+// NewMappingStartEvent creates a new MAPPING-START event.
 func NewMappingStartEvent(anchor, tag []byte, implicit bool, style MappingStyle) Event {
 	return Event{
-		Typ:      MAPPING_START_EVENT,
+		Type:     MAPPING_START_EVENT,
 		Anchor:   anchor,
 		Tag:      tag,
 		Implicit: implicit,
@@ -355,16 +355,16 @@ func NewMappingStartEvent(anchor, tag []byte, implicit bool, style MappingStyle)
 	}
 }
 
-// Create MAPPING-END.
+// NewMappingEndEvent creates a new MAPPING-END event.
 func NewMappingEndEvent() Event {
 	return Event{
-		Typ: MAPPING_END_EVENT,
+		Type: MAPPING_END_EVENT,
 	}
 }
 
-// Destroy an event object.
-func (event *Event) Delete() {
-	*event = Event{}
+// Delete an event object.
+func (e *Event) Delete() {
+	*e = Event{}
 }
 
 ///*

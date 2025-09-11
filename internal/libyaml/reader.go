@@ -28,10 +28,10 @@ import (
 
 // Set the reader error and return 0.
 func (parser *Parser) setReaderError(problem string, offset int, value int) bool {
-	parser.Err = READER_ERROR
+	parser.ErrorType = READER_ERROR
 	parser.Problem = problem
-	parser.Problem_offset = offset
-	parser.Problem_value = value
+	parser.ProblemOffset = offset
+	parser.ProblemValue = value
 	return false
 }
 
