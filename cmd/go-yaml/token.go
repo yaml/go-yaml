@@ -149,7 +149,7 @@ func processTokensDecode(profuse, compact bool) error {
 
 // processTokensWithParser uses the internal parser for token processing
 func processTokensWithParser(profuse, compact bool) error {
-	p, err := yaml.NewParser(os.Stdin)
+	p, err := NewParser(os.Stdin)
 	if err != nil {
 		return fmt.Errorf("failed to create parser: %w", err)
 	}
@@ -164,18 +164,7 @@ func processTokensWithParser(profuse, compact bool) error {
 			break
 		}
 
-		// Convert parser token to our token format
-		ourToken := &Token{
-			Type:        token.Type,
-			Value:       token.Value,
-			Style:       token.Style,
-			StartLine:   token.StartLine,
-			StartColumn: token.StartCol,
-			EndLine:     token.EndLine,
-			EndColumn:   token.EndCol,
-		}
-
-		info := formatTokenInfo(ourToken, profuse)
+		info := formatTokenInfo(token, profuse)
 
 		if compact {
 			// For compact mode, output each token as a flow style mapping in a sequence
@@ -247,7 +236,7 @@ func processTokensWithParser(profuse, compact bool) error {
 	return nil
 }
 
-// processTokensUnmarshal uses yaml.Unmarshal for YAML processing
+// processTokensUnmarshal uses [yaml.Unmarshal] for YAML processing
 func processTokensUnmarshal(profuse, compact bool) error {
 	// Read all input from stdin
 	input, err := io.ReadAll(os.Stdin)
@@ -364,7 +353,7 @@ func processTokensUnmarshal(profuse, compact bool) error {
 	return nil
 }
 
-// formatTokenInfo converts a Token to a TokenInfo struct for YAML encoding
+// formatTokenInfo converts a [Token] to a [TokenInfo] struct for YAML encoding
 func formatTokenInfo(token *Token, profuse bool) *TokenInfo {
 	info := &TokenInfo{
 		Token: token.Type,

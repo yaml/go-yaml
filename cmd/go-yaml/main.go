@@ -1,4 +1,4 @@
-// Package main provides a YAML node inspection tool that reads YAML from stdin
+// This binary provides a YAML node inspection tool that reads YAML from stdin
 // and outputs a detailed analysis of its node structure, including comments
 // and content organization.
 
