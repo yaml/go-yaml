@@ -27,13 +27,13 @@ import (
 	"io"
 )
 
-// The version directive data.
+// VersionDirective holds the YAML version directive data.
 type VersionDirective struct {
 	major int8 // The major version number.
 	minor int8 // The minor version number.
 }
 
-// The tag directive data.
+// TagDirective holds the YAML tag directive data.
 type TagDirective struct {
 	handle []byte // The tag handle.
 	prefix []byte // The tag prefix.
@@ -79,7 +79,7 @@ const (
 	EMITTER_ERROR  // Cannot emit a YAML stream.
 )
 
-// The pointer position.
+// Mark holds the pointer position.
 type Mark struct {
 	Index  int // The position index.
 	Line   int // The position line.
@@ -213,7 +213,7 @@ func (tt TokenType) String() string {
 	return "<unknown token>"
 }
 
-// The token structure.
+// Token holds information about a scanning token.
 type Token struct {
 	// The token type.
 	typ TokenType
@@ -285,13 +285,13 @@ func (e EventType) String() string {
 	return eventStrings[e]
 }
 
-// The event structure.
+// Event holds information about a parsing or emitting event.
 type Event struct {
 	// The event type.
-	Typ EventType
+	Type EventType
 
 	// The start and end of the event.
-	Start_mark, End_mark Mark
+	StartMark, EndMark Mark
 
 	// The document encoding (for STREAM_START_EVENT).
 	encoding Encoding
@@ -303,10 +303,10 @@ type Event struct {
 	tag_directives []TagDirective
 
 	// The comments
-	Head_comment []byte
-	Line_comment []byte
-	Foot_comment []byte
-	Tail_comment []byte
+	HeadComment []byte
+	LineComment []byte
+	FootComment []byte
+	TailComment []byte
 
 	// The Anchor (for SCALAR_EVENT, SEQUENCE_START_EVENT, MAPPING_START_EVENT, ALIAS_EVENT).
 	Anchor []byte
@@ -366,16 +366,16 @@ const (
 	MAPPING_NODE  // A mapping node.
 )
 
-// An element of a sequence node.
+// NodeItem represents an element of a sequence node.
 type NodeItem int
 
-// An element of a mapping node.
+// NodePair represents an element of a mapping node.
 type NodePair struct {
 	key   int // The key of the element.
 	value int // The value of the element.
 }
 
-// The node structure.
+// Node represents a single node in the YAML document tree.
 type Node struct {
 	typ NodeType // The node type.
 	tag []byte   // The node tag.
@@ -408,7 +408,7 @@ type Node struct {
 	end_mark   Mark // The end of the node.
 }
 
-// The document structure.
+// Document structure.
 type Document struct {
 	// The document nodes.
 	nodes []Node
@@ -428,9 +428,7 @@ type Document struct {
 	start_mark, end_mark Mark
 }
 
-// The prototype of a read handler.
-//
-// The read handler is called when the parser needs to read more bytes from the
+// ReadHandler is called when the [Parser] needs to read more bytes from the
 // source. The handler should write not more than size bytes to the buffer.
 // The number of written bytes should be set to the size_read variable.
 //
@@ -447,7 +445,7 @@ type Document struct {
 // size_read to 0 and return 1.
 type ReadHandler func(parser *Parser, buffer []byte) (n int, err error)
 
-// This structure holds information about a potential simple key.
+// SimpleKey holds information about a potential simple key.
 type SimpleKey struct {
 	possible     bool // Is a simple key possible?
 	required     bool // Is a simple key required?
@@ -455,7 +453,7 @@ type SimpleKey struct {
 	mark         Mark // The position mark.
 }
 
-// The states of the parser.
+// ParserState represents the state of the parser.
 type ParserState int
 
 const (
@@ -540,31 +538,30 @@ func (ps ParserState) String() string {
 	return "<unknown parser state>"
 }
 
-// This structure holds aliases data.
+// AliasData holds information about aliases.
 type AliasData struct {
 	anchor []byte // The anchor.
 	index  int    // The node id.
 	mark   Mark   // The anchor mark.
 }
 
-// The parser structure.
-//
-// All members are internal.
+// Parser structure holds all information about the current
+// state of the parser.
 type Parser struct {
 	// Error handling
 
-	Err ErrorType // Error type.
+	ErrorType ErrorType // Error type.
 
 	Problem string // Error description.
 
 	// The byte about which the problem occurred.
-	Problem_offset int
-	Problem_value  int
-	Problem_mark   Mark
+	ProblemOffset int
+	ProblemValue  int
+	ProblemMark   Mark
 
 	// The error Context.
-	Context      string
-	Context_mark Mark
+	Context     string
+	ContextMark Mark
 
 	// Reader stuff
 
@@ -648,9 +645,7 @@ type Comment struct {
 
 // Emitter Definitions
 
-// The prototype of a write handler.
-//
-// The write handler is called when the emitter needs to flush the accumulated
+// WriteHandler is called when the [Emitter] needs to flush the accumulated
 // characters to the output.  The handler should write @a size bytes of the
 // @a buffer to the output.
 //
@@ -693,14 +688,12 @@ const (
 	EMIT_END_STATE                        // Expect nothing.
 )
 
-// The emitter structure.
-//
-// All members are internal.
+// Emitter holds all information about the current state of the emitter.
 type Emitter struct {
 	// Error handling
 
-	error   ErrorType // Error type.
-	Problem string    // Error description.
+	ErrorType ErrorType // Error type.
+	Problem   string    // Error description.
 
 	// Writer stuff
 
@@ -719,11 +712,11 @@ type Emitter struct {
 
 	// Emitter stuff
 
-	canonical   bool      // If the output is in the canonical style?
-	Best_indent int       // The number of indentation spaces.
-	best_width  int       // The preferred width of the output lines.
-	unicode     bool      // Allow unescaped non-ASCII characters?
-	line_break  LineBreak // The preferred line break.
+	canonical  bool      // If the output is in the canonical style?
+	BestIndent int       // The number of indentation spaces.
+	best_width int       // The preferred width of the output lines.
+	unicode    bool      // Allow unescaped non-ASCII characters?
+	line_break LineBreak // The preferred line break.
 
 	state  EmitterState   // The current emitter state.
 	states []EmitterState // The stack of states.
@@ -737,7 +730,7 @@ type Emitter struct {
 
 	indent int // The current indentation level.
 
-	Compact_sequence_indent bool // Is '- ' is considered part of the indentation for sequence elements?
+	CompactSequenceIndent bool // Is '- ' is considered part of the indentation for sequence elements?
 
 	flow_level int // The current flow level.
 
@@ -750,7 +743,7 @@ type Emitter struct {
 	column     int  // The current column.
 	whitespace bool // If the last character was a whitespace?
 	indention  bool // If the last character was an indentation character (' ', '-', '?', ':')?
-	Open_ended bool // If an explicit document end is required?
+	OpenEnded  bool // If an explicit document end is required?
 
 	space_above bool // Is there's an empty line above?
 	foot_indent int  // The indent used to write the foot comment above, or -1 if none.
@@ -779,10 +772,10 @@ type Emitter struct {
 	}
 
 	// Comments
-	Head_comment []byte
-	Line_comment []byte
-	Foot_comment []byte
-	Tail_comment []byte
+	HeadComment []byte
+	LineComment []byte
+	FootComment []byte
+	TailComment []byte
 
 	key_line_comment []byte
 

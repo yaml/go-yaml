@@ -115,13 +115,13 @@ func (parser *Parser) skipToken() {
 	parser.tokens_head++
 }
 
-// Get the next event.
+// Parse gets the next event.
 func (parser *Parser) Parse(event *Event) bool {
 	// Erase the event object.
 	*event = Event{}
 
 	// No events after the end of the stream or error.
-	if parser.stream_end_produced || parser.Err != NO_ERROR || parser.state == PARSE_END_STATE {
+	if parser.stream_end_produced || parser.ErrorType != NO_ERROR || parser.state == PARSE_END_STATE {
 		return true
 	}
 
@@ -131,18 +131,18 @@ func (parser *Parser) Parse(event *Event) bool {
 
 // Set parser error.
 func (parser *Parser) setParserError(problem string, problem_mark Mark) bool {
-	parser.Err = PARSER_ERROR
+	parser.ErrorType = PARSER_ERROR
 	parser.Problem = problem
-	parser.Problem_mark = problem_mark
+	parser.ProblemMark = problem_mark
 	return false
 }
 
 func (parser *Parser) setParserErrorContext(context string, context_mark Mark, problem string, problem_mark Mark) bool {
-	parser.Err = PARSER_ERROR
+	parser.ErrorType = PARSER_ERROR
 	parser.Context = context
-	parser.Context_mark = context_mark
+	parser.ContextMark = context_mark
 	parser.Problem = problem
-	parser.Problem_mark = problem_mark
+	parser.ProblemMark = problem_mark
 	return false
 }
 
@@ -239,10 +239,10 @@ func (parser *Parser) parseStreamStart(event *Event) bool {
 	}
 	parser.state = PARSE_IMPLICIT_DOCUMENT_START_STATE
 	*event = Event{
-		Typ:        STREAM_START_EVENT,
-		Start_mark: token.start_mark,
-		End_mark:   token.end_mark,
-		encoding:   token.encoding,
+		Type:      STREAM_START_EVENT,
+		StartMark: token.start_mark,
+		EndMark:   token.end_mark,
+		encoding:  token.encoding,
 	}
 	parser.skipToken()
 	return true
@@ -305,11 +305,11 @@ func (parser *Parser) parseDocumentStart(event *Event, implicit bool) bool {
 		}
 
 		*event = Event{
-			Typ:        DOCUMENT_START_EVENT,
-			Start_mark: token.start_mark,
-			End_mark:   token.end_mark,
+			Type:      DOCUMENT_START_EVENT,
+			StartMark: token.start_mark,
+			EndMark:   token.end_mark,
 
-			Head_comment: head_comment,
+			HeadComment: head_comment,
 		}
 
 	} else if token.typ != STREAM_END_TOKEN {
@@ -334,9 +334,9 @@ func (parser *Parser) parseDocumentStart(event *Event, implicit bool) bool {
 		end_mark := token.end_mark
 
 		*event = Event{
-			Typ:               DOCUMENT_START_EVENT,
-			Start_mark:        start_mark,
-			End_mark:          end_mark,
+			Type:              DOCUMENT_START_EVENT,
+			StartMark:         start_mark,
+			EndMark:           end_mark,
 			version_directive: version_directive,
 			tag_directives:    tag_directives,
 			Implicit:          false,
@@ -347,9 +347,9 @@ func (parser *Parser) parseDocumentStart(event *Event, implicit bool) bool {
 		// Parse the stream end.
 		parser.state = PARSE_END_STATE
 		*event = Event{
-			Typ:        STREAM_END_EVENT,
-			Start_mark: token.start_mark,
-			End_mark:   token.end_mark,
+			Type:      STREAM_END_EVENT,
+			StartMark: token.start_mark,
+			EndMark:   token.end_mark,
 		}
 		parser.skipToken()
 	}
@@ -406,23 +406,23 @@ func (parser *Parser) parseDocumentEnd(event *Event) bool {
 
 	parser.state = PARSE_DOCUMENT_START_STATE
 	*event = Event{
-		Typ:        DOCUMENT_END_EVENT,
-		Start_mark: start_mark,
-		End_mark:   end_mark,
-		Implicit:   implicit,
+		Type:      DOCUMENT_END_EVENT,
+		StartMark: start_mark,
+		EndMark:   end_mark,
+		Implicit:  implicit,
 	}
 	parser.setEventComments(event)
-	if len(event.Head_comment) > 0 && len(event.Foot_comment) == 0 {
-		event.Foot_comment = event.Head_comment
-		event.Head_comment = nil
+	if len(event.HeadComment) > 0 && len(event.FootComment) == 0 {
+		event.FootComment = event.HeadComment
+		event.HeadComment = nil
 	}
 	return true
 }
 
 func (parser *Parser) setEventComments(event *Event) {
-	event.Head_comment = parser.head_comment
-	event.Line_comment = parser.line_comment
-	event.Foot_comment = parser.foot_comment
+	event.HeadComment = parser.head_comment
+	event.LineComment = parser.line_comment
+	event.FootComment = parser.foot_comment
 	parser.head_comment = nil
 	parser.line_comment = nil
 	parser.foot_comment = nil
@@ -479,10 +479,10 @@ func (parser *Parser) parseNode(event *Event, block, indentless_sequence bool) b
 		parser.state = parser.states[len(parser.states)-1]
 		parser.states = parser.states[:len(parser.states)-1]
 		*event = Event{
-			Typ:        ALIAS_EVENT,
-			Start_mark: token.start_mark,
-			End_mark:   token.end_mark,
-			Anchor:     token.value,
+			Type:      ALIAS_EVENT,
+			StartMark: token.start_mark,
+			EndMark:   token.end_mark,
+			Anchor:    token.value,
 		}
 		parser.setEventComments(event)
 		parser.skipToken()
@@ -495,7 +495,8 @@ func (parser *Parser) parseNode(event *Event, block, indentless_sequence bool) b
 	var tag_token bool
 	var tag_handle, tag_suffix, anchor []byte
 	var tag_mark Mark
-	if token.typ == ANCHOR_TOKEN {
+	switch token.typ {
+	case ANCHOR_TOKEN:
 		anchor = token.value
 		start_mark = token.start_mark
 		end_mark = token.end_mark
@@ -516,7 +517,7 @@ func (parser *Parser) parseNode(event *Event, block, indentless_sequence bool) b
 				return false
 			}
 		}
-	} else if token.typ == TAG_TOKEN {
+	case TAG_TOKEN:
 		tag_token = true
 		tag_handle = token.value
 		tag_suffix = token.suffix
@@ -565,13 +566,13 @@ func (parser *Parser) parseNode(event *Event, block, indentless_sequence bool) b
 		end_mark = token.end_mark
 		parser.state = PARSE_INDENTLESS_SEQUENCE_ENTRY_STATE
 		*event = Event{
-			Typ:        SEQUENCE_START_EVENT,
-			Start_mark: start_mark,
-			End_mark:   end_mark,
-			Anchor:     anchor,
-			Tag:        tag,
-			Implicit:   implicit,
-			Style:      Style(BLOCK_SEQUENCE_STYLE),
+			Type:      SEQUENCE_START_EVENT,
+			StartMark: start_mark,
+			EndMark:   end_mark,
+			Anchor:    anchor,
+			Tag:       tag,
+			Implicit:  implicit,
+			Style:     Style(BLOCK_SEQUENCE_STYLE),
 		}
 		return true
 	}
@@ -587,9 +588,9 @@ func (parser *Parser) parseNode(event *Event, block, indentless_sequence bool) b
 		parser.states = parser.states[:len(parser.states)-1]
 
 		*event = Event{
-			Typ:             SCALAR_EVENT,
-			Start_mark:      start_mark,
-			End_mark:        end_mark,
+			Type:            SCALAR_EVENT,
+			StartMark:       start_mark,
+			EndMark:         end_mark,
 			Anchor:          anchor,
 			Tag:             tag,
 			Value:           token.value,
@@ -606,13 +607,13 @@ func (parser *Parser) parseNode(event *Event, block, indentless_sequence bool) b
 		end_mark = token.end_mark
 		parser.state = PARSE_FLOW_SEQUENCE_FIRST_ENTRY_STATE
 		*event = Event{
-			Typ:        SEQUENCE_START_EVENT,
-			Start_mark: start_mark,
-			End_mark:   end_mark,
-			Anchor:     anchor,
-			Tag:        tag,
-			Implicit:   implicit,
-			Style:      Style(FLOW_SEQUENCE_STYLE),
+			Type:      SEQUENCE_START_EVENT,
+			StartMark: start_mark,
+			EndMark:   end_mark,
+			Anchor:    anchor,
+			Tag:       tag,
+			Implicit:  implicit,
+			Style:     Style(FLOW_SEQUENCE_STYLE),
 		}
 		parser.setEventComments(event)
 		return true
@@ -621,13 +622,13 @@ func (parser *Parser) parseNode(event *Event, block, indentless_sequence bool) b
 		end_mark = token.end_mark
 		parser.state = PARSE_FLOW_MAPPING_FIRST_KEY_STATE
 		*event = Event{
-			Typ:        MAPPING_START_EVENT,
-			Start_mark: start_mark,
-			End_mark:   end_mark,
-			Anchor:     anchor,
-			Tag:        tag,
-			Implicit:   implicit,
-			Style:      Style(FLOW_MAPPING_STYLE),
+			Type:      MAPPING_START_EVENT,
+			StartMark: start_mark,
+			EndMark:   end_mark,
+			Anchor:    anchor,
+			Tag:       tag,
+			Implicit:  implicit,
+			Style:     Style(FLOW_MAPPING_STYLE),
 		}
 		parser.setEventComments(event)
 		return true
@@ -636,16 +637,16 @@ func (parser *Parser) parseNode(event *Event, block, indentless_sequence bool) b
 		end_mark = token.end_mark
 		parser.state = PARSE_BLOCK_SEQUENCE_FIRST_ENTRY_STATE
 		*event = Event{
-			Typ:        SEQUENCE_START_EVENT,
-			Start_mark: start_mark,
-			End_mark:   end_mark,
-			Anchor:     anchor,
-			Tag:        tag,
-			Implicit:   implicit,
-			Style:      Style(BLOCK_SEQUENCE_STYLE),
+			Type:      SEQUENCE_START_EVENT,
+			StartMark: start_mark,
+			EndMark:   end_mark,
+			Anchor:    anchor,
+			Tag:       tag,
+			Implicit:  implicit,
+			Style:     Style(BLOCK_SEQUENCE_STYLE),
 		}
 		if parser.stem_comment != nil {
-			event.Head_comment = parser.stem_comment
+			event.HeadComment = parser.stem_comment
 			parser.stem_comment = nil
 		}
 		return true
@@ -654,16 +655,16 @@ func (parser *Parser) parseNode(event *Event, block, indentless_sequence bool) b
 		end_mark = token.end_mark
 		parser.state = PARSE_BLOCK_MAPPING_FIRST_KEY_STATE
 		*event = Event{
-			Typ:        MAPPING_START_EVENT,
-			Start_mark: start_mark,
-			End_mark:   end_mark,
-			Anchor:     anchor,
-			Tag:        tag,
-			Implicit:   implicit,
-			Style:      Style(BLOCK_MAPPING_STYLE),
+			Type:      MAPPING_START_EVENT,
+			StartMark: start_mark,
+			EndMark:   end_mark,
+			Anchor:    anchor,
+			Tag:       tag,
+			Implicit:  implicit,
+			Style:     Style(BLOCK_MAPPING_STYLE),
 		}
 		if parser.stem_comment != nil {
-			event.Head_comment = parser.stem_comment
+			event.HeadComment = parser.stem_comment
 			parser.stem_comment = nil
 		}
 		return true
@@ -673,9 +674,9 @@ func (parser *Parser) parseNode(event *Event, block, indentless_sequence bool) b
 		parser.states = parser.states[:len(parser.states)-1]
 
 		*event = Event{
-			Typ:             SCALAR_EVENT,
-			Start_mark:      start_mark,
-			End_mark:        end_mark,
+			Type:            SCALAR_EVENT,
+			StartMark:       start_mark,
+			EndMark:         end_mark,
 			Anchor:          anchor,
 			Tag:             tag,
 			Implicit:        implicit,
@@ -736,9 +737,9 @@ func (parser *Parser) parseBlockSequenceEntry(event *Event, first bool) bool {
 		parser.marks = parser.marks[:len(parser.marks)-1]
 
 		*event = Event{
-			Typ:        SEQUENCE_END_EVENT,
-			Start_mark: token.start_mark,
-			End_mark:   token.end_mark,
+			Type:      SEQUENCE_END_EVENT,
+			StartMark: token.start_mark,
+			EndMark:   token.end_mark,
 		}
 
 		parser.skipToken()
@@ -785,9 +786,9 @@ func (parser *Parser) parseIndentlessSequenceEntry(event *Event) bool {
 	parser.states = parser.states[:len(parser.states)-1]
 
 	*event = Event{
-		Typ:        SEQUENCE_END_EVENT,
-		Start_mark: token.start_mark,
-		End_mark:   token.start_mark, // [Go] Shouldn't this be token.end_mark?
+		Type:      SEQUENCE_END_EVENT,
+		StartMark: token.start_mark,
+		EndMark:   token.start_mark, // [Go] Shouldn't this be token.end_mark?
 	}
 	return true
 }
@@ -847,16 +848,17 @@ func (parser *Parser) parseBlockMappingKey(event *Event, first bool) bool {
 	//      as it needs to be processed with that value and not the following key.
 	if len(parser.tail_comment) > 0 {
 		*event = Event{
-			Typ:          TAIL_COMMENT_EVENT,
-			Start_mark:   token.start_mark,
-			End_mark:     token.end_mark,
-			Foot_comment: parser.tail_comment,
+			Type:        TAIL_COMMENT_EVENT,
+			StartMark:   token.start_mark,
+			EndMark:     token.end_mark,
+			FootComment: parser.tail_comment,
 		}
 		parser.tail_comment = nil
 		return true
 	}
 
-	if token.typ == KEY_TOKEN {
+	switch token.typ {
+	case KEY_TOKEN:
 		mark := token.end_mark
 		parser.skipToken()
 		token = parser.peekToken()
@@ -872,14 +874,14 @@ func (parser *Parser) parseBlockMappingKey(event *Event, first bool) bool {
 			parser.state = PARSE_BLOCK_MAPPING_VALUE_STATE
 			return parser.processEmptyScalar(event, mark)
 		}
-	} else if token.typ == BLOCK_END_TOKEN {
+	case BLOCK_END_TOKEN:
 		parser.state = parser.states[len(parser.states)-1]
 		parser.states = parser.states[:len(parser.states)-1]
 		parser.marks = parser.marks[:len(parser.marks)-1]
 		*event = Event{
-			Typ:        MAPPING_END_EVENT,
-			Start_mark: token.start_mark,
-			End_mark:   token.end_mark,
+			Type:      MAPPING_END_EVENT,
+			StartMark: token.start_mark,
+			EndMark:   token.end_mark,
 		}
 		parser.setEventComments(event)
 		parser.skipToken()
@@ -973,11 +975,11 @@ func (parser *Parser) parseFlowSequenceEntry(event *Event, first bool) bool {
 		if token.typ == KEY_TOKEN {
 			parser.state = PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_KEY_STATE
 			*event = Event{
-				Typ:        MAPPING_START_EVENT,
-				Start_mark: token.start_mark,
-				End_mark:   token.end_mark,
-				Implicit:   true,
-				Style:      Style(FLOW_MAPPING_STYLE),
+				Type:      MAPPING_START_EVENT,
+				StartMark: token.start_mark,
+				EndMark:   token.end_mark,
+				Implicit:  true,
+				Style:     Style(FLOW_MAPPING_STYLE),
 			}
 			parser.skipToken()
 			return true
@@ -992,9 +994,9 @@ func (parser *Parser) parseFlowSequenceEntry(event *Event, first bool) bool {
 	parser.marks = parser.marks[:len(parser.marks)-1]
 
 	*event = Event{
-		Typ:        SEQUENCE_END_EVENT,
-		Start_mark: token.start_mark,
-		End_mark:   token.end_mark,
+		Type:      SEQUENCE_END_EVENT,
+		StartMark: token.start_mark,
+		EndMark:   token.end_mark,
 	}
 	parser.setEventComments(event)
 
@@ -1058,9 +1060,9 @@ func (parser *Parser) parseFlowSequenceEntryMappingEnd(event *Event) bool {
 	}
 	parser.state = PARSE_FLOW_SEQUENCE_ENTRY_STATE
 	*event = Event{
-		Typ:        MAPPING_END_EVENT,
-		Start_mark: token.start_mark,
-		End_mark:   token.start_mark, // [Go] Shouldn't this be end_mark?
+		Type:      MAPPING_END_EVENT,
+		StartMark: token.start_mark,
+		EndMark:   token.start_mark, // [Go] Shouldn't this be end_mark?
 	}
 	return true
 }
@@ -1132,9 +1134,9 @@ func (parser *Parser) parseFlowMappingKey(event *Event, first bool) bool {
 	parser.states = parser.states[:len(parser.states)-1]
 	parser.marks = parser.marks[:len(parser.marks)-1]
 	*event = Event{
-		Typ:        MAPPING_END_EVENT,
-		Start_mark: token.start_mark,
-		End_mark:   token.end_mark,
+		Type:      MAPPING_END_EVENT,
+		StartMark: token.start_mark,
+		EndMark:   token.end_mark,
 	}
 	parser.setEventComments(event)
 	parser.skipToken()
@@ -1171,12 +1173,12 @@ func (parser *Parser) parseFlowMappingValue(event *Event, empty bool) bool {
 // Generate an empty scalar event.
 func (parser *Parser) processEmptyScalar(event *Event, mark Mark) bool {
 	*event = Event{
-		Typ:        SCALAR_EVENT,
-		Start_mark: mark,
-		End_mark:   mark,
-		Value:      nil, // Empty
-		Implicit:   true,
-		Style:      Style(PLAIN_SCALAR_STYLE),
+		Type:      SCALAR_EVENT,
+		StartMark: mark,
+		EndMark:   mark,
+		Value:     nil, // Empty
+		Implicit:  true,
+		Style:     Style(PLAIN_SCALAR_STYLE),
 	}
 	return true
 }
@@ -1197,7 +1199,8 @@ func (parser *Parser) processDirectives(version_directive_ref **VersionDirective
 	}
 
 	for token.typ == VERSION_DIRECTIVE_TOKEN || token.typ == TAG_DIRECTIVE_TOKEN {
-		if token.typ == VERSION_DIRECTIVE_TOKEN {
+		switch token.typ {
+		case VERSION_DIRECTIVE_TOKEN:
 			if version_directive != nil {
 				parser.setParserError(
 					"found duplicate %YAML directive", token.start_mark)
@@ -1212,7 +1215,7 @@ func (parser *Parser) processDirectives(version_directive_ref **VersionDirective
 				major: token.major,
 				minor: token.minor,
 			}
-		} else if token.typ == TAG_DIRECTIVE_TOKEN {
+		case TAG_DIRECTIVE_TOKEN:
 			value := TagDirective{
 				handle: token.value,
 				prefix: token.prefix,

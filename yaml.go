@@ -223,7 +223,7 @@ func Marshal(in any) (out []byte, err error) {
 	e.marshalDoc("", reflect.ValueOf(in))
 	e.finish()
 	out = e.out
-	return
+	return out, err
 }
 
 // An Encoder writes YAML values to an output stream.
@@ -281,12 +281,12 @@ func (e *Encoder) SetIndent(spaces int) {
 
 // CompactSeqIndent makes it so that '- ' is considered part of the indentation.
 func (e *Encoder) CompactSeqIndent() {
-	e.encoder.emitter.Compact_sequence_indent = true
+	e.encoder.emitter.CompactSequenceIndent = true
 }
 
 // DefaultSeqIndent makes it so that '- ' is not considered part of the indentation.
 func (e *Encoder) DefaultSeqIndent() {
-	e.encoder.emitter.Compact_sequence_indent = false
+	e.encoder.emitter.CompactSequenceIndent = false
 }
 
 // Close closes the encoder by writing any remaining data.
@@ -806,7 +806,7 @@ func ParserGetEvents(in []byte) (string, error) {
 		}
 		formatted := formatEvent(&event)
 		events.WriteString(formatted)
-		if event.Typ == libyaml.STREAM_END_EVENT {
+		if event.Type == libyaml.STREAM_END_EVENT {
 			event.Delete()
 			break
 		}
@@ -818,7 +818,7 @@ func ParserGetEvents(in []byte) (string, error) {
 
 func formatEvent(e *libyaml.Event) string {
 	var b strings.Builder
-	switch e.Typ {
+	switch e.Type {
 	case libyaml.STREAM_START_EVENT:
 		b.WriteString("+STR")
 	case libyaml.STREAM_END_EVENT:
