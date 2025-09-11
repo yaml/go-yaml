@@ -288,10 +288,10 @@ func (e EventType) String() string {
 // The event structure.
 type Event struct {
 	// The event type.
-	Typ EventType
+	Type EventType
 
 	// The start and end of the event.
-	Start_mark, End_mark Mark
+	StartMark, EndMark Mark
 
 	// The document encoding (for STREAM_START_EVENT).
 	encoding Encoding
@@ -303,10 +303,10 @@ type Event struct {
 	tag_directives []TagDirective
 
 	// The comments
-	Head_comment []byte
-	Line_comment []byte
-	Foot_comment []byte
-	Tail_comment []byte
+	HeadComment []byte
+	LineComment []byte
+	FootComment []byte
+	TailComment []byte
 
 	// The Anchor (for SCALAR_EVENT, SEQUENCE_START_EVENT, MAPPING_START_EVENT, ALIAS_EVENT).
 	Anchor []byte
@@ -553,18 +553,18 @@ type AliasData struct {
 type Parser struct {
 	// Error handling
 
-	Err ErrorType // Error type.
+	ErrorType ErrorType // Error type.
 
 	Problem string // Error description.
 
 	// The byte about which the problem occurred.
-	Problem_offset int
-	Problem_value  int
-	Problem_mark   Mark
+	ProblemOffset int
+	ProblemValue  int
+	ProblemMark   Mark
 
 	// The error Context.
-	Context      string
-	Context_mark Mark
+	Context     string
+	ContextMark Mark
 
 	// Reader stuff
 
@@ -699,8 +699,8 @@ const (
 type Emitter struct {
 	// Error handling
 
-	error   ErrorType // Error type.
-	Problem string    // Error description.
+	ErrorType ErrorType // Error type.
+	Problem   string    // Error description.
 
 	// Writer stuff
 
@@ -719,11 +719,11 @@ type Emitter struct {
 
 	// Emitter stuff
 
-	canonical   bool      // If the output is in the canonical style?
-	Best_indent int       // The number of indentation spaces.
-	best_width  int       // The preferred width of the output lines.
-	unicode     bool      // Allow unescaped non-ASCII characters?
-	line_break  LineBreak // The preferred line break.
+	canonical  bool      // If the output is in the canonical style?
+	BestIndent int       // The number of indentation spaces.
+	best_width int       // The preferred width of the output lines.
+	unicode    bool      // Allow unescaped non-ASCII characters?
+	line_break LineBreak // The preferred line break.
 
 	state  EmitterState   // The current emitter state.
 	states []EmitterState // The stack of states.
@@ -737,7 +737,7 @@ type Emitter struct {
 
 	indent int // The current indentation level.
 
-	Compact_sequence_indent bool // Is '- ' is considered part of the indentation for sequence elements?
+	CompactSequenceIndent bool // Is '- ' is considered part of the indentation for sequence elements?
 
 	flow_level int // The current flow level.
 
@@ -750,7 +750,7 @@ type Emitter struct {
 	column     int  // The current column.
 	whitespace bool // If the last character was a whitespace?
 	indention  bool // If the last character was an indentation character (' ', '-', '?', ':')?
-	Open_ended bool // If an explicit document end is required?
+	OpenEnded  bool // If an explicit document end is required?
 
 	space_above bool // Is there's an empty line above?
 	foot_indent int  // The indent used to write the foot comment above, or -1 if none.
@@ -779,10 +779,10 @@ type Emitter struct {
 	}
 
 	// Comments
-	Head_comment []byte
-	Line_comment []byte
-	Foot_comment []byte
-	Tail_comment []byte
+	HeadComment []byte
+	LineComment []byte
+	FootComment []byte
+	TailComment []byte
 
 	key_line_comment []byte
 

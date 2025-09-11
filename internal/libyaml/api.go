@@ -165,7 +165,7 @@ func (emitter *Emitter) SetIndent(indent int) {
 	if indent < 2 || indent > 9 {
 		indent = 2
 	}
-	emitter.Best_indent = indent
+	emitter.BestIndent = indent
 }
 
 // Set the preferred line width.
@@ -275,7 +275,7 @@ func (emitter *Emitter) SetLineBreak(line_break LineBreak) {
 // Create STREAM-START.
 func NewStreamStartEvent(encoding Encoding) Event {
 	return Event{
-		Typ:      STREAM_START_EVENT,
+		Type:     STREAM_START_EVENT,
 		encoding: encoding,
 	}
 }
@@ -283,14 +283,14 @@ func NewStreamStartEvent(encoding Encoding) Event {
 // Create STREAM-END.
 func NewStreamEndEvent() Event {
 	return Event{
-		Typ: STREAM_END_EVENT,
+		Type: STREAM_END_EVENT,
 	}
 }
 
 // Create DOCUMENT-START.
 func NewDocumentStartEvent(version_directive *VersionDirective, tag_directives []TagDirective, implicit bool) Event {
 	return Event{
-		Typ:               DOCUMENT_START_EVENT,
+		Type:              DOCUMENT_START_EVENT,
 		version_directive: version_directive,
 		tag_directives:    tag_directives,
 		Implicit:          implicit,
@@ -300,7 +300,7 @@ func NewDocumentStartEvent(version_directive *VersionDirective, tag_directives [
 // Create DOCUMENT-END.
 func NewDocumentEndEvent(implicit bool) Event {
 	return Event{
-		Typ:      DOCUMENT_END_EVENT,
+		Type:     DOCUMENT_END_EVENT,
 		Implicit: implicit,
 	}
 }
@@ -308,7 +308,7 @@ func NewDocumentEndEvent(implicit bool) Event {
 // Create ALIAS.
 func NewAliasEvent(anchor []byte) Event {
 	return Event{
-		Typ:    ALIAS_EVENT,
+		Type:   ALIAS_EVENT,
 		Anchor: anchor,
 	}
 }
@@ -316,7 +316,7 @@ func NewAliasEvent(anchor []byte) Event {
 // Create SCALAR.
 func NewScalarEvent(anchor, tag, value []byte, plain_implicit, quoted_implicit bool, style ScalarStyle) Event {
 	return Event{
-		Typ:             SCALAR_EVENT,
+		Type:            SCALAR_EVENT,
 		Anchor:          anchor,
 		Tag:             tag,
 		Value:           value,
@@ -329,7 +329,7 @@ func NewScalarEvent(anchor, tag, value []byte, plain_implicit, quoted_implicit b
 // Create SEQUENCE-START.
 func NewSequenceStartEvent(anchor, tag []byte, implicit bool, style SequenceStyle) Event {
 	return Event{
-		Typ:      SEQUENCE_START_EVENT,
+		Type:     SEQUENCE_START_EVENT,
 		Anchor:   anchor,
 		Tag:      tag,
 		Implicit: implicit,
@@ -340,14 +340,14 @@ func NewSequenceStartEvent(anchor, tag []byte, implicit bool, style SequenceStyl
 // Create SEQUENCE-END.
 func NewSequenceEndEvent() Event {
 	return Event{
-		Typ: SEQUENCE_END_EVENT,
+		Type: SEQUENCE_END_EVENT,
 	}
 }
 
 // Create MAPPING-START.
 func NewMappingStartEvent(anchor, tag []byte, implicit bool, style MappingStyle) Event {
 	return Event{
-		Typ:      MAPPING_START_EVENT,
+		Type:     MAPPING_START_EVENT,
 		Anchor:   anchor,
 		Tag:      tag,
 		Implicit: implicit,
@@ -358,7 +358,7 @@ func NewMappingStartEvent(anchor, tag []byte, implicit bool, style MappingStyle)
 // Create MAPPING-END.
 func NewMappingEndEvent() Event {
 	return Event{
-		Typ: MAPPING_END_EVENT,
+		Type: MAPPING_END_EVENT,
 	}
 }
 

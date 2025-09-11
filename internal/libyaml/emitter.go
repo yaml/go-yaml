@@ -137,7 +137,7 @@ func (emitter *Emitter) writeLineBreak(s []byte, i *int) bool {
 
 // Set an emitter error and return false.
 func (emitter *Emitter) setEmitterError(problem string) bool {
-	emitter.error = EMITTER_ERROR
+	emitter.ErrorType = EMITTER_ERROR
 	emitter.Problem = problem
 	return false
 }
@@ -170,7 +170,7 @@ func (emitter *Emitter) needMoreEvents() bool {
 		return true
 	}
 	var accumulate int
-	switch emitter.events[emitter.events_head].Typ {
+	switch emitter.events[emitter.events_head].Type {
 	case DOCUMENT_START_EVENT:
 		accumulate = 1
 	case SEQUENCE_START_EVENT:
@@ -185,7 +185,7 @@ func (emitter *Emitter) needMoreEvents() bool {
 	}
 	var level int
 	for i := emitter.events_head; i < len(emitter.events); i++ {
-		switch emitter.events[i].Typ {
+		switch emitter.events[i].Type {
 		case STREAM_START_EVENT, DOCUMENT_START_EVENT, SEQUENCE_START_EVENT, MAPPING_START_EVENT:
 			level++
 		case STREAM_END_EVENT, DOCUMENT_END_EVENT, SEQUENCE_END_EVENT, MAPPING_END_EVENT:
@@ -226,7 +226,7 @@ func (emitter *Emitter) increaseIndentCompact(flow, indentless bool, compact_seq
 	emitter.indents = append(emitter.indents, emitter.indent)
 	if emitter.indent < 0 {
 		if flow {
-			emitter.indent = emitter.Best_indent
+			emitter.indent = emitter.BestIndent
 		} else {
 			emitter.indent = 0
 		}
@@ -237,7 +237,7 @@ func (emitter *Emitter) increaseIndentCompact(flow, indentless bool, compact_seq
 			emitter.indent += 2
 		} else {
 			// Everything else aligns to the chosen indentation.
-			emitter.indent = emitter.Best_indent * ((emitter.indent + emitter.Best_indent) / emitter.Best_indent)
+			emitter.indent = emitter.BestIndent * ((emitter.indent + emitter.BestIndent) / emitter.BestIndent)
 			if compact_seq {
 				// The value compact_seq passed in is almost always set to `false` when this function is called,
 				// except when we are dealing with sequence nodes. So this gets triggered to subtract 2 only when we
@@ -319,7 +319,7 @@ func (emitter *Emitter) stateMachine(event *Event) bool {
 
 // Expect STREAM-START.
 func (emitter *Emitter) emitStreamStart(event *Event) bool {
-	if event.Typ != STREAM_START_EVENT {
+	if event.Type != STREAM_START_EVENT {
 		return emitter.setEmitterError("expected STREAM-START")
 	}
 	if emitter.encoding == ANY_ENCODING {
@@ -328,10 +328,10 @@ func (emitter *Emitter) emitStreamStart(event *Event) bool {
 			emitter.encoding = UTF8_ENCODING
 		}
 	}
-	if emitter.Best_indent < 2 || emitter.Best_indent > 9 {
-		emitter.Best_indent = 2
+	if emitter.BestIndent < 2 || emitter.BestIndent > 9 {
+		emitter.BestIndent = 2
 	}
-	if emitter.best_width >= 0 && emitter.best_width <= emitter.Best_indent*2 {
+	if emitter.best_width >= 0 && emitter.best_width <= emitter.BestIndent*2 {
 		emitter.best_width = 80
 	}
 	if emitter.best_width < 0 {
@@ -360,7 +360,7 @@ func (emitter *Emitter) emitStreamStart(event *Event) bool {
 
 // Expect DOCUMENT-START or STREAM-END.
 func (emitter *Emitter) emitDocumentStart(event *Event, first bool) bool {
-	if event.Typ == DOCUMENT_START_EVENT {
+	if event.Type == DOCUMENT_START_EVENT {
 
 		if event.version_directive != nil {
 			if !emitter.analyzeVersionDirective(event.version_directive) {
@@ -390,7 +390,7 @@ func (emitter *Emitter) emitDocumentStart(event *Event, first bool) bool {
 			implicit = false
 		}
 
-		if emitter.Open_ended && (event.version_directive != nil || len(event.tag_directives) > 0) {
+		if emitter.OpenEnded && (event.version_directive != nil || len(event.tag_directives) > 0) {
 			if !emitter.writeIndicator([]byte("..."), true, false, false) {
 				return false
 			}
@@ -448,7 +448,7 @@ func (emitter *Emitter) emitDocumentStart(event *Event, first bool) bool {
 			}
 		}
 
-		if len(emitter.Head_comment) > 0 {
+		if len(emitter.HeadComment) > 0 {
 			if !emitter.processHeadComment() {
 				return false
 			}
@@ -461,8 +461,8 @@ func (emitter *Emitter) emitDocumentStart(event *Event, first bool) bool {
 		return true
 	}
 
-	if event.Typ == STREAM_END_EVENT {
-		if emitter.Open_ended {
+	if event.Type == STREAM_END_EVENT {
+		if emitter.OpenEnded {
 			if !emitter.writeIndicator([]byte("..."), true, false, false) {
 				return false
 			}
@@ -513,7 +513,7 @@ func (emitter *Emitter) emitDocumentContent(event *Event) bool {
 
 // Expect DOCUMENT-END.
 func (emitter *Emitter) emitDocumentEnd(event *Event) bool {
-	if event.Typ != DOCUMENT_END_EVENT {
+	if event.Type != DOCUMENT_END_EVENT {
 		return emitter.setEmitterError("expected DOCUMENT-END")
 	}
 	// [Go] Force document foot separation.
@@ -554,7 +554,7 @@ func (emitter *Emitter) emitFlowSequenceItem(event *Event, first, trail bool) bo
 		emitter.flow_level++
 	}
 
-	if event.Typ == SEQUENCE_END_EVENT {
+	if event.Type == SEQUENCE_END_EVENT {
 		if emitter.canonical && !first && !trail {
 			if !emitter.writeIndicator([]byte{','}, false, false, false) {
 				return false
@@ -603,7 +603,7 @@ func (emitter *Emitter) emitFlowSequenceItem(event *Event, first, trail bool) bo
 			return false
 		}
 	}
-	if len(emitter.Line_comment)+len(emitter.Foot_comment)+len(emitter.Tail_comment) > 0 {
+	if len(emitter.LineComment)+len(emitter.FootComment)+len(emitter.TailComment) > 0 {
 		emitter.states = append(emitter.states, EMIT_FLOW_SEQUENCE_TRAIL_ITEM_STATE)
 	} else {
 		emitter.states = append(emitter.states, EMIT_FLOW_SEQUENCE_ITEM_STATE)
@@ -611,7 +611,7 @@ func (emitter *Emitter) emitFlowSequenceItem(event *Event, first, trail bool) bo
 	if !emitter.emitNode(event, false, true, false, false) {
 		return false
 	}
-	if len(emitter.Line_comment)+len(emitter.Foot_comment)+len(emitter.Tail_comment) > 0 {
+	if len(emitter.LineComment)+len(emitter.FootComment)+len(emitter.TailComment) > 0 {
 		if !emitter.writeIndicator([]byte{','}, false, false, false) {
 			return false
 		}
@@ -637,8 +637,8 @@ func (emitter *Emitter) emitFlowMappingKey(event *Event, first, trail bool) bool
 		emitter.flow_level++
 	}
 
-	if event.Typ == MAPPING_END_EVENT {
-		if (emitter.canonical || len(emitter.Head_comment)+len(emitter.Foot_comment)+len(emitter.Tail_comment) > 0) && !first && !trail {
+	if event.Type == MAPPING_END_EVENT {
+		if (emitter.canonical || len(emitter.HeadComment)+len(emitter.FootComment)+len(emitter.TailComment) > 0) && !first && !trail {
 			if !emitter.writeIndicator([]byte{','}, false, false, false) {
 				return false
 			}
@@ -717,7 +717,7 @@ func (emitter *Emitter) emitFlowMappingValue(event *Event, simple bool) bool {
 			return false
 		}
 	}
-	if len(emitter.Line_comment)+len(emitter.Foot_comment)+len(emitter.Tail_comment) > 0 {
+	if len(emitter.LineComment)+len(emitter.FootComment)+len(emitter.TailComment) > 0 {
 		emitter.states = append(emitter.states, EMIT_FLOW_MAPPING_TRAIL_KEY_STATE)
 	} else {
 		emitter.states = append(emitter.states, EMIT_FLOW_MAPPING_KEY_STATE)
@@ -725,7 +725,7 @@ func (emitter *Emitter) emitFlowMappingValue(event *Event, simple bool) bool {
 	if !emitter.emitNode(event, false, false, true, false) {
 		return false
 	}
-	if len(emitter.Line_comment)+len(emitter.Foot_comment)+len(emitter.Tail_comment) > 0 {
+	if len(emitter.LineComment)+len(emitter.FootComment)+len(emitter.TailComment) > 0 {
 		if !emitter.writeIndicator([]byte{','}, false, false, false) {
 			return false
 		}
@@ -750,12 +750,12 @@ func (emitter *Emitter) emitBlockSequenceItem(event *Event, first bool) bool {
 		//  the last character was not an indentation character, and we consider '- ' part of the indentation
 		//  for sequence elements.
 		seq := emitter.mapping_context && (emitter.column == 0 || !emitter.indention) &&
-			emitter.Compact_sequence_indent
+			emitter.CompactSequenceIndent
 		if !emitter.increaseIndentCompact(false, false, seq) {
 			return false
 		}
 	}
-	if event.Typ == SEQUENCE_END_EVENT {
+	if event.Type == SEQUENCE_END_EVENT {
 		emitter.indent = emitter.indents[len(emitter.indents)-1]
 		emitter.indents = emitter.indents[:len(emitter.indents)-1]
 		emitter.state = emitter.states[len(emitter.states)-1]
@@ -794,7 +794,7 @@ func (emitter *Emitter) emitBlockMappingKey(event *Event, first bool) bool {
 	if !emitter.processHeadComment() {
 		return false
 	}
-	if event.Typ == MAPPING_END_EVENT {
+	if event.Type == MAPPING_END_EVENT {
 		emitter.indent = emitter.indents[len(emitter.indents)-1]
 		emitter.indents = emitter.indents[:len(emitter.indents)-1]
 		emitter.state = emitter.states[len(emitter.states)-1]
@@ -804,12 +804,12 @@ func (emitter *Emitter) emitBlockMappingKey(event *Event, first bool) bool {
 	if !emitter.writeIndent() {
 		return false
 	}
-	if len(emitter.Line_comment) > 0 {
+	if len(emitter.LineComment) > 0 {
 		// [Go] A line comment was provided for the key. That's unusual as the
 		//      scanner associates line comments with the value. Either way,
 		//      save the line comment and render it appropriately later.
-		emitter.key_line_comment = emitter.Line_comment
-		emitter.Line_comment = nil
+		emitter.key_line_comment = emitter.LineComment
+		emitter.LineComment = nil
 	}
 	if emitter.checkSimpleKey() {
 		emitter.states = append(emitter.states, EMIT_BLOCK_MAPPING_SIMPLE_VALUE_STATE)
@@ -840,21 +840,21 @@ func (emitter *Emitter) emitBlockMappingValue(event *Event, simple bool) bool {
 		// [Go] Line comments are generally associated with the value, but when there's
 		//      no value on the same line as a mapping key they end up attached to the
 		//      key itself.
-		if event.Typ == SCALAR_EVENT {
-			if len(emitter.Line_comment) == 0 {
+		if event.Type == SCALAR_EVENT {
+			if len(emitter.LineComment) == 0 {
 				// A scalar is coming and it has no line comments by itself yet,
 				// so just let it handle the line comment as usual. If it has a
 				// line comment, we can't have both so the one from the key is lost.
-				emitter.Line_comment = emitter.key_line_comment
+				emitter.LineComment = emitter.key_line_comment
 				emitter.key_line_comment = nil
 			}
-		} else if event.SequenceStyle() != FLOW_SEQUENCE_STYLE && (event.Typ == MAPPING_START_EVENT || event.Typ == SEQUENCE_START_EVENT) {
+		} else if event.SequenceStyle() != FLOW_SEQUENCE_STYLE && (event.Type == MAPPING_START_EVENT || event.Type == SEQUENCE_START_EVENT) {
 			// An indented block follows, so write the comment right now.
-			emitter.Line_comment, emitter.key_line_comment = emitter.key_line_comment, emitter.Line_comment
+			emitter.LineComment, emitter.key_line_comment = emitter.key_line_comment, emitter.LineComment
 			if !emitter.processLineComment() {
 				return false
 			}
-			emitter.Line_comment, emitter.key_line_comment = emitter.key_line_comment, emitter.Line_comment
+			emitter.LineComment, emitter.key_line_comment = emitter.key_line_comment, emitter.LineComment
 		}
 	}
 	emitter.states = append(emitter.states, EMIT_BLOCK_MAPPING_KEY_STATE)
@@ -871,7 +871,7 @@ func (emitter *Emitter) emitBlockMappingValue(event *Event, simple bool) bool {
 }
 
 func (emitter *Emitter) silentNilEvent(event *Event) bool {
-	return event.Typ == SCALAR_EVENT && event.Implicit && !emitter.canonical && len(emitter.scalar_data.value) == 0
+	return event.Type == SCALAR_EVENT && event.Implicit && !emitter.canonical && len(emitter.scalar_data.value) == 0
 }
 
 // Expect a node.
@@ -883,7 +883,7 @@ func (emitter *Emitter) emitNode(event *Event,
 	emitter.mapping_context = mapping
 	emitter.simple_key_context = simple_key
 
-	switch event.Typ {
+	switch event.Type {
 	case ALIAS_EVENT:
 		return emitter.emitAlias(event)
 	case SCALAR_EVENT:
@@ -894,7 +894,7 @@ func (emitter *Emitter) emitNode(event *Event,
 		return emitter.emitMappingStart(event)
 	default:
 		return emitter.setEmitterError(
-			fmt.Sprintf("expected SCALAR, SEQUENCE-START, MAPPING-START, or ALIAS, but got %v", event.Typ))
+			fmt.Sprintf("expected SCALAR, SEQUENCE-START, MAPPING-START, or ALIAS, but got %v", event.Type))
 	}
 }
 
@@ -976,8 +976,8 @@ func (emitter *Emitter) checkEmptySequence() bool {
 	if len(emitter.events)-emitter.events_head < 2 {
 		return false
 	}
-	return emitter.events[emitter.events_head].Typ == SEQUENCE_START_EVENT &&
-		emitter.events[emitter.events_head+1].Typ == SEQUENCE_END_EVENT
+	return emitter.events[emitter.events_head].Type == SEQUENCE_START_EVENT &&
+		emitter.events[emitter.events_head+1].Type == SEQUENCE_END_EVENT
 }
 
 // Check if the next events represent an empty mapping.
@@ -985,14 +985,14 @@ func (emitter *Emitter) checkEmptyMapping() bool {
 	if len(emitter.events)-emitter.events_head < 2 {
 		return false
 	}
-	return emitter.events[emitter.events_head].Typ == MAPPING_START_EVENT &&
-		emitter.events[emitter.events_head+1].Typ == MAPPING_END_EVENT
+	return emitter.events[emitter.events_head].Type == MAPPING_START_EVENT &&
+		emitter.events[emitter.events_head+1].Type == MAPPING_END_EVENT
 }
 
 // Check if the next node can be expressed as a simple key.
 func (emitter *Emitter) checkSimpleKey() bool {
 	length := 0
-	switch emitter.events[emitter.events_head].Typ {
+	switch emitter.events[emitter.events_head].Type {
 	case ALIAS_EVENT:
 		length += len(emitter.anchor_data.anchor)
 	case SCALAR_EVENT:
@@ -1138,36 +1138,36 @@ func (emitter *Emitter) processScalar() bool {
 
 // Write a head comment.
 func (emitter *Emitter) processHeadComment() bool {
-	if len(emitter.Tail_comment) > 0 {
+	if len(emitter.TailComment) > 0 {
 		if !emitter.writeIndent() {
 			return false
 		}
-		if !emitter.writeComment(emitter.Tail_comment) {
+		if !emitter.writeComment(emitter.TailComment) {
 			return false
 		}
-		emitter.Tail_comment = emitter.Tail_comment[:0]
+		emitter.TailComment = emitter.TailComment[:0]
 		emitter.foot_indent = emitter.indent
 		if emitter.foot_indent < 0 {
 			emitter.foot_indent = 0
 		}
 	}
 
-	if len(emitter.Head_comment) == 0 {
+	if len(emitter.HeadComment) == 0 {
 		return true
 	}
 	if !emitter.writeIndent() {
 		return false
 	}
-	if !emitter.writeComment(emitter.Head_comment) {
+	if !emitter.writeComment(emitter.HeadComment) {
 		return false
 	}
-	emitter.Head_comment = emitter.Head_comment[:0]
+	emitter.HeadComment = emitter.HeadComment[:0]
 	return true
 }
 
 // Write an line comment.
 func (emitter *Emitter) processLineCommentLinebreak(linebreak bool) bool {
-	if len(emitter.Line_comment) == 0 {
+	if len(emitter.LineComment) == 0 {
 		// The next 3 lines are needed to resolve an issue with leading newlines
 		// See https://github.com/go-yaml/yaml/issues/755
 		// When linebreak is set to true, put_break will be called and will add
@@ -1182,25 +1182,25 @@ func (emitter *Emitter) processLineCommentLinebreak(linebreak bool) bool {
 			return false
 		}
 	}
-	if !emitter.writeComment(emitter.Line_comment) {
+	if !emitter.writeComment(emitter.LineComment) {
 		return false
 	}
-	emitter.Line_comment = emitter.Line_comment[:0]
+	emitter.LineComment = emitter.LineComment[:0]
 	return true
 }
 
 // Write a foot comment.
 func (emitter *Emitter) processFootComment() bool {
-	if len(emitter.Foot_comment) == 0 {
+	if len(emitter.FootComment) == 0 {
 		return true
 	}
 	if !emitter.writeIndent() {
 		return false
 	}
-	if !emitter.writeComment(emitter.Foot_comment) {
+	if !emitter.writeComment(emitter.FootComment) {
 		return false
 	}
-	emitter.Foot_comment = emitter.Foot_comment[:0]
+	emitter.FootComment = emitter.FootComment[:0]
 	emitter.foot_indent = emitter.indent
 	if emitter.foot_indent < 0 {
 		emitter.foot_indent = 0
@@ -1439,20 +1439,20 @@ func (emitter *Emitter) analyzeEvent(event *Event) bool {
 	emitter.tag_data.suffix = nil
 	emitter.scalar_data.value = nil
 
-	if len(event.Head_comment) > 0 {
-		emitter.Head_comment = event.Head_comment
+	if len(event.HeadComment) > 0 {
+		emitter.HeadComment = event.HeadComment
 	}
-	if len(event.Line_comment) > 0 {
-		emitter.Line_comment = event.Line_comment
+	if len(event.LineComment) > 0 {
+		emitter.LineComment = event.LineComment
 	}
-	if len(event.Foot_comment) > 0 {
-		emitter.Foot_comment = event.Foot_comment
+	if len(event.FootComment) > 0 {
+		emitter.FootComment = event.FootComment
 	}
-	if len(event.Tail_comment) > 0 {
-		emitter.Tail_comment = event.Tail_comment
+	if len(event.TailComment) > 0 {
+		emitter.TailComment = event.TailComment
 	}
 
-	switch event.Typ {
+	switch event.Type {
 	case ALIAS_EVENT:
 		if !emitter.analyzeAnchor(event.Anchor, true) {
 			return false
@@ -1551,7 +1551,7 @@ func (emitter *Emitter) writeIndicator(indicator []byte, need_whitespace, is_whi
 	}
 	emitter.whitespace = is_whitespace
 	emitter.indention = (emitter.indention && is_indention)
-	emitter.Open_ended = false
+	emitter.OpenEnded = false
 	return true
 }
 
@@ -1685,7 +1685,7 @@ func (emitter *Emitter) writePlainScalar(value []byte, allow_breaks bool) bool {
 	}
 	emitter.indention = false
 	if emitter.root_context {
-		emitter.Open_ended = true
+		emitter.OpenEnded = true
 	}
 
 	return true
@@ -1872,13 +1872,13 @@ func (emitter *Emitter) writeDoubleQuotedScalar(value []byte, allow_breaks bool)
 
 func (emitter *Emitter) writeBlockScalarHints(value []byte) bool {
 	if isSpace(value, 0) || isLineBreak(value, 0) {
-		indent_hint := []byte{'0' + byte(emitter.Best_indent)}
+		indent_hint := []byte{'0' + byte(emitter.BestIndent)}
 		if !emitter.writeIndicator(indent_hint, false, false, false) {
 			return false
 		}
 	}
 
-	emitter.Open_ended = false
+	emitter.OpenEnded = false
 
 	var chomp_hint [1]byte
 	if len(value) == 0 {
@@ -1892,7 +1892,7 @@ func (emitter *Emitter) writeBlockScalarHints(value []byte) bool {
 			chomp_hint[0] = '-'
 		} else if i == 0 {
 			chomp_hint[0] = '+'
-			emitter.Open_ended = true
+			emitter.OpenEnded = true
 		} else {
 			i--
 			for value[i]&0xC0 == 0x80 {
@@ -1900,7 +1900,7 @@ func (emitter *Emitter) writeBlockScalarHints(value []byte) bool {
 			}
 			if isLineBreak(value, i) {
 				chomp_hint[0] = '+'
-				emitter.Open_ended = true
+				emitter.OpenEnded = true
 			}
 		}
 	}

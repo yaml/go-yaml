@@ -68,7 +68,7 @@ func (p *parser) init() {
 }
 
 func (p *parser) destroy() {
-	if p.event.Typ != libyaml.NO_EVENT {
+	if p.event.Type != libyaml.NO_EVENT {
 		p.event.Delete()
 	}
 	p.parser.Delete()
@@ -77,57 +77,57 @@ func (p *parser) destroy() {
 // expect consumes an event from the event stream and
 // checks that it's of the expected type.
 func (p *parser) expect(e libyaml.EventType) {
-	if p.event.Typ == libyaml.NO_EVENT {
+	if p.event.Type == libyaml.NO_EVENT {
 		if !p.parser.Parse(&p.event) {
 			p.fail()
 		}
 	}
-	if p.event.Typ == libyaml.STREAM_END_EVENT {
+	if p.event.Type == libyaml.STREAM_END_EVENT {
 		failf("attempted to go past the end of stream; corrupted value?")
 	}
-	if p.event.Typ != e {
-		p.parser.Problem = fmt.Sprintf("expected %s event but got %s", e, p.event.Typ)
+	if p.event.Type != e {
+		p.parser.Problem = fmt.Sprintf("expected %s event but got %s", e, p.event.Type)
 		p.fail()
 	}
 	p.event.Delete()
-	p.event.Typ = libyaml.NO_EVENT
+	p.event.Type = libyaml.NO_EVENT
 }
 
 // peek peeks at the next event in the event stream,
 // puts the results into p.event and returns the event type.
 func (p *parser) peek() libyaml.EventType {
-	if p.event.Typ != libyaml.NO_EVENT {
-		return p.event.Typ
+	if p.event.Type != libyaml.NO_EVENT {
+		return p.event.Type
 	}
 	// It's curious choice from the underlying API to generally return a
 	// positive result on success, but on this case return true in an error
 	// scenario. This was the source of bugs in the past (issue #666).
-	if !p.parser.Parse(&p.event) || p.parser.Err != libyaml.NO_ERROR {
+	if !p.parser.Parse(&p.event) || p.parser.ErrorType != libyaml.NO_ERROR {
 		p.fail()
 	}
-	return p.event.Typ
+	return p.event.Type
 }
 
 func (p *parser) fail() {
 	var line int
-	if p.parser.Context_mark.Line != 0 {
-		line = p.parser.Context_mark.Line
+	if p.parser.ContextMark.Line != 0 {
+		line = p.parser.ContextMark.Line
 		// Scanner errors don't iterate line before returning error
-		if p.parser.Err == libyaml.SCANNER_ERROR {
+		if p.parser.ErrorType == libyaml.SCANNER_ERROR {
 			line++
 		}
-	} else if p.parser.Problem_mark.Line != 0 {
-		line = p.parser.Problem_mark.Line
+	} else if p.parser.ProblemMark.Line != 0 {
+		line = p.parser.ProblemMark.Line
 		// Scanner errors don't iterate line before returning error
-		if p.parser.Err == libyaml.SCANNER_ERROR {
+		if p.parser.ErrorType == libyaml.SCANNER_ERROR {
 			line++
 		}
 	}
 	var column int
-	if p.parser.Context_mark.Column != 0 {
-		column = p.parser.Context_mark.Column
-	} else if p.parser.Problem_mark.Column != 0 {
-		column = p.parser.Problem_mark.Column
+	if p.parser.ContextMark.Column != 0 {
+		column = p.parser.ContextMark.Column
+	} else if p.parser.ProblemMark.Column != 0 {
+		column = p.parser.ProblemMark.Column
 	}
 	var msg string
 	if len(p.parser.Problem) > 0 {
@@ -164,7 +164,7 @@ func (p *parser) parse() *Node {
 	case libyaml.TAIL_COMMENT_EVENT:
 		panic("internal error: unexpected tail comment event (please report)")
 	default:
-		panic("internal error: attempted to parse unknown event (please report): " + p.event.Typ.String())
+		panic("internal error: attempted to parse unknown event (please report): " + p.event.Type.String())
 	}
 }
 
@@ -185,11 +185,11 @@ func (p *parser) node(kind Kind, defaultTag, tag, value string) *Node {
 		Style: style,
 	}
 	if !p.textless {
-		n.Line = p.event.Start_mark.Line + 1
-		n.Column = p.event.Start_mark.Column + 1
-		n.HeadComment = string(p.event.Head_comment)
-		n.LineComment = string(p.event.Line_comment)
-		n.FootComment = string(p.event.Foot_comment)
+		n.Line = p.event.StartMark.Line + 1
+		n.Column = p.event.StartMark.Column + 1
+		n.HeadComment = string(p.event.HeadComment)
+		n.LineComment = string(p.event.LineComment)
+		n.FootComment = string(p.event.FootComment)
 	}
 	return n
 }
@@ -206,7 +206,7 @@ func (p *parser) document() *Node {
 	p.expect(libyaml.DOCUMENT_START_EVENT)
 	p.parseChild(n)
 	if p.peek() == libyaml.DOCUMENT_END_EVENT {
-		n.FootComment = string(p.event.Foot_comment)
+		n.FootComment = string(p.event.FootComment)
 	}
 	p.expect(libyaml.DOCUMENT_END_EVENT)
 	return n
@@ -262,8 +262,8 @@ func (p *parser) sequence() *Node {
 	for p.peek() != libyaml.SEQUENCE_END_EVENT {
 		p.parseChild(n)
 	}
-	n.LineComment = string(p.event.Line_comment)
-	n.FootComment = string(p.event.Foot_comment)
+	n.LineComment = string(p.event.LineComment)
+	n.FootComment = string(p.event.FootComment)
 	p.expect(libyaml.SEQUENCE_END_EVENT)
 	return n
 }
@@ -293,13 +293,13 @@ func (p *parser) mapping() *Node {
 		}
 		if p.peek() == libyaml.TAIL_COMMENT_EVENT {
 			if k.FootComment == "" {
-				k.FootComment = string(p.event.Foot_comment)
+				k.FootComment = string(p.event.FootComment)
 			}
 			p.expect(libyaml.TAIL_COMMENT_EVENT)
 		}
 	}
-	n.LineComment = string(p.event.Line_comment)
-	n.FootComment = string(p.event.Foot_comment)
+	n.LineComment = string(p.event.LineComment)
+	n.FootComment = string(p.event.FootComment)
 	if n.Style&FlowStyle == 0 && n.FootComment != "" && len(n.Content) > 1 {
 		n.Content[len(n.Content)-2].FootComment = n.FootComment
 		n.FootComment = ""
