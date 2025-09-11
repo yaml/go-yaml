@@ -598,8 +598,8 @@ func (parser *Parser) readLine(s []byte) []byte {
 	return s
 }
 
-// Get the next token.
-func (parser *Parser) scan(token *Token) bool {
+// Scan gets the next token.
+func (parser *Parser) Scan(token *Token) bool {
 	// Erase the token object.
 	*token = Token{} // [Go] Is this necessary?
 
@@ -621,7 +621,7 @@ func (parser *Parser) scan(token *Token) bool {
 	parser.tokens_parsed++
 	parser.token_available = false
 
-	if token.typ == STREAM_END_TOKEN {
+	if token.Type == STREAM_END_TOKEN {
 		parser.stream_end_produced = true
 	}
 	return true
@@ -743,13 +743,13 @@ func (parser *Parser) fetchNextToken() (ok bool) {
 	comment_mark := parser.mark
 	if len(parser.tokens) > 0 && (parser.flow_level == 0 && buf[pos] == ':' || parser.flow_level > 0 && buf[pos] == ',') {
 		// Associate any following comments with the prior token.
-		comment_mark = parser.tokens[len(parser.tokens)-1].start_mark
+		comment_mark = parser.tokens[len(parser.tokens)-1].StartMark
 	}
 	defer func() {
 		if !ok {
 			return
 		}
-		if len(parser.tokens) > 0 && parser.tokens[len(parser.tokens)-1].typ == BLOCK_ENTRY_TOKEN {
+		if len(parser.tokens) > 0 && parser.tokens[len(parser.tokens)-1].Type == BLOCK_ENTRY_TOKEN {
 			// Sequence indicators alone have no line comments. It becomes
 			// a head comment for whatever follows.
 			return
@@ -1010,9 +1010,9 @@ func (parser *Parser) rollIndent(column, number int, typ TokenType, mark Mark) b
 
 		// Create a token and insert it into the queue.
 		token := Token{
-			typ:        typ,
-			start_mark: mark,
-			end_mark:   mark,
+			Type:      typ,
+			StartMark: mark,
+			EndMark:   mark,
 		}
 		if number > -1 {
 			number -= parser.tokens_parsed
@@ -1065,9 +1065,9 @@ func (parser *Parser) unrollIndent(column int, scan_mark Mark) bool {
 
 		// Create a token and append it to the queue.
 		token := Token{
-			typ:        BLOCK_END_TOKEN,
-			start_mark: block_mark,
-			end_mark:   block_mark,
+			Type:      BLOCK_END_TOKEN,
+			StartMark: block_mark,
+			EndMark:   block_mark,
 		}
 		parser.insertToken(-1, &token)
 
@@ -1096,10 +1096,10 @@ func (parser *Parser) fetchStreamStart() bool {
 
 	// Create the STREAM-START token and append it to the queue.
 	token := Token{
-		typ:        STREAM_START_TOKEN,
-		start_mark: parser.mark,
-		end_mark:   parser.mark,
-		encoding:   parser.encoding,
+		Type:      STREAM_START_TOKEN,
+		StartMark: parser.mark,
+		EndMark:   parser.mark,
+		encoding:  parser.encoding,
 	}
 	parser.insertToken(-1, &token)
 	return true
@@ -1127,9 +1127,9 @@ func (parser *Parser) fetchStreamEnd() bool {
 
 	// Create the STREAM-END token and append it to the queue.
 	token := Token{
-		typ:        STREAM_END_TOKEN,
-		start_mark: parser.mark,
-		end_mark:   parser.mark,
+		Type:      STREAM_END_TOKEN,
+		StartMark: parser.mark,
+		EndMark:   parser.mark,
 	}
 	parser.insertToken(-1, &token)
 	return true
@@ -1184,9 +1184,9 @@ func (parser *Parser) fetchDocumentIndicator(typ TokenType) bool {
 
 	// Create the DOCUMENT-START or DOCUMENT-END token.
 	token := Token{
-		typ:        typ,
-		start_mark: start_mark,
-		end_mark:   end_mark,
+		Type:      typ,
+		StartMark: start_mark,
+		EndMark:   end_mark,
 	}
 	// Append the token to the queue.
 	parser.insertToken(-1, &token)
@@ -1215,9 +1215,9 @@ func (parser *Parser) fetchFlowCollectionStart(typ TokenType) bool {
 
 	// Create the FLOW-SEQUENCE-START of FLOW-MAPPING-START token.
 	token := Token{
-		typ:        typ,
-		start_mark: start_mark,
-		end_mark:   end_mark,
+		Type:      typ,
+		StartMark: start_mark,
+		EndMark:   end_mark,
 	}
 	// Append the token to the queue.
 	parser.insertToken(-1, &token)
@@ -1247,9 +1247,9 @@ func (parser *Parser) fetchFlowCollectionEnd(typ TokenType) bool {
 
 	// Create the FLOW-SEQUENCE-END of FLOW-MAPPING-END token.
 	token := Token{
-		typ:        typ,
-		start_mark: start_mark,
-		end_mark:   end_mark,
+		Type:      typ,
+		StartMark: start_mark,
+		EndMark:   end_mark,
 	}
 	// Append the token to the queue.
 	parser.insertToken(-1, &token)
@@ -1273,9 +1273,9 @@ func (parser *Parser) fetchFlowEntry() bool {
 
 	// Create the FLOW-ENTRY token and append it to the queue.
 	token := Token{
-		typ:        FLOW_ENTRY_TOKEN,
-		start_mark: start_mark,
-		end_mark:   end_mark,
+		Type:      FLOW_ENTRY_TOKEN,
+		StartMark: start_mark,
+		EndMark:   end_mark,
 	}
 	parser.insertToken(-1, &token)
 	return true
@@ -1316,9 +1316,9 @@ func (parser *Parser) fetchBlockEntry() bool {
 
 	// Create the BLOCK-ENTRY token and append it to the queue.
 	token := Token{
-		typ:        BLOCK_ENTRY_TOKEN,
-		start_mark: start_mark,
-		end_mark:   end_mark,
+		Type:      BLOCK_ENTRY_TOKEN,
+		StartMark: start_mark,
+		EndMark:   end_mark,
 	}
 	parser.insertToken(-1, &token)
 	return true
@@ -1354,9 +1354,9 @@ func (parser *Parser) fetchKey() bool {
 
 	// Create the KEY token and append it to the queue.
 	token := Token{
-		typ:        KEY_TOKEN,
-		start_mark: start_mark,
-		end_mark:   end_mark,
+		Type:      KEY_TOKEN,
+		StartMark: start_mark,
+		EndMark:   end_mark,
 	}
 	parser.insertToken(-1, &token)
 	return true
@@ -1373,9 +1373,9 @@ func (parser *Parser) fetchValue() bool {
 
 		// Create the KEY token and insert it into the queue.
 		token := Token{
-			typ:        KEY_TOKEN,
-			start_mark: simple_key.mark,
-			end_mark:   simple_key.mark,
+			Type:      KEY_TOKEN,
+			StartMark: simple_key.mark,
+			EndMark:   simple_key.mark,
 		}
 		parser.insertToken(simple_key.token_number-parser.tokens_parsed, &token)
 
@@ -1422,9 +1422,9 @@ func (parser *Parser) fetchValue() bool {
 
 	// Create the VALUE token and append it to the queue.
 	token := Token{
-		typ:        VALUE_TOKEN,
-		start_mark: start_mark,
-		end_mark:   end_mark,
+		Type:      VALUE_TOKEN,
+		StartMark: start_mark,
+		EndMark:   end_mark,
 	}
 	parser.insertToken(-1, &token)
 	return true
@@ -1566,7 +1566,7 @@ func (parser *Parser) scanToNextToken() bool {
 			tokenA := parser.tokens[len(parser.tokens)-2]
 			tokenB := parser.tokens[len(parser.tokens)-1]
 			comment := &parser.comments[len(parser.comments)-1]
-			if tokenA.typ == BLOCK_SEQUENCE_START_TOKEN && tokenB.typ == BLOCK_ENTRY_TOKEN && len(comment.line) > 0 && !isLineBreak(parser.buffer, parser.buffer_pos) {
+			if tokenA.Type == BLOCK_SEQUENCE_START_TOKEN && tokenB.Type == BLOCK_ENTRY_TOKEN && len(comment.line) > 0 && !isLineBreak(parser.buffer, parser.buffer_pos) {
 				// If it was in the prior line, reposition so it becomes a
 				// header of the follow up token. Otherwise, keep it in place
 				// so it becomes a header of the former.
@@ -1634,11 +1634,11 @@ func (parser *Parser) scanDirective(token *Token) bool {
 
 		// Create a VERSION-DIRECTIVE token.
 		*token = Token{
-			typ:        VERSION_DIRECTIVE_TOKEN,
-			start_mark: start_mark,
-			end_mark:   end_mark,
-			major:      major,
-			minor:      minor,
+			Type:      VERSION_DIRECTIVE_TOKEN,
+			StartMark: start_mark,
+			EndMark:   end_mark,
+			major:     major,
+			minor:     minor,
 		}
 
 		// Is it a TAG directive?
@@ -1652,11 +1652,11 @@ func (parser *Parser) scanDirective(token *Token) bool {
 
 		// Create a TAG-DIRECTIVE token.
 		*token = Token{
-			typ:        TAG_DIRECTIVE_TOKEN,
-			start_mark: start_mark,
-			end_mark:   end_mark,
-			value:      handle,
-			prefix:     prefix,
+			Type:      TAG_DIRECTIVE_TOKEN,
+			StartMark: start_mark,
+			EndMark:   end_mark,
+			Value:     handle,
+			prefix:    prefix,
 		}
 
 		// Unknown directive.
@@ -1934,10 +1934,10 @@ func (parser *Parser) scanAnchor(token *Token, typ TokenType) bool {
 
 	// Create a token.
 	*token = Token{
-		typ:        typ,
-		start_mark: start_mark,
-		end_mark:   end_mark,
-		value:      s,
+		Type:      typ,
+		StartMark: start_mark,
+		EndMark:   end_mark,
+		Value:     s,
 	}
 
 	return true
@@ -2022,11 +2022,11 @@ func (parser *Parser) scanTag(token *Token) bool {
 
 	// Create a token.
 	*token = Token{
-		typ:        TAG_TOKEN,
-		start_mark: start_mark,
-		end_mark:   end_mark,
-		value:      handle,
-		suffix:     suffix,
+		Type:      TAG_TOKEN,
+		StartMark: start_mark,
+		EndMark:   end_mark,
+		Value:     handle,
+		suffix:    suffix,
 	}
 	return true
 }
@@ -2357,14 +2357,14 @@ func (parser *Parser) scanBlockScalar(token *Token, literal bool) bool {
 
 	// Create a token.
 	*token = Token{
-		typ:        SCALAR_TOKEN,
-		start_mark: start_mark,
-		end_mark:   end_mark,
-		value:      s,
-		style:      LITERAL_SCALAR_STYLE,
+		Type:      SCALAR_TOKEN,
+		StartMark: start_mark,
+		EndMark:   end_mark,
+		Value:     s,
+		Style:     LITERAL_SCALAR_STYLE,
 	}
 	if !literal {
-		token.style = FOLDED_SCALAR_STYLE
+		token.Style = FOLDED_SCALAR_STYLE
 	}
 	return true
 }
@@ -2667,14 +2667,14 @@ func (parser *Parser) scanFlowScalar(token *Token, single bool) bool {
 
 	// Create a token.
 	*token = Token{
-		typ:        SCALAR_TOKEN,
-		start_mark: start_mark,
-		end_mark:   end_mark,
-		value:      s,
-		style:      SINGLE_QUOTED_SCALAR_STYLE,
+		Type:      SCALAR_TOKEN,
+		StartMark: start_mark,
+		EndMark:   end_mark,
+		Value:     s,
+		Style:     SINGLE_QUOTED_SCALAR_STYLE,
 	}
 	if !single {
-		token.style = DOUBLE_QUOTED_SCALAR_STYLE
+		token.Style = DOUBLE_QUOTED_SCALAR_STYLE
 	}
 	return true
 }
@@ -2809,11 +2809,11 @@ func (parser *Parser) scanPlainScalar(token *Token) bool {
 
 	// Create a token.
 	*token = Token{
-		typ:        SCALAR_TOKEN,
-		start_mark: start_mark,
-		end_mark:   end_mark,
-		value:      s,
-		style:      PLAIN_SCALAR_STYLE,
+		Type:      SCALAR_TOKEN,
+		StartMark: start_mark,
+		EndMark:   end_mark,
+		Value:     s,
+		Style:     PLAIN_SCALAR_STYLE,
 	}
 
 	// Note that we change the 'simple_key_allowed' flag.
@@ -2877,11 +2877,11 @@ func (parser *Parser) scanLineComment(token_mark Mark) bool {
 func (parser *Parser) scanComments(scan_mark Mark) bool {
 	token := parser.tokens[len(parser.tokens)-1]
 
-	if token.typ == FLOW_ENTRY_TOKEN && len(parser.tokens) > 1 {
+	if token.Type == FLOW_ENTRY_TOKEN && len(parser.tokens) > 1 {
 		token = parser.tokens[len(parser.tokens)-2]
 	}
 
-	token_mark := token.start_mark
+	token_mark := token.StartMark
 	var start_mark Mark
 	next_indent := parser.indent
 	if next_indent < 0 {
@@ -2922,7 +2922,7 @@ func (parser *Parser) scanComments(scan_mark Mark) bool {
 		if close_flow || isBreakOrZero(parser.buffer, parser.buffer_pos+peek) {
 			// Got line break or terminator.
 			if close_flow || !recent_empty {
-				if close_flow || first_empty && (start_mark.Line == foot_line && token.typ != VALUE_TOKEN || start_mark.Column-1 < next_indent) {
+				if close_flow || first_empty && (start_mark.Line == foot_line && token.Type != VALUE_TOKEN || start_mark.Column-1 < next_indent) {
 					// This is the first empty line and there were no empty lines before,
 					// so this initial part of the comment is a foot of the prior token
 					// instead of being a head for the following one. Split it up.
