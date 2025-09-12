@@ -40,7 +40,6 @@ jobs:
       uses: actions/setup-go@v6
       with:
         go-version: ${{ matrix.go-versions }}
-        check-latest: true
     - name: Run go vet
       run: go vet ./...
     - name: Run yaml-test-suit tests
