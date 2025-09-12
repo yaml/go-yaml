@@ -18,19 +18,29 @@ jobs:
     - uses: golangci/golangci-lint-action@v8
       with:
         version: v2.4
+  go-versions:
+    name: Lookup Go versions
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.versions.outputs.matrix }}
+    steps:
+    - uses: actions/checkout@v5
+    - uses: arnested/go-version-action@v1
+      id: versions
   build:
+    runs-on: ubuntu-latest
+    needs: go-versions
+    continue-on-error: true   # make sure to run all versions, even if one fails
     strategy:
       matrix:
-        go-versions:
-          [ '1.18', '1.19', '1.20', '1.21', '1.22', '1.23', '1.24', '1.25' ]
-    runs-on: ubuntu-latest
-    continue-on-error: true  # make sure to run all versions, even if one fails
+        go-versions: ${{ fromJSON(needs.go-versions.outputs.matrix) }}
     steps:
     - uses: actions/checkout@v5
     - name: Set up Go
       uses: actions/setup-go@v6
       with:
         go-version: ${{ matrix.go-versions }}
+        check-latest: true
     - name: Run go vet
       run: go vet ./...
     - name: Run yaml-test-suit tests
