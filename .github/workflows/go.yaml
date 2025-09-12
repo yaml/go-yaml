@@ -7,7 +7,7 @@ on:
     branches: [ main, v3, v2, v1 ]
 
 permissions:
-    contents: read
+  contents: read
 
 jobs:
   fmt:
