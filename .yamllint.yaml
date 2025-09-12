@@ -17,3 +17,5 @@ rules:
     check-keys: true  # by default, only values are checked
     quote-type: single
     required: only-when-needed
+  line-length:
+    max: 92
