@@ -31,22 +31,10 @@ Before submitting an issue, please:
 - Specify your Go version and operating system
 
 
-### Pull Requests
-
-1. Fork the repository
-1. Create a new branch for your changes
-1. Make your changes following our coding conventions
-   - If you are not sure about the coding conventions, please ask
-   - Look at the existing code for examples
-1. Write clear commit messages
-1. Update tests and documentation
-1. Submit a pull request
-
-
 ### Coding Conventions
 
 - Follow standard Go coding conventions
-- Use `gofmt` to format your code
+- Use `make fmt` to format your code
 - Write descriptive comments for non-obvious code
 - Add tests for your work
 - Keep line length to 80 characters
@@ -63,9 +51,21 @@ Before submitting an issue, please:
   - Be no more than 50 characters
 
 
+### Pull Requests
+
+1. Fork the repository
+1. Create a new branch for your changes
+1. Make your changes following our coding conventions
+   - If you are not sure about the coding conventions, please ask
+   - Look at the existing code for examples
+1. Write clear commit messages
+1. Update tests and documentation
+1. Submit a pull request
+
+
 ### Testing
 
-- Ensure all tests pass
+- Ensure all tests pass with `make test`
 - Add new tests for new functionality
 - Update existing tests when modifying functionality
 
@@ -77,6 +77,8 @@ Before submitting an issue, please:
 - Fork and clone the repository
 - Make your changes
 - Run tests and linters
+  - `make test` to run tests locally
+  - `golangci-lint run` to lint locally (requires [golangci-lint](https://golangci-lint.run/) to be installed.)
 
 
 ## Using the Makefile
@@ -89,7 +91,7 @@ targets:
 - `make test GO-VERSION=1.23.4` runs the tests with a specific Go version
 - `make shell` opens a shell with the project's dependencies set up
 - `make shell GO-VERSION=1.23.4` opens a shell with a specific Go version
-- `make fmt` runs `go fmt`
+- `make fmt` runs `golangci-lint fmt ./...`
 - `make tidy` runs `go mod tidy`
 - `make install` runs `go install`
 - `make distclean` cleans the project completely
