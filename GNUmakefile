@@ -24,7 +24,7 @@ YTS-URL := https://github.com/yaml/yaml-test-suite
 TEST-DEPS := $(YTS-DIR)
 
 # Setup and include go.mk and shell.mk:
-GO-CMDS-SKIP := test
+GO-CMDS-SKIP := test fmt
 ifndef GO-VERSION-NEEDED
 GO-NO-DEP-GO := true
 endif
@@ -40,6 +40,8 @@ include $(MAKES)/shell.mk
 v ?=
 count ?= 1
 
+fmt:
+	golangci-lint fmt ./...
 
 # Test rules:
 test: $(TEST-DEPS)
