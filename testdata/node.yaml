@@ -13,6 +13,8 @@
 #       node: Expected node structure (as NodeInfo)
 #       decode: false  # Optional: skip decode test
 #       encode: false  # Optional: skip encode test
+#       with:          # Optional: test options
+#         full-details: true  # Enable position tracking verification
 #
 # Test Types:
 #   node-test - Validates YAML node structure and round-trip encoding/decoding
@@ -23,6 +25,8 @@
 #   node   - Expected node structure in NodeInfo format
 #   decode - Set to false to skip decode test (default: true)
 #   encode - Set to false to skip encode test (default: true)
+#   with   - Optional test configuration (map)
+#     full-details - When true, verify Line/Column/Index position fields (default: false)
 #
 # NodeInfo Format:
 #   kind    - Node kind: Document, Sequence, Mapping, Scalar, Alias
@@ -34,6 +38,11 @@
 #   foot    - FootComment text (optional)
 #   text    - Scalar value (for Scalar nodes only)
 #   content - Array of child nodes (for Document, Sequence, Mapping)
+#
+# Position Fields (only checked when with.full-details: true):
+#   linenum - Line number in input (1-indexed)
+#   col     - Column number in input (1-indexed)
+#   index   - Byte offset in input (0-indexed)
 
 - node-test:
     name: null value
@@ -2472,3 +2481,85 @@
         - kind: Mapping
           style: Flow
           content: [{kind: Scalar, text: qux}, {kind: Scalar, tag: '!!int', text: '1'}]
+
+# Position tracking tests (with full-details: true)
+- node-test:
+    name: simple scalar with position tracking
+    with:
+      full-details: true
+    yaml: "hello\n"
+    node:
+      kind: Document
+      linenum: 1
+      col: 1
+      index: 0
+      content:
+      - kind: Scalar
+        text: hello
+        linenum: 1
+        col: 1
+        index: 0
+
+- node-test:
+    name: simple mapping with position tracking
+    with:
+      full-details: true
+    yaml: "foo: bar\n"
+    node:
+      kind: Document
+      linenum: 1
+      col: 1
+      index: 0
+      content:
+      - kind: Mapping
+        linenum: 1
+        col: 1
+        index: 0
+        content:
+        - kind: Scalar
+          text: foo
+          linenum: 1
+          col: 1
+          index: 0
+        - kind: Scalar
+          text: bar
+          linenum: 1
+          col: 6
+          index: 5
+
+- node-test:
+    name: multiline mapping with position tracking
+    with:
+      full-details: true
+    yaml: "key1: value1\nkey2: value2\n"
+    node:
+      kind: Document
+      linenum: 1
+      col: 1
+      index: 0
+      content:
+      - kind: Mapping
+        linenum: 1
+        col: 1
+        index: 0
+        content:
+        - kind: Scalar
+          text: key1
+          linenum: 1
+          col: 1
+          index: 0
+        - kind: Scalar
+          text: value1
+          linenum: 1
+          col: 7
+          index: 6
+        - kind: Scalar
+          text: key2
+          linenum: 2
+          col: 1
+          index: 13
+        - kind: Scalar
+          text: value2
+          linenum: 2
+          col: 7
+          index: 19

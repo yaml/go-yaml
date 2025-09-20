@@ -160,6 +160,7 @@ func (p *parser) node(kind Kind, defaultTag, tag, value string) *Node {
 	if !p.textless {
 		n.Line = p.event.StartMark.Line + 1
 		n.Column = p.event.StartMark.Column + 1
+		n.Index = p.event.StartMark.Index
 		n.HeadComment = string(p.event.HeadComment)
 		n.LineComment = string(p.event.LineComment)
 		n.FootComment = string(p.event.FootComment)
@@ -350,6 +351,7 @@ func (d *decoder) terror(n *Node, tag string, out reflect.Value) {
 		Err:    fmt.Errorf("cannot unmarshal %s%s into %s", shortTag(tag), value, out.Type()),
 		Line:   n.Line,
 		Column: n.Column,
+		Index:  n.Index,
 	})
 }
 
@@ -366,6 +368,7 @@ func (d *decoder) callUnmarshaler(n *Node, u Unmarshaler) (good bool) {
 			Err:    err,
 			Line:   n.Line,
 			Column: n.Column,
+			Index:  n.Index,
 		})
 		return false
 	}
@@ -394,6 +397,7 @@ func (d *decoder) callObsoleteUnmarshaler(n *Node, u obsoleteUnmarshaler) (good 
 			Err:    err,
 			Line:   n.Line,
 			Column: n.Column,
+			Index:  n.Index,
 		})
 		return false
 	}
@@ -601,6 +605,7 @@ func (d *decoder) scalar(n *Node, out reflect.Value) bool {
 					Err:    err,
 					Line:   n.Line,
 					Column: n.Column,
+					Index:  n.Index,
 				})
 				return false
 			}
@@ -788,6 +793,7 @@ func (d *decoder) mapping(n *Node, out reflect.Value) (good bool) {
 						Err:    fmt.Errorf("mapping key %#v already defined at line %d", nj.Value, ni.Line),
 						Line:   nj.Line,
 						Column: nj.Column,
+						Index:  nj.Index,
 					})
 				}
 			}
@@ -940,6 +946,7 @@ func (d *decoder) mappingStruct(n *Node, out reflect.Value) (good bool) {
 						Err:    fmt.Errorf("field %s already set in type %s", name.String(), out.Type()),
 						Line:   ni.Line,
 						Column: ni.Column,
+						Index:  ni.Index,
 					})
 					continue
 				}
@@ -964,6 +971,7 @@ func (d *decoder) mappingStruct(n *Node, out reflect.Value) (good bool) {
 				Err:    fmt.Errorf("field %s not found in type %s", name.String(), out.Type()),
 				Line:   ni.Line,
 				Column: ni.Column,
+				Index:  ni.Index,
 			})
 		}
 	}

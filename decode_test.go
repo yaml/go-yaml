@@ -1145,7 +1145,7 @@ func TestUnmarshalerError(t *testing.T) {
 	err := yaml.Unmarshal([]byte(data), &dst)
 	expectedErr := &yaml.TypeError{
 		Errors: []*yaml.UnmarshalError{
-			{Line: 1, Column: 17, Err: errFailing},
+			{Line: 1, Column: 17, Index: 16, Err: errFailing},
 		},
 	}
 	assert.DeepEqual(t, expectedErr, err)
@@ -1171,7 +1171,7 @@ func TestObsoleteUnmarshalerError(t *testing.T) {
 	err := yaml.Unmarshal([]byte(data), &dst)
 	expectedErr := &yaml.TypeError{
 		Errors: []*yaml.UnmarshalError{
-			{Line: 1, Column: 17, Err: errFailing},
+			{Line: 1, Column: 17, Index: 16, Err: errFailing},
 		},
 	}
 	assert.DeepEqual(t, expectedErr, err)
@@ -1199,7 +1199,7 @@ func TestTextUnmarshalerError(t *testing.T) {
 	err := yaml.Unmarshal([]byte(data), &dst)
 	expectedErr := &yaml.TypeError{
 		Errors: []*yaml.UnmarshalError{
-			{Line: 1, Column: 17, Err: errFailing},
+			{Line: 1, Column: 17, Index: 16, Err: errFailing},
 		},
 	}
 	assert.DeepEqual(t, expectedErr, err)
