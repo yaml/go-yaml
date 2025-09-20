@@ -14,6 +14,8 @@ jobs:
     steps:
     - name: checkout-action
       uses: actions/checkout@v5
+      with:
+        persist-credentials: false
 
     - name: actionlint
       uses: raven-actions/actionlint@v2.0.1
@@ -23,6 +25,8 @@ jobs:
     steps:
     - name: checkout-action
       uses: actions/checkout@v5
+      with:
+        persist-credentials: false
 
     - name: yamllint
       uses: ibiqlik/action-yamllint@v3
@@ -32,6 +36,8 @@ jobs:
     steps:
     - name: checkout-action
       uses: actions/checkout@v5
+      with:
+        persist-credentials: false
 
     - name: ls-lint
       uses: ls-lint/action@v2
@@ -43,6 +49,8 @@ jobs:
     steps:
     - name: checkout-action
       uses: actions/checkout@v5
+      with:
+        persist-credentials: false
 
     - name: typos-action
       uses: crate-ci/typos@v1
