@@ -1145,19 +1145,32 @@ func TestDecoderErrors(t *testing.T) {
 	}
 }
 
-func TestParserError(t *testing.T) {
+func TestParserErrorUnmarshal(t *testing.T) {
 	var v struct {
 		A, B int
 	}
 	data := "a: 1\n=\nb: 2"
 	err := yaml.Unmarshal([]byte(data), &v)
 	asErr := new(yaml.ParserError)
-	if !errors.As(err, &asErr) {
-		t.Fatalf("error returned by Unmarshal doesn't unwrap into yaml.ParserError")
-	}
+	assert.ErrorAs(t, err, &asErr)
 	expectedErr := &yaml.ParserError{
 		Message: "could not find expected ':'",
 		Line:    2,
+		Column:  0,
+	}
+	assert.DeepEqual(t, expectedErr, asErr)
+}
+
+func TestParserErrorDecoder(t *testing.T) {
+	var v any
+	data := "value: -"
+	err := yaml.NewDecoder(strings.NewReader(data)).Decode(&v)
+	asErr := new(yaml.ParserError)
+	assert.ErrorAs(t, err, &asErr)
+	expectedErr := &yaml.ParserError{
+		Message: "block sequence entries are not allowed in this context",
+		Line:    0,
+		Column:  7,
 	}
 	assert.DeepEqual(t, expectedErr, asErr)
 }

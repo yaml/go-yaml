@@ -121,13 +121,19 @@ func (p *parser) fail() {
 			line++
 		}
 	}
+	var column int
+	if p.parser.context_mark.column != 0 {
+		column = p.parser.context_mark.column
+	} else if p.parser.problem_mark.column != 0 {
+		column = p.parser.problem_mark.column
+	}
 	var msg string
 	if len(p.parser.problem) > 0 {
 		msg = p.parser.problem
 	} else {
 		msg = "unknown problem parsing YAML content"
 	}
-	fail(&ParserError{msg, line})
+	fail(&ParserError{msg, line, column})
 }
 
 func (p *parser) anchor(n *Node, anchor []byte) {

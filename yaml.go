@@ -323,6 +323,7 @@ func failf(format string, args ...any) {
 type ParserError struct {
 	Message string
 	Line    int
+	Column  int
 }
 
 func (e *ParserError) Error() string {
