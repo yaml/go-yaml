@@ -1187,6 +1187,50 @@ var nodeTests = []struct {
 			}},
 		},
 	}, {
+		"a: &x 1\n*x : c\n",
+		yaml.Node{
+			Kind:   yaml.DocumentNode,
+			Line:   1,
+			Column: 1,
+			Content: []*yaml.Node{{
+				Kind:   yaml.MappingNode,
+				Line:   1,
+				Column: 1,
+				Tag:    "!!map",
+				Content: []*yaml.Node{
+					{
+						Kind:   yaml.ScalarNode,
+						Value:  "a",
+						Tag:    "!!str",
+						Line:   1,
+						Column: 1,
+					},
+					saveNode("x", &yaml.Node{
+						Kind:   yaml.ScalarNode,
+						Value:  "1",
+						Tag:    "!!int",
+						Anchor: "x",
+						Line:   1,
+						Column: 4,
+					}),
+					{
+						Kind:   yaml.AliasNode,
+						Value:  "x",
+						Alias:  dropNode("x"),
+						Line:   2,
+						Column: 1,
+					},
+					{
+						Kind:   yaml.ScalarNode,
+						Value:  "c",
+						Tag:    "!!str",
+						Line:   2,
+						Column: 6,
+					},
+				},
+			}},
+		},
+	}, {
 		"# One\n# Two\ntrue # Three\n# Four\n# Five\n",
 		yaml.Node{
 			Kind:   yaml.DocumentNode,
