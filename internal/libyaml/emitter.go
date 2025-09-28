@@ -813,7 +813,16 @@ func (emitter *Emitter) emitBlockMappingKey(event *Event, first bool) bool {
 	}
 	if emitter.checkSimpleKey() {
 		emitter.states = append(emitter.states, EMIT_BLOCK_MAPPING_SIMPLE_VALUE_STATE)
-		return emitter.emitNode(event, false, false, true, true)
+		if !emitter.emitNode(event, false, false, true, true) {
+			return false
+		}
+
+		if event.Type == ALIAS_EVENT {
+			// make sure there's a space after the alias
+			return emitter.put(' ')
+		}
+
+		return true
 	}
 	if !emitter.writeIndicator([]byte{'?'}, true, false, true) {
 		return false
