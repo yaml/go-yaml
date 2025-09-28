@@ -606,6 +606,19 @@ var unmarshalTests = []struct {
 		&struct{ B []int }{[]int{1, 2}},
 	},
 
+	// Bug https://github.com/yaml/go-yaml/issues/109
+	{
+		// alias must be followed by a space in mapping node
+		"foo: &bar bar\n*bar : quz\n",
+		map[string]any{"foo": "bar", "bar": "quz"},
+	},
+
+	{
+		// alias can contain various characters specified by the YAML specification
+		"foo: &b./ar bar\n*b./ar : quz\n",
+		map[string]any{"foo": "bar", "bar": "quz"},
+	},
+
 	// Bug #1133337
 	{
 		"foo: ''",
@@ -1111,6 +1124,9 @@ var unmarshalErrorTests = []struct {
 	{"a: 1\nb: 2\nc 2\nd: 3\n", "^yaml: line 3: could not find expected ':'$"},
 	{"#\n-\n{", "yaml: line 3: could not find expected ':'"},   // Issue #665
 	{"0: [:!00 \xef", "yaml: incomplete UTF-8 octet sequence"}, // Issue #666
+	// anchor cannot contain a colon
+	// https://github.com/yaml/go-yaml/issues/109
+	{"foo: &bar: bar\n*bar: : quz\n", "^yaml: mapping values are not allowed in this context$"},
 	{
 		"a: &a [00,00,00,00,00,00,00,00,00]\n" +
 			"b: &b [*a,*a,*a,*a,*a,*a,*a,*a,*a]\n" +
