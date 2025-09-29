@@ -23,14 +23,16 @@ import (
 	"math"
 	"reflect"
 	"time"
+
+	"go.yaml.in/yaml/v4/internal/libyaml"
 )
 
 // ----------------------------------------------------------------------------
 // Parser, produces a node tree out of a libyaml event stream.
 
 type parser struct {
-	parser   yamlParser
-	event    yamlEvent
+	parser   libyaml.Parser
+	event    libyaml.Event
 	doc      *Node
 	anchors  map[string]*Node
 	doneInit bool
@@ -39,20 +41,20 @@ type parser struct {
 
 func newParser(b []byte) *parser {
 	p := parser{
-		parser: newYAMLParser(),
+		parser: libyaml.NewParser(),
 	}
 	if len(b) == 0 {
 		b = []byte{'\n'}
 	}
-	p.parser.setInputString(b)
+	p.parser.SetInputString(b)
 	return &p
 }
 
 func newParserFromReader(r io.Reader) *parser {
 	p := parser{
-		parser: newYAMLParser(),
+		parser: libyaml.NewParser(),
 	}
-	p.parser.setInputReader(r)
+	p.parser.SetInputReader(r)
 	return &p
 }
 
@@ -61,75 +63,75 @@ func (p *parser) init() {
 		return
 	}
 	p.anchors = make(map[string]*Node)
-	p.expect(yaml_STREAM_START_EVENT)
+	p.expect(libyaml.STREAM_START_EVENT)
 	p.doneInit = true
 }
 
 func (p *parser) destroy() {
-	if p.event.typ != yaml_NO_EVENT {
-		p.event.delete()
+	if p.event.Type != libyaml.NO_EVENT {
+		p.event.Delete()
 	}
-	p.parser.delete()
+	p.parser.Delete()
 }
 
 // expect consumes an event from the event stream and
 // checks that it's of the expected type.
-func (p *parser) expect(e yamlEventType) {
-	if p.event.typ == yaml_NO_EVENT {
-		if !p.parser.parse(&p.event) {
+func (p *parser) expect(e libyaml.EventType) {
+	if p.event.Type == libyaml.NO_EVENT {
+		if !p.parser.Parse(&p.event) {
 			p.fail()
 		}
 	}
-	if p.event.typ == yaml_STREAM_END_EVENT {
+	if p.event.Type == libyaml.STREAM_END_EVENT {
 		failf("attempted to go past the end of stream; corrupted value?")
 	}
-	if p.event.typ != e {
-		p.parser.problem = fmt.Sprintf("expected %s event but got %s", e, p.event.typ)
+	if p.event.Type != e {
+		p.parser.Problem = fmt.Sprintf("expected %s event but got %s", e, p.event.Type)
 		p.fail()
 	}
-	p.event.delete()
-	p.event.typ = yaml_NO_EVENT
+	p.event.Delete()
+	p.event.Type = libyaml.NO_EVENT
 }
 
 // peek peeks at the next event in the event stream,
 // puts the results into p.event and returns the event type.
-func (p *parser) peek() yamlEventType {
-	if p.event.typ != yaml_NO_EVENT {
-		return p.event.typ
+func (p *parser) peek() libyaml.EventType {
+	if p.event.Type != libyaml.NO_EVENT {
+		return p.event.Type
 	}
 	// It's curious choice from the underlying API to generally return a
 	// positive result on success, but on this case return true in an error
 	// scenario. This was the source of bugs in the past (issue #666).
-	if !p.parser.parse(&p.event) || p.parser.error != yaml_NO_ERROR {
+	if !p.parser.Parse(&p.event) || p.parser.ErrorType != libyaml.NO_ERROR {
 		p.fail()
 	}
-	return p.event.typ
+	return p.event.Type
 }
 
 func (p *parser) fail() {
 	var line int
-	if p.parser.context_mark.line != 0 {
-		line = p.parser.context_mark.line
+	if p.parser.ContextMark.Line != 0 {
+		line = p.parser.ContextMark.Line
 		// Scanner errors don't iterate line before returning error
-		if p.parser.error == yaml_SCANNER_ERROR {
+		if p.parser.ErrorType == libyaml.SCANNER_ERROR {
 			line++
 		}
-	} else if p.parser.problem_mark.line != 0 {
-		line = p.parser.problem_mark.line
+	} else if p.parser.ProblemMark.Line != 0 {
+		line = p.parser.ProblemMark.Line
 		// Scanner errors don't iterate line before returning error
-		if p.parser.error == yaml_SCANNER_ERROR {
+		if p.parser.ErrorType == libyaml.SCANNER_ERROR {
 			line++
 		}
 	}
 	var column int
-	if p.parser.context_mark.column != 0 {
-		column = p.parser.context_mark.column
-	} else if p.parser.problem_mark.column != 0 {
-		column = p.parser.problem_mark.column
+	if p.parser.ContextMark.Column != 0 {
+		column = p.parser.ContextMark.Column
+	} else if p.parser.ProblemMark.Column != 0 {
+		column = p.parser.ProblemMark.Column
 	}
 	var msg string
-	if len(p.parser.problem) > 0 {
-		msg = p.parser.problem
+	if len(p.parser.Problem) > 0 {
+		msg = p.parser.Problem
 	} else {
 		msg = "unknown problem parsing YAML content"
 	}
@@ -146,23 +148,23 @@ func (p *parser) anchor(n *Node, anchor []byte) {
 func (p *parser) parse() *Node {
 	p.init()
 	switch p.peek() {
-	case yaml_SCALAR_EVENT:
+	case libyaml.SCALAR_EVENT:
 		return p.scalar()
-	case yaml_ALIAS_EVENT:
+	case libyaml.ALIAS_EVENT:
 		return p.alias()
-	case yaml_MAPPING_START_EVENT:
+	case libyaml.MAPPING_START_EVENT:
 		return p.mapping()
-	case yaml_SEQUENCE_START_EVENT:
+	case libyaml.SEQUENCE_START_EVENT:
 		return p.sequence()
-	case yaml_DOCUMENT_START_EVENT:
+	case libyaml.DOCUMENT_START_EVENT:
 		return p.document()
-	case yaml_STREAM_END_EVENT:
+	case libyaml.STREAM_END_EVENT:
 		// Happens when attempting to decode an empty buffer.
 		return nil
-	case yaml_TAIL_COMMENT_EVENT:
+	case libyaml.TAIL_COMMENT_EVENT:
 		panic("internal error: unexpected tail comment event (please report)")
 	default:
-		panic("internal error: attempted to parse unknown event (please report): " + p.event.typ.String())
+		panic("internal error: attempted to parse unknown event (please report): " + p.event.Type.String())
 	}
 }
 
@@ -183,11 +185,11 @@ func (p *parser) node(kind Kind, defaultTag, tag, value string) *Node {
 		Style: style,
 	}
 	if !p.textless {
-		n.Line = p.event.start_mark.line + 1
-		n.Column = p.event.start_mark.column + 1
-		n.HeadComment = string(p.event.head_comment)
-		n.LineComment = string(p.event.line_comment)
-		n.FootComment = string(p.event.foot_comment)
+		n.Line = p.event.StartMark.Line + 1
+		n.Column = p.event.StartMark.Column + 1
+		n.HeadComment = string(p.event.HeadComment)
+		n.LineComment = string(p.event.LineComment)
+		n.FootComment = string(p.event.FootComment)
 	}
 	return n
 }
@@ -201,40 +203,40 @@ func (p *parser) parseChild(parent *Node) *Node {
 func (p *parser) document() *Node {
 	n := p.node(DocumentNode, "", "", "")
 	p.doc = n
-	p.expect(yaml_DOCUMENT_START_EVENT)
+	p.expect(libyaml.DOCUMENT_START_EVENT)
 	p.parseChild(n)
-	if p.peek() == yaml_DOCUMENT_END_EVENT {
-		n.FootComment = string(p.event.foot_comment)
+	if p.peek() == libyaml.DOCUMENT_END_EVENT {
+		n.FootComment = string(p.event.FootComment)
 	}
-	p.expect(yaml_DOCUMENT_END_EVENT)
+	p.expect(libyaml.DOCUMENT_END_EVENT)
 	return n
 }
 
 func (p *parser) alias() *Node {
-	n := p.node(AliasNode, "", "", string(p.event.anchor))
+	n := p.node(AliasNode, "", "", string(p.event.Anchor))
 	n.Alias = p.anchors[n.Value]
 	if n.Alias == nil {
 		failf("unknown anchor '%s' referenced", n.Value)
 	}
-	p.expect(yaml_ALIAS_EVENT)
+	p.expect(libyaml.ALIAS_EVENT)
 	return n
 }
 
 func (p *parser) scalar() *Node {
-	parsedStyle := p.event.scalarStyle()
+	parsedStyle := p.event.ScalarStyle()
 	var nodeStyle Style
 	switch {
-	case parsedStyle&yaml_DOUBLE_QUOTED_SCALAR_STYLE != 0:
+	case parsedStyle&libyaml.DOUBLE_QUOTED_SCALAR_STYLE != 0:
 		nodeStyle = DoubleQuotedStyle
-	case parsedStyle&yaml_SINGLE_QUOTED_SCALAR_STYLE != 0:
+	case parsedStyle&libyaml.SINGLE_QUOTED_SCALAR_STYLE != 0:
 		nodeStyle = SingleQuotedStyle
-	case parsedStyle&yaml_LITERAL_SCALAR_STYLE != 0:
+	case parsedStyle&libyaml.LITERAL_SCALAR_STYLE != 0:
 		nodeStyle = LiteralStyle
-	case parsedStyle&yaml_FOLDED_SCALAR_STYLE != 0:
+	case parsedStyle&libyaml.FOLDED_SCALAR_STYLE != 0:
 		nodeStyle = FoldedStyle
 	}
-	nodeValue := string(p.event.value)
-	nodeTag := string(p.event.tag)
+	nodeValue := string(p.event.Value)
+	nodeTag := string(p.event.Tag)
 	var defaultTag string
 	if nodeStyle == 0 {
 		if nodeValue == "<<" {
@@ -245,37 +247,37 @@ func (p *parser) scalar() *Node {
 	}
 	n := p.node(ScalarNode, defaultTag, nodeTag, nodeValue)
 	n.Style |= nodeStyle
-	p.anchor(n, p.event.anchor)
-	p.expect(yaml_SCALAR_EVENT)
+	p.anchor(n, p.event.Anchor)
+	p.expect(libyaml.SCALAR_EVENT)
 	return n
 }
 
 func (p *parser) sequence() *Node {
-	n := p.node(SequenceNode, seqTag, string(p.event.tag), "")
-	if p.event.sequenceStyle()&yaml_FLOW_SEQUENCE_STYLE != 0 {
+	n := p.node(SequenceNode, seqTag, string(p.event.Tag), "")
+	if p.event.SequenceStyle()&libyaml.FLOW_SEQUENCE_STYLE != 0 {
 		n.Style |= FlowStyle
 	}
-	p.anchor(n, p.event.anchor)
-	p.expect(yaml_SEQUENCE_START_EVENT)
-	for p.peek() != yaml_SEQUENCE_END_EVENT {
+	p.anchor(n, p.event.Anchor)
+	p.expect(libyaml.SEQUENCE_START_EVENT)
+	for p.peek() != libyaml.SEQUENCE_END_EVENT {
 		p.parseChild(n)
 	}
-	n.LineComment = string(p.event.line_comment)
-	n.FootComment = string(p.event.foot_comment)
-	p.expect(yaml_SEQUENCE_END_EVENT)
+	n.LineComment = string(p.event.LineComment)
+	n.FootComment = string(p.event.FootComment)
+	p.expect(libyaml.SEQUENCE_END_EVENT)
 	return n
 }
 
 func (p *parser) mapping() *Node {
-	n := p.node(MappingNode, mapTag, string(p.event.tag), "")
+	n := p.node(MappingNode, mapTag, string(p.event.Tag), "")
 	block := true
-	if p.event.mappingStyle()&yaml_FLOW_MAPPING_STYLE != 0 {
+	if p.event.MappingStyle()&libyaml.FLOW_MAPPING_STYLE != 0 {
 		block = false
 		n.Style |= FlowStyle
 	}
-	p.anchor(n, p.event.anchor)
-	p.expect(yaml_MAPPING_START_EVENT)
-	for p.peek() != yaml_MAPPING_END_EVENT {
+	p.anchor(n, p.event.Anchor)
+	p.expect(libyaml.MAPPING_START_EVENT)
+	for p.peek() != libyaml.MAPPING_END_EVENT {
 		k := p.parseChild(n)
 		if block && k.FootComment != "" {
 			// Must be a foot comment for the prior value when being dedented.
@@ -289,20 +291,20 @@ func (p *parser) mapping() *Node {
 			k.FootComment = v.FootComment
 			v.FootComment = ""
 		}
-		if p.peek() == yaml_TAIL_COMMENT_EVENT {
+		if p.peek() == libyaml.TAIL_COMMENT_EVENT {
 			if k.FootComment == "" {
-				k.FootComment = string(p.event.foot_comment)
+				k.FootComment = string(p.event.FootComment)
 			}
-			p.expect(yaml_TAIL_COMMENT_EVENT)
+			p.expect(libyaml.TAIL_COMMENT_EVENT)
 		}
 	}
-	n.LineComment = string(p.event.line_comment)
-	n.FootComment = string(p.event.foot_comment)
+	n.LineComment = string(p.event.LineComment)
+	n.FootComment = string(p.event.FootComment)
 	if n.Style&FlowStyle == 0 && n.FootComment != "" && len(n.Content) > 1 {
 		n.Content[len(n.Content)-2].FootComment = n.FootComment
 		n.FootComment = ""
 	}
-	p.expect(yaml_MAPPING_END_EVENT)
+	p.expect(libyaml.MAPPING_END_EVENT)
 	return n
 }
 
