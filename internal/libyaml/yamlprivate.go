@@ -67,12 +67,29 @@ func isFlowIndicator(b []byte, i int) bool {
 // We further limit it to ascii chars only, which is a subset of the spec
 // production but is usually what most people expect.
 func isAnchorChar(b []byte, i int) bool {
+	if isColon(b, i) {
+		// [Go] we exclude colons from anchor/alias names.
+		//
+		// A colon is a valid anchor character according to the YAML 1.2 specification,
+		// but it can lead to ambiguity.
+		// https://github.com/yaml/go-yaml/issues/109
+		//
+		// Also, it would have been a breaking change to support it, as go.yaml.in/yaml/v3 ignores it.
+		// Supporting it could lead to unexpected behavior.
+		return false
+	}
+
 	return isPrintable(b, i) &&
 		!isLineBreak(b, i) &&
 		!isBlank(b, i) &&
 		!isBOM(b, i) &&
 		!isFlowIndicator(b, i) &&
 		isASCII(b, i)
+}
+
+// isColon checks whether the character at the specified position is a colon.
+func isColon(b []byte, i int) bool {
+	return b[i] == ':'
 }
 
 // Check if the character at the specified position is a digit.
