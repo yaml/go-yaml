@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v5
+      with:
+        persist-credentials: false
     - name: Set up Go
       uses: actions/setup-go@v6
       with:
@@ -28,6 +30,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v5
+      with:
+        persist-credentials: false
     - name: Set up Go
       uses: actions/setup-go@v6
       with:
@@ -44,6 +48,8 @@ jobs:
     continue-on-error: true  # make sure to run all versions, even if one fails
     steps:
     - uses: actions/checkout@v5
+      with:
+        persist-credentials: false
     - name: Set up Go
       uses: actions/setup-go@v6
       with:
