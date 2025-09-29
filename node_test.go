@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -2756,53 +2757,125 @@ func TestNodeRoundtrip(t *testing.T) {
 	defer os.Setenv("TZ", os.Getenv("TZ"))
 	os.Setenv("TZ", "UTC")
 	for i, item := range nodeTests {
-		t.Logf("test %d: %q", i, item.yaml)
-
-		if strings.Contains(item.yaml, "#") {
-			var buf bytes.Buffer
-			fprintComments(&buf, &item.node, "    ")
-			t.Logf("  expected comments:\n%s", buf.Bytes())
-		}
-
-		decode := true
-		encode := true
-
-		testYaml := item.yaml
-		if s := strings.TrimPrefix(testYaml, "[decode]"); s != testYaml {
-			encode = false
-			testYaml = s
-		}
-		if s := strings.TrimPrefix(testYaml, "[encode]"); s != testYaml {
-			decode = false
-			testYaml = s
-		}
-
-		if decode {
-			var node yaml.Node
-			err := yaml.Unmarshal([]byte(testYaml), &node)
-			assert.NoError(t, err)
+		t.Run(fmt.Sprintf("test %d", i), func(t *testing.T) {
+			t.Logf("test %d: %q", i, item.yaml)
 			if strings.Contains(item.yaml, "#") {
 				var buf bytes.Buffer
-				fprintComments(&buf, &node, "    ")
-				t.Logf("  obtained comments:\n%s", buf.Bytes())
+				fprintComments(&buf, &item.node, "    ")
+				t.Logf("  expected comments:\n%s", buf.Bytes())
 			}
-			assert.DeepEqual(t, &item.node, &node)
-		}
-		if encode {
-			node := deepCopyNode(&item.node, nil)
-			buf := bytes.Buffer{}
-			enc := yaml.NewEncoder(&buf)
-			enc.SetIndent(2)
-			err := enc.Encode(node)
-			assert.NoError(t, err)
-			err = enc.Close()
-			assert.NoError(t, err)
-			assert.Equal(t, buf.String(), testYaml)
 
-			// Ensure there were no mutations to the tree.
-			assert.DeepEqual(t, &item.node, node)
+			decode := true
+			encode := true
+
+			testYaml := item.yaml
+			if s := strings.TrimPrefix(testYaml, "[decode]"); s != testYaml {
+				encode = false
+				testYaml = s
+			}
+			if s := strings.TrimPrefix(testYaml, "[encode]"); s != testYaml {
+				decode = false
+				testYaml = s
+			}
+
+			if decode {
+				var node yaml.Node
+				err := yaml.Unmarshal([]byte(testYaml), &node)
+				assert.NoError(t, err)
+				if strings.Contains(item.yaml, "#") {
+					var buf bytes.Buffer
+					fprintComments(&buf, &node, "    ")
+					t.Logf("  obtained comments:\n%s", buf.Bytes())
+				}
+
+				assertNodeEqual(t, &item.node, &node)
+			}
+			if encode {
+				node := deepCopyNode(&item.node, nil)
+				buf := bytes.Buffer{}
+				enc := yaml.NewEncoder(&buf)
+				enc.SetIndent(2)
+				err := enc.Encode(node)
+				assert.NoError(t, err)
+				err = enc.Close()
+				assert.NoError(t, err)
+				assert.Equal(t, buf.String(), testYaml)
+
+				// Ensure there were no mutations to the tree.
+				assertNodeEqual(t, &item.node, node)
+			}
+		})
+	}
+}
+
+// assertNodeEqual is a helper to check whether two YAML nodes are equal.
+func assertNodeEqual(t *testing.T, want *yaml.Node, got *yaml.Node) {
+	t.Helper()
+
+	if reflect.DeepEqual(got, want) {
+		// fast path
+		return
+	}
+
+	if got.Tag != want.Tag {
+		t.Errorf("Tag mismatch: want: %q got: %q", want.Tag, got.Tag)
+	}
+
+	if got.Kind != want.Kind {
+		t.Errorf("Kind mismatch: want: %q got: %q", want.Kind, got.Kind)
+	}
+
+	if got.Style != want.Style {
+		t.Errorf("Style mismatch: want: %q got: %q", want.Style, got.Style)
+	}
+
+	if got.HeadComment != want.HeadComment {
+		t.Errorf("HeadComment mismatch: want: %#v got: %#v", want.HeadComment, got.HeadComment)
+	}
+
+	if got.LineComment != want.LineComment {
+		t.Errorf("LineComment mismatch: want: %#v got: %#v", want.LineComment, got.LineComment)
+	}
+
+	if got.FootComment != want.FootComment {
+		t.Errorf("FootComment mismatch: want: %#v got: %#v", want.FootComment, got.FootComment)
+	}
+
+	if got.Value != want.Value {
+		t.Errorf("Value mismatch: want: %q got: %q", want.Value, got.Value)
+	}
+
+	if got.Anchor != want.Anchor {
+		t.Errorf("Anchor mismatch: want: %q got: %q", want.Anchor, got.Anchor)
+	}
+
+	if got.Line != want.Line {
+		t.Errorf("Line mismatch: want: %d got: %d", want.Line, got.Line)
+	}
+
+	if got.Column != want.Column {
+		t.Errorf("Column mismatch: want: %d got: %d", want.Column, got.Column)
+	}
+
+	if !reflect.DeepEqual(got.Content, want.Content) {
+		// Content differs
+
+		if len(got.Content) != len(want.Content) {
+			t.Errorf("Content length mismatch:\nwant: %d\ngot: %d", len(want.Content), len(got.Content))
+		}
+
+		for i := 0; i < len(want.Content) && i < len(got.Content); i++ {
+			assertNodeEqual(t, want.Content[i], got.Content[i])
 		}
 	}
+
+	if t.Failed() {
+		// we already reported an error, there is no need to report it again.
+		return
+	}
+
+	// this error message is harder to read, and is only shown if no other errors were reported.
+	t.Errorf("nodes differ:\nwant:\n%#v\ngot:\n%#v", want, got)
 }
 
 func deepCopyNode(node *yaml.Node, cache map[*yaml.Node]*yaml.Node) *yaml.Node {
@@ -2909,7 +2982,7 @@ func TestSetString(t *testing.T) {
 
 		node.SetString(item.str)
 
-		assert.DeepEqual(t, item.node, node)
+		assertNodeEqual(t, &item.node, &node)
 
 		buf := bytes.Buffer{}
 		enc := yaml.NewEncoder(&buf)
