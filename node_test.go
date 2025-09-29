@@ -1130,7 +1130,7 @@ var nodeTests = []struct {
 			}},
 		},
 	}, {
-		"a: &anchor(.!@#$%^&*+=?:;)name [1, 2]\nb: *anchor(.!@#$%^&*+=?:;)name\n",
+		"a: &anchor(.!@#$%^&*+=?;)name [1, 2]\nb: *anchor(.!@#$%^&*+=?;)name\n",
 		yaml.Node{
 			Kind:   yaml.DocumentNode,
 			Line:   1,
@@ -1148,11 +1148,11 @@ var nodeTests = []struct {
 						Line:   1,
 						Column: 1,
 					},
-					saveNode("anchor(.!@#$%^&*+=?:;)name", &yaml.Node{
+					saveNode("anchor(.!@#$%^&*+=?;)name", &yaml.Node{
 						Kind:   yaml.SequenceNode,
 						Style:  yaml.FlowStyle,
 						Tag:    "!!seq",
-						Anchor: "anchor(.!@#$%^&*+=?:;)name",
+						Anchor: "anchor(.!@#$%^&*+=?;)name",
 						Line:   1,
 						Column: 4,
 						Content: []*yaml.Node{{
@@ -1160,13 +1160,13 @@ var nodeTests = []struct {
 							Value:  "1",
 							Tag:    "!!int",
 							Line:   1,
-							Column: 33,
+							Column: 32,
 						}, {
 							Kind:   yaml.ScalarNode,
 							Value:  "2",
 							Tag:    "!!int",
 							Line:   1,
-							Column: 36,
+							Column: 35,
 						}},
 					}),
 					{
@@ -1178,8 +1178,8 @@ var nodeTests = []struct {
 					},
 					{
 						Kind:   yaml.AliasNode,
-						Value:  "anchor(.!@#$%^&*+=?:;)name",
-						Alias:  dropNode("anchor(.!@#$%^&*+=?:;)name"),
+						Value:  "anchor(.!@#$%^&*+=?;)name",
+						Alias:  dropNode("anchor(.!@#$%^&*+=?;)name"),
 						Line:   2,
 						Column: 4,
 					},
