@@ -308,6 +308,7 @@ func (parser *yamlParser) parseDocumentStart(event *yamlEvent, implicit bool) bo
 			typ:        yaml_DOCUMENT_START_EVENT,
 			start_mark: token.start_mark,
 			end_mark:   token.end_mark,
+			implicit:   true,
 
 			head_comment: head_comment,
 		}
@@ -341,6 +342,8 @@ func (parser *yamlParser) parseDocumentStart(event *yamlEvent, implicit bool) bo
 			tag_directives:    tag_directives,
 			implicit:          false,
 		}
+		// Without the next line, comments before `---` would be attributed wrongly.
+		parser.setEventComments(event)
 		parser.skipToken()
 
 	} else {
@@ -351,6 +354,9 @@ func (parser *yamlParser) parseDocumentStart(event *yamlEvent, implicit bool) bo
 			start_mark: token.start_mark,
 			end_mark:   token.end_mark,
 		}
+		// Without this, a document only consisting out of comments would result
+		// in no node since the comment would not be added to any event.
+		parser.setEventComments(event)
 		parser.skipToken()
 	}
 

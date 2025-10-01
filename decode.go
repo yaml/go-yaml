@@ -158,6 +158,15 @@ func (p *parser) parse() *Node {
 		return p.document()
 	case yaml_STREAM_END_EVENT:
 		// Happens when attempting to decode an empty buffer.
+		if len(p.event.head_comment) > 0 {
+			// The buffer is empty, but there is a comment.
+			// Create a document node which contains this comment.
+			// Without this, the comment would get lost since
+			// Node.Decode() would simply return io.EOF.
+			n := p.node(DocumentNode, "", "", "")
+			p.event.head_comment = nil
+			return n
+		}
 		return nil
 	case yaml_TAIL_COMMENT_EVENT:
 		panic("internal error: unexpected tail comment event (please report)")
