@@ -18,6 +18,10 @@ GO-VERSION ?= 1.24.0
 endif
 GO-VERSION-NEEDED := $(GO-VERSION)
 
+GOLANGCI-LINT-VERSION ?= v2.5.0
+GOLANGCI-LINT-INSTALL := \
+  https://github.com/golangci/golangci-lint/raw/main/install.sh
+
 # yaml-test-suite info:
 YTS-URL ?= https://github.com/yaml/yaml-test-suite
 YTS-TAG ?= data-2022-01-17
@@ -119,10 +123,7 @@ define yts_pass_fail
 endef
 export yts_pass_fail
 
-GOLANGCI-LINT-INSTALL := \
-  https://github.com/golangci/golangci-lint/raw/main/install.sh
-
 golangci-lint: $(GO-DEPS)
 	@[[ -f $$(go env GOPATH)/bin/$@ ]] || \
 	  curl -sSfL $(GOLANGCI-LINT-INSTALL) | \
-	    sh -s -- -b $$(go env GOPATH)/bin
+	    bash -s -- -b $$(go env GOPATH)/bin $(GOLANGCI-LINT-VERSION)
