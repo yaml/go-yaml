@@ -99,21 +99,24 @@ foo: &a1 bar
 - Update existing tests when modifying functionality
 
 
-## Development Setup
+## Development Process
 
-- Install Go (see [go.mod](https://github.com/yaml/go-yaml/blob/main/go.mod) for
-  minimum required version)
+- Installing Go is not necessary. See "The Makefile" below.
 - Fork and clone the repository
 - Make your changes
-- Run tests and linters
-  - `make test` to run tests locally
-  - `golangci-lint run` to lint locally (requires [golangci-lint](https://golangci-lint.run/) to be installed.)
+- Run tests, linters and formatters
+  - `make test-all`
+  - `make lint`
+  - `make fmt`
+  - `make tidy`
+  - `make vet`
+- Submit a [Pull Request](https://github.com/yaml/go-yaml/pulls)
 
 
-## Using the Makefile
+## The Makefile
 
-The repository contains a `GNUmakefile` that provides a number of useful
-targets:
+The repository contains a Makefile (`GNUmakefile`) that provides a number of
+useful targets:
 
 - `make test` runs the tests
 - `make test v=1 count=3` runs the tests with options
@@ -121,9 +124,12 @@ targets:
 - `make shell` opens a shell with the project's dependencies set up
 - `make shell GO-VERSION=1.23.4` opens a shell with a specific Go version
 - `make fmt` runs `golangci-lint fmt ./...`
+- `make lint` runs `golangci-lint run`
 - `make tidy` runs `go mod tidy`
 - `make install` runs `go install`
 - `make distclean` cleans the project completely
+
+The Makefile will install all requirements for any target, including Go itself.
 
 
 ## Getting Help
