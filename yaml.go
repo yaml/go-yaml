@@ -30,6 +30,8 @@ import (
 	"sync"
 	"unicode"
 	"unicode/utf8"
+
+	"go.yaml.in/yaml/v4/option"
 )
 
 // The Unmarshaler interface may be implemented by types to customize their
@@ -85,30 +87,33 @@ type Marshaler interface {
 //
 // See the documentation of Marshal for the format of tags and a list of
 // supported tag options.
-func Unmarshal(in []byte, out any) (err error) {
-	return unmarshal(in, out, false)
+func Unmarshal(in []byte, out any, opts ...option.Option) (err error) {
+	config := option.NewConfig(opts...)
+	return unmarshal(in, out, config)
 }
 
 // A Decoder reads and decodes YAML values from an input stream.
 type Decoder struct {
-	parser      *parser
-	knownFields bool
+	parser *parser
+	config *option.Config
 }
 
 // NewDecoder returns a new decoder that reads from r.
 //
 // The decoder introduces its own buffering and may read
 // data from r beyond the YAML values requested.
-func NewDecoder(r io.Reader) *Decoder {
+func NewDecoder(r io.Reader, opts ...option.Option) *Decoder {
+	config := option.NewConfig(opts...)
 	return &Decoder{
 		parser: newParserFromReader(r),
+		config: config,
 	}
 }
 
 // KnownFields ensures that the keys in decoded mappings to
 // exist as fields in the struct being decoded into.
 func (dec *Decoder) KnownFields(enable bool) {
-	dec.knownFields = enable
+	dec.config.Apply(option.WithKnownFields(enable))
 }
 
 // Decode reads the next YAML-encoded value from its input
@@ -117,8 +122,7 @@ func (dec *Decoder) KnownFields(enable bool) {
 // See the documentation for Unmarshal for details about the
 // conversion of YAML into a Go value.
 func (dec *Decoder) Decode(v any) (err error) {
-	d := newDecoder()
-	d.knownFields = dec.knownFields
+	d := newDecoder(dec.config)
 	defer handleErr(&err)
 	node := dec.parser.parse()
 	if node == nil {
@@ -139,8 +143,9 @@ func (dec *Decoder) Decode(v any) (err error) {
 //
 // See the documentation for Unmarshal for details about the
 // conversion of YAML into a Go value.
-func (n *Node) Decode(v any) (err error) {
-	d := newDecoder()
+func (n *Node) Decode(v any, opts ...option.Option) (err error) {
+	config := option.NewConfig(opts...)
+	d := newDecoder(config)
 	defer handleErr(&err)
 	out := reflect.ValueOf(v)
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
@@ -153,9 +158,9 @@ func (n *Node) Decode(v any) (err error) {
 	return nil
 }
 
-func unmarshal(in []byte, out any, strict bool) (err error) {
+func unmarshal(in []byte, out any, config *option.Config) (err error) {
 	defer handleErr(&err)
-	d := newDecoder()
+	d := newDecoder(config)
 	p := newParser(in)
 	defer p.destroy()
 	node := p.parse()
@@ -214,9 +219,10 @@ func unmarshal(in []byte, out any, strict bool) (err error) {
 //	}
 //	yaml.Marshal(&T{B: 2}) // Returns "b: 2\n"
 //	yaml.Marshal(&T{F: 1}} // Returns "a: 1\nb: 0\n"
-func Marshal(in any) (out []byte, err error) {
+func Marshal(in any, opts ...option.Option) (out []byte, err error) {
 	defer handleErr(&err)
-	e := newEncoder()
+	config := option.NewConfig(opts...)
+	e := newEncoder(config)
 	defer e.destroy()
 	e.marshalDoc("", reflect.ValueOf(in))
 	e.finish()
@@ -232,9 +238,10 @@ type Encoder struct {
 // NewEncoder returns a new encoder that writes to w.
 // The Encoder should be closed after use to flush all data
 // to w.
-func NewEncoder(w io.Writer) *Encoder {
+func NewEncoder(w io.Writer, opts ...option.Option) *Encoder {
+	config := option.NewConfig(opts...)
 	return &Encoder{
-		encoder: newEncoderWithWriter(w),
+		encoder: newEncoderWithWriter(w, config),
 	}
 }
 
@@ -255,9 +262,10 @@ func (e *Encoder) Encode(v any) (err error) {
 //
 // See the documentation for Marshal for details about the
 // conversion of Go values into YAML.
-func (n *Node) Encode(v any) (err error) {
+func (n *Node) Encode(v any, opts ...option.Option) (err error) {
 	defer handleErr(&err)
-	e := newEncoder()
+	config := option.NewConfig(opts...)
+	e := newEncoder(config)
 	defer e.destroy()
 	e.marshalDoc("", reflect.ValueOf(v))
 	e.finish()
