@@ -221,7 +221,7 @@ func Marshal(in any) (out []byte, err error) {
 	e.marshalDoc("", reflect.ValueOf(in))
 	e.finish()
 	out = e.out
-	return
+	return out, err
 }
 
 // An Encoder writes YAML values to an output stream.
