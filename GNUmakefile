@@ -18,10 +18,6 @@ GO-VERSION ?= 1.24.0
 endif
 GO-VERSION-NEEDED := $(GO-VERSION)
 
-GOLANGCI-LINT-VERSION ?= v2.5.0
-GOLANGCI-LINT-INSTALL := \
-  https://github.com/golangci/golangci-lint/raw/main/install.sh
-
 # yaml-test-suite info:
 YTS-URL ?= https://github.com/yaml/yaml-test-suite
 YTS-TAG ?= data-2022-01-17
@@ -53,7 +49,12 @@ SHELL-NAME := makes go-yaml
 include $(MAKES)/clean.mk
 include $(MAKES)/shell.mk
 
-MAKES-CLEAN := $(dir $(YTS-DIR))
+GOLANGCI-LINT-VERSION ?= v2.5.0
+GOLANGCI-LINT-INSTALL := \
+  https://github.com/golangci/golangci-lint/raw/main/install.sh
+GOLANGCI-LINT := $(LOCAL-BIN)/golangci-lint-$(GOLANGCI-LINT-VERSION)
+
+MAKES-CLEAN := $(dir $(YTS-DIR)) $(GOLANGCI-LINT)
 
 v ?=
 count ?= 1
@@ -78,10 +79,10 @@ test-yts-fail: $(GO-DEPS) $(YTS-DIR)
 	@echo 'Testing yaml-test-suite failures'
 	@RUNFAILING=1 bash -c "$$yts_pass_fail"
 
-fmt: golangci-lint
+fmt: $(GOLANGCI-LINT)
 	$< fmt ./...
 
-lint: golangci-lint
+lint: $(GOLANGCI-LINT)
 	$< run
 
 fumpt: $(GO)
@@ -123,7 +124,7 @@ define yts_pass_fail
 endef
 export yts_pass_fail
 
-golangci-lint: $(GO-DEPS)
-	@[[ -f $$(go env GOPATH)/bin/$@ ]] || \
-	  curl -sSfL $(GOLANGCI-LINT-INSTALL) | \
-	    bash -s -- -b $$(go env GOPATH)/bin $(GOLANGCI-LINT-VERSION)
+$(GOLANGCI-LINT): $(GO-DEPS)
+	curl -sSfL $(GOLANGCI-LINT-INSTALL) | \
+	  bash -s -- -b $(LOCAL-BIN) $(GOLANGCI-LINT-VERSION)
+	mv $(LOCAL-BIN)/golangci-lint $@
