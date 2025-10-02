@@ -1075,7 +1075,7 @@ func (errReader) Read([]byte) (int, error) {
 
 func TestDecoderReadError(t *testing.T) {
 	err := yaml.NewDecoder(errReader{}).Decode(&struct{}{})
-	assert.ErrorMatches(t, `yaml: input error: some read error`, err)
+	assert.ErrorMatches(t, `yaml: line 1: input error: some read error`, err)
 }
 
 func TestUnmarshalNaN(t *testing.T) {
@@ -1101,16 +1101,16 @@ var unmarshalErrorTests = []struct {
 	{"a:\n- b: *,", "yaml: line 2: did not find expected alphabetic or numeric character"},
 	{"a: *b\n", "yaml: unknown anchor 'b' referenced"},
 	{"a: &a\n  b: *a\n", "yaml: anchor 'a' value contains itself"},
-	{"value: -", "yaml: block sequence entries are not allowed in this context"},
+	{"value: -", "yaml: line 1: block sequence entries are not allowed in this context"},
 	{"a: !!binary ==", "yaml: !!binary value contains invalid base64 data"},
 	{"{[.]}", `yaml: cannot use '\[\]interface \{\}\{"\."\}' as a map key; try decoding into yaml.Node`},
 	{"{{.}}", `yaml: cannot use 'map\[string]interface \{\}\{".":interface \{\}\(nil\)\}' as a map key; try decoding into yaml.Node`},
 	{"b: *a\na: &a {c: 1}", `yaml: unknown anchor 'a' referenced`},
-	{"%TAG !%79! tag:yaml.org,2002:\n---\nv: !%79!int '1'", "yaml: did not find expected whitespace"},
+	{"%TAG !%79! tag:yaml.org,2002:\n---\nv: !%79!int '1'", "yaml: line 1: did not find expected whitespace"},
 	{"a:\n  1:\nb\n  2:", ".*could not find expected ':'"},
 	{"a: 1\nb: 2\nc 2\nd: 3\n", "^yaml: line 3: could not find expected ':'$"},
-	{"#\n-\n{", "yaml: line 3: could not find expected ':'"},   // Issue #665
-	{"0: [:!00 \xef", "yaml: incomplete UTF-8 octet sequence"}, // Issue #666
+	{"#\n-\n{", "yaml: line 3: could not find expected ':'"},           // Issue #665
+	{"0: [:!00 \xef", "yaml: line 1: incomplete UTF-8 octet sequence"}, // Issue #666
 	{
 		"a: &a [00,00,00,00,00,00,00,00,00]\n" +
 			"b: &b [*a,*a,*a,*a,*a,*a,*a,*a,*a]\n" +
@@ -1156,7 +1156,7 @@ func TestParserErrorUnmarshal(t *testing.T) {
 	expectedErr := &yaml.ParserError{
 		Message: "could not find expected ':'",
 		Line:    2,
-		Column:  0,
+		Column:  1,
 	}
 	assert.DeepEqual(t, expectedErr, asErr)
 }
@@ -1169,8 +1169,8 @@ func TestParserErrorDecoder(t *testing.T) {
 	assert.ErrorAs(t, err, &asErr)
 	expectedErr := &yaml.ParserError{
 		Message: "block sequence entries are not allowed in this context",
-		Line:    0,
-		Column:  7,
+		Line:    1,
+		Column:  8,
 	}
 	assert.DeepEqual(t, expectedErr, asErr)
 }

@@ -107,26 +107,11 @@ func (p *parser) peek() yamlEventType {
 }
 
 func (p *parser) fail() {
-	var line int
-	if p.parser.context_mark.line != 0 {
-		line = p.parser.context_mark.line
-		// Scanner errors don't iterate line before returning error
-		if p.parser.error == yaml_SCANNER_ERROR {
-			line++
-		}
-	} else if p.parser.problem_mark.line != 0 {
-		line = p.parser.problem_mark.line
-		// Scanner errors don't iterate line before returning error
-		if p.parser.error == yaml_SCANNER_ERROR {
-			line++
-		}
+	line := p.parser.context_mark.line
+	if !p.parser.stream_end_produced {
+		line++ // Line in errors are 1-origin
 	}
-	var column int
-	if p.parser.context_mark.column != 0 {
-		column = p.parser.context_mark.column
-	} else if p.parser.problem_mark.column != 0 {
-		column = p.parser.problem_mark.column
-	}
+	column := p.parser.context_mark.column + 1
 	var msg string
 	if len(p.parser.problem) > 0 {
 		msg = p.parser.problem
