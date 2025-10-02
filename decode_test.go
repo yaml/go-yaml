@@ -441,6 +441,22 @@ var unmarshalTests = []struct {
 		"int_overflow: 9223372036854775808", // math.MaxInt64 + 1
 		map[string]int{},
 	},
+	{
+		"int_max_float: 2147483647.0",
+		map[string]int{"int_max_float": math.MaxInt32},
+	},
+	{
+		"int_min_float: -2147483648.0",
+		map[string]int{"int_min_float": math.MinInt32},
+	},
+	{
+		"int_overflow_float: 9223372036854777856.0", // math.Nextafter(math.MaxInt64, math.Inf(1))
+		map[string]int{},
+	},
+	{
+		"int_underflow_float: -9223372036854777856.0", // math.Nextafter(math.MinInt64, math.Inf(-1))
+		map[string]int{},
+	},
 
 	// int64
 	{
@@ -496,7 +512,11 @@ var unmarshalTests = []struct {
 		map[string]uint64{"uint64_maxint64": math.MaxInt64},
 	},
 	{
-		"uint64_underflow: -1",
+		"uint64_underflow_int: -1",
+		map[string]uint64{},
+	},
+	{
+		"uint64_underflow_float: -1.0",
 		map[string]uint64{},
 	},
 
