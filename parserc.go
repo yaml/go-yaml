@@ -690,6 +690,7 @@ func (parser *yamlParser) parseNode(event *yamlEvent, block, indentless_sequence
 	if block {
 		context = "while parsing a block node"
 	}
+	parser.skipToken()
 	parser.setParserErrorContext(context, start_mark,
 		"did not find expected node content", token.start_mark)
 	return false

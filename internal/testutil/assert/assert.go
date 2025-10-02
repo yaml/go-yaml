@@ -59,7 +59,7 @@ func DeepEqualf(tb miniTB, want, got any, msgFormat string, args ...any) {
 	tb.Helper()
 	if !reflect.DeepEqual(got, want) {
 		suffix := formatSuffix(msgFormat, args...)
-		tb.Fatalf("got %+v; want %+v%s", got, want, suffix)
+		tb.Fatalf("got %#+v; want %#+v%s", got, want, suffix)
 	}
 }
 

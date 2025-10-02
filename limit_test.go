@@ -21,17 +21,17 @@ var limitTests = []struct {
 	{
 		name:  "1000kb of deeply nested slices",
 		data:  []byte(strings.Repeat(`[`, 1000*1024)),
-		error: "yaml: exceeded max depth of 10000",
+		error: "yaml: line 1: exceeded max depth of 10000",
 	},
 	{
 		name:  "1000kb of deeply nested maps",
 		data:  []byte("x: " + strings.Repeat(`{`, 1000*1024)),
-		error: "yaml: exceeded max depth of 10000",
+		error: "yaml: line 1: exceeded max depth of 10000",
 	},
 	{
 		name:  "1000kb of deeply nested indents",
 		data:  []byte(strings.Repeat(`- `, 1000*1024)),
-		error: "yaml: exceeded max depth of 10000",
+		error: "yaml: line 1: exceeded max depth of 10000",
 	},
 	{
 		name: "1000kb of 1000-indent lines",

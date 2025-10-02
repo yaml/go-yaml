@@ -324,6 +324,7 @@ type ParserError struct {
 	Message string
 	Line    int
 	Column  int
+	Index   int
 }
 
 func (e *ParserError) Error() string {
@@ -342,6 +343,7 @@ type UnmarshalError struct {
 	Err    error
 	Line   int
 	Column int
+	Index  int
 }
 
 func (e *UnmarshalError) Error() string {
@@ -486,10 +488,11 @@ type Node struct {
 	// FootComment holds any comments following the node and before empty lines.
 	FootComment string
 
-	// Line and Column hold the node position in the decoded YAML text.
+	// Line, Column and Index hold the node position in the decoded YAML text.
 	// These fields are not respected when encoding the node.
 	Line   int
 	Column int
+	Index  int
 }
 
 // IsZero returns whether the node has all of its fields unset.

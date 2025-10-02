@@ -120,12 +120,12 @@ func TestAssertDeepEqual_Fails(t *testing.T) {
 	// slice mismatch
 	mock := &fakeTB{}
 	DeepEqual(mock, []int{2}, []int{1})
-	assertFailureMessageMatches(t, mock, `^got \[1\]; want \[2\]$`)
+	assertFailureMessageMatches(t, mock, "^"+regexp.QuoteMeta(`got []int{1}; want []int{2}`)+"$")
 
 	// map mismatch
 	mock2 := &fakeTB{}
 	DeepEqual(mock2, map[string]int{"a": 2}, map[string]int{"a": 1})
-	assertFailureMessageMatches(t, mock2, `^got map\[a:1\]; want map\[a:2\]$`)
+	assertFailureMessageMatches(t, mock2, "^"+regexp.QuoteMeta(`got map[string]int{"a":1}; want map[string]int{"a":2}`)+"$")
 }
 
 func TestErrorMatches_Fails(t *testing.T) {

@@ -107,33 +107,19 @@ func (p *parser) peek() yamlEventType {
 }
 
 func (p *parser) fail() {
-	var line int
-	if p.parser.context_mark.line != 0 {
-		line = p.parser.context_mark.line
-		// Scanner errors don't iterate line before returning error
-		if p.parser.error == yaml_SCANNER_ERROR {
-			line++
-		}
-	} else if p.parser.problem_mark.line != 0 {
-		line = p.parser.problem_mark.line
-		// Scanner errors don't iterate line before returning error
-		if p.parser.error == yaml_SCANNER_ERROR {
-			line++
-		}
+	line := p.parser.context_mark.line
+	if !p.parser.stream_end_produced {
+		line++ // Line in errors are 1-origin
 	}
-	var column int
-	if p.parser.context_mark.column != 0 {
-		column = p.parser.context_mark.column
-	} else if p.parser.problem_mark.column != 0 {
-		column = p.parser.problem_mark.column
-	}
+	column := p.parser.context_mark.column + 1
+	index := p.parser.context_mark.index
 	var msg string
 	if len(p.parser.problem) > 0 {
 		msg = p.parser.problem
 	} else {
 		msg = "unknown problem parsing YAML content"
 	}
-	fail(&ParserError{msg, line, column})
+	fail(&ParserError{Message: msg, Line: line, Column: column, Index: index})
 }
 
 func (p *parser) anchor(n *Node, anchor []byte) {
@@ -185,6 +171,7 @@ func (p *parser) node(kind Kind, defaultTag, tag, value string) *Node {
 	if !p.textless {
 		n.Line = p.event.start_mark.line + 1
 		n.Column = p.event.start_mark.column + 1
+		n.Index = p.event.start_mark.index
 		n.HeadComment = string(p.event.head_comment)
 		n.LineComment = string(p.event.line_comment)
 		n.FootComment = string(p.event.foot_comment)
@@ -360,6 +347,7 @@ func (d *decoder) terror(n *Node, tag string, out reflect.Value) {
 		Err:    fmt.Errorf("cannot unmarshal %s%s into %s", shortTag(tag), value, out.Type()),
 		Line:   n.Line,
 		Column: n.Column,
+		Index:  n.Index,
 	})
 }
 
@@ -376,6 +364,7 @@ func (d *decoder) callUnmarshaler(n *Node, u Unmarshaler) (good bool) {
 			Err:    err,
 			Line:   n.Line,
 			Column: n.Column,
+			Index:  n.Index,
 		})
 		return false
 	}
@@ -404,6 +393,7 @@ func (d *decoder) callObsoleteUnmarshaler(n *Node, u obsoleteUnmarshaler) (good 
 			Err:    err,
 			Line:   n.Line,
 			Column: n.Column,
+			Index:  n.Index,
 		})
 		return false
 	}
@@ -611,6 +601,7 @@ func (d *decoder) scalar(n *Node, out reflect.Value) bool {
 					Err:    err,
 					Line:   n.Line,
 					Column: n.Column,
+					Index:  n.Index,
 				})
 				return false
 			}
@@ -787,6 +778,7 @@ func (d *decoder) mapping(n *Node, out reflect.Value) (good bool) {
 						Err:    fmt.Errorf("mapping key %#v already defined at line %d", nj.Value, ni.Line),
 						Line:   nj.Line,
 						Column: nj.Column,
+						Index:  nj.Index,
 					})
 				}
 			}
@@ -939,6 +931,7 @@ func (d *decoder) mappingStruct(n *Node, out reflect.Value) (good bool) {
 						Err:    fmt.Errorf("field %s already set in type %s", name.String(), out.Type()),
 						Line:   ni.Line,
 						Column: ni.Column,
+						Index:  ni.Index,
 					})
 					continue
 				}
@@ -963,6 +956,7 @@ func (d *decoder) mappingStruct(n *Node, out reflect.Value) (good bool) {
 				Err:    fmt.Errorf("field %s not found in type %s", name.String(), out.Type()),
 				Line:   ni.Line,
 				Column: ni.Column,
+				Index:  ni.Index,
 			})
 		}
 	}
