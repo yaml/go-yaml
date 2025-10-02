@@ -768,6 +768,20 @@
       v: -1.0
 
 - decode:
+    name: explicit float tag on MaxInt64
+    yaml: 'v: !!float 9223372036854775807'
+    type: map[string]any
+    want:
+      v: 9.223372036854776e+18
+
+- decode:
+    name: explicit float tag on MaxUint64
+    yaml: 'v: !!float 18446744073709551615'
+    type: map[string]any
+    want:
+      v: 1.8446744073709552e+19
+
+- decode:
     name: explicit null tag on empty string
     yaml: "v: !!null ''"
     type: map[string]any

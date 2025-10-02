@@ -139,6 +139,10 @@ func resolve(tag string, in string) (rtag string, out any) {
 					rtag = floatTag
 					out = float64(v)
 					return
+				case uint64:
+					rtag = floatTag
+					out = float64(v)
+					return
 				case int:
 					rtag = floatTag
 					out = float64(v)
