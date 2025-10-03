@@ -488,8 +488,16 @@ var unmarshalTests = []struct {
 		map[string]uint64{"uint64_max": math.MaxUint64},
 	},
 	{
+		"uint64_max_sign: +18446744073709551615",
+		map[string]uint64{"uint64_max_sign": math.MaxUint64},
+	},
+	{
 		"uint64_max_base2: 0b1111111111111111111111111111111111111111111111111111111111111111",
 		map[string]uint64{"uint64_max_base2": math.MaxUint64},
+	},
+	{
+		"uint64_max_hexa: +0xFFFFFFFFFFFFFFFF",
+		map[string]uint64{"uint64_max_hexa": math.MaxUint64},
 	},
 	{
 		"uint64_maxint64: 9223372036854775807",
@@ -497,6 +505,14 @@ var unmarshalTests = []struct {
 	},
 	{
 		"uint64_underflow: -1",
+		map[string]uint64{},
+	},
+	{
+		"uint64_invalid_sign_pre: ++1",
+		map[string]uint64{},
+	},
+	{
+		"uint64_invalid_sign_post: 1+",
 		map[string]uint64{},
 	},
 
