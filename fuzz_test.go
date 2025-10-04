@@ -10,6 +10,8 @@ import (
 )
 
 func setupSeedCorpus(f *testing.F) {
+	f.Helper()
+
 	root := filepath.Join("yts", "testdata", "data-2022-01-17")
 	if err := filepath.WalkDir(root, func(p string, e fs.DirEntry, err error) error {
 		if err != nil {
