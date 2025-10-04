@@ -1,0 +1,25 @@
+name: Fuzzing test
+
+on:
+  schedule:
+  - cron: '0 6 * * 6'
+
+permissions:
+  contents: read  # for actions/checkout to fetch code
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - name: Set up Go
+      uses: actions/setup-go@v6
+      with:
+        go-version: stable
+    - name: Run fuzzing test for 10 minutes
+      run: make fuzz time=600s
+    - name: Upload failing inputs as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        path: testdata/fuzz
+        if-no-files-found: ignore
