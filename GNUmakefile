@@ -62,7 +62,7 @@ MAKES-CLEAN += $(dir $(YTS-DIR)) $(GOLANGCI-LINT)
 
 v ?=
 count ?= 1
-time ?= 60s
+fuzztime ?= 60s
 
 
 # Test rules:
@@ -88,7 +88,7 @@ test-yts-fail: $(GO-DEPS) $(YTS-DIR)
 golangci-lint-install: $(GOLANGCI-LINT)
 
 fuzz: $(TEST-DEPS)
-	go test -fuzz=Fuzz -fuzztime=$(time)
+	go test -fuzz=Fuzz -fuzztime=$(fuzztime)
 
 fmt: $(GOLANGCI-LINT-VERSIONED)
 	$< fmt ./...

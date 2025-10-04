@@ -197,7 +197,7 @@ Some `make` commands are:
 * `make shell` Start a shell with the local `go` environment
 * `make shell GO-VERSION=1.2.34`
 * `make distclean` - Removes `.cache/`
-* `make fuzz` Run fuzzing tests for 60 seconds. The time can be configured (e.g. `make fuzz time=10s`)
+* `make fuzz` Run fuzzing tests for 60 seconds. The time can be configured (e.g. `make fuzz fuzztime=10s`)
 
 
 ## The `go-yaml` CLI Tool

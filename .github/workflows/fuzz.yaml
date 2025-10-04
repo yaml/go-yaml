@@ -17,7 +17,7 @@ jobs:
       with:
         go-version: stable
     - name: Run fuzzing test for 10 minutes
-      run: make fuzz time=600s
+      run: make fuzz fuzztime=600s
     - name: Upload failing inputs as artifact
       uses: actions/upload-artifact@v4
       with:
