@@ -39,7 +39,7 @@ include $(MAKES)/shell.mk
 
 v ?=
 count ?= 1
-time ?= 60s
+fuzztime ?= 60s
 
 fmt:
 	golangci-lint fmt ./...
@@ -64,7 +64,7 @@ test-yts-fail: $(TEST-DEPS)
 	@export RUNFAILING=1; $(call yts-pass-fail)
 
 fuzz: $(TEST-DEPS)
-	go test -fuzz=Fuzz -fuzztime=$(time)
+	go test -fuzz=Fuzz -fuzztime=$(fuzztime)
 
 # Clean rules:
 realclean:
