@@ -308,6 +308,7 @@ func (parser *yamlParser) parseDocumentStart(event *yamlEvent, implicit bool) bo
 			typ:        yaml_DOCUMENT_START_EVENT,
 			start_mark: token.start_mark,
 			end_mark:   token.end_mark,
+			implicit:   true,
 
 			head_comment: head_comment,
 		}

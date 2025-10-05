@@ -82,7 +82,6 @@ func runTestsInDir(t *testing.T, dirPath string) {
 func normalizeLineEndings(s string) string {
 	return strings.NewReplacer(
 		"\r", "",
-		"+DOC ---", "+DOC",
 	).Replace(s)
 }
 
