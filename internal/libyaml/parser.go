@@ -302,6 +302,7 @@ func (parser *Parser) parseDocumentStart(event *Event, implicit bool) bool {
 			Type:      DOCUMENT_START_EVENT,
 			StartMark: token.StartMark,
 			EndMark:   token.EndMark,
+			Implicit:  true,
 
 			HeadComment: head_comment,
 		}
