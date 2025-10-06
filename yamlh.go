@@ -459,31 +459,28 @@ type yamlSimpleKey struct {
 type yamlParserState int
 
 const (
-	yaml_PARSE_STREAM_START_STATE yamlParserState = iota
-
-	yaml_PARSE_IMPLICIT_DOCUMENT_START_STATE           // Expect the beginning of an implicit document.
-	yaml_PARSE_DOCUMENT_START_STATE                    // Expect DOCUMENT-START.
-	yaml_PARSE_DOCUMENT_CONTENT_STATE                  // Expect the content of a document.
-	yaml_PARSE_DOCUMENT_END_STATE                      // Expect DOCUMENT-END.
-	yaml_PARSE_BLOCK_NODE_STATE                        // Expect a block node.
-	yaml_PARSE_BLOCK_NODE_OR_INDENTLESS_SEQUENCE_STATE // Expect a block node or indentless sequence.
-	yaml_PARSE_FLOW_NODE_STATE                         // Expect a flow node.
-	yaml_PARSE_BLOCK_SEQUENCE_FIRST_ENTRY_STATE        // Expect the first entry of a block sequence.
-	yaml_PARSE_BLOCK_SEQUENCE_ENTRY_STATE              // Expect an entry of a block sequence.
-	yaml_PARSE_INDENTLESS_SEQUENCE_ENTRY_STATE         // Expect an entry of an indentless sequence.
-	yaml_PARSE_BLOCK_MAPPING_FIRST_KEY_STATE           // Expect the first key of a block mapping.
-	yaml_PARSE_BLOCK_MAPPING_KEY_STATE                 // Expect a block mapping key.
-	yaml_PARSE_BLOCK_MAPPING_VALUE_STATE               // Expect a block mapping value.
-	yaml_PARSE_FLOW_SEQUENCE_FIRST_ENTRY_STATE         // Expect the first entry of a flow sequence.
-	yaml_PARSE_FLOW_SEQUENCE_ENTRY_STATE               // Expect an entry of a flow sequence.
-	yaml_PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_KEY_STATE   // Expect a key of an ordered mapping.
-	yaml_PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_VALUE_STATE // Expect a value of an ordered mapping.
-	yaml_PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_END_STATE   // Expect the and of an ordered mapping entry.
-	yaml_PARSE_FLOW_MAPPING_FIRST_KEY_STATE            // Expect the first key of a flow mapping.
-	yaml_PARSE_FLOW_MAPPING_KEY_STATE                  // Expect a key of a flow mapping.
-	yaml_PARSE_FLOW_MAPPING_VALUE_STATE                // Expect a value of a flow mapping.
-	yaml_PARSE_FLOW_MAPPING_EMPTY_VALUE_STATE          // Expect an empty value of a flow mapping.
-	yaml_PARSE_END_STATE                               // Expect nothing.
+	yaml_PARSE_STREAM_START_STATE                      yamlParserState = iota // Expect STREAM-START.
+	yaml_PARSE_IMPLICIT_DOCUMENT_START_STATE                                  // Expect the beginning of an implicit document.
+	yaml_PARSE_DOCUMENT_START_STATE                                           // Expect DOCUMENT-START.
+	yaml_PARSE_DOCUMENT_CONTENT_STATE                                         // Expect the content of a document.
+	yaml_PARSE_DOCUMENT_END_STATE                                             // Expect DOCUMENT-END.
+	yaml_PARSE_BLOCK_NODE_STATE                                               // Expect a block node.
+	yaml_PARSE_BLOCK_SEQUENCE_FIRST_ENTRY_STATE                               // Expect the first entry of a block sequence.
+	yaml_PARSE_BLOCK_SEQUENCE_ENTRY_STATE                                     // Expect an entry of a block sequence.
+	yaml_PARSE_INDENTLESS_SEQUENCE_ENTRY_STATE                                // Expect an entry of an indentless sequence.
+	yaml_PARSE_BLOCK_MAPPING_FIRST_KEY_STATE                                  // Expect the first key of a block mapping.
+	yaml_PARSE_BLOCK_MAPPING_KEY_STATE                                        // Expect a block mapping key.
+	yaml_PARSE_BLOCK_MAPPING_VALUE_STATE                                      // Expect a block mapping value.
+	yaml_PARSE_FLOW_SEQUENCE_FIRST_ENTRY_STATE                                // Expect the first entry of a flow sequence.
+	yaml_PARSE_FLOW_SEQUENCE_ENTRY_STATE                                      // Expect an entry of a flow sequence.
+	yaml_PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_KEY_STATE                          // Expect a key of an ordered mapping.
+	yaml_PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_VALUE_STATE                        // Expect a value of an ordered mapping.
+	yaml_PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_END_STATE                          // Expect the and of an ordered mapping entry.
+	yaml_PARSE_FLOW_MAPPING_FIRST_KEY_STATE                                   // Expect the first key of a flow mapping.
+	yaml_PARSE_FLOW_MAPPING_KEY_STATE                                         // Expect a key of a flow mapping.
+	yaml_PARSE_FLOW_MAPPING_VALUE_STATE                                       // Expect a value of a flow mapping.
+	yaml_PARSE_FLOW_MAPPING_EMPTY_VALUE_STATE                                 // Expect an empty value of a flow mapping.
+	yaml_PARSE_END_STATE                                                      // Expect nothing.
 )
 
 func (ps yamlParserState) String() string {
@@ -500,10 +497,6 @@ func (ps yamlParserState) String() string {
 		return "yaml_PARSE_DOCUMENT_END_STATE"
 	case yaml_PARSE_BLOCK_NODE_STATE:
 		return "yaml_PARSE_BLOCK_NODE_STATE"
-	case yaml_PARSE_BLOCK_NODE_OR_INDENTLESS_SEQUENCE_STATE:
-		return "yaml_PARSE_BLOCK_NODE_OR_INDENTLESS_SEQUENCE_STATE"
-	case yaml_PARSE_FLOW_NODE_STATE:
-		return "yaml_PARSE_FLOW_NODE_STATE"
 	case yaml_PARSE_BLOCK_SEQUENCE_FIRST_ENTRY_STATE:
 		return "yaml_PARSE_BLOCK_SEQUENCE_FIRST_ENTRY_STATE"
 	case yaml_PARSE_BLOCK_SEQUENCE_ENTRY_STATE:

@@ -169,12 +169,6 @@ func (parser *yamlParser) stateMachine(event *yamlEvent) bool {
 	case yaml_PARSE_BLOCK_NODE_STATE:
 		return parser.parseNode(event, true, false)
 
-	case yaml_PARSE_BLOCK_NODE_OR_INDENTLESS_SEQUENCE_STATE:
-		return parser.parseNode(event, true, true)
-
-	case yaml_PARSE_FLOW_NODE_STATE:
-		return parser.parseNode(event, false, false)
-
 	case yaml_PARSE_BLOCK_SEQUENCE_FIRST_ENTRY_STATE:
 		return parser.parseBlockSequenceEntry(event, true)
 
