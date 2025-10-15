@@ -45,6 +45,28 @@ func (p *Parser) Next() (*Token, error) {
 		EndColumn:   int(yamlToken.EndMark.Column),
 	}
 
+	// Call unfoldComments to process comment information from the parser
+	// This moves comments from the comments queue to the parser's comment fields
+	p.parser.UnfoldComments(&yamlToken)
+
+	// Access comment information from the parser
+	// The parser stores comments in head_comment, line_comment, and foot_comment fields
+	if len(p.parser.HeadComment) > 0 {
+		token.HeadComment = string(p.parser.HeadComment)
+		// Clear the comment after using it to avoid duplication
+		p.parser.HeadComment = nil
+	}
+	if len(p.parser.LineComment) > 0 {
+		token.LineComment = string(p.parser.LineComment)
+		// Clear the comment after using it to avoid duplication
+		p.parser.LineComment = nil
+	}
+	if len(p.parser.FootComment) > 0 {
+		token.FootComment = string(p.parser.FootComment)
+		// Clear the comment after using it to avoid duplication
+		p.parser.FootComment = nil
+	}
+
 	switch yamlToken.Type {
 	case libyaml.STREAM_START_TOKEN:
 		token.Type = "STREAM-START"

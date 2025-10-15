@@ -608,9 +608,9 @@ type Parser struct {
 
 	// Comments
 
-	head_comment []byte // The current head comments
-	line_comment []byte // The current line comments
-	foot_comment []byte // The current foot comments
+	HeadComment  []byte // The current head comments
+	LineComment  []byte // The current line comments
+	FootComment  []byte // The current foot comments
 	tail_comment []byte // Foot comment that happens at the end of a block.
 	stem_comment []byte // Comment in item preceding a nested structure (list inside list item, etc)
 
