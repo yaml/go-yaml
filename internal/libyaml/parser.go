@@ -68,16 +68,16 @@ import (
 func (parser *Parser) peekToken() *Token {
 	if parser.token_available || parser.fetchMoreTokens() {
 		token := &parser.tokens[parser.tokens_head]
-		parser.unfoldComments(token)
+		parser.UnfoldComments(token)
 		return token
 	}
 	return nil
 }
 
-// unfoldComments walks through the comments queue and joins all
+// UnfoldComments walks through the comments queue and joins all
 // comments behind the position of the provided token into the respective
 // top-level comment slices in the parser.
-func (parser *Parser) unfoldComments(token *Token) {
+func (parser *Parser) UnfoldComments(token *Token) {
 	for parser.comments_head < len(parser.comments) && token.StartMark.Index >= parser.comments[parser.comments_head].token_mark.Index {
 		comment := &parser.comments[parser.comments_head]
 		if len(comment.head) > 0 {
@@ -85,22 +85,22 @@ func (parser *Parser) unfoldComments(token *Token) {
 				// No heads on ends, so keep comment.head for a follow up token.
 				break
 			}
-			if len(parser.head_comment) > 0 {
-				parser.head_comment = append(parser.head_comment, '\n')
+			if len(parser.HeadComment) > 0 {
+				parser.HeadComment = append(parser.HeadComment, '\n')
 			}
-			parser.head_comment = append(parser.head_comment, comment.head...)
+			parser.HeadComment = append(parser.HeadComment, comment.head...)
 		}
 		if len(comment.foot) > 0 {
-			if len(parser.foot_comment) > 0 {
-				parser.foot_comment = append(parser.foot_comment, '\n')
+			if len(parser.FootComment) > 0 {
+				parser.FootComment = append(parser.FootComment, '\n')
 			}
-			parser.foot_comment = append(parser.foot_comment, comment.foot...)
+			parser.FootComment = append(parser.FootComment, comment.foot...)
 		}
 		if len(comment.line) > 0 {
-			if len(parser.line_comment) > 0 {
-				parser.line_comment = append(parser.line_comment, '\n')
+			if len(parser.LineComment) > 0 {
+				parser.LineComment = append(parser.LineComment, '\n')
 			}
-			parser.line_comment = append(parser.line_comment, comment.line...)
+			parser.LineComment = append(parser.LineComment, comment.line...)
 		}
 		*comment = Comment{}
 		parser.comments_head++
@@ -285,19 +285,19 @@ func (parser *Parser) parseDocumentStart(event *Event, implicit bool) bool {
 		parser.state = PARSE_BLOCK_NODE_STATE
 
 		var head_comment []byte
-		if len(parser.head_comment) > 0 {
+		if len(parser.HeadComment) > 0 {
 			// [Go] Scan the header comment backwards, and if an empty line is found, break
 			//      the header so the part before the last empty line goes into the
 			//      document header, while the bottom of it goes into a follow up event.
-			for i := len(parser.head_comment) - 1; i > 0; i-- {
-				if parser.head_comment[i] == '\n' {
-					if i == len(parser.head_comment)-1 {
-						head_comment = parser.head_comment[:i]
-						parser.head_comment = parser.head_comment[i+1:]
+			for i := len(parser.HeadComment) - 1; i > 0; i-- {
+				if parser.HeadComment[i] == '\n' {
+					if i == len(parser.HeadComment)-1 {
+						head_comment = parser.HeadComment[:i]
+						parser.HeadComment = parser.HeadComment[i+1:]
 						break
-					} else if parser.head_comment[i-1] == '\n' {
-						head_comment = parser.head_comment[:i-1]
-						parser.head_comment = parser.head_comment[i+1:]
+					} else if parser.HeadComment[i-1] == '\n' {
+						head_comment = parser.HeadComment[:i-1]
+						parser.HeadComment = parser.HeadComment[i+1:]
 						break
 					}
 				}
@@ -420,12 +420,12 @@ func (parser *Parser) parseDocumentEnd(event *Event) bool {
 }
 
 func (parser *Parser) setEventComments(event *Event) {
-	event.HeadComment = parser.head_comment
-	event.LineComment = parser.line_comment
-	event.FootComment = parser.foot_comment
-	parser.head_comment = nil
-	parser.line_comment = nil
-	parser.foot_comment = nil
+	event.HeadComment = parser.HeadComment
+	event.LineComment = parser.LineComment
+	event.FootComment = parser.FootComment
+	parser.HeadComment = nil
+	parser.LineComment = nil
+	parser.FootComment = nil
 	parser.tail_comment = nil
 	parser.stem_comment = nil
 }
@@ -716,7 +716,7 @@ func (parser *Parser) parseBlockSequenceEntry(event *Event, first bool) bool {
 
 	if token.Type == BLOCK_ENTRY_TOKEN {
 		mark := token.EndMark
-		prior_head_len := len(parser.head_comment)
+		prior_head_len := len(parser.HeadComment)
 		parser.skipToken()
 		parser.splitStemComment(prior_head_len)
 		token = parser.peekToken()
@@ -765,7 +765,7 @@ func (parser *Parser) parseIndentlessSequenceEntry(event *Event) bool {
 
 	if token.Type == BLOCK_ENTRY_TOKEN {
 		mark := token.EndMark
-		prior_head_len := len(parser.head_comment)
+		prior_head_len := len(parser.HeadComment)
 		parser.skipToken()
 		parser.splitStemComment(prior_head_len)
 		token = parser.peekToken()
@@ -809,13 +809,13 @@ func (parser *Parser) splitStemComment(stem_len int) {
 		return
 	}
 
-	parser.stem_comment = parser.head_comment[:stem_len]
-	if len(parser.head_comment) == stem_len {
-		parser.head_comment = nil
+	parser.stem_comment = parser.HeadComment[:stem_len]
+	if len(parser.HeadComment) == stem_len {
+		parser.HeadComment = nil
 	} else {
 		// Copy suffix to prevent very strange bugs if someone ever appends
 		// further bytes to the prefix in the stem_comment slice above.
-		parser.head_comment = append([]byte(nil), parser.head_comment[stem_len+1:]...)
+		parser.HeadComment = append([]byte(nil), parser.HeadComment[stem_len+1:]...)
 	}
 }
 
