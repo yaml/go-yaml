@@ -2,9 +2,9 @@ name: Go
 
 on:
   push:
-    branches: [ main, v3, v2, v1 ]
+    branches: &b [ main, v3, v2, v1 ]
   pull_request:
-    branches: [ main, v3, v2, v1 ]
+    branches: *b
 
 jobs:
   lint:
