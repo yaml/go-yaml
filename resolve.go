@@ -207,7 +207,7 @@ func resolve(tag string, in string) (rtag string, out any) {
 					return intTag, intv
 				}
 			}
-			uintv, err := strconv.ParseUint(plain, 0, 64)
+			uintv, err := strconv.ParseUint(strings.TrimPrefix(plain, "+"), 0, 64)
 			if err == nil {
 				return intTag, uintv
 			}
