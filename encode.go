@@ -85,9 +85,9 @@ func (e *encoder) emit() {
 	e.must(e.emitter.Emit(&e.event))
 }
 
-func (e *encoder) must(ok bool) {
-	if !ok {
-		msg := e.emitter.Problem
+func (e *encoder) must(err error) {
+	if err != nil {
+		msg := err.Error()
 		if msg == "" {
 			msg = "unknown problem generating YAML content"
 		}

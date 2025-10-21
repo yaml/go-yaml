@@ -702,11 +702,6 @@ const (
 
 // Emitter holds all information about the current state of the emitter.
 type Emitter struct {
-	// Error handling
-
-	ErrorType ErrorType // Error type.
-	Problem   string    // Error description.
-
 	// Writer stuff
 
 	write_handler WriteHandler // Write handler.
