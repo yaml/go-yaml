@@ -28,28 +28,32 @@ import (
 )
 
 // Flush the buffer if needed.
-func (emitter *Emitter) flushIfNeeded() bool {
+func (emitter *Emitter) flushIfNeeded() error {
 	if emitter.buffer_pos+5 >= len(emitter.buffer) {
 		return emitter.flush()
 	}
-	return true
+	return nil
 }
 
 // Put a character to the output buffer.
-func (emitter *Emitter) put(value byte) bool {
-	if emitter.buffer_pos+5 >= len(emitter.buffer) && !emitter.flush() {
-		return false
+func (emitter *Emitter) put(value byte) error {
+	if emitter.buffer_pos+5 >= len(emitter.buffer) {
+		if err := emitter.flush(); err != nil {
+			return err
+		}
 	}
 	emitter.buffer[emitter.buffer_pos] = value
 	emitter.buffer_pos++
 	emitter.column++
-	return true
+	return nil
 }
 
 // Put a line break to the output buffer.
-func (emitter *Emitter) putLineBreak() bool {
-	if emitter.buffer_pos+5 >= len(emitter.buffer) && !emitter.flush() {
-		return false
+func (emitter *Emitter) putLineBreak() error {
+	if emitter.buffer_pos+5 >= len(emitter.buffer) {
+		if err := emitter.flush(); err != nil {
+			return err
+		}
 	}
 	switch emitter.line_break {
 	case CR_BREAK:
@@ -72,13 +76,15 @@ func (emitter *Emitter) putLineBreak() bool {
 	emitter.line++
 	// [Go] Do this here and below and drop from everywhere else (see commented lines).
 	emitter.indention = true
-	return true
+	return nil
 }
 
 // Copy a character from a string into buffer.
-func (emitter *Emitter) write(s []byte, i *int) bool {
-	if emitter.buffer_pos+5 >= len(emitter.buffer) && !emitter.flush() {
-		return false
+func (emitter *Emitter) write(s []byte, i *int) error {
+	if emitter.buffer_pos+5 >= len(emitter.buffer) {
+		if err := emitter.flush(); err != nil {
+			return err
+		}
 	}
 	p := emitter.buffer_pos
 	w := width(s[*i])
@@ -100,29 +106,29 @@ func (emitter *Emitter) write(s []byte, i *int) bool {
 	emitter.column++
 	emitter.buffer_pos += w
 	*i += w
-	return true
+	return nil
 }
 
 // Write a whole string into buffer.
-func (emitter *Emitter) writeAll(s []byte) bool {
+func (emitter *Emitter) writeAll(s []byte) error {
 	for i := 0; i < len(s); {
-		if !emitter.write(s, &i) {
-			return false
+		if err := emitter.write(s, &i); err != nil {
+			return err
 		}
 	}
-	return true
+	return nil
 }
 
 // Copy a line break character from a string into buffer.
-func (emitter *Emitter) writeLineBreak(s []byte, i *int) bool {
+func (emitter *Emitter) writeLineBreak(s []byte, i *int) error {
 	if s[*i] == '\n' {
-		if !emitter.putLineBreak() {
-			return false
+		if err := emitter.putLineBreak(); err != nil {
+			return err
 		}
 		*i++
 	} else {
-		if !emitter.write(s, i) {
-			return false
+		if err := emitter.write(s, i); err != nil {
+			return err
 		}
 		if emitter.column == 0 {
 			emitter.space_above = true
@@ -132,31 +138,29 @@ func (emitter *Emitter) writeLineBreak(s []byte, i *int) bool {
 		// [Go] Do this here and above and drop from everywhere else (see commented lines).
 		emitter.indention = true
 	}
-	return true
+	return nil
 }
 
-// Set an emitter error and return false.
-func (emitter *Emitter) setEmitterError(problem string) bool {
-	emitter.ErrorType = EMITTER_ERROR
-	emitter.Problem = problem
-	return false
+// Construct emitter error.
+func emitterError(problem string) error {
+	return fmt.Errorf("%s", problem)
 }
 
 // Emit an event.
-func (emitter *Emitter) Emit(event *Event) bool {
+func (emitter *Emitter) Emit(event *Event) error {
 	emitter.events = append(emitter.events, *event)
 	for !emitter.needMoreEvents() {
 		event := &emitter.events[emitter.events_head]
-		if !emitter.analyzeEvent(event) {
-			return false
+		if err := emitter.analyzeEvent(event); err != nil {
+			return err
 		}
-		if !emitter.stateMachine(event) {
-			return false
+		if err := emitter.stateMachine(event); err != nil {
+			return err
 		}
 		event.Delete()
 		emitter.events_head++
 	}
-	return true
+	return nil
 }
 
 // Check if we need to accumulate more events before emitting.
@@ -199,13 +203,13 @@ func (emitter *Emitter) needMoreEvents() bool {
 }
 
 // Append a directive to the directives stack.
-func (emitter *Emitter) appendTagDirective(value *TagDirective, allow_duplicates bool) bool {
+func (emitter *Emitter) appendTagDirective(value *TagDirective, allow_duplicates bool) error {
 	for i := 0; i < len(emitter.tag_directives); i++ {
 		if bytes.Equal(value.handle, emitter.tag_directives[i].handle) {
 			if allow_duplicates {
-				return true
+				return nil
 			}
-			return emitter.setEmitterError("duplicate %TAG directive")
+			return emitterError("duplicate %TAG directive")
 		}
 	}
 
@@ -218,11 +222,11 @@ func (emitter *Emitter) appendTagDirective(value *TagDirective, allow_duplicates
 	copy(tag_copy.handle, value.handle)
 	copy(tag_copy.prefix, value.prefix)
 	emitter.tag_directives = append(emitter.tag_directives, tag_copy)
-	return true
+	return nil
 }
 
 // Increase the indentation level.
-func (emitter *Emitter) increaseIndentCompact(flow, indentless bool, compact_seq bool) bool {
+func (emitter *Emitter) increaseIndentCompact(flow, indentless bool, compact_seq bool) error {
 	emitter.indents = append(emitter.indents, emitter.indent)
 	if emitter.indent < 0 {
 		if flow {
@@ -247,11 +251,11 @@ func (emitter *Emitter) increaseIndentCompact(flow, indentless bool, compact_seq
 			}
 		}
 	}
-	return true
+	return nil
 }
 
 // State dispatcher.
-func (emitter *Emitter) stateMachine(event *Event) bool {
+func (emitter *Emitter) stateMachine(event *Event) error {
 	switch emitter.state {
 	default:
 	case EMIT_STREAM_START_STATE:
@@ -312,15 +316,15 @@ func (emitter *Emitter) stateMachine(event *Event) bool {
 		return emitter.emitBlockMappingValue(event, false)
 
 	case EMIT_END_STATE:
-		return emitter.setEmitterError("expected nothing after STREAM-END")
+		return emitterError("expected nothing after STREAM-END")
 	}
 	panic("invalid emitter state")
 }
 
 // Expect STREAM-START.
-func (emitter *Emitter) emitStreamStart(event *Event) bool {
+func (emitter *Emitter) emitStreamStart(event *Event) error {
 	if event.Type != STREAM_START_EVENT {
-		return emitter.setEmitterError("expected STREAM-START")
+		return emitterError("expected STREAM-START")
 	}
 	if emitter.encoding == ANY_ENCODING {
 		emitter.encoding = event.encoding
@@ -350,38 +354,38 @@ func (emitter *Emitter) emitStreamStart(event *Event) bool {
 	emitter.foot_indent = -1
 
 	if emitter.encoding != UTF8_ENCODING {
-		if !emitter.writeBom() {
-			return false
+		if err := emitter.writeBom(); err != nil {
+			return err
 		}
 	}
 	emitter.state = EMIT_FIRST_DOCUMENT_START_STATE
-	return true
+	return nil
 }
 
 // Expect DOCUMENT-START or STREAM-END.
-func (emitter *Emitter) emitDocumentStart(event *Event, first bool) bool {
+func (emitter *Emitter) emitDocumentStart(event *Event, first bool) error {
 	if event.Type == DOCUMENT_START_EVENT {
 
 		if event.version_directive != nil {
-			if !emitter.analyzeVersionDirective(event.version_directive) {
-				return false
+			if err := emitter.analyzeVersionDirective(event.version_directive); err != nil {
+				return err
 			}
 		}
 
 		for i := 0; i < len(event.tag_directives); i++ {
 			tag_directive := &event.tag_directives[i]
-			if !emitter.analyzeTagDirective(tag_directive) {
-				return false
+			if err := emitter.analyzeTagDirective(tag_directive); err != nil {
+				return err
 			}
-			if !emitter.appendTagDirective(tag_directive, false) {
-				return false
+			if err := emitter.appendTagDirective(tag_directive, false); err != nil {
+				return err
 			}
 		}
 
 		for i := 0; i < len(default_tag_directives); i++ {
 			tag_directive := &default_tag_directives[i]
-			if !emitter.appendTagDirective(tag_directive, true) {
-				return false
+			if err := emitter.appendTagDirective(tag_directive, true); err != nil {
+				return err
 			}
 		}
 
@@ -391,24 +395,24 @@ func (emitter *Emitter) emitDocumentStart(event *Event, first bool) bool {
 		}
 
 		if emitter.OpenEnded && (event.version_directive != nil || len(event.tag_directives) > 0) {
-			if !emitter.writeIndicator([]byte("..."), true, false, false) {
-				return false
+			if err := emitter.writeIndicator([]byte("..."), true, false, false); err != nil {
+				return err
 			}
-			if !emitter.writeIndent() {
-				return false
+			if err := emitter.writeIndent(); err != nil {
+				return err
 			}
 		}
 
 		if event.version_directive != nil {
 			implicit = false
-			if !emitter.writeIndicator([]byte("%YAML"), true, false, false) {
-				return false
+			if err := emitter.writeIndicator([]byte("%YAML"), true, false, false); err != nil {
+				return err
 			}
-			if !emitter.writeIndicator([]byte("1.1"), true, false, false) {
-				return false
+			if err := emitter.writeIndicator([]byte("1.1"), true, false, false); err != nil {
+				return err
 			}
-			if !emitter.writeIndent() {
-				return false
+			if err := emitter.writeIndent(); err != nil {
+				return err
 			}
 		}
 
@@ -416,17 +420,17 @@ func (emitter *Emitter) emitDocumentStart(event *Event, first bool) bool {
 			implicit = false
 			for i := 0; i < len(event.tag_directives); i++ {
 				tag_directive := &event.tag_directives[i]
-				if !emitter.writeIndicator([]byte("%TAG"), true, false, false) {
-					return false
+				if err := emitter.writeIndicator([]byte("%TAG"), true, false, false); err != nil {
+					return err
 				}
-				if !emitter.writeTagHandle(tag_directive.handle) {
-					return false
+				if err := emitter.writeTagHandle(tag_directive.handle); err != nil {
+					return err
 				}
-				if !emitter.writeTagContent(tag_directive.prefix, true) {
-					return false
+				if err := emitter.writeTagContent(tag_directive.prefix, true); err != nil {
+					return err
 				}
-				if !emitter.writeIndent() {
-					return false
+				if err := emitter.writeIndent(); err != nil {
+					return err
 				}
 			}
 		}
@@ -435,172 +439,172 @@ func (emitter *Emitter) emitDocumentStart(event *Event, first bool) bool {
 			implicit = false
 		}
 		if !implicit {
-			if !emitter.writeIndent() {
-				return false
+			if err := emitter.writeIndent(); err != nil {
+				return err
 			}
-			if !emitter.writeIndicator([]byte("---"), true, false, false) {
-				return false
+			if err := emitter.writeIndicator([]byte("---"), true, false, false); err != nil {
+				return err
 			}
 			if emitter.canonical || true {
-				if !emitter.writeIndent() {
-					return false
+				if err := emitter.writeIndent(); err != nil {
+					return err
 				}
 			}
 		}
 
 		if len(emitter.HeadComment) > 0 {
-			if !emitter.processHeadComment() {
-				return false
+			if err := emitter.processHeadComment(); err != nil {
+				return err
 			}
-			if !emitter.putLineBreak() {
-				return false
+			if err := emitter.putLineBreak(); err != nil {
+				return err
 			}
 		}
 
 		emitter.state = EMIT_DOCUMENT_CONTENT_STATE
-		return true
+		return nil
 	}
 
 	if event.Type == STREAM_END_EVENT {
 		if emitter.OpenEnded {
-			if !emitter.writeIndicator([]byte("..."), true, false, false) {
-				return false
+			if err := emitter.writeIndicator([]byte("..."), true, false, false); err != nil {
+				return err
 			}
-			if !emitter.writeIndent() {
-				return false
+			if err := emitter.writeIndent(); err != nil {
+				return err
 			}
 		}
-		if !emitter.flush() {
-			return false
+		if err := emitter.flush(); err != nil {
+			return err
 		}
 		emitter.state = EMIT_END_STATE
-		return true
+		return nil
 	}
 
-	return emitter.setEmitterError("expected DOCUMENT-START or STREAM-END")
+	return emitterError("expected DOCUMENT-START or STREAM-END")
 }
 
 // emitter preserves the original signature and delegates to
 // increaseIndentCompact without compact-sequence indentation
-func (emitter *Emitter) increaseIndent(flow, indentless bool) bool {
+func (emitter *Emitter) increaseIndent(flow, indentless bool) error {
 	return emitter.increaseIndentCompact(flow, indentless, false)
 }
 
 // processLineComment preserves the original signature and delegates to
 // processLineCommentLinebreak passing false for linebreak
-func (emitter *Emitter) processLineComment() bool {
+func (emitter *Emitter) processLineComment() error {
 	return emitter.processLineCommentLinebreak(false)
 }
 
 // Expect the root node.
-func (emitter *Emitter) emitDocumentContent(event *Event) bool {
+func (emitter *Emitter) emitDocumentContent(event *Event) error {
 	emitter.states = append(emitter.states, EMIT_DOCUMENT_END_STATE)
 
-	if !emitter.processHeadComment() {
-		return false
+	if err := emitter.processHeadComment(); err != nil {
+		return err
 	}
-	if !emitter.emitNode(event, true, false, false, false) {
-		return false
+	if err := emitter.emitNode(event, true, false, false, false); err != nil {
+		return err
 	}
-	if !emitter.processLineComment() {
-		return false
+	if err := emitter.processLineComment(); err != nil {
+		return err
 	}
-	if !emitter.processFootComment() {
-		return false
+	if err := emitter.processFootComment(); err != nil {
+		return err
 	}
-	return true
+	return nil
 }
 
 // Expect DOCUMENT-END.
-func (emitter *Emitter) emitDocumentEnd(event *Event) bool {
+func (emitter *Emitter) emitDocumentEnd(event *Event) error {
 	if event.Type != DOCUMENT_END_EVENT {
-		return emitter.setEmitterError("expected DOCUMENT-END")
+		return emitterError("expected DOCUMENT-END")
 	}
 	// [Go] Force document foot separation.
 	emitter.foot_indent = 0
-	if !emitter.processFootComment() {
-		return false
+	if err := emitter.processFootComment(); err != nil {
+		return err
 	}
 	emitter.foot_indent = -1
-	if !emitter.writeIndent() {
-		return false
+	if err := emitter.writeIndent(); err != nil {
+		return err
 	}
 	if !event.Implicit {
 		// [Go] Allocate the slice elsewhere.
-		if !emitter.writeIndicator([]byte("..."), true, false, false) {
-			return false
+		if err := emitter.writeIndicator([]byte("..."), true, false, false); err != nil {
+			return err
 		}
-		if !emitter.writeIndent() {
-			return false
+		if err := emitter.writeIndent(); err != nil {
+			return err
 		}
 	}
-	if !emitter.flush() {
-		return false
+	if err := emitter.flush(); err != nil {
+		return err
 	}
 	emitter.state = EMIT_DOCUMENT_START_STATE
 	emitter.tag_directives = emitter.tag_directives[:0]
-	return true
+	return nil
 }
 
 // Expect a flow item node.
-func (emitter *Emitter) emitFlowSequenceItem(event *Event, first, trail bool) bool {
+func (emitter *Emitter) emitFlowSequenceItem(event *Event, first, trail bool) error {
 	if first {
-		if !emitter.writeIndicator([]byte{'['}, true, true, false) {
-			return false
+		if err := emitter.writeIndicator([]byte{'['}, true, true, false); err != nil {
+			return err
 		}
-		if !emitter.increaseIndent(true, false) {
-			return false
+		if err := emitter.increaseIndent(true, false); err != nil {
+			return err
 		}
 		emitter.flow_level++
 	}
 
 	if event.Type == SEQUENCE_END_EVENT {
 		if emitter.canonical && !first && !trail {
-			if !emitter.writeIndicator([]byte{','}, false, false, false) {
-				return false
+			if err := emitter.writeIndicator([]byte{','}, false, false, false); err != nil {
+				return err
 			}
 		}
 		emitter.flow_level--
 		emitter.indent = emitter.indents[len(emitter.indents)-1]
 		emitter.indents = emitter.indents[:len(emitter.indents)-1]
 		if emitter.column == 0 || emitter.canonical && !first {
-			if !emitter.writeIndent() {
-				return false
+			if err := emitter.writeIndent(); err != nil {
+				return err
 			}
 		}
-		if !emitter.writeIndicator([]byte{']'}, false, false, false) {
-			return false
+		if err := emitter.writeIndicator([]byte{']'}, false, false, false); err != nil {
+			return err
 		}
-		if !emitter.processLineComment() {
-			return false
+		if err := emitter.processLineComment(); err != nil {
+			return err
 		}
-		if !emitter.processFootComment() {
-			return false
+		if err := emitter.processFootComment(); err != nil {
+			return err
 		}
 		emitter.state = emitter.states[len(emitter.states)-1]
 		emitter.states = emitter.states[:len(emitter.states)-1]
 
-		return true
+		return nil
 	}
 
 	if !first && !trail {
-		if !emitter.writeIndicator([]byte{','}, false, false, false) {
-			return false
+		if err := emitter.writeIndicator([]byte{','}, false, false, false); err != nil {
+			return err
 		}
 	}
 
-	if !emitter.processHeadComment() {
-		return false
+	if err := emitter.processHeadComment(); err != nil {
+		return err
 	}
 	if emitter.column == 0 {
-		if !emitter.writeIndent() {
-			return false
+		if err := emitter.writeIndent(); err != nil {
+			return err
 		}
 	}
 
 	if emitter.canonical || emitter.column > emitter.best_width {
-		if !emitter.writeIndent() {
-			return false
+		if err := emitter.writeIndent(); err != nil {
+			return err
 		}
 	}
 	if len(emitter.LineComment)+len(emitter.FootComment)+len(emitter.TailComment) > 0 {
@@ -608,85 +612,85 @@ func (emitter *Emitter) emitFlowSequenceItem(event *Event, first, trail bool) bo
 	} else {
 		emitter.states = append(emitter.states, EMIT_FLOW_SEQUENCE_ITEM_STATE)
 	}
-	if !emitter.emitNode(event, false, true, false, false) {
-		return false
+	if err := emitter.emitNode(event, false, true, false, false); err != nil {
+		return err
 	}
 	if len(emitter.LineComment)+len(emitter.FootComment)+len(emitter.TailComment) > 0 {
-		if !emitter.writeIndicator([]byte{','}, false, false, false) {
-			return false
+		if err := emitter.writeIndicator([]byte{','}, false, false, false); err != nil {
+			return err
 		}
 	}
-	if !emitter.processLineComment() {
-		return false
+	if err := emitter.processLineComment(); err != nil {
+		return err
 	}
-	if !emitter.processFootComment() {
-		return false
+	if err := emitter.processFootComment(); err != nil {
+		return err
 	}
-	return true
+	return nil
 }
 
 // Expect a flow key node.
-func (emitter *Emitter) emitFlowMappingKey(event *Event, first, trail bool) bool {
+func (emitter *Emitter) emitFlowMappingKey(event *Event, first, trail bool) error {
 	if first {
-		if !emitter.writeIndicator([]byte{'{'}, true, true, false) {
-			return false
+		if err := emitter.writeIndicator([]byte{'{'}, true, true, false); err != nil {
+			return err
 		}
-		if !emitter.increaseIndent(true, false) {
-			return false
+		if err := emitter.increaseIndent(true, false); err != nil {
+			return err
 		}
 		emitter.flow_level++
 	}
 
 	if event.Type == MAPPING_END_EVENT {
 		if (emitter.canonical || len(emitter.HeadComment)+len(emitter.FootComment)+len(emitter.TailComment) > 0) && !first && !trail {
-			if !emitter.writeIndicator([]byte{','}, false, false, false) {
-				return false
+			if err := emitter.writeIndicator([]byte{','}, false, false, false); err != nil {
+				return err
 			}
 		}
-		if !emitter.processHeadComment() {
-			return false
+		if err := emitter.processHeadComment(); err != nil {
+			return err
 		}
 		emitter.flow_level--
 		emitter.indent = emitter.indents[len(emitter.indents)-1]
 		emitter.indents = emitter.indents[:len(emitter.indents)-1]
 		if emitter.canonical && !first {
-			if !emitter.writeIndent() {
-				return false
+			if err := emitter.writeIndent(); err != nil {
+				return err
 			}
 		}
-		if !emitter.writeIndicator([]byte{'}'}, false, false, false) {
-			return false
+		if err := emitter.writeIndicator([]byte{'}'}, false, false, false); err != nil {
+			return err
 		}
-		if !emitter.processLineComment() {
-			return false
+		if err := emitter.processLineComment(); err != nil {
+			return err
 		}
-		if !emitter.processFootComment() {
-			return false
+		if err := emitter.processFootComment(); err != nil {
+			return err
 		}
 		emitter.state = emitter.states[len(emitter.states)-1]
 		emitter.states = emitter.states[:len(emitter.states)-1]
-		return true
+		return nil
 	}
 
 	if !first && !trail {
-		if !emitter.writeIndicator([]byte{','}, false, false, false) {
-			return false
+		if err := emitter.writeIndicator([]byte{','}, false, false, false); err != nil {
+			return err
 		}
 	}
 
-	if !emitter.processHeadComment() {
-		return false
+	if err := emitter.processHeadComment(); err != nil {
+		return err
 	}
 
 	if emitter.column == 0 {
-		if !emitter.writeIndent() {
-			return false
+		if err := emitter.writeIndent(); err != nil {
+			return err
 		}
 	}
 
 	if emitter.canonical || emitter.column > emitter.best_width {
-		if !emitter.writeIndent() {
-			return false
+		if err := emitter.writeIndent(); err != nil {
+			return err
 		}
 	}
 
@@ -694,27 +698,27 @@ func (emitter *Emitter) emitFlowMappingKey(event *Event, first, trail bool) bool
 		emitter.states = append(emitter.states, EMIT_FLOW_MAPPING_SIMPLE_VALUE_STATE)
 		return emitter.emitNode(event, false, false, true, true)
 	}
-	if !emitter.writeIndicator([]byte{'?'}, true, false, false) {
-		return false
+	if err := emitter.writeIndicator([]byte{'?'}, true, false, false); err != nil {
+		return err
 	}
 	emitter.states = append(emitter.states, EMIT_FLOW_MAPPING_VALUE_STATE)
 	return emitter.emitNode(event, false, false, true, false)
 }
 
 // Expect a flow value node.
-func (emitter *Emitter) emitFlowMappingValue(event *Event, simple bool) bool {
+func (emitter *Emitter) emitFlowMappingValue(event *Event, simple bool) error {
 	if simple {
-		if !emitter.writeIndicator([]byte{':'}, false, false, false) {
-			return false
+		if err := emitter.writeIndicator([]byte{':'}, false, false, false); err != nil {
+			return err
 		}
 	} else {
 		if emitter.canonical || emitter.column > emitter.best_width {
-			if !emitter.writeIndent() {
-				return false
+			if err := emitter.writeIndent(); err != nil {
+				return err
 			}
 		}
-		if !emitter.writeIndicator([]byte{':'}, true, false, false) {
-			return false
+		if err := emitter.writeIndicator([]byte{':'}, true, false, false); err != nil {
+			return err
 		}
 	}
 	if len(emitter.LineComment)+len(emitter.FootComment)+len(emitter.TailComment) > 0 {
@@ -722,25 +726,25 @@ func (emitter *Emitter) emitFlowMappingValue(event *Event, simple bool) bool {
 	} else {
 		emitter.states = append(emitter.states, EMIT_FLOW_MAPPING_KEY_STATE)
 	}
-	if !emitter.emitNode(event, false, false, true, false) {
-		return false
+	if err := emitter.emitNode(event, false, false, true, false); err != nil {
+		return err
 	}
 	if len(emitter.LineComment)+len(emitter.FootComment)+len(emitter.TailComment) > 0 {
-		if !emitter.writeIndicator([]byte{','}, false, false, false) {
-			return false
+		if err := emitter.writeIndicator([]byte{','}, false, false, false); err != nil {
+			return err
 		}
 	}
-	if !emitter.processLineComment() {
-		return false
+	if err := emitter.processLineComment(); err != nil {
+		return err
 	}
-	if !emitter.processFootComment() {
-		return false
+	if err := emitter.processFootComment(); err != nil {
+		return err
 	}
-	return true
+	return nil
 }
 
 // Expect a block item node.
-func (emitter *Emitter) emitBlockSequenceItem(event *Event, first bool) bool {
+func (emitter *Emitter) emitBlockSequenceItem(event *Event, first bool) error {
 	if first {
 		// emitter.mapping context tells us if we are currently in a mapping context.
 		// emitter.column tells us which column we are in the yaml output. 0 is the first char of the column.
@@ -751,8 +755,8 @@ func (emitter *Emitter) emitBlockSequenceItem(event *Event, first bool) bool {
 		//  for sequence elements.
 		seq := emitter.mapping_context && (emitter.column == 0 || !emitter.indention) &&
 			emitter.CompactSequenceIndent
-		if !emitter.increaseIndentCompact(false, false, seq) {
-			return false
+		if err := emitter.increaseIndentCompact(false, false, seq); err != nil {
+			return err
 		}
 	}
 	if event.Type == SEQUENCE_END_EVENT {
@@ -760,49 +764,49 @@ func (emitter *Emitter) emitBlockSequenceItem(event *Event, first bool) bool {
 		emitter.indents = emitter.indents[:len(emitter.indents)-1]
 		emitter.state = emitter.states[len(emitter.states)-1]
 		emitter.states = emitter.states[:len(emitter.states)-1]
-		return true
+		return nil
 	}
-	if !emitter.processHeadComment() {
-		return false
+	if err := emitter.processHeadComment(); err != nil {
+		return err
 	}
-	if !emitter.writeIndent() {
-		return false
+	if err := emitter.writeIndent(); err != nil {
+		return err
 	}
-	if !emitter.writeIndicator([]byte{'-'}, true, false, true) {
-		return false
+	if err := emitter.writeIndicator([]byte{'-'}, true, false, true); err != nil {
+		return err
 	}
 	emitter.states = append(emitter.states, EMIT_BLOCK_SEQUENCE_ITEM_STATE)
-	if !emitter.emitNode(event, false, true, false, false) {
-		return false
+	if err := emitter.emitNode(event, false, true, false, false); err != nil {
+		return err
 	}
-	if !emitter.processLineComment() {
-		return false
+	if err := emitter.processLineComment(); err != nil {
+		return err
 	}
-	if !emitter.processFootComment() {
-		return false
+	if err := emitter.processFootComment(); err != nil {
+		return err
 	}
-	return true
+	return nil
 }
 
 // Expect a block key node.
-func (emitter *Emitter) emitBlockMappingKey(event *Event, first bool) bool {
+func (emitter *Emitter) emitBlockMappingKey(event *Event, first bool) error {
 	if first {
-		if !emitter.increaseIndent(false, false) {
-			return false
+		if err := emitter.increaseIndent(false, false); err != nil {
+			return err
 		}
 	}
-	if !emitter.processHeadComment() {
-		return false
+	if err := emitter.processHeadComment(); err != nil {
+		return err
 	}
 	if event.Type == MAPPING_END_EVENT {
 		emitter.indent = emitter.indents[len(emitter.indents)-1]
 		emitter.indents = emitter.indents[:len(emitter.indents)-1]
 		emitter.state = emitter.states[len(emitter.states)-1]
 		emitter.states = emitter.states[:len(emitter.states)-1]
-		return true
+		return nil
 	}
-	if !emitter.writeIndent() {
-		return false
+	if err := emitter.writeIndent(); err != nil {
+		return err
 	}
 	if len(emitter.LineComment) > 0 {
 		// [Go] A line comment was provided for the key. That's unusual as the
@@ -813,8 +817,8 @@ func (emitter *Emitter) emitBlockMappingKey(event *Event, first bool) bool {
 	}
 	if emitter.checkSimpleKey() {
 		emitter.states = append(emitter.states, EMIT_BLOCK_MAPPING_SIMPLE_VALUE_STATE)
-		if !emitter.emitNode(event, false, false, true, true) {
-			return false
+		if err := emitter.emitNode(event, false, false, true, true); err != nil {
+			return err
 		}
 
 		if event.Type == ALIAS_EVENT {
@@ -822,27 +826,27 @@ func (emitter *Emitter) emitBlockMappingKey(event *Event, first bool) bool {
 			return emitter.put(' ')
 		}
 
-		return true
+		return nil
 	}
-	if !emitter.writeIndicator([]byte{'?'}, true, false, true) {
-		return false
+	if err := emitter.writeIndicator([]byte{'?'}, true, false, true); err != nil {
+		return err
 	}
 	emitter.states = append(emitter.states, EMIT_BLOCK_MAPPING_VALUE_STATE)
 	return emitter.emitNode(event, false, false, true, false)
 }
 
 // Expect a block value node.
-func (emitter *Emitter) emitBlockMappingValue(event *Event, simple bool) bool {
+func (emitter *Emitter) emitBlockMappingValue(event *Event, simple bool) error {
 	if simple {
-		if !emitter.writeIndicator([]byte{':'}, false, false, false) {
-			return false
+		if err := emitter.writeIndicator([]byte{':'}, false, false, false); err != nil {
+			return err
 		}
 	} else {
-		if !emitter.writeIndent() {
-			return false
+		if err := emitter.writeIndent(); err != nil {
+			return err
 		}
-		if !emitter.writeIndicator([]byte{':'}, true, false, true) {
-			return false
+		if err := emitter.writeIndicator([]byte{':'}, true, false, true); err != nil {
+			return err
 		}
 	}
 	if len(emitter.key_line_comment) > 0 {
@@ -860,23 +864,23 @@ func (emitter *Emitter) emitBlockMappingValue(event *Event, simple bool) bool {
 		} else if event.SequenceStyle() != FLOW_SEQUENCE_STYLE && (event.Type == MAPPING_START_EVENT || event.Type == SEQUENCE_START_EVENT) {
 			// An indented block follows, so write the comment right now.
 			emitter.LineComment, emitter.key_line_comment = emitter.key_line_comment, emitter.LineComment
-			if !emitter.processLineComment() {
-				return false
+			if err := emitter.processLineComment(); err != nil {
+				return err
 			}
 			emitter.LineComment, emitter.key_line_comment = emitter.key_line_comment, emitter.LineComment
 		}
 	}
 	emitter.states = append(emitter.states, EMIT_BLOCK_MAPPING_KEY_STATE)
-	if !emitter.emitNode(event, false, false, true, false) {
-		return false
+	if err := emitter.emitNode(event, false, false, true, false); err != nil {
+		return err
 	}
-	if !emitter.processLineComment() {
-		return false
+	if err := emitter.processLineComment(); err != nil {
+		return err
 	}
-	if !emitter.processFootComment() {
-		return false
+	if err := emitter.processFootComment(); err != nil {
+		return err
 	}
-	return true
+	return nil
 }
 
 func (emitter *Emitter) silentNilEvent(event *Event) bool {
@@ -886,7 +890,7 @@ func (emitter *Emitter) silentNilEvent(event *Event) bool {
 // Expect a node.
 func (emitter *Emitter) emitNode(event *Event,
 	root bool, sequence bool, mapping bool, simple_key bool,
-) bool {
+) error {
 	emitter.root_context = root
 	emitter.sequence_context = sequence
 	emitter.mapping_context = mapping
@@ -902,52 +906,52 @@ func (emitter *Emitter) emitNode(event *Event,
 	case MAPPING_START_EVENT:
 		return emitter.emitMappingStart(event)
 	default:
-		return emitter.setEmitterError(
+		return emitterError(
 			fmt.Sprintf("expected SCALAR, SEQUENCE-START, MAPPING-START, or ALIAS, but got %v", event.Type))
 	}
 }
 
 // Expect ALIAS.
-func (emitter *Emitter) emitAlias(event *Event) bool {
-	if !emitter.processAnchor() {
-		return false
+func (emitter *Emitter) emitAlias(event *Event) error {
+	if err := emitter.processAnchor(); err != nil {
+		return err
 	}
 	emitter.state = emitter.states[len(emitter.states)-1]
 	emitter.states = emitter.states[:len(emitter.states)-1]
-	return true
+	return nil
 }
 
 // Expect SCALAR.
-func (emitter *Emitter) emitScalar(event *Event) bool {
-	if !emitter.selectScalarStyle(event) {
-		return false
+func (emitter *Emitter) emitScalar(event *Event) error {
+	if err := emitter.selectScalarStyle(event); err != nil {
+		return err
 	}
-	if !emitter.processAnchor() {
-		return false
+	if err := emitter.processAnchor(); err != nil {
+		return err
 	}
-	if !emitter.processTag() {
-		return false
+	if err := emitter.processTag(); err != nil {
+		return err
 	}
-	if !emitter.increaseIndent(true, false) {
-		return false
+	if err := emitter.increaseIndent(true, false); err != nil {
+		return err
 	}
-	if !emitter.processScalar() {
-		return false
+	if err := emitter.processScalar(); err != nil {
+		return err
 	}
 	emitter.indent = emitter.indents[len(emitter.indents)-1]
 	emitter.indents = emitter.indents[:len(emitter.indents)-1]
 	emitter.state = emitter.states[len(emitter.states)-1]
 	emitter.states = emitter.states[:len(emitter.states)-1]
-	return true
+	return nil
 }
 
 // Expect SEQUENCE-START.
-func (emitter *Emitter) emitSequenceStart(event *Event) bool {
-	if !emitter.processAnchor() {
-		return false
+func (emitter *Emitter) emitSequenceStart(event *Event) error {
+	if err := emitter.processAnchor(); err != nil {
+		return err
 	}
-	if !emitter.processTag() {
-		return false
+	if err := emitter.processTag(); err != nil {
+		return err
 	}
 	if emitter.flow_level > 0 || emitter.canonical || event.SequenceStyle() == FLOW_SEQUENCE_STYLE ||
 		emitter.checkEmptySequence() {
@@ -955,16 +959,16 @@ func (emitter *Emitter) emitSequenceStart(event *Event) bool {
 	} else {
 		emitter.state = EMIT_BLOCK_SEQUENCE_FIRST_ITEM_STATE
 	}
-	return true
+	return nil
 }
 
 // Expect MAPPING-START.
-func (emitter *Emitter) emitMappingStart(event *Event) bool {
-	if !emitter.processAnchor() {
-		return false
+func (emitter *Emitter) emitMappingStart(event *Event) error {
+	if err := emitter.processAnchor(); err != nil {
+		return err
 	}
-	if !emitter.processTag() {
-		return false
+	if err := emitter.processTag(); err != nil {
+		return err
 	}
 	if emitter.flow_level > 0 || emitter.canonical || event.MappingStyle() == FLOW_MAPPING_STYLE ||
 		emitter.checkEmptyMapping() {
@@ -972,7 +976,7 @@ func (emitter *Emitter) emitMappingStart(event *Event) bool {
 	} else {
 		emitter.state = EMIT_BLOCK_MAPPING_FIRST_KEY_STATE
 	}
-	return true
+	return nil
 }
 
 // Check if the document content is an empty scalar.
@@ -1033,10 +1037,10 @@ func (emitter *Emitter) checkSimpleKey() bool {
 }
 
 // Determine an acceptable scalar style.
-func (emitter *Emitter) selectScalarStyle(event *Event) bool {
+func (emitter *Emitter) selectScalarStyle(event *Event) error {
 	no_tag := len(emitter.tag_data.handle) == 0 && len(emitter.tag_data.suffix) == 0
 	if no_tag && !event.Implicit && !event.quoted_implicit {
-		return emitter.setEmitterError("neither tag nor implicit flags are specified")
+		return emitterError("neither tag nor implicit flags are specified")
 	}
 
 	style := event.ScalarStyle()
@@ -1077,55 +1081,55 @@ func (emitter *Emitter) selectScalarStyle(event *Event) bool {
 		emitter.tag_data.handle = []byte{'!'}
 	}
 	emitter.scalar_data.style = style
-	return true
+	return nil
 }
 
 // Write an anchor.
-func (emitter *Emitter) processAnchor() bool {
+func (emitter *Emitter) processAnchor() error {
 	if emitter.anchor_data.anchor == nil {
-		return true
+		return nil
 	}
 	c := []byte{'&'}
 	if emitter.anchor_data.alias {
 		c[0] = '*'
 	}
-	if !emitter.writeIndicator(c, true, false, false) {
-		return false
+	if err := emitter.writeIndicator(c, true, false, false); err != nil {
+		return err
 	}
 	return emitter.writeAnchor(emitter.anchor_data.anchor)
 }
 
 // Write a tag.
-func (emitter *Emitter) processTag() bool {
+func (emitter *Emitter) processTag() error {
 	if len(emitter.tag_data.handle) == 0 && len(emitter.tag_data.suffix) == 0 {
-		return true
+		return nil
 	}
 	if len(emitter.tag_data.handle) > 0 {
-		if !emitter.writeTagHandle(emitter.tag_data.handle) {
-			return false
+		if err := emitter.writeTagHandle(emitter.tag_data.handle); err != nil {
+			return err
 		}
 		if len(emitter.tag_data.suffix) > 0 {
-			if !emitter.writeTagContent(emitter.tag_data.suffix, false) {
-				return false
+			if err := emitter.writeTagContent(emitter.tag_data.suffix, false); err != nil {
+				return err
 			}
 		}
 	} else {
 		// [Go] Allocate these slices elsewhere.
-		if !emitter.writeIndicator([]byte("!<"), true, false, false) {
-			return false
+		if err := emitter.writeIndicator([]byte("!<"), true, false, false); err != nil {
+			return err
 		}
-		if !emitter.writeTagContent(emitter.tag_data.suffix, false) {
-			return false
+		if err := emitter.writeTagContent(emitter.tag_data.suffix, false); err != nil {
+			return err
 		}
-		if !emitter.writeIndicator([]byte{'>'}, false, false, false) {
-			return false
+		if err := emitter.writeIndicator([]byte{'>'}, false, false, false); err != nil {
+			return err
 		}
 	}
-	return true
+	return nil
 }
 
 // Write a scalar.
-func (emitter *Emitter) processScalar() bool {
+func (emitter *Emitter) processScalar() error {
 	switch emitter.scalar_data.style {
 	case PLAIN_SCALAR_STYLE:
 		return emitter.writePlainScalar(emitter.scalar_data.value, !emitter.simple_key_context)
@@ -1146,13 +1150,13 @@ func (emitter *Emitter) processScalar() bool {
 }
 
 // Write a head comment.
-func (emitter *Emitter) processHeadComment() bool {
+func (emitter *Emitter) processHeadComment() error {
 	if len(emitter.TailComment) > 0 {
-		if !emitter.writeIndent() {
-			return false
+		if err := emitter.writeIndent(); err != nil {
+			return err
 		}
-		if !emitter.writeComment(emitter.TailComment) {
-			return false
+		if err := emitter.writeComment(emitter.TailComment); err != nil {
+			return err
 		}
 		emitter.TailComment = emitter.TailComment[:0]
 		emitter.foot_indent = emitter.indent
@@ -1162,101 +1166,103 @@ func (emitter *Emitter) processHeadComment() bool {
 	}
 
 	if len(emitter.HeadComment) == 0 {
-		return true
+		return nil
 	}
-	if !emitter.writeIndent() {
-		return false
+	if err := emitter.writeIndent(); err != nil {
+		return err
 	}
-	if !emitter.writeComment(emitter.HeadComment) {
-		return false
+	if err := emitter.writeComment(emitter.HeadComment); err != nil {
+		return err
 	}
 	emitter.HeadComment = emitter.HeadComment[:0]
-	return true
+	return nil
 }
 
 // Write an line comment.
-func (emitter *Emitter) processLineCommentLinebreak(linebreak bool) bool {
+func (emitter *Emitter) processLineCommentLinebreak(linebreak bool) error {
 	if len(emitter.LineComment) == 0 {
 		// The next 3 lines are needed to resolve an issue with leading newlines
 		// See https://github.com/go-yaml/yaml/issues/755
 		// When linebreak is set to true, put_break will be called and will add
 		// the needed newline.
-		if linebreak && !emitter.putLineBreak() {
-			return false
+		if linebreak {
+			if err := emitter.putLineBreak(); err != nil {
+				return err
+			}
 		}
-		return true
+		return nil
 	}
 	if !emitter.whitespace {
-		if !emitter.put(' ') {
-			return false
+		if err := emitter.put(' '); err != nil {
+			return err
 		}
 	}
-	if !emitter.writeComment(emitter.LineComment) {
-		return false
+	if err := emitter.writeComment(emitter.LineComment); err != nil {
+		return err
 	}
 	emitter.LineComment = emitter.LineComment[:0]
-	return true
+	return nil
 }
 
 // Write a foot comment.
-func (emitter *Emitter) processFootComment() bool {
+func (emitter *Emitter) processFootComment() error {
 	if len(emitter.FootComment) == 0 {
-		return true
+		return nil
 	}
-	if !emitter.writeIndent() {
-		return false
+	if err := emitter.writeIndent(); err != nil {
+		return err
 	}
-	if !emitter.writeComment(emitter.FootComment) {
-		return false
+	if err := emitter.writeComment(emitter.FootComment); err != nil {
+		return err
 	}
 	emitter.FootComment = emitter.FootComment[:0]
 	emitter.foot_indent = emitter.indent
 	if emitter.foot_indent < 0 {
 		emitter.foot_indent = 0
 	}
-	return true
+	return nil
 }
 
 // Check if a %YAML directive is valid.
-func (emitter *Emitter) analyzeVersionDirective(version_directive *VersionDirective) bool {
+func (emitter *Emitter) analyzeVersionDirective(version_directive *VersionDirective) error {
 	if version_directive.major != 1 || version_directive.minor != 1 {
-		return emitter.setEmitterError("incompatible %YAML directive")
+		return emitterError("incompatible %YAML directive")
 	}
-	return true
+	return nil
 }
 
 // Check if a %TAG directive is valid.
-func (emitter *Emitter) analyzeTagDirective(tag_directive *TagDirective) bool {
+func (emitter *Emitter) analyzeTagDirective(tag_directive *TagDirective) error {
 	handle := tag_directive.handle
 	prefix := tag_directive.prefix
 	if len(handle) == 0 {
-		return emitter.setEmitterError("tag handle must not be empty")
+		return emitterError("tag handle must not be empty")
 	}
 	if handle[0] != '!' {
-		return emitter.setEmitterError("tag handle must start with '!'")
+		return emitterError("tag handle must start with '!'")
 	}
 	if handle[len(handle)-1] != '!' {
-		return emitter.setEmitterError("tag handle must end with '!'")
+		return emitterError("tag handle must end with '!'")
 	}
 	for i := 1; i < len(handle)-1; i += width(handle[i]) {
 		if !isAlpha(handle, i) {
-			return emitter.setEmitterError("tag handle must contain alphanumerical characters only")
+			return emitterError("tag handle must contain alphanumerical characters only")
 		}
 	}
 	if len(prefix) == 0 {
-		return emitter.setEmitterError("tag prefix must not be empty")
+		return emitterError("tag prefix must not be empty")
 	}
-	return true
+	return nil
 }
 
 // Check if an anchor is valid.
-func (emitter *Emitter) analyzeAnchor(anchor []byte, alias bool) bool {
+func (emitter *Emitter) analyzeAnchor(anchor []byte, alias bool) error {
 	if len(anchor) == 0 {
 		problem := "anchor value must not be empty"
 		if alias {
 			problem = "alias value must not be empty"
 		}
-		return emitter.setEmitterError(problem)
+		return emitterError(problem)
 	}
 	for i := 0; i < len(anchor); i += width(anchor[i]) {
 		if !isAnchorChar(anchor, i) {
@@ -1264,33 +1270,33 @@ func (emitter *Emitter) analyzeAnchor(anchor []byte, alias bool) bool {
 			if alias {
 				problem = "alias value must contain valid characters only"
 			}
-			return emitter.setEmitterError(problem)
+			return emitterError(problem)
 		}
 	}
 	emitter.anchor_data.anchor = anchor
 	emitter.anchor_data.alias = alias
-	return true
+	return nil
 }
 
 // Check if a tag is valid.
-func (emitter *Emitter) analyzeTag(tag []byte) bool {
+func (emitter *Emitter) analyzeTag(tag []byte) error {
 	if len(tag) == 0 {
-		return emitter.setEmitterError("tag value must not be empty")
+		return emitterError("tag value must not be empty")
 	}
 	for i := 0; i < len(emitter.tag_directives); i++ {
 		tag_directive := &emitter.tag_directives[i]
 		if bytes.HasPrefix(tag, tag_directive.prefix) {
 			emitter.tag_data.handle = tag_directive.handle
 			emitter.tag_data.suffix = tag[len(tag_directive.prefix):]
-			return true
+			return nil
 		}
 	}
 	emitter.tag_data.suffix = tag
-	return true
+	return nil
 }
 
 // Check if a scalar is valid.
-func (emitter *Emitter) analyzeScalar(value []byte) bool {
+func (emitter *Emitter) analyzeScalar(value []byte) error {
 	var block_indicators,
 		flow_indicators,
 		line_breaks,
@@ -1317,7 +1323,7 @@ func (emitter *Emitter) analyzeScalar(value []byte) bool {
 		emitter.scalar_data.block_plain_allowed = true
 		emitter.scalar_data.single_quoted_allowed = true
 		emitter.scalar_data.block_allowed = false
-		return true
+		return nil
 	}
 
 	if len(value) >= 3 && ((value[0] == '-' && value[1] == '-' && value[2] == '-') || (value[0] == '.' && value[1] == '.' && value[2] == '.')) {
@@ -1438,11 +1444,11 @@ func (emitter *Emitter) analyzeScalar(value []byte) bool {
 	if block_indicators {
 		emitter.scalar_data.block_plain_allowed = false
 	}
-	return true
+	return nil
 }
 
 // Check if the event data is valid.
-func (emitter *Emitter) analyzeEvent(event *Event) bool {
+func (emitter *Emitter) analyzeEvent(event *Event) error {
 	emitter.anchor_data.anchor = nil
 	emitter.tag_data.handle = nil
 	emitter.tag_data.suffix = nil
@@ -1463,134 +1469,134 @@ func (emitter *Emitter) analyzeEvent(event *Event) bool {
 
 	switch event.Type {
 	case ALIAS_EVENT:
-		if !emitter.analyzeAnchor(event.Anchor, true) {
-			return false
+		if err := emitter.analyzeAnchor(event.Anchor, true); err != nil {
+			return err
 		}
 
 	case SCALAR_EVENT:
 		if len(event.Anchor) > 0 {
-			if !emitter.analyzeAnchor(event.Anchor, false) {
-				return false
+			if err := emitter.analyzeAnchor(event.Anchor, false); err != nil {
+				return err
 			}
 		}
 		if len(event.Tag) > 0 && (emitter.canonical || (!event.Implicit && !event.quoted_implicit)) {
-			if !emitter.analyzeTag(event.Tag) {
-				return false
+			if err := emitter.analyzeTag(event.Tag); err != nil {
+				return err
 			}
 		}
-		if !emitter.analyzeScalar(event.Value) {
-			return false
+		if err := emitter.analyzeScalar(event.Value); err != nil {
+			return err
 		}
 
 	case SEQUENCE_START_EVENT:
 		if len(event.Anchor) > 0 {
-			if !emitter.analyzeAnchor(event.Anchor, false) {
-				return false
+			if err := emitter.analyzeAnchor(event.Anchor, false); err != nil {
+				return err
 			}
 		}
 		if len(event.Tag) > 0 && (emitter.canonical || !event.Implicit) {
-			if !emitter.analyzeTag(event.Tag) {
-				return false
+			if err := emitter.analyzeTag(event.Tag); err != nil {
+				return err
 			}
 		}
 
 	case MAPPING_START_EVENT:
 		if len(event.Anchor) > 0 {
-			if !emitter.analyzeAnchor(event.Anchor, false) {
-				return false
+			if err := emitter.analyzeAnchor(event.Anchor, false); err != nil {
+				return err
 			}
 		}
 		if len(event.Tag) > 0 && (emitter.canonical || !event.Implicit) {
-			if !emitter.analyzeTag(event.Tag) {
-				return false
+			if err := emitter.analyzeTag(event.Tag); err != nil {
+				return err
 			}
 		}
 	}
-	return true
+	return nil
 }
 
 // Write the BOM character.
-func (emitter *Emitter) writeBom() bool {
-	if !emitter.flushIfNeeded() {
-		return false
+func (emitter *Emitter) writeBom() error {
+	if err := emitter.flushIfNeeded(); err != nil {
+		return err
 	}
 	pos := emitter.buffer_pos
 	emitter.buffer[pos+0] = '\xEF'
 	emitter.buffer[pos+1] = '\xBB'
 	emitter.buffer[pos+2] = '\xBF'
 	emitter.buffer_pos += 3
-	return true
+	return nil
 }
 
-func (emitter *Emitter) writeIndent() bool {
+func (emitter *Emitter) writeIndent() error {
 	indent := emitter.indent
 	if indent < 0 {
 		indent = 0
 	}
 	if !emitter.indention || emitter.column > indent || (emitter.column == indent && !emitter.whitespace) {
-		if !emitter.putLineBreak() {
-			return false
+		if err := emitter.putLineBreak(); err != nil {
+			return err
 		}
 	}
 	if emitter.foot_indent == indent {
-		if !emitter.putLineBreak() {
-			return false
+		if err := emitter.putLineBreak(); err != nil {
+			return err
 		}
 	}
 	for emitter.column < indent {
-		if !emitter.put(' ') {
-			return false
+		if err := emitter.put(' '); err != nil {
+			return err
 		}
 	}
 	emitter.whitespace = true
 	// emitter.indention = true
 	emitter.space_above = false
 	emitter.foot_indent = -1
-	return true
+	return nil
 }
 
-func (emitter *Emitter) writeIndicator(indicator []byte, need_whitespace, is_whitespace, is_indention bool) bool {
+func (emitter *Emitter) writeIndicator(indicator []byte, need_whitespace, is_whitespace, is_indention bool) error {
 	if need_whitespace && !emitter.whitespace {
-		if !emitter.put(' ') {
-			return false
+		if err := emitter.put(' '); err != nil {
+			return err
 		}
 	}
-	if !emitter.writeAll(indicator) {
-		return false
+	if err := emitter.writeAll(indicator); err != nil {
+		return err
 	}
 	emitter.whitespace = is_whitespace
 	emitter.indention = (emitter.indention && is_indention)
 	emitter.OpenEnded = false
-	return true
+	return nil
 }
 
-func (emitter *Emitter) writeAnchor(value []byte) bool {
-	if !emitter.writeAll(value) {
-		return false
+func (emitter *Emitter) writeAnchor(value []byte) error {
+	if err := emitter.writeAll(value); err != nil {
+		return err
 	}
 	emitter.whitespace = false
 	emitter.indention = false
-	return true
+	return nil
 }
 
-func (emitter *Emitter) writeTagHandle(value []byte) bool {
+func (emitter *Emitter) writeTagHandle(value []byte) error {
 	if !emitter.whitespace {
-		if !emitter.put(' ') {
-			return false
+		if err := emitter.put(' '); err != nil {
+			return err
 		}
 	}
-	if !emitter.writeAll(value) {
-		return false
+	if err := emitter.writeAll(value); err != nil {
+		return err
 	}
 	emitter.whitespace = false
 	emitter.indention = false
-	return true
+	return nil
 }
 
-func (emitter *Emitter) writeTagContent(value []byte, need_whitespace bool) bool {
+func (emitter *Emitter) writeTagContent(value []byte, need_whitespace bool) error {
 	if need_whitespace && !emitter.whitespace {
-		if !emitter.put(' ') {
-			return false
+		if err := emitter.put(' '); err != nil {
+			return err
 		}
 	}
 	for i := 0; i < len(value); {
@@ -1602,16 +1608,16 @@ func (emitter *Emitter) writeTagContent(value []byte, need_whitespace bool) bool
 			must_write = isAlpha(value, i)
 		}
 		if must_write {
-			if !emitter.write(value, &i) {
-				return false
+			if err := emitter.write(value, &i); err != nil {
+				return err
 			}
 		} else {
 			w := width(value[i])
 			for k := 0; k < w; k++ {
 				octet := value[i]
 				i++
-				if !emitter.put('%') {
-					return false
+				if err := emitter.put('%'); err != nil {
+					return err
 				}
 
 				c := octet >> 4
@@ -1620,8 +1626,8 @@ func (emitter *Emitter) writeTagContent(value []byte, need_whitespace bool) bool
 				} else {
 					c += 'A' - 10
 				}
-				if !emitter.put(c) {
-					return false
+				if err := emitter.put(c); err != nil {
+					return err
 				}
 
 				c = octet & 0x0f
@@ -1630,21 +1636,21 @@ func (emitter *Emitter) writeTagContent(value []byte, need_whitespace bool) bool
 				} else {
 					c += 'A' - 10
 				}
-				if !emitter.put(c) {
-					return false
+				if err := emitter.put(c); err != nil {
+					return err
 				}
 			}
 		}
 	}
 	emitter.whitespace = false
 	emitter.indention = false
-	return true
+	return nil
 }
 
-func (emitter *Emitter) writePlainScalar(value []byte, allow_breaks bool) bool {
+func (emitter *Emitter) writePlainScalar(value []byte, allow_breaks bool) error {
 	if len(value) > 0 && !emitter.whitespace {
-		if !emitter.put(' ') {
-			return false
+		if err := emitter.put(' '); err != nil {
+			return err
 		}
 	}
 
@@ -1653,35 +1659,35 @@ func (emitter *Emitter) writePlainScalar(value []byte, allow_breaks bool) bool {
 	for i := 0; i < len(value); {
 		if isSpace(value, i) {
 			if allow_breaks && !spaces && emitter.column > emitter.best_width && !isSpace(value, i+1) {
-				if !emitter.writeIndent() {
-					return false
+				if err := emitter.writeIndent(); err != nil {
+					return err
 				}
 				i += width(value[i])
 			} else {
-				if !emitter.write(value, &i) {
-					return false
+				if err := emitter.write(value, &i); err != nil {
+					return err
 				}
 			}
 			spaces = true
 		} else if isLineBreak(value, i) {
 			if !breaks && value[i] == '\n' {
-				if !emitter.putLineBreak() {
-					return false
+				if err := emitter.putLineBreak(); err != nil {
+					return err
 				}
 			}
-			if !emitter.writeLineBreak(value, &i) {
-				return false
+			if err := emitter.writeLineBreak(value, &i); err != nil {
+				return err
 			}
 			// emitter.indention = true
 			breaks = true
 		} else {
 			if breaks {
-				if !emitter.writeIndent() {
-					return false
+				if err := emitter.writeIndent(); err != nil {
+					return err
 				}
 			}
-			if !emitter.write(value, &i) {
-				return false
+			if err := emitter.write(value, &i); err != nil {
+				return err
 			}
 			emitter.indention = false
 			spaces = false
@@ -1697,12 +1703,12 @@ func (emitter *Emitter) writePlainScalar(value []byte, allow_breaks bool) bool {
 		emitter.OpenEnded = true
 	}
 
-	return true
+	return nil
 }
 
-func (emitter *Emitter) writeSingleQuotedScalar(value []byte, allow_breaks bool) bool {
-	if !emitter.writeIndicator([]byte{'\''}, true, false, false) {
-		return false
+func (emitter *Emitter) writeSingleQuotedScalar(value []byte, allow_breaks bool) error {
+	if err := emitter.writeIndicator([]byte{'\''}, true, false, false); err != nil {
+		return err
 	}
 
 	spaces := false
@@ -1710,58 +1716,58 @@ func (emitter *Emitter) writeSingleQuotedScalar(value []byte, allow_breaks bool)
 	for i := 0; i < len(value); {
 		if isSpace(value, i) {
 			if allow_breaks && !spaces && emitter.column > emitter.best_width && i > 0 && i < len(value)-1 && !isSpace(value, i+1) {
-				if !emitter.writeIndent() {
-					return false
+				if err := emitter.writeIndent(); err != nil {
+					return err
 				}
 				i += width(value[i])
 			} else {
-				if !emitter.write(value, &i) {
-					return false
+				if err := emitter.write(value, &i); err != nil {
+					return err
 				}
 			}
 			spaces = true
 		} else if isLineBreak(value, i) {
 			if !breaks && value[i] == '\n' {
-				if !emitter.putLineBreak() {
-					return false
+				if err := emitter.putLineBreak(); err != nil {
+					return err
 				}
 			}
-			if !emitter.writeLineBreak(value, &i) {
-				return false
+			if err := emitter.writeLineBreak(value, &i); err != nil {
+				return err
 			}
 			// emitter.indention = true
 			breaks = true
 		} else {
 			if breaks {
-				if !emitter.writeIndent() {
-					return false
+				if err := emitter.writeIndent(); err != nil {
+					return err
 				}
 			}
 			if value[i] == '\'' {
-				if !emitter.put('\'') {
-					return false
+				if err := emitter.put('\''); err != nil {
+					return err
 				}
 			}
-			if !emitter.write(value, &i) {
-				return false
+			if err := emitter.write(value, &i); err != nil {
+				return err
 			}
 			emitter.indention = false
 			spaces = false
 			breaks = false
 		}
 	}
-	if !emitter.writeIndicator([]byte{'\''}, false, false, false) {
-		return false
+	if err := emitter.writeIndicator([]byte{'\''}, false, false, false); err != nil {
+		return err
 	}
 	emitter.whitespace = false
 	emitter.indention = false
-	return true
+	return nil
 }
 
-func (emitter *Emitter) writeDoubleQuotedScalar(value []byte, allow_breaks bool) bool {
+func (emitter *Emitter) writeDoubleQuotedScalar(value []byte, allow_breaks bool) error {
 	spaces := false
-	if !emitter.writeIndicator([]byte{'"'}, true, false, false) {
-		return false
+	if err := emitter.writeIndicator([]byte{'"'}, true, false, false); err != nil {
+		return err
 	}
 
 	for i := 0; i < len(value); {
@@ -1789,101 +1795,101 @@ func (emitter *Emitter) writeDoubleQuotedScalar(value []byte, allow_breaks bool)
 			}
 			i += w
 
-			if !emitter.put('\\') {
-				return false
+			if err := emitter.put('\\'); err != nil {
+				return err
 			}
 
-			var ok bool
+			var err error
 			switch v {
 			case 0x00:
-				ok = emitter.put('0')
+				err = emitter.put('0')
 			case 0x07:
-				ok = emitter.put('a')
+				err = emitter.put('a')
 			case 0x08:
-				ok = emitter.put('b')
+				err = emitter.put('b')
 			case 0x09:
-				ok = emitter.put('t')
+				err = emitter.put('t')
 			case 0x0A:
-				ok = emitter.put('n')
+				err = emitter.put('n')
 			case 0x0b:
-				ok = emitter.put('v')
+				err = emitter.put('v')
 			case 0x0c:
-				ok = emitter.put('f')
+				err = emitter.put('f')
 			case 0x0d:
-				ok = emitter.put('r')
+				err = emitter.put('r')
 			case 0x1b:
-				ok = emitter.put('e')
+				err = emitter.put('e')
 			case 0x22:
-				ok = emitter.put('"')
+				err = emitter.put('"')
 			case 0x5c:
-				ok = emitter.put('\\')
+				err = emitter.put('\\')
 			case 0x85:
-				ok = emitter.put('N')
+				err = emitter.put('N')
 			case 0xA0:
-				ok = emitter.put('_')
+				err = emitter.put('_')
 			case 0x2028:
-				ok = emitter.put('L')
+				err = emitter.put('L')
 			case 0x2029:
-				ok = emitter.put('P')
+				err = emitter.put('P')
 			default:
 				if v <= 0xFF {
-					ok = emitter.put('x')
+					err = emitter.put('x')
 					w = 2
 				} else if v <= 0xFFFF {
-					ok = emitter.put('u')
+					err = emitter.put('u')
 					w = 4
 				} else {
-					ok = emitter.put('U')
+					err = emitter.put('U')
 					w = 8
 				}
-				for k := (w - 1) * 4; ok && k >= 0; k -= 4 {
+				for k := (w - 1) * 4; err != nil && k >= 0; k -= 4 {
 					digit := byte((v >> uint(k)) & 0x0F)
 					if digit < 10 {
-						ok = emitter.put(digit + '0')
+						err = emitter.put(digit + '0')
 					} else {
-						ok = emitter.put(digit + 'A' - 10)
+						err = emitter.put(digit + 'A' - 10)
 					}
 				}
 			}
-			if !ok {
-				return false
+			if err != nil {
+				return err
 			}
 			spaces = false
 		} else if isSpace(value, i) {
 			if allow_breaks && !spaces && emitter.column > emitter.best_width && i > 0 && i < len(value)-1 {
-				if !emitter.writeIndent() {
-					return false
+				if err := emitter.writeIndent(); err != nil {
+					return err
 				}
 				if isSpace(value, i+1) {
-					if !emitter.put('\\') {
-						return false
+					if err := emitter.put('\\'); err != nil {
+						return err
 					}
 				}
 				i += width(value[i])
-			} else if !emitter.write(value, &i) {
-				return false
+			} else if err := emitter.write(value, &i); err != nil {
+				return err
 			}
 			spaces = true
 		} else {
-			if !emitter.write(value, &i) {
-				return false
+			if err := emitter.write(value, &i); err != nil {
+				return err
 			}
 			spaces = false
 		}
 	}
-	if !emitter.writeIndicator([]byte{'"'}, false, false, false) {
-		return false
+	if err := emitter.writeIndicator([]byte{'"'}, false, false, false); err != nil {
+		return err
 	}
 	emitter.whitespace = false
 	emitter.indention = false
-	return true
+	return nil
 }
 
-func (emitter *Emitter) writeBlockScalarHints(value []byte) bool {
+func (emitter *Emitter) writeBlockScalarHints(value []byte) error {
 	if isSpace(value, 0) || isLineBreak(value, 0) {
 		indent_hint := []byte{'0' + byte(emitter.BestIndent)}
-		if !emitter.writeIndicator(indent_hint, false, false, false) {
-			return false
+		if err := emitter.writeIndicator(indent_hint, false, false, false); err != nil {
+			return err
 		}
 	}
 
@@ -1914,59 +1920,59 @@ func (emitter *Emitter) writeBlockScalarHints(value []byte) bool {
 		}
 	}
 	if chomp_hint[0] != 0 {
-		if !emitter.writeIndicator(chomp_hint[:], false, false, false) {
-			return false
+		if err := emitter.writeIndicator(chomp_hint[:], false, false, false); err != nil {
+			return err
 		}
 	}
-	return true
+	return nil
 }
 
-func (emitter *Emitter) writeLiteralScalar(value []byte) bool {
-	if !emitter.writeIndicator([]byte{'|'}, true, false, false) {
-		return false
+func (emitter *Emitter) writeLiteralScalar(value []byte) error {
+	if err := emitter.writeIndicator([]byte{'|'}, true, false, false); err != nil {
+		return err
 	}
-	if !emitter.writeBlockScalarHints(value) {
-		return false
+	if err := emitter.writeBlockScalarHints(value); err != nil {
+		return err
 	}
-	if !emitter.processLineCommentLinebreak(true) {
-		return false
+	if err := emitter.processLineCommentLinebreak(true); err != nil {
+		return err
 	}
 	// emitter.indention = true
 	emitter.whitespace = true
 	breaks := true
 	for i := 0; i < len(value); {
 		if isLineBreak(value, i) {
-			if !emitter.writeLineBreak(value, &i) {
-				return false
+			if err := emitter.writeLineBreak(value, &i); err != nil {
+				return err
 			}
 			// emitter.indention = true
 			breaks = true
 		} else {
 			if breaks {
-				if !emitter.writeIndent() {
-					return false
+				if err := emitter.writeIndent(); err != nil {
+					return err
 				}
 			}
-			if !emitter.write(value, &i) {
-				return false
+			if err := emitter.write(value, &i); err != nil {
+				return err
 			}
 			emitter.indention = false
 			breaks = false
 		}
 	}
 
-	return true
+	return nil
 }
 
-func (emitter *Emitter) writeFoldedScalar(value []byte) bool {
-	if !emitter.writeIndicator([]byte{'>'}, true, false, false) {
-		return false
+func (emitter *Emitter) writeFoldedScalar(value []byte) error {
+	if err := emitter.writeIndicator([]byte{'>'}, true, false, false); err != nil {
+		return err
 	}
-	if !emitter.writeBlockScalarHints(value) {
-		return false
+	if err := emitter.writeBlockScalarHints(value); err != nil {
+		return err
 	}
-	if !emitter.processLineCommentLinebreak(true) {
-		return false
+	if err := emitter.processLineCommentLinebreak(true); err != nil {
+		return err
 	}
 
 	// emitter.indention = true
@@ -1982,73 +1988,82 @@ func (emitter *Emitter) writeFoldedScalar(value []byte) bool {
 					k += width(value[k])
 				}
 				if !isBlankOrZero(value, k) {
-					if !emitter.putLineBreak() {
-						return false
+					if err := emitter.putLineBreak(); err != nil {
+						return err
 					}
 				}
 			}
-			if !emitter.writeLineBreak(value, &i) {
-				return false
+			if err := emitter.writeLineBreak(value, &i); err != nil {
+				return err
 			}
 			// emitter.indention = true
 			breaks = true
 		} else {
 			if breaks {
-				if !emitter.writeIndent() {
-					return false
+				if err := emitter.writeIndent(); err != nil {
+					return err
 				}
 				leading_spaces = isBlank(value, i)
 			}
 			if !breaks && isSpace(value, i) && !isSpace(value, i+1) && emitter.column > emitter.best_width {
-				if !emitter.writeIndent() {
-					return false
+				if err := emitter.writeIndent(); err != nil {
+					return err
 				}
 				i += width(value[i])
 			} else {
-				if !emitter.write(value, &i) {
-					return false
+				if err := emitter.write(value, &i); err != nil {
+					return err
 				}
 			}
 			emitter.indention = false
 			breaks = false
 		}
 	}
-	return true
+	return nil
 }
 
-func (emitter *Emitter) writeComment(comment []byte) bool {
+func (emitter *Emitter) writeComment(comment []byte) error {
 	breaks := false
 	pound := false
 	for i := 0; i < len(comment); {
 		if isLineBreak(comment, i) {
-			if !emitter.writeLineBreak(comment, &i) {
-				return false
+			if err := emitter.writeLineBreak(comment, &i); err != nil {
+				return err
 			}
 			// emitter.indention = true
 			breaks = true
 			pound = false
 		} else {
-			if breaks && !emitter.writeIndent() {
-				return false
+			if breaks {
+				if err := emitter.writeIndent(); err != nil {
+					return err
+				}
 			}
 			if !pound {
-				if comment[i] != '#' && (!emitter.put('#') || !emitter.put(' ')) {
-					return false
+				if comment[i] != '#' {
+					if err := emitter.put('#'); err != nil {
+						return err
+					}
+					if err := emitter.put(' '); err != nil {
+						return err
+					}
 				}
 				pound = true
 			}
-			if !emitter.write(comment, &i) {
-				return false
+			if err := emitter.write(comment, &i); err != nil {
+				return err
 			}
 			emitter.indention = false
 			breaks = false
 		}
 	}
-	if !breaks && !emitter.putLineBreak() {
-		return false
+	if !breaks {
+		if err := emitter.putLineBreak(); err != nil {
+			return err
+		}
 	}
 
 	emitter.whitespace = true
 	// emitter.indention = true
-	return true
+	return nil
 }
