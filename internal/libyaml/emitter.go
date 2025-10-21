@@ -24,6 +24,7 @@ package libyaml
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 )
 
@@ -143,7 +144,7 @@ func (emitter *Emitter) writeLineBreak(s []byte, i *int) error {
 
 // Construct emitter error.
 func emitterError(problem string) error {
-	return fmt.Errorf("%s", problem)
+	return errors.New(problem)
 }
 
 // Emit an event.
@@ -1842,7 +1843,7 @@ func (emitter *Emitter) writeDoubleQuotedScalar(value []byte, allow_breaks bool)
 					err = emitter.put('U')
 					w = 8
 				}
-				for k := (w - 1) * 4; err != nil && k >= 0; k -= 4 {
+				for k := (w - 1) * 4; err == nil && k >= 0; k -= 4 {
 					digit := byte((v >> uint(k)) & 0x0F)
 					if digit < 10 {
 						err = emitter.put(digit + '0')

@@ -22,11 +22,11 @@
 
 package libyaml
 
-import "fmt"
+import "errors"
 
 // Construct writer error.
 func writerError(problem string) error {
-	return fmt.Errorf("%s", problem)
+	return errors.New(problem)
 }
 
 // Flush the output buffer.
