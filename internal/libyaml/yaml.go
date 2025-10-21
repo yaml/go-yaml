@@ -482,8 +482,6 @@ const (
 	PARSE_DOCUMENT_CONTENT_STATE                  // Expect the content of a document.
 	PARSE_DOCUMENT_END_STATE                      // Expect DOCUMENT-END.
 	PARSE_BLOCK_NODE_STATE                        // Expect a block node.
-	PARSE_BLOCK_NODE_OR_INDENTLESS_SEQUENCE_STATE // Expect a block node or indentless sequence.
-	PARSE_FLOW_NODE_STATE                         // Expect a flow node.
 	PARSE_BLOCK_SEQUENCE_FIRST_ENTRY_STATE        // Expect the first entry of a block sequence.
 	PARSE_BLOCK_SEQUENCE_ENTRY_STATE              // Expect an entry of a block sequence.
 	PARSE_INDENTLESS_SEQUENCE_ENTRY_STATE         // Expect an entry of an indentless sequence.
@@ -516,10 +514,6 @@ func (ps ParserState) String() string {
 		return "PARSE_DOCUMENT_END_STATE"
 	case PARSE_BLOCK_NODE_STATE:
 		return "PARSE_BLOCK_NODE_STATE"
-	case PARSE_BLOCK_NODE_OR_INDENTLESS_SEQUENCE_STATE:
-		return "PARSE_BLOCK_NODE_OR_INDENTLESS_SEQUENCE_STATE"
-	case PARSE_FLOW_NODE_STATE:
-		return "PARSE_FLOW_NODE_STATE"
 	case PARSE_BLOCK_SEQUENCE_FIRST_ENTRY_STATE:
 		return "PARSE_BLOCK_SEQUENCE_FIRST_ENTRY_STATE"
 	case PARSE_BLOCK_SEQUENCE_ENTRY_STATE:
