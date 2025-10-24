@@ -801,8 +801,8 @@ func ParserGetEvents(in []byte) (string, error) {
 	var events strings.Builder
 	var event libyaml.Event
 	for {
-		if !p.parser.Parse(&event) {
-			return "", errors.New(p.parser.Problem)
+		if err := p.parser.Parse(&event); err != nil {
+			return "", err
 		}
 		formatted := formatEvent(&event)
 		events.WriteString(formatted)

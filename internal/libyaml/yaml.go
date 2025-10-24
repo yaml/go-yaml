@@ -566,23 +566,9 @@ type AliasData struct {
 // Parser structure holds all information about the current
 // state of the parser.
 type Parser struct {
-	// Error handling
-
-	ErrorType ErrorType // Error type.
-
-	Problem string // Error description.
-
-	// The byte about which the problem occurred.
-	ProblemOffset int
-	ProblemValue  int
-	ProblemMark   Mark
-
-	// The error Context.
-	Context     string
-	ContextMark Mark
+	errored bool
 
 	// Reader stuff
-
 	read_handler ReadHandler // Read handler.
 
 	input_reader io.Reader // File input data.
