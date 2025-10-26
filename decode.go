@@ -416,11 +416,11 @@ func (d *decoder) callJSONUnmarshaler(n *Node, u json.Unmarshaler) bool {
 }
 
 // unmarshalJSON marshals the value into JSON and unmarshal it using the JSON unmarshaler.
-// NOTE: This double conversion (YAML → interface{} → JSON → target type) adds overhead,
+// NOTE: This double conversion (YAML -> interface{} -> JSON -> target type) adds overhead,
 // but is necessary to support types that implement json.Unmarshaler. There is no
 // more direct way to invoke UnmarshalJSON with YAML input, so this trade-off is
 // required for compatibility.
-// Additionally, It normalizes the intermediate representation to ensure
+// Additionally, it normalizes the intermediate representation to ensure
 // that map keys are strings, as required by JSON.
 func unmarshalJSON(input any, unmarshaler json.Unmarshaler) error {
 	normalizedInput, err := normalizeJSON(input)
