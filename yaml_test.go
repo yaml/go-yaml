@@ -25,7 +25,7 @@ func Test_getStructInfo(t *testing.T) {
 			name: "tag names",
 			st: reflect.TypeOf(struct {
 				A string `yaml:"yaml_a"`
-				B string `just_b`
+				B string `just_b` //nolint:govet // field tag without key for testing purposes only
 				C string `json:"json_c" yaml:"yaml_c"`
 				D string `json:"json_d"`
 				E string
@@ -124,7 +124,7 @@ func Test_getStructInfo(t *testing.T) {
 			name: "tag names with fallback to json",
 			st: reflect.TypeOf(struct {
 				A string `yaml:"yaml_a"`
-				B string `just_b`
+				B string `just_b` //nolint:govet // field tag without key for testing purposes only
 				C string `json:"json_c" yaml:"yaml_c"`
 				D string `json:"json_d"`
 				E string
