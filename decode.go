@@ -385,34 +385,26 @@ func (d *decoder) callUnmarshaler(n *Node, u Unmarshaler) (good bool) {
 	}
 }
 
-func (d *decoder) callJSONUnmarshaler(n *Node, u json.Unmarshaler) (good bool) {
+func (d *decoder) callJSONUnmarshaler(n *Node, u json.Unmarshaler) bool {
 	var v any
+
 	// First decode the node into an interface{} using the normal decoding rules.
-	err := n.Decode(&v)
-	switch e := err.(type) {
-	case nil:
-		// Now marshal that value into JSON and unmarshal it using the JSON unmarshaler.
-		// NOTE: This double conversion (YAML → interface{} → JSON → target type) adds overhead,
-		// but is necessary to support types that implement json.Unmarshaler. There is no
-		// more direct way to invoke UnmarshalJSON with YAML input, so this trade-off is
-		// required for compatibility.
-		data, err := json.Marshal(v)
-		if err == nil {
-			err = u.UnmarshalJSON(data)
-			if err == nil {
-				return true
-			}
+	if err := n.Decode(&v); err != nil {
+		if te, ok := err.(*TypeError); ok {
+			d.terrors = append(d.terrors, te.Errors...)
+		} else {
+			d.terrors = append(d.terrors, &UnmarshalError{
+				Err:    err,
+				Line:   n.Line,
+				Column: n.Column,
+			})
 		}
-		d.terrors = append(d.terrors, &UnmarshalError{
-			Err:    err,
-			Line:   n.Line,
-			Column: n.Column,
-		})
 		return false
-	case *TypeError:
-		d.terrors = append(d.terrors, e.Errors...)
-		return false
-	default:
+	}
+
+	// Second, marshal that intermediate representation into JSON
+	// and unmarshal it using the JSON unmarshaler.
+	if err := unmarshalJSON(v, u); err != nil {
 		d.terrors = append(d.terrors, &UnmarshalError{
 			Err:    err,
 			Line:   n.Line,
@@ -420,6 +412,84 @@ func (d *decoder) callJSONUnmarshaler(n *Node, u json.Unmarshaler) (good bool) {
 		})
 		return false
 	}
+	return true
+}
+
+// unmarshalJSON marshals the value into JSON and unmarshal it using the JSON unmarshaler.
+// NOTE: This double conversion (YAML → interface{} → JSON → target type) adds overhead,
+// but is necessary to support types that implement json.Unmarshaler. There is no
+// more direct way to invoke UnmarshalJSON with YAML input, so this trade-off is
+// required for compatibility.
+// Additionally, It normalizes the intermediate representation to ensure
+// that map keys are strings, as required by JSON.
+func unmarshalJSON(input any, unmarshaler json.Unmarshaler) error {
+	normalizedInput, err := normalizeJSON(input)
+	if err != nil {
+		return err
+	}
+	data, err := json.Marshal(normalizedInput)
+	if err != nil {
+		return err
+	}
+	return unmarshaler.UnmarshalJSON(data)
+}
+
+// normalizeJSON converts a YAML-parsed structure into a form suitable for JSON marshaling.
+// The JSON specification requires that object keys be strings, so this function
+// converts map[any]any to map[string]any by marshaling non-string keys to JSON strings.
+func normalizeJSON(input any) (any, error) {
+	x := reflect.ValueOf(input)
+	switch x.Kind() {
+	case reflect.Map:
+		m := make(map[string]any, x.Len())
+
+		iter := x.MapRange()
+		for iter.Next() {
+			k := iter.Key().Interface()
+			v := iter.Value().Interface()
+			jv, err := normalizeJSON(v)
+			if err != nil {
+				return nil, err
+			}
+			if s, ok := k.(string); ok {
+				if _, ok := m[s]; ok {
+					return nil, fmt.Errorf("duplicate key %q found when converting to JSON object", s)
+				}
+				m[s] = jv
+				continue
+			}
+
+			// Convert non-string keys to JSON and then to strings.
+			jk, err := normalizeJSON(k)
+			if err != nil {
+				return nil, err
+			}
+			raw, err := json.Marshal(jk)
+			if err != nil {
+				return nil, err
+			}
+			sk := string(raw)
+			if _, ok := m[sk]; ok {
+				return nil, fmt.Errorf("duplicate key %q found when converting to JSON object", sk)
+			}
+			m[sk] = jv
+		}
+		return m, nil
+
+	case reflect.Slice, reflect.Array:
+		a := make([]any, x.Len())
+		for i := 0; i < x.Len(); i++ {
+			v := x.Index(i).Interface()
+			jv, err := normalizeJSON(v)
+			if err != nil {
+				return nil, err
+			}
+			a[i] = jv
+		}
+		return a, nil
+	}
+
+	return input, nil
 }
 
 func (d *decoder) callObsoleteUnmarshaler(n *Node, u obsoleteUnmarshaler) (good bool) {
