@@ -18,6 +18,7 @@ package yaml
 import (
 	"encoding"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math"
@@ -384,6 +385,39 @@ func (d *decoder) callUnmarshaler(n *Node, u Unmarshaler) (good bool) {
 	}
 }
 
+func (d *decoder) callJSONUnmarshaler(n *Node, u json.Unmarshaler) (good bool) {
+	var v any
+	// First decode the node into an interface{} using the normal decoding rules.
+	err := n.Decode(&v)
+	switch e := err.(type) {
+	case nil:
+		// Now marshal that value into JSON and unmarshal it using the JSON unmarshaler.
+		data, err := json.Marshal(v)
+		if err == nil {
+			err = u.UnmarshalJSON(data)
+			if err == nil {
+				return true
+			}
+		}
+		d.terrors = append(d.terrors, &UnmarshalError{
+			Err:    err,
+			Line:   n.Line,
+			Column: n.Column,
+		})
+		return false
+	case *TypeError:
+		d.terrors = append(d.terrors, e.Errors...)
+		return false
+	default:
+		d.terrors = append(d.terrors, &UnmarshalError{
+			Err:    err,
+			Line:   n.Line,
+			Column: n.Column,
+		})
+		return false
+	}
+}
+
 func (d *decoder) callObsoleteUnmarshaler(n *Node, u obsoleteUnmarshaler) (good bool) {
 	terrlen := len(d.terrors)
 	err := u.UnmarshalYAML(func(v any) (err error) {
@@ -442,6 +476,13 @@ func (d *decoder) prepare(n *Node, out reflect.Value) (newout reflect.Value, unm
 			if u, ok := outi.(obsoleteUnmarshaler); ok {
 				good = d.callObsoleteUnmarshaler(n, u)
 				return out, true, good
+			}
+			if d.fallbackToJSON {
+				// Try JSON unmarshaler as a fallback.
+				if u, ok := outi.(json.Unmarshaler); ok {
+					good = d.callJSONUnmarshaler(n, u)
+					return out, true, good
+				}
 			}
 		}
 	}

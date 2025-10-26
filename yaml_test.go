@@ -2,6 +2,7 @@ package yaml
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"testing"
@@ -383,41 +384,59 @@ func Test_getStructInfo(t *testing.T) {
 	}
 }
 
-func ExampleDecoder_FallbackToJSON() {
-	type Inline struct {
-		A int `json:"json_a"`
-	}
-	type Test struct {
-		Inline
-		B string `json:"json_b"`
-	}
+type TestInlineFallbackToJSON struct {
+	A int `json:"json_a"`
+}
 
+type TestFallbackToJSON struct {
+	TestInlineFallbackToJSON
+	B string `json:"json_b"`
+
+	unmarshaled bool
+	marshaled   bool
+}
+
+func (t *TestFallbackToJSON) UnmarshalJSON(data []byte) error {
+	type Alias TestFallbackToJSON
+	var aux Alias
+	t.unmarshaled = true
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	t.A = aux.A
+	t.B = aux.B
+	return nil
+}
+
+func (t *TestFallbackToJSON) MarshalJSON() ([]byte, error) {
+	type Alias TestFallbackToJSON
+	data, err := json.Marshal(Alias(*t))
+	t.marshaled = true
+	return data, err
+}
+
+func ExampleDecoder_FallbackToJSON() {
 	text := []byte(`---
 json_a: 42
 json_b: "foo"
 `)
 
-	var v Test
+	var v TestFallbackToJSON
 	d := NewDecoder(bytes.NewReader(text))
 	d.FallbackToJSON(true)
 	if err := d.Decode(&v); err != nil {
 		panic(err)
 	}
 	fmt.Println(v.A, v.B)
+	fmt.Println(v.unmarshaled)
 	// Output:
 	// 42 foo
+	// true
 }
 
 func ExampleEncoder_FallbackToJSON() {
-	type Inline struct {
-		A int `json:"json_a"`
-	}
-	type Test struct {
-		Inline
-		B string `json:"json_b"`
-	}
-	v := Test{
-		Inline: Inline{
+	v := TestFallbackToJSON{
+		TestInlineFallbackToJSON: TestInlineFallbackToJSON{
 			A: 42,
 		},
 		B: "foo",
@@ -425,11 +444,14 @@ func ExampleEncoder_FallbackToJSON() {
 	var buf bytes.Buffer
 	e := NewEncoder(&buf)
 	e.FallbackToJSON(true)
-	if err := e.Encode(v); err != nil {
+	if err := e.Encode(&v); err != nil {
 		panic(err)
 	}
 	fmt.Println(buf.String())
+	fmt.Println(v.marshaled)
 	// Output:
 	// json_a: 42
 	// json_b: foo
+	//
+	// true
 }

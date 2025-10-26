@@ -17,6 +17,7 @@ package yaml
 
 import (
 	"encoding"
+	"encoding/json"
 	"fmt"
 	"io"
 	"reflect"
@@ -158,6 +159,25 @@ func (e *encoder) marshal(tag string, in reflect.Value) {
 			fail(err)
 		}
 		in = reflect.ValueOf(string(text))
+	case json.Marshaler:
+		if !e.fallbackToJSON {
+			break // do the normal thing
+		}
+		// Fallback to JSON marshaling.
+		// Marshal to JSON,
+		// then unmarshal to an interface{},
+		// then marshal that value to YAML.
+
+		data, err := value.MarshalJSON()
+		if err != nil {
+			fail(err)
+		}
+		var v any
+		if err := json.Unmarshal(data, &v); err != nil {
+			fail(err)
+		}
+		e.marshal(tag, reflect.ValueOf(v))
+		return
 	case nil:
 		e.nilv()
 		return
