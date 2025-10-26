@@ -93,8 +93,9 @@ func Unmarshal(in []byte, out any) (err error) {
 
 // A Decoder reads and decodes YAML values from an input stream.
 type Decoder struct {
-	parser      *parser
-	knownFields bool
+	parser         *parser
+	knownFields    bool
+	fallbackToJSON bool
 }
 
 // NewDecoder returns a new decoder that reads from r.
@@ -113,6 +114,13 @@ func (dec *Decoder) KnownFields(enable bool) {
 	dec.knownFields = enable
 }
 
+// FallbackToJSON enables using the "json" struct tags as a fallback
+// when no "yaml" struct tag is present.
+// If enabled, the anonymous struct fields are also considered for inlining.
+func (dec *Decoder) FallbackToJSON(enable bool) {
+	dec.fallbackToJSON = enable
+}
+
 // Decode reads the next YAML-encoded value from its input
 // and stores it in the value pointed to by v.
 //
@@ -121,6 +129,7 @@ func (dec *Decoder) KnownFields(enable bool) {
 func (dec *Decoder) Decode(v any) (err error) {
 	d := newDecoder()
 	d.knownFields = dec.knownFields
+	d.fallbackToJSON = dec.fallbackToJSON
 	defer handleErr(&err)
 	node := dec.parser.parse()
 	if node == nil {
@@ -277,6 +286,12 @@ func (e *Encoder) SetIndent(spaces int) {
 		panic("yaml: cannot indent to a negative number of spaces")
 	}
 	e.encoder.indent = spaces
+}
+
+// FallbackToJSON enables using the "json" struct tags as a fallback
+// when no "yaml" struct tag is present.
+func (e *Encoder) FallbackToJSON(enable bool) {
+	e.encoder.fallbackToJSON = enable
 }
 
 // CompactSeqIndent makes it so that '- ' is considered part of the indentation.

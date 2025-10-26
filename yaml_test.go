@@ -1,6 +1,8 @@
 package yaml
 
 import (
+	"bytes"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -379,4 +381,55 @@ func Test_getStructInfo(t *testing.T) {
 			assert.DeepEqualf(t, tt.want, got, "getStructInfo() failed")
 		})
 	}
+}
+
+func ExampleDecoder_FallbackToJSON() {
+	type Inline struct {
+		A int `json:"json_a"`
+	}
+	type Test struct {
+		Inline
+		B string `json:"json_b"`
+	}
+
+	text := []byte(`---
+json_a: 42
+json_b: "foo"
+`)
+
+	var v Test
+	d := NewDecoder(bytes.NewReader(text))
+	d.FallbackToJSON(true)
+	if err := d.Decode(&v); err != nil {
+		panic(err)
+	}
+	fmt.Println(v.A, v.B)
+	// Output:
+	// 42 foo
+}
+
+func ExampleEncoder_FallbackToJSON() {
+	type Inline struct {
+		A int `json:"json_a"`
+	}
+	type Test struct {
+		Inline
+		B string `json:"json_b"`
+	}
+	v := Test{
+		Inline: Inline{
+			A: 42,
+		},
+		B: "foo",
+	}
+	var buf bytes.Buffer
+	e := NewEncoder(&buf)
+	e.FallbackToJSON(true)
+	if err := e.Encode(v); err != nil {
+		panic(err)
+	}
+	fmt.Println(buf.String())
+	// Output:
+	// json_a: 42
+	// json_b: foo
 }

@@ -31,12 +31,13 @@ import (
 )
 
 type encoder struct {
-	emitter  libyaml.Emitter
-	event    libyaml.Event
-	out      []byte
-	flow     bool
-	indent   int
-	doneInit bool
+	emitter        libyaml.Emitter
+	event          libyaml.Event
+	out            []byte
+	flow           bool
+	indent         int
+	doneInit       bool
+	fallbackToJSON bool
 }
 
 func newEncoder() *encoder {
@@ -216,7 +217,7 @@ func (e *encoder) fieldByIndex(v reflect.Value, index []int) (field reflect.Valu
 }
 
 func (e *encoder) structv(tag string, in reflect.Value) {
-	sinfo, err := getStructInfo(in.Type(), false)
+	sinfo, err := getStructInfo(in.Type(), e.fallbackToJSON)
 	if err != nil {
 		panic(err)
 	}

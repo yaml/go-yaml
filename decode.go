@@ -319,11 +319,12 @@ type decoder struct {
 	stringMapType  reflect.Type
 	generalMapType reflect.Type
 
-	knownFields bool
-	uniqueKeys  bool
-	decodeCount int
-	aliasCount  int
-	aliasDepth  int
+	knownFields    bool
+	uniqueKeys     bool
+	decodeCount    int
+	aliasCount     int
+	aliasDepth     int
+	fallbackToJSON bool
 
 	mergedFields map[any]bool
 }
@@ -892,7 +893,7 @@ func isStringMap(n *Node) bool {
 }
 
 func (d *decoder) mappingStruct(n *Node, out reflect.Value) (good bool) {
-	sinfo, err := getStructInfo(out.Type(), false)
+	sinfo, err := getStructInfo(out.Type(), d.fallbackToJSON)
 	if err != nil {
 		panic(err)
 	}
