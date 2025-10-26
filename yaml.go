@@ -621,7 +621,7 @@ func init() {
 	unmarshalerType = reflect.ValueOf(&v).Elem().Type()
 }
 
-func getStructInfo(st reflect.Type) (*structInfo, error) {
+func getStructInfo(st reflect.Type, fallbackToJSON bool) (*structInfo, error) {
 	fieldMapMutex.RLock()
 	sinfo, found := structMap[st]
 	fieldMapMutex.RUnlock()
@@ -646,11 +646,25 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 		if tag == "" && !strings.Contains(string(field.Tag), ":") {
 			tag = string(field.Tag)
 		}
+		gotFromJSON := false
+		if tag == "" && fallbackToJSON {
+			tag = field.Tag.Get("json")
+			gotFromJSON = tag != ""
+		}
 		if tag == "-" {
 			continue
 		}
 
 		inline := false
+		if field.Anonymous && (gotFromJSON || (tag == "" && fallbackToJSON)) {
+			switch field.Type.Kind() {
+			case reflect.Struct:
+				inline = true
+			case reflect.Pointer:
+				inline = field.Type.Elem().Kind() == reflect.Struct
+			default:
+			}
+		}
 		fields := strings.Split(tag, ",")
 		if len(fields) > 1 {
 			for _, flag := range fields[1:] {
@@ -689,7 +703,7 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 				if reflect.PointerTo(ftype).Implements(unmarshalerType) {
 					inlineUnmarshalers = append(inlineUnmarshalers, []int{i})
 				} else {
-					sinfo, err := getStructInfo(ftype)
+					sinfo, err := getStructInfo(ftype, fallbackToJSON)
 					if err != nil {
 						return nil, err
 					}
