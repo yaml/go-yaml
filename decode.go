@@ -392,6 +392,10 @@ func (d *decoder) callJSONUnmarshaler(n *Node, u json.Unmarshaler) (good bool) {
 	switch e := err.(type) {
 	case nil:
 		// Now marshal that value into JSON and unmarshal it using the JSON unmarshaler.
+		// NOTE: This double conversion (YAML → interface{} → JSON → target type) adds overhead,
+		// but is necessary to support types that implement json.Unmarshaler. There is no
+		// more direct way to invoke UnmarshalJSON with YAML input, so this trade-off is
+		// required for compatibility.
 		data, err := json.Marshal(v)
 		if err == nil {
 			err = u.UnmarshalJSON(data)

@@ -167,6 +167,10 @@ func (e *encoder) marshal(tag string, in reflect.Value) {
 		// Marshal to JSON,
 		// then unmarshal to an interface{},
 		// then marshal that value to YAML.
+		// NOTE: This double conversion (Source type → JSON → interface{} -> YAML) adds overhead,
+		// but is necessary to support types that implement json.Marshaler. There is no
+		// more direct way to invoke MarshalJSON for YAML output, so this trade-off is
+		// required for compatibility.
 
 		data, err := value.MarshalJSON()
 		if err != nil {
