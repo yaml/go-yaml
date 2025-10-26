@@ -415,7 +415,7 @@ func (d *decoder) callJSONUnmarshaler(n *Node, u json.Unmarshaler) bool {
 	return true
 }
 
-// unmarshalJSON marshals the value into JSON and unmarshal it using the JSON unmarshaler.
+// unmarshalJSON marshals the value into JSON and unmarshals it using the JSON unmarshaler.
 // NOTE: This double conversion (YAML -> interface{} -> JSON -> target type) adds overhead,
 // but is necessary to support types that implement json.Unmarshaler. There is no
 // more direct way to invoke UnmarshalJSON with YAML input, so this trade-off is
