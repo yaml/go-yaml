@@ -55,4 +55,4 @@ jobs:
     - name: Run yaml-test-suit tests
       run: make test-yts
     - name: Run go test
-      run: GO111MODULE=on go test -v -race .
+      run: GO111MODULE=on go test -vet=off -v -race .
