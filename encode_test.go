@@ -582,6 +582,18 @@ var marshalTests = []struct {
 		},
 		"foo:\n    bar: a?bc\n",
 	},
+
+	// issue https://github.com/yaml/go-yaml/issues/157
+	{
+		struct {
+			F string `yaml:"foo"` // the correct tag, because it has `yaml` prefix
+			B string `bar`        //nolint:govet // the incorrect tag, but supported
+		}{
+			F: "abc",
+			B: "def", // value should be set using whole tag as a name, see issue: <https://github.com/yaml/go-yaml/issues/157>
+		},
+		"foo: abc\nbar: def\n",
+	},
 }
 
 func TestMarshal(t *testing.T) {
