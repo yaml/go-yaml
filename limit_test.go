@@ -47,12 +47,11 @@ var limitTests = []struct {
 }
 
 func TestLimits(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
 	for _, tc := range limitTests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			var v any
 			err := yaml.Unmarshal(tc.data, &v)
 			if tc.error != "" {
