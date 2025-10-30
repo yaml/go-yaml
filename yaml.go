@@ -93,8 +93,9 @@ func Unmarshal(in []byte, out any) (err error) {
 
 // A Decoder reads and decodes YAML values from an input stream.
 type Decoder struct {
-	parser      *parser
-	knownFields bool
+	parser         *parser
+	knownFields    bool
+	fallbackToJSON bool
 }
 
 // NewDecoder returns a new decoder that reads from r.
@@ -113,6 +114,13 @@ func (dec *Decoder) KnownFields(enable bool) {
 	dec.knownFields = enable
 }
 
+// FallbackToJSON enables using the "json" struct tags as a fallback
+// when no "yaml" struct tag is present.
+// If enabled, the anonymous struct fields are also considered for inlining.
+func (dec *Decoder) FallbackToJSON(enable bool) {
+	dec.fallbackToJSON = enable
+}
+
 // Decode reads the next YAML-encoded value from its input
 // and stores it in the value pointed to by v.
 //
@@ -121,6 +129,7 @@ func (dec *Decoder) KnownFields(enable bool) {
 func (dec *Decoder) Decode(v any) (err error) {
 	d := newDecoder()
 	d.knownFields = dec.knownFields
+	d.fallbackToJSON = dec.fallbackToJSON
 	defer handleErr(&err)
 	node := dec.parser.parse()
 	if node == nil {
@@ -277,6 +286,12 @@ func (e *Encoder) SetIndent(spaces int) {
 		panic("yaml: cannot indent to a negative number of spaces")
 	}
 	e.encoder.indent = spaces
+}
+
+// FallbackToJSON enables using the "json" struct tags as a fallback
+// when no "yaml" struct tag is present.
+func (e *Encoder) FallbackToJSON(enable bool) {
+	e.encoder.fallbackToJSON = enable
 }
 
 // CompactSeqIndent makes it so that '- ' is considered part of the indentation.
@@ -621,7 +636,7 @@ func init() {
 	unmarshalerType = reflect.ValueOf(&v).Elem().Type()
 }
 
-func getStructInfo(st reflect.Type) (*structInfo, error) {
+func getStructInfo(st reflect.Type, fallbackToJSON bool) (*structInfo, error) {
 	fieldMapMutex.RLock()
 	sinfo, found := structMap[st]
 	fieldMapMutex.RUnlock()
@@ -646,11 +661,25 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 		if tag == "" && !strings.Contains(string(field.Tag), ":") {
 			tag = string(field.Tag)
 		}
+		gotFromJSON := false
+		if tag == "" && fallbackToJSON {
+			tag = field.Tag.Get("json")
+			gotFromJSON = tag != ""
+		}
 		if tag == "-" {
 			continue
 		}
 
 		inline := false
+		if field.Anonymous && (gotFromJSON || (tag == "" && fallbackToJSON)) {
+			switch field.Type.Kind() {
+			case reflect.Struct:
+				inline = true
+			case reflect.Pointer:
+				inline = field.Type.Elem().Kind() == reflect.Struct
+			default:
+			}
+		}
 		fields := strings.Split(tag, ",")
 		if len(fields) > 1 {
 			for _, flag := range fields[1:] {
@@ -689,7 +718,7 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 				if reflect.PointerTo(ftype).Implements(unmarshalerType) {
 					inlineUnmarshalers = append(inlineUnmarshalers, []int{i})
 				} else {
-					sinfo, err := getStructInfo(ftype)
+					sinfo, err := getStructInfo(ftype, fallbackToJSON)
 					if err != nil {
 						return nil, err
 					}

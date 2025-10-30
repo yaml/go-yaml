@@ -17,6 +17,7 @@ package yaml
 
 import (
 	"encoding"
+	"encoding/json"
 	"fmt"
 	"io"
 	"reflect"
@@ -31,12 +32,13 @@ import (
 )
 
 type encoder struct {
-	emitter  libyaml.Emitter
-	event    libyaml.Event
-	out      []byte
-	flow     bool
-	indent   int
-	doneInit bool
+	emitter        libyaml.Emitter
+	event          libyaml.Event
+	out            []byte
+	flow           bool
+	indent         int
+	doneInit       bool
+	fallbackToJSON bool
 }
 
 func newEncoder() *encoder {
@@ -157,6 +159,29 @@ func (e *encoder) marshal(tag string, in reflect.Value) {
 			fail(err)
 		}
 		in = reflect.ValueOf(string(text))
+	case json.Marshaler:
+		if !e.fallbackToJSON {
+			break // do the normal thing
+		}
+		// Fallback to JSON marshaling.
+		// Marshal to JSON,
+		// then unmarshal to an interface{},
+		// then marshal that value to YAML.
+		// NOTE: This double conversion (Source type -> JSON -> interface{} -> YAML) adds overhead,
+		// but is necessary to support types that implement json.Marshaler. There is no
+		// more direct way to invoke MarshalJSON for YAML output, so this trade-off is
+		// required for compatibility.
+
+		data, err := value.MarshalJSON()
+		if err != nil {
+			fail(err)
+		}
+		var v any
+		if err := json.Unmarshal(data, &v); err != nil {
+			fail(err)
+		}
+		e.marshal(tag, reflect.ValueOf(v))
+		return
 	case nil:
 		e.nilv()
 		return
@@ -216,7 +241,7 @@ func (e *encoder) fieldByIndex(v reflect.Value, index []int) (field reflect.Valu
 }
 
 func (e *encoder) structv(tag string, in reflect.Value) {
-	sinfo, err := getStructInfo(in.Type())
+	sinfo, err := getStructInfo(in.Type(), e.fallbackToJSON)
 	if err != nil {
 		panic(err)
 	}
