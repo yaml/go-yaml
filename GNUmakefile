@@ -96,9 +96,6 @@ fumpt: $(GO)
 	@go install mvdan.cc/gofumpt@latest
 	gofumpt -l -w $(GO-FILES)
 
-vet: $(GO)
-	go vet ./...
-
 cli: $(CLI-BINARY)
 
 $(CLI-BINARY): $(GO)
