@@ -19,6 +19,7 @@ import (
 	"encoding"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -386,11 +387,11 @@ func (d *decoder) callUnmarshaler(n *Node, u Unmarshaler) (good bool) {
 }
 
 func (d *decoder) callJSONUnmarshaler(n *Node, u json.Unmarshaler) bool {
-	var v any
-
 	// First decode the node into an interface{} using the normal decoding rules.
+	var v any
 	if err := n.Decode(&v); err != nil {
-		if te, ok := err.(*TypeError); ok {
+		var te *TypeError
+		if errors.As(err, &te) {
 			d.terrors = append(d.terrors, te.Errors...)
 		} else {
 			d.terrors = append(d.terrors, &UnmarshalError{
@@ -487,9 +488,10 @@ func normalizeJSON(input any) (any, error) {
 			a[i] = jv
 		}
 		return a, nil
-	}
 
-	return input, nil
+	default:
+		return input, nil
+	}
 }
 
 func (d *decoder) callObsoleteUnmarshaler(n *Node, u obsoleteUnmarshaler) (good bool) {
