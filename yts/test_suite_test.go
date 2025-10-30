@@ -132,7 +132,7 @@ func getEvents(in []byte) (string, error) {
 
 func runTest(t *testing.T, testPath string) {
 	t.Helper()
-	
+
 	// Read test description
 	descPath := filepath.Join(testPath, "===")
 	desc, err := os.ReadFile(descPath)
