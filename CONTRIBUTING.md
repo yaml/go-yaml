@@ -109,7 +109,6 @@ foo: &a1 bar
   - `make lint`
   - `make fmt`
   - `make tidy`
-  - `make vet`
 - Submit a [Pull Request](https://github.com/yaml/go-yaml/pulls)
 
 
