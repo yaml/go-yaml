@@ -17,6 +17,8 @@ jobs:
       uses: actions/setup-go@v6
       with:
         go-version: stable
+    - name: Download testdata for yts
+      run: make test-data
     - uses: golangci/golangci-lint-action@v8
       with:
         version: v2.4
