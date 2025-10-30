@@ -763,6 +763,20 @@ func TestSetIndent(t *testing.T) {
 	assert.Equal(t, "a:\n        b:\n                c: d\n", buf.String())
 }
 
+func TestEncoderWithIndentOption(t *testing.T) {
+	var buf bytes.Buffer
+	enc, err := yaml.NewEncoderWithOptions(&buf, yaml.WithIndent(8))
+	assert.NoError(t, err)
+	err = enc.Encode(map[string]any{"a": map[string]any{"b": map[string]string{"c": "d"}}})
+	assert.NoError(t, err)
+	err = enc.Close()
+	assert.NoError(t, err)
+	assert.Equal(t, "a:\n        b:\n                c: d\n", buf.String())
+
+	_, err = yaml.NewEncoderWithOptions(&buf, yaml.WithIndent(-1))
+	assert.ErrorMatches(t, "negative", err)
+}
+
 func TestSortedOutput(t *testing.T) {
 	order := []any{
 		false,
@@ -870,6 +884,21 @@ func TestCompactSequenceWithSetIndent(t *testing.T) {
 	assert.Equal(t, `a:
 - b
 - c
+`, buf.String())
+}
+
+func TestEncoderWithCompactSeqIndentOption(t *testing.T) {
+	var buf bytes.Buffer
+	enc, err := yaml.NewEncoderWithOptions(&buf, yaml.WithCompactSequenceIndent(true))
+	assert.NoError(t, err)
+	err = enc.Encode(map[string]any{"a": []string{"b", "c"}})
+	assert.NoError(t, err)
+	err = enc.Close()
+	assert.NoError(t, err)
+	// The default indent is 4, so these sequence elements get 2 indents as before
+	assert.Equal(t, `a:
+  - b
+  - c
 `, buf.String())
 }
 

@@ -18,7 +18,6 @@ package yaml
 import (
 	"encoding"
 	"fmt"
-	"io"
 	"reflect"
 	"regexp"
 	"sort"
@@ -39,22 +38,32 @@ type encoder struct {
 	doneInit bool
 }
 
-func newEncoder() *encoder {
+func newEncoder(opts ...Option) (*encoder, error) {
 	e := &encoder{
 		emitter: libyaml.NewEmitter(),
 	}
-	e.emitter.SetOutputString(&e.out)
 	e.emitter.SetUnicode(true)
-	return e
-}
 
-func newEncoderWithWriter(w io.Writer) *encoder {
-	e := &encoder{
-		emitter: libyaml.NewEmitter(),
+	config, err := newConfig(opts...)
+	if err != nil {
+		return nil, fmt.Errorf("configuring encoder: %w", err)
 	}
-	e.emitter.SetOutputWriter(w)
-	e.emitter.SetUnicode(true)
-	return e
+
+	if config.indent != nil {
+		e.indent = *config.indent
+	}
+
+	if config.compactSequenceIndent != nil {
+		e.emitter.CompactSequenceIndent = *config.compactSequenceIndent
+	}
+
+	if config.writer != nil {
+		e.emitter.SetOutputWriter(*config.writer)
+	} else {
+		e.emitter.SetOutputString(&e.out)
+	}
+
+	return e, nil
 }
 
 func (e *encoder) init() {

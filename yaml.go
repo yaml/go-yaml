@@ -87,14 +87,25 @@ type Marshaler interface {
 //
 // See the documentation of Marshal for the format of tags and a list of
 // supported tag options.
+//
+// If you have a need to control the decoding process, consider using [UnmarshalWithOptions].
 func Unmarshal(in []byte, out any) (err error) {
-	return unmarshal(in, out, false)
+	return unmarshal(in, out)
+}
+
+// UnmarshalWithOptions decodes the first document found within the in byte slice
+// and assigns decoded values into the out value using the provided [Option]s.
+//
+// See the documentation of [Unmarshal] for details about the
+// conversion of YAML into a Go value.
+func UnmarshalWithOptions(in []byte, out any, opts ...Option) error {
+	return unmarshal(in, out, opts...)
 }
 
 // A Decoder reads and decodes YAML values from an input stream.
 type Decoder struct {
-	parser      *parser
-	knownFields bool
+	parser  *parser
+	decoder *decoder
 }
 
 // NewDecoder returns a new decoder that reads from r.
@@ -102,27 +113,49 @@ type Decoder struct {
 // The decoder introduces its own buffering and may read
 // data from r beyond the YAML values requested.
 func NewDecoder(r io.Reader) *Decoder {
-	return &Decoder{
-		parser: newParserFromReader(r),
+	d, err := NewDecoderWithOptions(r)
+	if err != nil {
+		// This should never happen because no options are provided.
+		panic(err)
 	}
+
+	return d
+}
+
+// NewDecoderWithOptions returns a new decoder that reads from r.
+//
+// The decoder introduces its own buffering and may read
+// data from r beyond the YAML values requested.
+//
+// The [Option]s can be used to customize the behavior of the decoder.
+func NewDecoderWithOptions(r io.Reader, opts ...Option) (*Decoder, error) {
+	decoder, err := newDecoder(opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Decoder{
+		parser:  newParserFromReader(r),
+		decoder: decoder,
+	}, nil
 }
 
 // KnownFields ensures that the keys in decoded mappings to
 // exist as fields in the struct being decoded into.
-func (dec *Decoder) KnownFields(enable bool) {
-	dec.knownFields = enable
+//
+// Deprecated: Please use [WithKnownFields] option when using [NewDecoderWithOptions].
+func (d *Decoder) KnownFields(enable bool) {
+	d.decoder.knownFields = enable
 }
 
 // Decode reads the next YAML-encoded value from its input
 // and stores it in the value pointed to by v.
 //
-// See the documentation for Unmarshal for details about the
+// See the documentation for [Unmarshal] for details about the
 // conversion of YAML into a Go value.
-func (dec *Decoder) Decode(v any) (err error) {
-	d := newDecoder()
-	d.knownFields = dec.knownFields
+func (d *Decoder) Decode(v any) (err error) {
 	defer handleErr(&err)
-	node := dec.parser.parse()
+	node := d.parser.parse()
 	if node == nil {
 		return io.EOF
 	}
@@ -130,20 +163,34 @@ func (dec *Decoder) Decode(v any) (err error) {
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
 		out = out.Elem()
 	}
-	d.unmarshal(node, out)
-	if len(d.terrors) > 0 {
-		return &TypeError{d.terrors}
+	dec := d.decoder
+	dec.unmarshal(node, out)
+	if len(dec.terrors) > 0 {
+		return &TypeError{dec.terrors}
 	}
 	return nil
 }
 
 // Decode decodes the node and stores its data into the value pointed to by v.
 //
-// See the documentation for Unmarshal for details about the
+// See the documentation for [Unmarshal] for details about the
 // conversion of YAML into a Go value.
 func (n *Node) Decode(v any) (err error) {
-	d := newDecoder()
+	return n.DecodeWithOptions(v)
+}
+
+// DecodeWithOptions decodes the node and stores its data into the value pointed to by v
+// using the provided [Option]s.
+//
+// See the documentation for [UnmarshalWithOptions] for details about the
+// conversion of YAML into a Go value.
+func (n *Node) DecodeWithOptions(v any, opts ...Option) (err error) {
 	defer handleErr(&err)
+	var d *decoder
+	d, err = newDecoder(opts...)
+	if err != nil {
+		return err
+	}
 	out := reflect.ValueOf(v)
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
 		out = out.Elem()
@@ -155,9 +202,13 @@ func (n *Node) Decode(v any) (err error) {
 	return nil
 }
 
-func unmarshal(in []byte, out any, strict bool) (err error) {
+func unmarshal(in []byte, out any, opts ...Option) (err error) {
 	defer handleErr(&err)
-	d := newDecoder()
+	var d *decoder
+	d, err = newDecoder(opts...)
+	if err != nil {
+		return err
+	}
 	p := newParser(in)
 	defer p.destroy()
 	node := p.parse()
@@ -216,9 +267,21 @@ func unmarshal(in []byte, out any, strict bool) (err error) {
 //	}
 //	yaml.Marshal(&T{B: 2}) // Returns "b: 2\n"
 //	yaml.Marshal(&T{F: 1}} // Returns "a: 1\nb: 0\n"
+//
+// If you have a need to control the encoding process, consider using [MarshalWithOptions].
 func Marshal(in any) (out []byte, err error) {
+	return MarshalWithOptions(in)
+}
+
+// MarshalWithOptions serializes the value provided into a YAML document using the provided [Option]s.
+//
+// See the documentation of [Marshal] for details about the conversion of Go values into YAML.
+func MarshalWithOptions(in any, opts ...Option) (out []byte, err error) {
 	defer handleErr(&err)
-	e := newEncoder()
+	e, err := newEncoder(opts...)
+	if err != nil {
+		return nil, err
+	}
 	defer e.destroy()
 	e.marshalDoc("", reflect.ValueOf(in))
 	e.finish()
@@ -234,10 +297,33 @@ type Encoder struct {
 // NewEncoder returns a new encoder that writes to w.
 // The Encoder should be closed after use to flush all data
 // to w.
+//
+// If you have a need to control the encoding process, consider using [NewEncoderWithOptions].
 func NewEncoder(w io.Writer) *Encoder {
-	return &Encoder{
-		encoder: newEncoderWithWriter(w),
+	// Ignore error because no options are provided
+	enc, err := NewEncoderWithOptions(w)
+	if err != nil {
+		// This should never happen because no options are provided.
+		panic(err)
 	}
+	return enc
+}
+
+// NewEncoderWithOptions returns a new encoder that writes to w.
+// The Encoder should be closed after use to flush all data to w.
+//
+// The [Option]s can be used to customize the behavior of the encoder.
+func NewEncoderWithOptions(w io.Writer, opts ...Option) (*Encoder, error) {
+	opts = append([]Option{withWriter(w)}, opts...)
+
+	enc, err := newEncoder(opts...)
+	if err != nil {
+		return nil, fmt.Errorf("creating encoder: %w", err)
+	}
+
+	return &Encoder{
+		encoder: enc,
+	}, nil
 }
 
 // Encode writes the YAML encoding of v to the stream.
@@ -255,11 +341,24 @@ func (e *Encoder) Encode(v any) (err error) {
 
 // Encode encodes value v and stores its representation in n.
 //
-// See the documentation for Marshal for details about the
+// See the documentation of [Marshal] for details about the
 // conversion of Go values into YAML.
-func (n *Node) Encode(v any) (err error) {
+//
+// If you have a need to control the encoding process, consider using [Node.EncodeWithOptions].
+func (n *Node) Encode(v any) error {
+	return n.EncodeWithOptions(v)
+}
+
+// EncodeWithOptions encodes value v and stores its representation in n.
+//
+// See the documentation of [MarshalWithOptions] for details about the
+// conversion of Go values into YAML.
+func (n *Node) EncodeWithOptions(v any, opts ...Option) (err error) {
 	defer handleErr(&err)
-	e := newEncoder()
+	e, err := newEncoder(opts...)
+	if err != nil {
+		return err
+	}
 	defer e.destroy()
 	e.marshalDoc("", reflect.ValueOf(v))
 	e.finish()
@@ -271,7 +370,9 @@ func (n *Node) Encode(v any) (err error) {
 	return nil
 }
 
-// SetIndent changes the used indentation used when encoding.
+// SetIndent changes the indentation used when encoding.
+//
+// Deprecated: please use [WithIndent] option when using [NewEncoderWithOptions].
 func (e *Encoder) SetIndent(spaces int) {
 	if spaces < 0 {
 		panic("yaml: cannot indent to a negative number of spaces")
@@ -280,11 +381,15 @@ func (e *Encoder) SetIndent(spaces int) {
 }
 
 // CompactSeqIndent makes it so that '- ' is considered part of the indentation.
+//
+// Deprecated: please use the [WithCompactSequenceIndent] option when using [NewEncoderWithOptions].
 func (e *Encoder) CompactSeqIndent() {
 	e.encoder.emitter.CompactSequenceIndent = true
 }
 
 // DefaultSeqIndent makes it so that '- ' is not considered part of the indentation.
+//
+// Deprecated: please use the [WithCompactSequenceIndent] option when using [NewEncoderWithOptions].
 func (e *Encoder) DefaultSeqIndent() {
 	e.encoder.emitter.CompactSequenceIndent = false
 }
