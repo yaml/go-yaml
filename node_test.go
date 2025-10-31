@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"testing"
 
@@ -2753,55 +2752,61 @@ var nodeTests = []struct {
 }
 
 func TestNodeRoundtrip(t *testing.T) {
-	defer os.Setenv("TZ", os.Getenv("TZ"))
-	os.Setenv("TZ", "UTC")
-	for i, item := range nodeTests {
-		t.Logf("test %d: %q", i, item.yaml)
+	t.Setenv("TZ", "UTC")
+	for _, item := range nodeTests {
+		item := item
+		t.Run("", func(t *testing.T) {
+			t.Logf("yaml: %q", item.yaml)
 
-		if strings.Contains(item.yaml, "#") {
-			var buf bytes.Buffer
-			fprintComments(&buf, &item.node, "    ")
-			t.Logf("  expected comments:\n%s", buf.Bytes())
-		}
-
-		decode := true
-		encode := true
-
-		testYaml := item.yaml
-		if s := strings.TrimPrefix(testYaml, "[decode]"); s != testYaml {
-			encode = false
-			testYaml = s
-		}
-		if s := strings.TrimPrefix(testYaml, "[encode]"); s != testYaml {
-			decode = false
-			testYaml = s
-		}
-
-		if decode {
-			var node yaml.Node
-			err := yaml.Unmarshal([]byte(testYaml), &node)
-			assert.NoError(t, err)
 			if strings.Contains(item.yaml, "#") {
 				var buf bytes.Buffer
-				fprintComments(&buf, &node, "    ")
-				t.Logf("  obtained comments:\n%s", buf.Bytes())
+				fprintComments(&buf, &item.node, "    ")
+				t.Logf("  expected comments:\n%s", buf.Bytes())
 			}
-			assert.DeepEqual(t, &item.node, &node)
-		}
-		if encode {
-			node := deepCopyNode(&item.node, nil)
-			buf := bytes.Buffer{}
-			enc := yaml.NewEncoder(&buf)
-			enc.SetIndent(2)
-			err := enc.Encode(node)
-			assert.NoError(t, err)
-			err = enc.Close()
-			assert.NoError(t, err)
-			assert.Equal(t, buf.String(), testYaml)
 
-			// Ensure there were no mutations to the tree.
-			assert.DeepEqual(t, &item.node, node)
-		}
+			decode := true
+			encode := true
+
+			testYaml := item.yaml
+			if s := strings.TrimPrefix(testYaml, "[decode]"); s != testYaml {
+				encode = false
+				testYaml = s
+			}
+			if s := strings.TrimPrefix(testYaml, "[encode]"); s != testYaml {
+				decode = false
+				testYaml = s
+			}
+
+			if decode {
+				t.Run("decode", func(t *testing.T) {
+					var node yaml.Node
+					err := yaml.Unmarshal([]byte(testYaml), &node)
+					assert.NoError(t, err)
+					if strings.Contains(item.yaml, "#") {
+						var buf bytes.Buffer
+						fprintComments(&buf, &node, "    ")
+						t.Logf("  obtained comments:\n%s", buf.Bytes())
+					}
+					assert.DeepEqual(t, &item.node, &node)
+				})
+			}
+			if encode {
+				t.Run("encode", func(t *testing.T) {
+					node := deepCopyNode(&item.node, nil)
+					buf := bytes.Buffer{}
+					enc := yaml.NewEncoder(&buf)
+					enc.SetIndent(2)
+					err := enc.Encode(node)
+					assert.NoError(t, err)
+					err = enc.Close()
+					assert.NoError(t, err)
+					assert.Equal(t, buf.String(), testYaml)
+
+					// Ensure there were no mutations to the tree.
+					assert.DeepEqual(t, &item.node, node)
+				})
+			}
+		})
 	}
 }
 
@@ -2900,34 +2905,36 @@ var setStringTests = []struct {
 }
 
 func TestSetString(t *testing.T) {
-	defer os.Setenv("TZ", os.Getenv("TZ"))
-	os.Setenv("TZ", "UTC")
-	for i, item := range setStringTests {
-		t.Logf("test %d: %q", i, item.str)
+	t.Setenv("TZ", "UTC")
+	for _, item := range setStringTests {
+		item := item
+		t.Run("", func(t *testing.T) {
+			t.Logf("str: %q", item.str)
 
-		var node yaml.Node
+			var node yaml.Node
 
-		node.SetString(item.str)
+			node.SetString(item.str)
 
-		assert.DeepEqual(t, item.node, node)
+			assert.DeepEqual(t, item.node, node)
 
-		buf := bytes.Buffer{}
-		enc := yaml.NewEncoder(&buf)
-		enc.SetIndent(2)
-		err := enc.Encode(&item.node)
-		assert.NoError(t, err)
-		err = enc.Close()
-		assert.NoError(t, err)
-		assert.Equal(t, item.yaml, buf.String())
+			buf := bytes.Buffer{}
+			enc := yaml.NewEncoder(&buf)
+			enc.SetIndent(2)
+			err := enc.Encode(&item.node)
+			assert.NoError(t, err)
+			err = enc.Close()
+			assert.NoError(t, err)
+			assert.Equal(t, item.yaml, buf.String())
 
-		var doc yaml.Node
-		err = yaml.Unmarshal([]byte(item.yaml), &doc)
-		assert.NoError(t, err)
+			var doc yaml.Node
+			err = yaml.Unmarshal([]byte(item.yaml), &doc)
+			assert.NoError(t, err)
 
-		var str string
-		err = node.Decode(&str)
-		assert.NoError(t, err)
-		assert.Equal(t, item.str, str)
+			var str string
+			err = node.Decode(&str)
+			assert.NoError(t, err)
+			assert.Equal(t, item.str, str)
+		})
 	}
 }
 
@@ -2995,18 +3002,21 @@ var nodeEncodeDecodeTests = []struct {
 }}
 
 func TestNodeEncodeDecode(t *testing.T) {
-	for i, item := range nodeEncodeDecodeTests {
-		t.Logf("Encode/Decode test value #%d: %#v", i, item.value)
+	for _, item := range nodeEncodeDecodeTests {
+		item := item
+		t.Run("", func(t *testing.T) {
+			t.Logf("Encode/Decode test value: %#v", item.value)
 
-		var v any
-		err := item.node.Decode(&v)
-		assert.NoError(t, err)
-		assert.DeepEqual(t, item.value, v)
+			var v any
+			err := item.node.Decode(&v)
+			assert.NoError(t, err)
+			assert.DeepEqual(t, item.value, v)
 
-		var n yaml.Node
-		err = n.Encode(item.value)
-		assert.NoError(t, err)
-		assert.DeepEqual(t, item.node, n)
+			var n yaml.Node
+			err = n.Encode(item.value)
+			assert.NoError(t, err)
+			assert.DeepEqual(t, item.node, n)
+		})
 	}
 }
 
