@@ -47,88 +47,35 @@ var limitTests = []struct {
 }
 
 func TestLimits(t *testing.T) {
-	if testing.Short() {
-		return
-	}
 	for _, tc := range limitTests {
-		var v any
-		err := yaml.Unmarshal(tc.data, &v)
-		if len(tc.error) > 0 {
-			assert.ErrorMatchesf(t, tc.error, err, "testcase: %s", tc.name)
-		} else {
-			assert.NoErrorf(t, err, "testcase: %s", tc.name)
-		}
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var v any
+			err := yaml.Unmarshal(tc.data, &v)
+			if tc.error != "" {
+				assert.ErrorMatches(t, tc.error, err)
+				return
+			}
+			assert.NoError(t, err)
+		})
 	}
 }
 
-func Benchmark1000KB100Aliases(b *testing.B) {
-	benchmark(b, "1000kb of maps with 100 aliases")
-}
-
-func Benchmark1000KBDeeplyNestedSlices(b *testing.B) {
-	benchmark(b, "1000kb of deeply nested slices")
-}
-
-func Benchmark1000KBDeeplyNestedMaps(b *testing.B) {
-	benchmark(b, "1000kb of deeply nested maps")
-}
-
-func Benchmark1000KBDeeplyNestedIndents(b *testing.B) {
-	benchmark(b, "1000kb of deeply nested indents")
-}
-
-func Benchmark1000KB1000IndentLines(b *testing.B) {
-	benchmark(b, "1000kb of 1000-indent lines")
-}
-
-func Benchmark1KBMaps(b *testing.B) {
-	benchmark(b, "1kb of maps")
-}
-
-func Benchmark10KBMaps(b *testing.B) {
-	benchmark(b, "10kb of maps")
-}
-
-func Benchmark100KBMaps(b *testing.B) {
-	benchmark(b, "100kb of maps")
-}
-
-func Benchmark1000KBMaps(b *testing.B) {
-	benchmark(b, "1000kb of maps")
-}
-
-func BenchmarkDeepSlice(b *testing.B) {
-	benchmark(b, "1000kb slice nested at max-depth")
-}
-
-func BenchmarkDeepFlow(b *testing.B) {
-	benchmark(b, "1000kb slice nested in maps at max-depth")
-}
-
-func Benchmark1000KBMaxDepthNested(b *testing.B) {
-	benchmark(b, "1000kb of 10000-nested lines")
-}
-
-func benchmark(b *testing.B, name string) {
-	for _, t := range limitTests {
-		if t.name != name {
-			continue
-		}
-
-		b.ResetTimer()
-
-		for i := 0; i < b.N; i++ {
-			var v any
-			err := yaml.Unmarshal(t.data, &v)
-			if len(t.error) > 0 {
-				assert.ErrorMatches(b, t.error, err)
-			} else {
+func BenchmarkLimits(b *testing.B) {
+	for _, tc := range limitTests {
+		tc := tc
+		b.Run(tc.name, func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				var v any
+				err := yaml.Unmarshal(tc.data, &v)
+				if tc.error != "" {
+					assert.ErrorMatches(b, tc.error, err)
+					continue
+				}
 				assert.NoError(b, err)
 			}
-		}
-
-		return
+		})
 	}
-
-	b.Errorf("testcase %q not found", name)
 }
