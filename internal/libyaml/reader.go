@@ -28,7 +28,9 @@ import (
 
 // Set the reader error and return 0.
 func (parser *Parser) setReaderError(problem string, offset int, value int) error {
-	return &ParserError{problem, 0, 0}
+	return &ParserError{
+		Message: problem,
+	}
 }
 
 // Byte order marks.

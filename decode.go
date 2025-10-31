@@ -18,6 +18,7 @@ package yaml
 import (
 	"encoding"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -108,8 +109,8 @@ func (p *parser) peek() libyaml.EventType {
 }
 
 func (p *parser) fail(err error) {
-	parserErr, ok := err.(*libyaml.ParserError)
-	if ok {
+	var parserErr *libyaml.ParserError
+	if errors.As(err, &parserErr) {
 		err = &ParserError{
 			Message: parserErr.Message,
 			Line:    parserErr.Line,

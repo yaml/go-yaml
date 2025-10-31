@@ -566,7 +566,7 @@ type AliasData struct {
 // Parser structure holds all information about the current
 // state of the parser.
 type Parser struct {
-	errored bool
+	hadError bool
 
 	// Reader stuff
 	read_handler ReadHandler // Read handler.

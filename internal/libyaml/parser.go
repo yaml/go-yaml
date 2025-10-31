@@ -128,13 +128,13 @@ func (parser *Parser) Parse(event *Event) error {
 	*event = Event{}
 
 	// No events after the end of the stream or error.
-	if parser.stream_end_produced || parser.errored || parser.state == PARSE_END_STATE {
+	if parser.stream_end_produced || parser.hadError || parser.state == PARSE_END_STATE {
 		return io.EOF
 	}
 
 	// Generate the next event.
 	if err := parser.stateMachine(event); err != nil {
-		parser.errored = true
+		parser.hadError = true
 		return err
 	}
 
