@@ -142,11 +142,6 @@ func (emitter *Emitter) writeLineBreak(s []byte, i *int) error {
 	return nil
 }
 
-// Construct emitter error.
-func emitterError(problem string) error {
-	return errors.New(problem)
-}
-
 // Emit an event.
 func (emitter *Emitter) Emit(event *Event) error {
 	emitter.events = append(emitter.events, *event)
@@ -210,7 +205,7 @@ func (emitter *Emitter) appendTagDirective(value *TagDirective, allow_duplicates
 			if allow_duplicates {
 				return nil
 			}
-			return emitterError("duplicate %TAG directive")
+			return errors.New("duplicate %TAG directive")
 		}
 	}
 
@@ -317,7 +312,7 @@ func (emitter *Emitter) stateMachine(event *Event) error {
 		return emitter.emitBlockMappingValue(event, false)
 
 	case EMIT_END_STATE:
-		return emitterError("expected nothing after STREAM-END")
+		return errors.New("expected nothing after STREAM-END")
 	}
 	panic("invalid emitter state")
 }
@@ -325,7 +320,7 @@ func (emitter *Emitter) stateMachine(event *Event) error {
 // Expect STREAM-START.
 func (emitter *Emitter) emitStreamStart(event *Event) error {
 	if event.Type != STREAM_START_EVENT {
-		return emitterError("expected STREAM-START")
+		return errors.New("expected STREAM-START")
 	}
 	if emitter.encoding == ANY_ENCODING {
 		emitter.encoding = event.encoding
@@ -482,7 +477,7 @@ func (emitter *Emitter) emitDocumentStart(event *Event, first bool) error {
 		return nil
 	}
 
-	return emitterError("expected DOCUMENT-START or STREAM-END")
+	return errors.New("expected DOCUMENT-START or STREAM-END")
 }
 
 // emitter preserves the original signature and delegates to
@@ -519,7 +514,7 @@ func (emitter *Emitter) emitDocumentContent(event *Event) error {
 // Expect DOCUMENT-END.
 func (emitter *Emitter) emitDocumentEnd(event *Event) error {
 	if event.Type != DOCUMENT_END_EVENT {
-		return emitterError("expected DOCUMENT-END")
+		return errors.New("expected DOCUMENT-END")
 	}
 	// [Go] Force document foot separation.
 	emitter.foot_indent = 0
@@ -907,8 +902,7 @@ func (emitter *Emitter) emitNode(event *Event,
 	case MAPPING_START_EVENT:
 		return emitter.emitMappingStart(event)
 	default:
-		return emitterError(
-			fmt.Sprintf("expected SCALAR, SEQUENCE-START, MAPPING-START, or ALIAS, but got %v", event.Type))
+		return fmt.Errorf("expected SCALAR, SEQUENCE-START, MAPPING-START, or ALIAS, but got %v", event.Type)
 	}
 }
 
@@ -1041,7 +1035,7 @@ func (emitter *Emitter) checkSimpleKey() bool {
 func (emitter *Emitter) selectScalarStyle(event *Event) error {
 	no_tag := len(emitter.tag_data.handle) == 0 && len(emitter.tag_data.suffix) == 0
 	if no_tag && !event.Implicit && !event.quoted_implicit {
-		return emitterError("neither tag nor implicit flags are specified")
+		return errors.New("neither tag nor implicit flags are specified")
 	}
 
 	style := event.ScalarStyle()
@@ -1227,7 +1221,7 @@ func (emitter *Emitter) processFootComment() error {
 // Check if a %YAML directive is valid.
 func (emitter *Emitter) analyzeVersionDirective(version_directive *VersionDirective) error {
 	if version_directive.major != 1 || version_directive.minor != 1 {
-		return emitterError("incompatible %YAML directive")
+		return errors.New("incompatible %YAML directive")
 	}
 	return nil
 }
@@ -1237,21 +1231,21 @@ func (emitter *Emitter) analyzeTagDirective(tag_directive *TagDirective) error {
 	handle := tag_directive.handle
 	prefix := tag_directive.prefix
 	if len(handle) == 0 {
-		return emitterError("tag handle must not be empty")
+		return errors.New("tag handle must not be empty")
 	}
 	if handle[0] != '!' {
-		return emitterError("tag handle must start with '!'")
+		return errors.New("tag handle must start with '!'")
 	}
 	if handle[len(handle)-1] != '!' {
-		return emitterError("tag handle must end with '!'")
+		return errors.New("tag handle must end with '!'")
 	}
 	for i := 1; i < len(handle)-1; i += width(handle[i]) {
 		if !isAlpha(handle, i) {
-			return emitterError("tag handle must contain alphanumerical characters only")
+			return errors.New("tag handle must contain alphanumerical characters only")
 		}
 	}
 	if len(prefix) == 0 {
-		return emitterError("tag prefix must not be empty")
+		return errors.New("tag prefix must not be empty")
 	}
 	return nil
 }
@@ -1259,19 +1253,19 @@ func (emitter *Emitter) analyzeTagDirective(tag_directive *TagDirective) error {
 // Check if an anchor is valid.
 func (emitter *Emitter) analyzeAnchor(anchor []byte, alias bool) error {
 	if len(anchor) == 0 {
-		problem := "anchor value must not be empty"
 		if alias {
-			problem = "alias value must not be empty"
+			return errors.New("alias value must not be empty")
+		} else {
+			return errors.New("anchor value must not be empty")
 		}
-		return emitterError(problem)
 	}
 	for i := 0; i < len(anchor); i += width(anchor[i]) {
 		if !isAnchorChar(anchor, i) {
-			problem := "anchor value must contain valid characters only"
 			if alias {
-				problem = "alias value must contain valid characters only"
+				return errors.New("alias value must contain valid characters only")
+			} else {
+				return errors.New("anchor value must contain valid characters only")
 			}
-			return emitterError(problem)
 		}
 	}
 	emitter.anchor_data.anchor = anchor
@@ -1282,7 +1276,7 @@ func (emitter *Emitter) analyzeAnchor(anchor []byte, alias bool) error {
 // Check if a tag is valid.
 func (emitter *Emitter) analyzeTag(tag []byte) error {
 	if len(tag) == 0 {
-		return emitterError("tag value must not be empty")
+		return errors.New("tag value must not be empty")
 	}
 	for i := 0; i < len(emitter.tag_directives); i++ {
 		tag_directive := &emitter.tag_directives[i]
