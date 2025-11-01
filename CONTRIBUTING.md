@@ -105,7 +105,7 @@ foo: &a1 bar
 - Fork and clone the repository
 - Make your changes
 - Run tests, linters and formatters
-  - `make test-all`
+  - `make test`
   - `make lint`
   - `make fmt`
   - `make tidy`

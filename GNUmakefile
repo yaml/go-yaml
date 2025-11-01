@@ -58,19 +58,19 @@ SHELL-NAME := makes go-yaml
 include $(MAKES)/clean.mk
 include $(MAKES)/shell.mk
 
-MAKES-CLEAN := $(dir $(YTS-DIR)) $(GOLANGCI-LINT)
+MAKES-CLEAN += $(GOLANGCI-LINT)
 
 v ?=
 count ?= 1
 
 
 # Test rules:
-test: $(GO-DEPS)
-	go test$(if $v, -v) -vet=off ./...
+test: test-unit test-cli test-yts-all
+
+test-unit: $(GO-DEPS)
+	go test$(if $v, -v)
 
 test-data: $(YTS-DIR)
-
-test-all: test test-yts-all
 
 test-yts: $(GO-DEPS) $(YTS-DIR)
 	go test$(if $v, -v) ./yts -count=$(count)
@@ -82,6 +82,9 @@ test-yts-all: $(GO-DEPS) $(YTS-DIR)
 test-yts-fail: $(GO-DEPS) $(YTS-DIR)
 	@echo 'Testing yaml-test-suite failures'
 	@RUNFAILING=1 bash -c "$$yts_pass_fail"
+
+test-cli: $(GO-DEPS) cli
+	go test$(if $v, -v) ./cmd/go-yaml -count=$(count)
 
 # Install golangci-lint for GitHub Actions:
 golangci-lint-install: $(GOLANGCI-LINT)
