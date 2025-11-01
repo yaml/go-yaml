@@ -393,9 +393,14 @@ func formatTokenInfo(token *Token, profuse bool) *TokenInfo {
 
 	if profuse {
 		if token.StartLine == token.EndLine && token.StartColumn == token.EndColumn {
-			info.Pos = fmt.Sprintf("%d;%d", token.StartLine, token.StartColumn)
+			// Single position
+			info.Pos = fmt.Sprintf("%d/%d", token.StartLine, token.StartColumn)
+		} else if token.StartLine == token.EndLine {
+			// Range on same line
+			info.Pos = fmt.Sprintf("%d/%d-%d", token.StartLine, token.StartColumn, token.EndColumn)
 		} else {
-			info.Pos = fmt.Sprintf("%d;%d-%d;%d", token.StartLine, token.StartColumn, token.EndLine, token.EndColumn)
+			// Range across different lines
+			info.Pos = fmt.Sprintf("%d/%d-%d/%d", token.StartLine, token.StartColumn, token.EndLine, token.EndColumn)
 		}
 	}
 
