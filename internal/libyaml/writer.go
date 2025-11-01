@@ -22,27 +22,22 @@
 
 package libyaml
 
-// Set the writer error and return false.
-func (emitter *Emitter) setWriterError(problem string) bool {
-	emitter.ErrorType = WRITER_ERROR
-	emitter.Problem = problem
-	return false
-}
+import "fmt"
 
 // Flush the output buffer.
-func (emitter *Emitter) flush() bool {
+func (emitter *Emitter) flush() error {
 	if emitter.write_handler == nil {
 		panic("write handler not set")
 	}
 
 	// Check if the buffer is empty.
 	if emitter.buffer_pos == 0 {
-		return true
+		return nil
 	}
 
 	if err := emitter.write_handler(emitter, emitter.buffer[:emitter.buffer_pos]); err != nil {
-		return emitter.setWriterError("write error: " + err.Error())
+		return fmt.Errorf("write error: %w", err)
 	}
 	emitter.buffer_pos = 0
-	return true
+	return nil
 }
