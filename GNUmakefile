@@ -49,7 +49,7 @@ SHELL-NAME := makes go-yaml
 include $(MAKES)/clean.mk
 include $(MAKES)/shell.mk
 
-GOLANGCI-LINT-VERSION ?= v2.5.0
+GOLANGCI-LINT-VERSION ?= v2.6.0
 GOLANGCI-LINT-INSTALL := \
   https://github.com/golangci/golangci-lint/raw/main/install.sh
 GOLANGCI-LINT := $(LOCAL-BIN)/golangci-lint-$(GOLANGCI-LINT-VERSION)
