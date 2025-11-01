@@ -20,6 +20,7 @@ type TestCase struct {
 	Event string `yaml:"event,omitempty"`
 	EVENT string `yaml:"EVENT,omitempty"`
 	Node  string `yaml:"node,omitempty"`
+	NODE  string `yaml:"NODE,omitempty"`
 	Yaml  string `yaml:"yaml,omitempty"`
 	YAML  string `yaml:"YAML,omitempty"`
 	Json  string `yaml:"json,omitempty"`
@@ -36,6 +37,7 @@ var flagMapping = map[string]string{
 	"event": "-e",
 	"EVENT": "-E",
 	"node":  "-n",
+	"NODE":  "-N",
 	"yaml":  "-y",
 	"YAML":  "-Y",
 	"json":  "-j",
@@ -104,6 +106,7 @@ func runTestCase(t *testing.T, tc TestCase, binaryPath string) {
 		{"event", flagMapping["event"], tc.Event},
 		{"EVENT", flagMapping["EVENT"], tc.EVENT},
 		{"node", flagMapping["node"], tc.Node},
+		{"NODE", flagMapping["NODE"], tc.NODE},
 		{"yaml", flagMapping["yaml"], tc.Yaml},
 		{"YAML", flagMapping["YAML"], tc.YAML},
 		{"json", flagMapping["json"], tc.Json},

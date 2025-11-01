@@ -568,7 +568,7 @@ func processNodeToTokensRecursive(node *yaml.Node, profuse bool) []*Token {
 			StartColumn: node.Column,
 			EndLine:     endLine,
 			EndColumn:   endColumn,
-			Style:       formatStyle(node.Style),
+			Style:       formatStyle(node.Style, false),
 			HeadComment: node.HeadComment,
 			LineComment: node.LineComment,
 			FootComment: node.FootComment,
