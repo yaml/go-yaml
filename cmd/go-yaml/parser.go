@@ -9,8 +9,10 @@ import (
 
 // Parser provides access to the internal YAML Parser for CLI use
 type Parser struct {
-	parser libyaml.Parser
-	done   bool
+	parser        libyaml.Parser
+	done          bool
+	pendingTokens []*Token
+	commentsHead  int
 }
 
 // NewParser creates a new YAML parser reading from the given reader for CLI use
@@ -24,6 +26,13 @@ func NewParser(reader io.Reader) (*Parser, error) {
 
 // Next returns the next token in the YAML stream
 func (p *Parser) Next() (*Token, error) {
+	// Return pending tokens first
+	if len(p.pendingTokens) > 0 {
+		token := p.pendingTokens[0]
+		p.pendingTokens = p.pendingTokens[1:]
+		return token, nil
+	}
+
 	if p.done {
 		return nil, nil
 	}
@@ -43,28 +52,6 @@ func (p *Parser) Next() (*Token, error) {
 		StartColumn: int(yamlToken.StartMark.Column),
 		EndLine:     int(yamlToken.EndMark.Line) + 1,
 		EndColumn:   int(yamlToken.EndMark.Column),
-	}
-
-	// Call unfoldComments to process comment information from the parser
-	// This moves comments from the comments queue to the parser's comment fields
-	p.parser.UnfoldComments(&yamlToken)
-
-	// Access comment information from the parser
-	// The parser stores comments in head_comment, line_comment, and foot_comment fields
-	if len(p.parser.HeadComment) > 0 {
-		token.HeadComment = string(p.parser.HeadComment)
-		// Clear the comment after using it to avoid duplication
-		p.parser.HeadComment = nil
-	}
-	if len(p.parser.LineComment) > 0 {
-		token.LineComment = string(p.parser.LineComment)
-		// Clear the comment after using it to avoid duplication
-		p.parser.LineComment = nil
-	}
-	if len(p.parser.FootComment) > 0 {
-		token.FootComment = string(p.parser.FootComment)
-		// Clear the comment after using it to avoid duplication
-		p.parser.FootComment = nil
 	}
 
 	switch yamlToken.Type {
@@ -120,7 +107,78 @@ func (p *Parser) Next() (*Token, error) {
 		token.Type = "UNKNOWN"
 	}
 
+	// Process comments that should be emitted before this token
+	p.processComments(&yamlToken, token)
+
+	// Return first pending token if comments were queued, otherwise return the main token
+	if len(p.pendingTokens) > 0 {
+		// Add the main token to the end of pending tokens
+		p.pendingTokens = append(p.pendingTokens, token)
+		// Return the first pending token
+		result := p.pendingTokens[0]
+		p.pendingTokens = p.pendingTokens[1:]
+		return result, nil
+	}
+
 	return token, nil
+}
+
+// processComments extracts comments from the parser and creates COMMENT tokens
+func (p *Parser) processComments(yamlToken *libyaml.Token, mainToken *Token) {
+	comments := p.parser.GetPendingComments()
+
+	for p.commentsHead < len(comments) {
+		comment := &comments[p.commentsHead]
+
+		// Check if this comment should be emitted before the current token
+		// Comments are associated with tokens based on their TokenMark
+		if yamlToken.StartMark.Index < comment.TokenMark.Index {
+			// This comment is for a future token, stop processing
+			break
+		}
+
+		// Create comment tokens for head, line, and foot comments
+		if len(comment.Head) > 0 {
+			commentToken := &Token{
+				Type:        "COMMENT",
+				Value:       string(comment.Head),
+				CommentType: "head",
+				StartLine:   int(comment.StartMark.Line) + 1,
+				StartColumn: int(comment.StartMark.Column),
+				EndLine:     int(comment.EndMark.Line) + 1,
+				EndColumn:   int(comment.EndMark.Column),
+			}
+			p.pendingTokens = append(p.pendingTokens, commentToken)
+		}
+
+		if len(comment.Line) > 0 {
+			commentToken := &Token{
+				Type:        "COMMENT",
+				Value:       string(comment.Line),
+				CommentType: "line",
+				StartLine:   int(comment.StartMark.Line) + 1,
+				StartColumn: int(comment.StartMark.Column),
+				EndLine:     int(comment.EndMark.Line) + 1,
+				EndColumn:   int(comment.EndMark.Column),
+			}
+			p.pendingTokens = append(p.pendingTokens, commentToken)
+		}
+
+		if len(comment.Foot) > 0 {
+			commentToken := &Token{
+				Type:        "COMMENT",
+				Value:       string(comment.Foot),
+				CommentType: "foot",
+				StartLine:   int(comment.StartMark.Line) + 1,
+				StartColumn: int(comment.StartMark.Column),
+				EndLine:     int(comment.EndMark.Line) + 1,
+				EndColumn:   int(comment.EndMark.Column),
+			}
+			p.pendingTokens = append(p.pendingTokens, commentToken)
+		}
+
+		p.commentsHead++
+	}
 }
 
 // Close releases the parser resources
