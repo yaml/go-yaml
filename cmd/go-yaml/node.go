@@ -20,18 +20,21 @@ type NodeInfo struct {
 }
 
 // FormatNode converts a YAML node into a NodeInfo structure
-func FormatNode(n yaml.Node) *NodeInfo {
+func FormatNode(n yaml.Node, profuse bool) *NodeInfo {
 	info := &NodeInfo{
 		Kind: formatKind(n.Kind),
 	}
 
-	if style := formatStyle(n.Style); style != "" {
-		info.Style = style
+	// Don't set style for Document nodes
+	if n.Kind != yaml.DocumentNode {
+		if style := formatStyle(n.Style, profuse); style != "" {
+			info.Style = style
+		}
 	}
 	if n.Anchor != "" {
 		info.Anchor = n.Anchor
 	}
-	if tag := formatTag(n.Tag, n.Style); tag != "" {
+	if tag := formatTag(n.Tag, n.Style, profuse); tag != "" {
 		info.Tag = tag
 	}
 	if n.HeadComment != "" {
@@ -49,7 +52,7 @@ func FormatNode(n yaml.Node) *NodeInfo {
 	} else if n.Content != nil {
 		info.Content = make([]*NodeInfo, len(n.Content))
 		for i, node := range n.Content {
-			info.Content[i] = FormatNode(*node)
+			info.Content[i] = FormatNode(*node, profuse)
 		}
 	}
 
@@ -75,8 +78,11 @@ func formatKind(k yaml.Kind) string {
 }
 
 // formatStyle converts a YAML node style into its string representation.
-func formatStyle(s yaml.Style) string {
-	switch s {
+func formatStyle(s yaml.Style, profuse bool) string {
+	// Remove tagged style bit for checking base style
+	baseStyle := s &^ yaml.TaggedStyle
+
+	switch baseStyle {
 	case yaml.DoubleQuotedStyle:
 		return "Double"
 	case yaml.SingleQuotedStyle:
@@ -87,24 +93,34 @@ func formatStyle(s yaml.Style) string {
 		return "Folded"
 	case yaml.FlowStyle:
 		return "Flow"
+	case 0:
+		// Plain style - only show if profuse
+		if profuse {
+			return "Plain"
+		}
 	}
 	return ""
 }
 
 // formatTag converts a YAML tag string to its string representation.
-func formatTag(tag string, style yaml.Style) string {
+func formatTag(tag string, style yaml.Style, profuse bool) string {
 	// Check if the tag was explicit in the input
 	tagWasExplicit := style&yaml.TaggedStyle != 0
 
-	// Show !!str only if it was explicit in the input
+	// In profuse mode, always show tag
+	if profuse {
+		return tag
+	}
+
+	// Default YAML tags - only show if they were explicit in the input
 	switch tag {
-	case "!!str", "!!map", "!!seq":
+	case "!!str", "!!map", "!!seq", "!!int", "!!float", "!!bool", "!!null":
 		if tagWasExplicit {
 			return tag
 		}
 		return ""
 	}
 
-	// Show all other tags
+	// Show all other tags (custom tags)
 	return tag
 }

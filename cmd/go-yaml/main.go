@@ -40,8 +40,9 @@ func main() {
 	eventMode := flag.Bool("e", false, "Event output")
 	eventProfuseMode := flag.Bool("E", false, "Event with line info")
 
-	// Node mode
+	// Node modes
 	nodeMode := flag.Bool("n", false, "Node representation output")
+	nodeProfuseMode := flag.Bool("N", false, "Node with tag and style for all scalars")
 
 	// Shared flags
 	longMode := flag.Bool("l", false, "Long (block) formatted output")
@@ -59,6 +60,7 @@ func main() {
 	flag.BoolVar(eventMode, "event", false, "Event output")
 	flag.BoolVar(eventProfuseMode, "EVENT", false, "Event with line info")
 	flag.BoolVar(nodeMode, "node", false, "Node representation output")
+	flag.BoolVar(nodeProfuseMode, "NODE", false, "Node with tag and style for all scalars")
 	flag.BoolVar(longMode, "long", false, "Long (block) formatted output")
 	flag.BoolVar(unmarshalMode, "unmarshal", false, "Use Unmarshal instead of Decode for YAML input")
 	flag.BoolVar(marshalMode, "marshal", false, "Use Marshal instead of Encode for YAML output")
@@ -95,14 +97,14 @@ func main() {
 	}
 
 	// If no stdin and no flags, show help
-	if (stat.Mode()&os.ModeCharDevice) != 0 && !*nodeMode && !*eventMode && !*eventProfuseMode && !*tokenMode && !*tokenProfuseMode && !*jsonMode && !*jsonPrettyMode && !*yamlMode && !*yamlPreserveMode && !*longMode {
+	if (stat.Mode()&os.ModeCharDevice) != 0 && !*nodeMode && !*nodeProfuseMode && !*eventMode && !*eventProfuseMode && !*tokenMode && !*tokenProfuseMode && !*jsonMode && !*jsonPrettyMode && !*yamlMode && !*yamlPreserveMode && !*longMode {
 		printHelp()
 		return
 	}
 
 	// Error if stdin has data but no mode flags are provided
-	if (stat.Mode()&os.ModeCharDevice) == 0 && !*nodeMode && !*eventMode && !*eventProfuseMode && !*tokenMode && !*tokenProfuseMode && !*jsonMode && !*jsonPrettyMode && !*yamlMode && !*yamlPreserveMode && !*longMode {
-		fmt.Fprintf(os.Stderr, "Error: stdin has data but no mode specified. Use -n/--node, -e/--event, -E/--EVENT, -t/--token, -T/--TOKEN, -j/--json, -J/--JSON, -y/--yaml, -Y/--YAML flag.\n")
+	if (stat.Mode()&os.ModeCharDevice) == 0 && !*nodeMode && !*nodeProfuseMode && !*eventMode && !*eventProfuseMode && !*tokenMode && !*tokenProfuseMode && !*jsonMode && !*jsonPrettyMode && !*yamlMode && !*yamlPreserveMode && !*longMode {
+		fmt.Fprintf(os.Stderr, "Error: stdin has data but no mode specified. Use -n/--node, -N/--NODE, -e/--event, -E/--EVENT, -t/--token, -T/--TOKEN, -j/--json, -J/--JSON, -y/--yaml, -Y/--YAML flag.\n")
 		os.Exit(1)
 	}
 
@@ -153,9 +155,10 @@ func main() {
 		}
 	} else {
 		// Use node formatting mode (default)
+		profuse := *nodeProfuseMode
 		if *unmarshalMode {
 			// Use Unmarshal mode
-			if err := ProcessNodeUnmarshal(); err != nil {
+			if err := ProcessNodeUnmarshal(profuse); err != nil {
 				log.Fatal("Failed to process YAML node:", err)
 			}
 		} else {
@@ -180,7 +183,7 @@ func main() {
 				}
 				firstDoc = false
 
-				info := FormatNode(node)
+				info := FormatNode(node, profuse)
 
 				// Use encoder with 2-space indentation
 				var buf bytes.Buffer
@@ -197,7 +200,7 @@ func main() {
 }
 
 // ProcessNodeUnmarshal reads YAML from stdin using Unmarshal and outputs node structure
-func ProcessNodeUnmarshal() error {
+func ProcessNodeUnmarshal(profuse bool) error {
 	// Read all input from stdin
 	input, err := io.ReadAll(os.Stdin)
 	if err != nil {
@@ -232,7 +235,7 @@ func ProcessNodeUnmarshal() error {
 			return fmt.Errorf("failed to unmarshal YAML to node: %w", err)
 		}
 
-		info := FormatNode(node)
+		info := FormatNode(node, profuse)
 
 		// Use encoder with 2-space indentation
 		var buf bytes.Buffer
@@ -281,6 +284,7 @@ Options:
   -E, --EVENT      Event with line info
 
   -n, --node       Node representation output
+  -N, --NODE       Node with tag and style for all scalars
 
   -l, --long       Long (block) formatted output
 
