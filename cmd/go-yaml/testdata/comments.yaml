@@ -1,0 +1,73 @@
+# Comment-related tests for go-yaml CLI
+
+- name: Simple line comment on a pair
+  text: |
+    a: b #c
+  token: |
+    - {token: STREAM-START}
+    - {token: BLOCK-MAPPING-START}
+    - {token: KEY}
+    - {token: SCALAR, value: a}
+    - {token: VALUE}
+    - {token: COMMENT, line: '#c'}
+    - {token: SCALAR, value: b}
+    - {token: BLOCK-END}
+    - {token: STREAM-END}
+  TOKEN: |
+    - {token: STREAM-START, pos: 1/0}
+    - {token: BLOCK-MAPPING-START, pos: 1/0}
+    - {token: KEY, pos: 1/0}
+    - {token: SCALAR, value: a, pos: 1/0-1}
+    - {token: VALUE, pos: 1/1-2}
+    - {token: COMMENT, line: '#c', pos: 1/5-7}
+    - {token: SCALAR, value: b, pos: 1/3-4}
+    - {token: BLOCK-END, pos: 2/0}
+    - {token: STREAM-END, pos: 2/0}
+  event: |
+    - {event: DOCUMENT-START}
+    - {event: MAPPING-START}
+    - {event: SCALAR, value: a}
+    - {event: SCALAR, value: b, line: '#c'}
+    - {event: MAPPING-END}
+    - {event: DOCUMENT-END}
+
+- name: Head, line, and foot comments
+  text: |
+    # head comment
+    key: value # line comment
+    # foot comment
+  token: |
+    - {token: COMMENT, head: '# head comment'}
+    - {token: STREAM-START}
+    - {token: BLOCK-MAPPING-START}
+    - {token: KEY}
+    - {token: SCALAR, value: key}
+    - {token: VALUE}
+    - {token: COMMENT, line: '# line comment'}
+    - {token: COMMENT, foot: '# foot comment'}
+    - {token: SCALAR, value: value}
+    - {token: BLOCK-END}
+    - {token: STREAM-END}
+  event: |
+    - {event: DOCUMENT-START}
+    - {event: MAPPING-START}
+    - {event: SCALAR, value: key, head: '# head comment', foot: '# foot comment'}
+    - {event: SCALAR, value: value, line: '# line comment'}
+    - {event: MAPPING-END}
+    - {event: DOCUMENT-END}
+
+- name: Multiple head comments
+  text: |
+    # comment1
+    # comment2
+    key: value
+  token: |
+    - {token: COMMENT, head: "# comment1\n# comment2"}
+    - {token: STREAM-START}
+    - {token: BLOCK-MAPPING-START}
+    - {token: KEY}
+    - {token: SCALAR, value: key}
+    - {token: VALUE}
+    - {token: SCALAR, value: value}
+    - {token: BLOCK-END}
+    - {token: STREAM-END}
