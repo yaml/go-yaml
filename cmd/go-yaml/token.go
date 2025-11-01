@@ -17,6 +17,7 @@ type Token struct {
 	Type        string
 	Value       string
 	Style       string
+	CommentType string // For COMMENT tokens: "head", "line", or "foot"
 	StartLine   int
 	StartColumn int
 	EndLine     int
@@ -359,21 +360,37 @@ func formatTokenInfo(token *Token, profuse bool) *TokenInfo {
 		Token: token.Type,
 	}
 
-	if token.Value != "" {
-		info.Value = token.Value
+	// For COMMENT tokens, use the CommentType to determine which field to populate
+	if token.Type == "COMMENT" && token.CommentType != "" && token.Value != "" {
+		switch token.CommentType {
+		case "head":
+			info.Head = token.Value
+		case "line":
+			info.Line = token.Value
+		case "foot":
+			info.Foot = token.Value
+		}
+	} else {
+		// For non-COMMENT tokens
+		if token.Value != "" {
+			info.Value = token.Value
+		}
+
+		if token.Style != "" && token.Style != "Plain" {
+			info.Style = token.Style
+		}
+
+		if token.HeadComment != "" {
+			info.Head = token.HeadComment
+		}
+		if token.LineComment != "" {
+			info.Line = token.LineComment
+		}
+		if token.FootComment != "" {
+			info.Foot = token.FootComment
+		}
 	}
-	if token.Style != "" && token.Style != "Plain" {
-		info.Style = token.Style
-	}
-	if token.HeadComment != "" {
-		info.Head = token.HeadComment
-	}
-	if token.LineComment != "" {
-		info.Line = token.LineComment
-	}
-	if token.FootComment != "" {
-		info.Foot = token.FootComment
-	}
+
 	if profuse {
 		if token.StartLine == token.EndLine && token.StartColumn == token.EndColumn {
 			info.Pos = fmt.Sprintf("%d;%d", token.StartLine, token.StartColumn)

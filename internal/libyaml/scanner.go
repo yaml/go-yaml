@@ -1045,22 +1045,22 @@ func (parser *Parser) unrollIndent(column int, scan_mark Mark) bool {
 		for i := len(parser.comments) - 1; i >= 0; i-- {
 			comment := &parser.comments[i]
 
-			if comment.end_mark.Index < stop_index {
+			if comment.EndMark.Index < stop_index {
 				// Don't go back beyond the start of the comment/whitespace scan, unless column < 0.
 				// If requested indent column is < 0, then the document is over and everything else
 				// is a foot anyway.
 				break
 			}
-			if comment.start_mark.Column == parser.indent+1 {
+			if comment.StartMark.Column == parser.indent+1 {
 				// This is a good match. But maybe there's a former comment
 				// at that same indent level, so keep searching.
-				block_mark = comment.start_mark
+				block_mark = comment.StartMark
 			}
 
 			// While the end of the former comment matches with
 			// the start of the following one, we know there's
 			// nothing in between and scanning is still safe.
-			stop_index = comment.scan_mark.Index
+			stop_index = comment.ScanMark.Index
 		}
 
 		// Create a token and append it to the queue.
@@ -1566,14 +1566,14 @@ func (parser *Parser) scanToNextToken() bool {
 			tokenA := parser.tokens[len(parser.tokens)-2]
 			tokenB := parser.tokens[len(parser.tokens)-1]
 			comment := &parser.comments[len(parser.comments)-1]
-			if tokenA.Type == BLOCK_SEQUENCE_START_TOKEN && tokenB.Type == BLOCK_ENTRY_TOKEN && len(comment.line) > 0 && !isLineBreak(parser.buffer, parser.buffer_pos) {
+			if tokenA.Type == BLOCK_SEQUENCE_START_TOKEN && tokenB.Type == BLOCK_ENTRY_TOKEN && len(comment.Line) > 0 && !isLineBreak(parser.buffer, parser.buffer_pos) {
 				// If it was in the prior line, reposition so it becomes a
 				// header of the follow up token. Otherwise, keep it in place
 				// so it becomes a header of the former.
-				comment.head = comment.line
-				comment.line = nil
-				if comment.start_mark.Line == parser.mark.Line-1 {
-					comment.token_mark = parser.mark
+				comment.Head = comment.Line
+				comment.Line = nil
+				if comment.StartMark.Line == parser.mark.Line-1 {
+					comment.TokenMark = parser.mark
 				}
 			}
 		}
@@ -2866,9 +2866,9 @@ func (parser *Parser) scanLineComment(token_mark Mark) bool {
 	}
 	if len(text) > 0 {
 		parser.comments = append(parser.comments, Comment{
-			token_mark: token_mark,
-			start_mark: start_mark,
-			line:       text,
+			TokenMark: token_mark,
+			StartMark: start_mark,
+			Line:       text,
 		})
 	}
 	return true
@@ -2934,11 +2934,11 @@ func (parser *Parser) scanComments(scan_mark Mark) bool {
 							token_mark = start_mark
 						}
 						parser.comments = append(parser.comments, Comment{
-							scan_mark:  scan_mark,
-							token_mark: token_mark,
-							start_mark: start_mark,
-							end_mark:   Mark{parser.mark.Index + peek, line, column},
-							foot:       text,
+							ScanMark:  scan_mark,
+							TokenMark: token_mark,
+							StartMark: start_mark,
+							EndMark:   Mark{parser.mark.Index + peek, line, column},
+							Foot:       text,
 						})
 						scan_mark = Mark{parser.mark.Index + peek, line, column}
 						token_mark = scan_mark
@@ -2964,11 +2964,11 @@ func (parser *Parser) scanComments(scan_mark Mark) bool {
 			// The comment at the different indentation is a foot of the
 			// preceding data rather than a head of the upcoming one.
 			parser.comments = append(parser.comments, Comment{
-				scan_mark:  scan_mark,
-				token_mark: token_mark,
-				start_mark: start_mark,
-				end_mark:   Mark{parser.mark.Index + peek, line, column},
-				foot:       text,
+				ScanMark:  scan_mark,
+				TokenMark: token_mark,
+				StartMark: start_mark,
+				EndMark:   Mark{parser.mark.Index + peek, line, column},
+				Foot:       text,
 			})
 			scan_mark = Mark{parser.mark.Index + peek, line, column}
 			token_mark = scan_mark
@@ -3019,11 +3019,11 @@ func (parser *Parser) scanComments(scan_mark Mark) bool {
 
 	if len(text) > 0 {
 		parser.comments = append(parser.comments, Comment{
-			scan_mark:  scan_mark,
-			token_mark: start_mark,
-			start_mark: start_mark,
-			end_mark:   Mark{parser.mark.Index + peek - 1, line, column},
-			head:       text,
+			ScanMark:  scan_mark,
+			TokenMark: start_mark,
+			StartMark: start_mark,
+			EndMark:   Mark{parser.mark.Index + peek - 1, line, column},
+			Head:       text,
 		})
 	}
 	return true
