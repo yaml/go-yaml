@@ -5,86 +5,86 @@
   node: |
     kind: Document
     content:
-      - kind: Scalar
-        text: hello
+    - kind: Scalar
+      text: hello
   NODE: |
     kind: Document
     content:
-      - kind: Scalar
-        style: Plain
-        tag: '!!str'
-        text: hello
+    - kind: Scalar
+      style: Plain
+      tag: '!!str'
+      text: hello
 
 - name: Double quoted scalar
   text: '"hello"'
   node: |
     kind: Document
     content:
-      - kind: Scalar
-        style: Double
-        text: hello
+    - kind: Scalar
+      style: Double
+      text: hello
   NODE: |
     kind: Document
     content:
-      - kind: Scalar
-        style: Double
-        tag: '!!str'
-        text: hello
+    - kind: Scalar
+      style: Double
+      tag: '!!str'
+      text: hello
 
 - name: Integer scalar
   text: "42"
   node: |
     kind: Document
     content:
-      - kind: Scalar
-        text: "42"
+    - kind: Scalar
+      text: "42"
   NODE: |
     kind: Document
     content:
-      - kind: Scalar
-        style: Plain
-        tag: '!!int'
-        text: "42"
+    - kind: Scalar
+      style: Plain
+      tag: '!!int'
+      text: "42"
 
 - name: Explicit tag
   text: "!!str 42"
   node: |
     kind: Document
     content:
-      - kind: Scalar
-        tag: '!!str'
-        text: "42"
+    - kind: Scalar
+      tag: '!!str'
+      text: "42"
   NODE: |
     kind: Document
     content:
-      - kind: Scalar
-        style: Plain
-        tag: '!!str'
-        text: "42"
+    - kind: Scalar
+      style: Plain
+      tag: '!!str'
+      text: "42"
 
 - name: Mapping with plain scalars
   text: "key: value"
   node: |
     kind: Document
     content:
-      - kind: Mapping
-        content:
-          - kind: Scalar
-            text: key
-          - kind: Scalar
-            text: value
+    - kind: Mapping
+      content:
+      - kind: Scalar
+        text: key
+      - kind: Scalar
+        text: value
   NODE: |
     kind: Document
     content:
-      - kind: Mapping
+    - kind: Mapping
+      style: Plain
+      tag: '!!map'
+      content:
+      - kind: Scalar
         style: Plain
-        tag: '!!map'
-        content:
-          - kind: Scalar
-            style: Plain
-            tag: '!!str'
-            text: key
-          - kind: Scalar
-            style: Plain
-            tag: '!!str'
-            text: value
+        tag: '!!str'
+        text: key
+      - kind: Scalar
+        style: Plain
+        tag: '!!str'
+        text: value

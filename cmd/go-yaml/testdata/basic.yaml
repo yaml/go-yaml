@@ -22,12 +22,12 @@
   node: |
     kind: Document
     content:
-      - kind: Mapping
-        content:
-          - kind: Scalar
-            text: key
-          - kind: Scalar
-            text: value
+    - kind: Mapping
+      content:
+      - kind: Scalar
+        text: key
+      - kind: Scalar
+        text: value
 
 - name: Simple sequence
   text: |

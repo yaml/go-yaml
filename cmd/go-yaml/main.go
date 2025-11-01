@@ -189,6 +189,7 @@ func main() {
 				var buf bytes.Buffer
 				enc := yaml.NewEncoder(&buf)
 				enc.SetIndent(2)
+				enc.CompactSeqIndent()
 				if err := enc.Encode(info); err != nil {
 					log.Fatal("Failed to marshal node info:", err)
 				}
@@ -241,6 +242,7 @@ func ProcessNodeUnmarshal(profuse bool) error {
 		var buf bytes.Buffer
 		enc := yaml.NewEncoder(&buf)
 		enc.SetIndent(2)
+		enc.CompactSeqIndent()
 		if err := enc.Encode(info); err != nil {
 			enc.Close()
 			return fmt.Errorf("failed to marshal node info: %w", err)
