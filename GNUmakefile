@@ -62,7 +62,7 @@ count ?= 1
 
 # Test rules:
 test: $(GO-DEPS)
-	go test$(if $v, -v)
+	go test$(if $v, -v) -vet=off
 
 test-data: $(YTS-DIR)
 
@@ -88,9 +88,6 @@ lint: $(GOLANGCI-LINT)
 fumpt: $(GO)
 	@go install mvdan.cc/gofumpt@latest
 	gofumpt -l -w $(GO-FILES)
-
-vet: $(GO)
-	go vet ./...
 
 cli: $(CLI-BINARY)
 

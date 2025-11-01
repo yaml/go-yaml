@@ -973,6 +973,19 @@ ba?r: a?bc
 			"ba?r": "a?bc",
 		},
 	},
+
+	// issue https://github.com/yaml/go-yaml/issues/157
+	{
+		`foo: abc
+bar: def`,
+		struct {
+			F string `yaml:"foo"` // the correct tag, because it has `yaml` prefix
+			B string `bar`        //nolint:govet // the incorrect tag, but supported
+		}{
+			F: "abc",
+			B: "def", // value should be set using whole tag as a name, see issue: <https://github.com/yaml/go-yaml/issues/157>
+		},
+	},
 }
 
 type M map[string]any
