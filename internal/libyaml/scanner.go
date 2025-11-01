@@ -2868,7 +2868,8 @@ func (parser *Parser) scanLineComment(token_mark Mark) bool {
 		parser.comments = append(parser.comments, Comment{
 			TokenMark: token_mark,
 			StartMark: start_mark,
-			Line:       text,
+			EndMark:   parser.mark,
+			Line:      text,
 		})
 	}
 	return true
@@ -2938,7 +2939,7 @@ func (parser *Parser) scanComments(scan_mark Mark) bool {
 							TokenMark: token_mark,
 							StartMark: start_mark,
 							EndMark:   Mark{parser.mark.Index + peek, line, column},
-							Foot:       text,
+							Foot:      text,
 						})
 						scan_mark = Mark{parser.mark.Index + peek, line, column}
 						token_mark = scan_mark
@@ -2968,7 +2969,7 @@ func (parser *Parser) scanComments(scan_mark Mark) bool {
 				TokenMark: token_mark,
 				StartMark: start_mark,
 				EndMark:   Mark{parser.mark.Index + peek, line, column},
-				Foot:       text,
+				Foot:      text,
 			})
 			scan_mark = Mark{parser.mark.Index + peek, line, column}
 			token_mark = scan_mark
@@ -3023,7 +3024,7 @@ func (parser *Parser) scanComments(scan_mark Mark) bool {
 			TokenMark: start_mark,
 			StartMark: start_mark,
 			EndMark:   Mark{parser.mark.Index + peek - 1, line, column},
-			Head:       text,
+			Head:      text,
 		})
 	}
 	return true
