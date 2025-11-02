@@ -20,14 +20,9 @@
     - {event: MAPPING-END}
     - {event: DOCUMENT-END}
   node: |
-    kind: Document
-    content:
-    - kind: Mapping
-      content:
-      - kind: Scalar
-        text: key
-      - kind: Scalar
-        text: value
+    mapping:
+    - plain: key
+    - plain: value
 
 - name: Simple sequence
   text: |
