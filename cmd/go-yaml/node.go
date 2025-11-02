@@ -102,6 +102,28 @@ func formatStyle(s yaml.Style, profuse bool) string {
 	return ""
 }
 
+// formatStyleName converts a YAML node style into a lowercase style name.
+// Always returns a style name (defaults to "plain" for style 0).
+func formatStyleName(s yaml.Style) string {
+	// Remove tagged style bit for checking base style
+	baseStyle := s &^ yaml.TaggedStyle
+
+	switch baseStyle {
+	case yaml.DoubleQuotedStyle:
+		return "double"
+	case yaml.SingleQuotedStyle:
+		return "single"
+	case yaml.LiteralStyle:
+		return "literal"
+	case yaml.FoldedStyle:
+		return "folded"
+	case yaml.FlowStyle:
+		return "flow"
+	default:
+		return "plain"
+	}
+}
+
 // formatTag converts a YAML tag string to its string representation.
 func formatTag(tag string, style yaml.Style, profuse bool) string {
 	// Check if the tag was explicit in the input
@@ -123,4 +145,149 @@ func formatTag(tag string, style yaml.Style, profuse bool) string {
 
 	// Show all other tags (custom tags)
 	return tag
+}
+
+// FormatNodeCompact converts a YAML node into a compact representation.
+// Document nodes return their content directly.
+// Mapping/Sequence nodes use lowercase keys: "mapping:", "sequence:".
+// Scalar nodes use style as key: "plain:", "double:", etc.
+func FormatNodeCompact(n yaml.Node) interface{} {
+	switch n.Kind {
+	case yaml.DocumentNode:
+		// Check if document has properties that need to be preserved
+		hasProperties := n.Anchor != "" || n.HeadComment != "" || n.LineComment != "" || n.FootComment != ""
+		if tag := formatTag(n.Tag, n.Style, false); tag != "" && tag != "!!str" {
+			hasProperties = true
+		}
+
+		// If document has no properties, return content directly (unwrap)
+		if !hasProperties {
+			if n.Content != nil && len(n.Content) > 0 {
+				return FormatNodeCompact(*n.Content[0])
+			}
+			return nil
+		}
+
+		// Document has properties - create a result map
+		result := make(map[string]interface{})
+
+		// Add optional fields
+		if n.Anchor != "" {
+			result["anchor"] = n.Anchor
+		}
+		if tag := formatTag(n.Tag, n.Style, false); tag != "" && tag != "!!str" {
+			result["tag"] = tag
+		}
+		if n.HeadComment != "" {
+			result["head"] = n.HeadComment
+		}
+		if n.LineComment != "" {
+			result["line"] = n.LineComment
+		}
+		if n.FootComment != "" {
+			result["foot"] = n.FootComment
+		}
+
+		// Add content if present
+		if n.Content != nil && len(n.Content) > 0 {
+			content := FormatNodeCompact(*n.Content[0])
+			// Merge the content into result at the top level
+			if contentMap, ok := content.(map[string]interface{}); ok {
+				for k, v := range contentMap {
+					result[k] = v
+				}
+			}
+		}
+
+		return result
+
+	case yaml.MappingNode:
+		result := make(map[string]interface{})
+
+		// Add optional fields
+		if n.Anchor != "" {
+			result["anchor"] = n.Anchor
+		}
+		if tag := formatTag(n.Tag, n.Style, false); tag != "" && tag != "!!str" {
+			result["tag"] = tag
+		}
+		if n.HeadComment != "" {
+			result["head"] = n.HeadComment
+		}
+		if n.LineComment != "" {
+			result["line"] = n.LineComment
+		}
+		if n.FootComment != "" {
+			result["foot"] = n.FootComment
+		}
+
+		// Convert content
+		var content []interface{}
+		for _, node := range n.Content {
+			content = append(content, FormatNodeCompact(*node))
+		}
+		result["mapping"] = content
+		return result
+
+	case yaml.SequenceNode:
+		result := make(map[string]interface{})
+
+		// Add optional fields
+		if n.Anchor != "" {
+			result["anchor"] = n.Anchor
+		}
+		if tag := formatTag(n.Tag, n.Style, false); tag != "" && tag != "!!str" {
+			result["tag"] = tag
+		}
+		if n.HeadComment != "" {
+			result["head"] = n.HeadComment
+		}
+		if n.LineComment != "" {
+			result["line"] = n.LineComment
+		}
+		if n.FootComment != "" {
+			result["foot"] = n.FootComment
+		}
+
+		// Convert content
+		var content []interface{}
+		for _, node := range n.Content {
+			content = append(content, FormatNodeCompact(*node))
+		}
+		result["sequence"] = content
+		return result
+
+	case yaml.ScalarNode:
+		result := make(map[string]interface{})
+
+		// Add optional fields
+		if n.Anchor != "" {
+			result["anchor"] = n.Anchor
+		}
+		if tag := formatTag(n.Tag, n.Style, false); tag != "" && tag != "!!str" {
+			result["tag"] = tag
+		}
+		if n.HeadComment != "" {
+			result["head"] = n.HeadComment
+		}
+		if n.LineComment != "" {
+			result["line"] = n.LineComment
+		}
+		if n.FootComment != "" {
+			result["foot"] = n.FootComment
+		}
+
+		// Use style name as the key
+		styleName := formatStyleName(n.Style)
+		result[styleName] = n.Value
+		return result
+
+	case yaml.AliasNode:
+		result := make(map[string]interface{})
+		result["alias"] = n.Value
+		return result
+
+	default:
+		return nil
+	}
 }

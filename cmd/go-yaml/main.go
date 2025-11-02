@@ -183,7 +183,12 @@ func main() {
 				}
 				firstDoc = false
 
-				info := FormatNode(node, profuse)
+				var info interface{}
+				if profuse {
+					info = FormatNode(node, profuse)
+				} else {
+					info = FormatNodeCompact(node)
+				}
 
 				// Use encoder with 2-space indentation
 				var buf bytes.Buffer
@@ -236,7 +241,12 @@ func ProcessNodeUnmarshal(profuse bool) error {
 			return fmt.Errorf("failed to unmarshal YAML to node: %w", err)
 		}
 
-		info := FormatNode(node, profuse)
+		var info interface{}
+		if profuse {
+			info = FormatNode(node, profuse)
+		} else {
+			info = FormatNodeCompact(node)
+		}
 
 		// Use encoder with 2-space indentation
 		var buf bytes.Buffer

@@ -3,10 +3,7 @@
 - name: Plain scalar
   text: "hello"
   node: |
-    kind: Document
-    content:
-    - kind: Scalar
-      text: hello
+    plain: hello
   NODE: |
     kind: Document
     content:
@@ -18,11 +15,7 @@
 - name: Double quoted scalar
   text: '"hello"'
   node: |
-    kind: Document
-    content:
-    - kind: Scalar
-      style: Double
-      text: hello
+    double: hello
   NODE: |
     kind: Document
     content:
@@ -34,10 +27,7 @@
 - name: Integer scalar
   text: "42"
   node: |
-    kind: Document
-    content:
-    - kind: Scalar
-      text: "42"
+    plain: "42"
   NODE: |
     kind: Document
     content:
@@ -49,11 +39,7 @@
 - name: Explicit tag
   text: "!!str 42"
   node: |
-    kind: Document
-    content:
-    - kind: Scalar
-      tag: '!!str'
-      text: "42"
+    plain: "42"
   NODE: |
     kind: Document
     content:
@@ -65,14 +51,9 @@
 - name: Mapping with plain scalars
   text: "key: value"
   node: |
-    kind: Document
-    content:
-    - kind: Mapping
-      content:
-      - kind: Scalar
-        text: key
-      - kind: Scalar
-        text: value
+    mapping:
+    - plain: key
+    - plain: value
   NODE: |
     kind: Document
     content:
