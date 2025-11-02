@@ -5,42 +5,43 @@ on:
   pull_request:
     branches: [ main ]
 
-permissions:
-  contents: read  # for actions/checkout to fetch code
+permissions: read-all
 
 jobs:
   action-lint:
     runs-on: ubuntu-latest
     steps:
     - name: checkout-action
-      uses: actions/checkout@v5
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.0
       with:
         persist-credentials: false
 
     - name: actionlint
-      uses: raven-actions/actionlint@v2.0.1
+      # yamllint disable-line rule:line-length
+      uses: raven-actions/actionlint@3a24062651993d40fed1019b58ac6fbdfbf276cc  # v2.0.1
 
   yamllint:
     runs-on: ubuntu-latest
     steps:
     - name: checkout-action
-      uses: actions/checkout@v5
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.0
       with:
         persist-credentials: false
 
     - name: yamllint
-      uses: ibiqlik/action-yamllint@v3
+      # yamllint disable-line rule:line-length
+      uses: ibiqlik/action-yamllint@2576378a8e339169678f9939646ee3ee325e845c  # v3.1.1
 
   ls-lint:
     runs-on: ubuntu-latest
     steps:
     - name: checkout-action
-      uses: actions/checkout@v5
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.0
       with:
         persist-credentials: false
 
     - name: ls-lint
-      uses: ls-lint/action@v2
+      uses: ls-lint/action@02e380fe8733d499cbfc9e22276de5085508a5bd  # v2.3.1
       with:
         config: .ls-lint.yaml
 
@@ -48,9 +49,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: checkout-action
-      uses: actions/checkout@v5
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.0
       with:
         persist-credentials: false
 
     - name: typos-action
-      uses: crate-ci/typos@v1
+      uses: crate-ci/typos@07d900b8fa1097806b8adb6391b0d3e0ac2fdea7  # v1.39.0
