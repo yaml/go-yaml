@@ -165,7 +165,9 @@ func main() {
 			// Use Decode mode (original behavior)
 			reader := io.Reader(os.Stdin)
 			dec := yaml.NewDecoder(reader)
-			firstDoc := true
+
+			// Collect all documents
+			var docs []interface{}
 
 			for {
 				var node yaml.Node
@@ -177,30 +179,33 @@ func main() {
 					log.Fatal("Failed to load YAML node:", err)
 				}
 
-				// Add document separator for all documents except the first
-				if !firstDoc {
-					fmt.Println("---")
-				}
-				firstDoc = false
-
 				var info interface{}
 				if profuse {
 					info = FormatNode(node, profuse)
 				} else {
 					info = FormatNodeCompact(node)
 				}
-
-				// Use encoder with 2-space indentation
-				var buf bytes.Buffer
-				enc := yaml.NewEncoder(&buf)
-				enc.SetIndent(2)
-				enc.CompactSeqIndent()
-				if err := enc.Encode(info); err != nil {
-					log.Fatal("Failed to marshal node info:", err)
-				}
-				enc.Close()
-				fmt.Print(buf.String())
+				docs = append(docs, info)
 			}
+
+			// Output as sequence if multiple documents, otherwise output single document
+			var output interface{}
+			if len(docs) == 1 {
+				output = docs[0]
+			} else {
+				output = docs
+			}
+
+			// Use encoder with 2-space indentation
+			var buf bytes.Buffer
+			enc := yaml.NewEncoder(&buf)
+			enc.SetIndent(2)
+			enc.CompactSeqIndent()
+			if err := enc.Encode(output); err != nil {
+				log.Fatal("Failed to marshal node info:", err)
+			}
+			enc.Close()
+			fmt.Print(buf.String())
 		}
 	}
 }
@@ -215,19 +220,15 @@ func ProcessNodeUnmarshal(profuse bool) error {
 
 	// Split input into documents
 	documents := bytes.Split(input, []byte("---"))
-	firstDoc := true
+
+	// Collect all documents
+	var docs []interface{}
 
 	for _, doc := range documents {
 		// Skip empty documents
 		if len(bytes.TrimSpace(doc)) == 0 {
 			continue
 		}
-
-		// Add document separator for all documents except the first
-		if !firstDoc {
-			fmt.Println("---")
-		}
-		firstDoc = false
 
 		// For unmarshal mode, use interface{} first to avoid preserving comments
 		var data interface{}
@@ -247,19 +248,28 @@ func ProcessNodeUnmarshal(profuse bool) error {
 		} else {
 			info = FormatNodeCompact(node)
 		}
-
-		// Use encoder with 2-space indentation
-		var buf bytes.Buffer
-		enc := yaml.NewEncoder(&buf)
-		enc.SetIndent(2)
-		enc.CompactSeqIndent()
-		if err := enc.Encode(info); err != nil {
-			enc.Close()
-			return fmt.Errorf("failed to marshal node info: %w", err)
-		}
-		enc.Close()
-		fmt.Print(buf.String())
+		docs = append(docs, info)
 	}
+
+	// Output as sequence if multiple documents, otherwise output single document
+	var output interface{}
+	if len(docs) == 1 {
+		output = docs[0]
+	} else {
+		output = docs
+	}
+
+	// Use encoder with 2-space indentation
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+	enc.CompactSeqIndent()
+	if err := enc.Encode(output); err != nil {
+		enc.Close()
+		return fmt.Errorf("failed to marshal node info: %w", err)
+	}
+	enc.Close()
+	fmt.Print(buf.String())
 
 	return nil
 }

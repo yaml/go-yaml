@@ -1,0 +1,579 @@
+# Multi-document tests for -n and -N flags
+# Multiple documents should be output as a YAML sequence
+
+- name: Two simple mappings
+  text: |
+    doc1: value1
+    ---
+    doc2: value2
+  node: |
+    - mapping:
+      - plain: doc1
+      - plain: value1
+    - mapping:
+      - plain: doc2
+      - plain: value2
+  NODE: |
+    - kind: Document
+      content:
+      - kind: Mapping
+        style: Plain
+        tag: '!!map'
+        content:
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: doc1
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: value1
+    - kind: Document
+      content:
+      - kind: Mapping
+        style: Plain
+        tag: '!!map'
+        content:
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: doc2
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: value2
+
+- name: Three documents with mixed types
+  text: |
+    scalar1
+    ---
+    - item1
+    - item2
+    ---
+    key: value
+  node: |
+    - plain: scalar1
+    - sequence:
+      - plain: item1
+      - plain: item2
+    - mapping:
+      - plain: key
+      - plain: value
+  NODE: |
+    - kind: Document
+      content:
+      - kind: Scalar
+        style: Plain
+        tag: '!!str'
+        text: scalar1
+    - kind: Document
+      content:
+      - kind: Sequence
+        style: Plain
+        tag: '!!seq'
+        content:
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: item1
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: item2
+    - kind: Document
+      content:
+      - kind: Mapping
+        style: Plain
+        tag: '!!map'
+        content:
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: key
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: value
+
+- name: Documents with anchors and tags
+  text: |
+    &anchor1 !!str first
+    ---
+    &anchor2 !!map
+    key: value
+  node: |
+    - anchor: anchor1
+      plain: first
+    - tag: '!!map'
+      anchor: anchor2
+      mapping:
+      - plain: key
+      - plain: value
+  NODE: |
+    - kind: Document
+      content:
+      - kind: Scalar
+        style: Plain
+        tag: '!!str'
+        anchor: anchor1
+        text: first
+    - kind: Document
+      content:
+      - kind: Mapping
+        style: Plain
+        tag: '!!map'
+        anchor: anchor2
+        content:
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: key
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: value
+
+- name: Documents with comments
+  text: |
+    # comment 1
+    doc1: value1
+    ---
+    # comment 2
+    doc2: value2
+  node: |
+    - mapping:
+      - head: '# comment 1'
+        plain: doc1
+      - plain: value1
+    - mapping:
+      - head: '# comment 2'
+        plain: doc2
+      - plain: value2
+  NODE: |
+    - kind: Document
+      content:
+      - kind: Mapping
+        style: Plain
+        tag: '!!map'
+        content:
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          head: '# comment 1'
+          text: doc1
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: value1
+    - kind: Document
+      content:
+      - kind: Mapping
+        style: Plain
+        tag: '!!map'
+        content:
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          head: '# comment 2'
+          text: doc2
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: value2
+
+- name: Five documents
+  text: |
+    first
+    ---
+    second
+    ---
+    third
+    ---
+    fourth
+    ---
+    fifth
+  node: |
+    - plain: first
+    - plain: second
+    - plain: third
+    - plain: fourth
+    - plain: fifth
+  NODE: |
+    - kind: Document
+      content:
+      - kind: Scalar
+        style: Plain
+        tag: '!!str'
+        text: first
+    - kind: Document
+      content:
+      - kind: Scalar
+        style: Plain
+        tag: '!!str'
+        text: second
+    - kind: Document
+      content:
+      - kind: Scalar
+        style: Plain
+        tag: '!!str'
+        text: third
+    - kind: Document
+      content:
+      - kind: Scalar
+        style: Plain
+        tag: '!!str'
+        text: fourth
+    - kind: Document
+      content:
+      - kind: Scalar
+        style: Plain
+        tag: '!!str'
+        text: fifth
+
+- name: Multiple sequences
+  text: |
+    - a
+    - b
+    ---
+    - c
+    - d
+    ---
+    - e
+    - f
+  node: |
+    - sequence:
+      - plain: a
+      - plain: b
+    - sequence:
+      - plain: c
+      - plain: d
+    - sequence:
+      - plain: e
+      - plain: f
+  NODE: |
+    - kind: Document
+      content:
+      - kind: Sequence
+        style: Plain
+        tag: '!!seq'
+        content:
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: a
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: b
+    - kind: Document
+      content:
+      - kind: Sequence
+        style: Plain
+        tag: '!!seq'
+        content:
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: c
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: d
+    - kind: Document
+      content:
+      - kind: Sequence
+        style: Plain
+        tag: '!!seq'
+        content:
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: e
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: f
+
+- name: Documents with different scalar styles
+  text: |
+    plain
+    ---
+    "double"
+    ---
+    'single'
+  node: |
+    - plain: plain
+    - double: double
+    - single: single
+  NODE: |
+    - kind: Document
+      content:
+      - kind: Scalar
+        style: Plain
+        tag: '!!str'
+        text: plain
+    - kind: Document
+      content:
+      - kind: Scalar
+        style: Double
+        tag: '!!str'
+        text: double
+    - kind: Document
+      content:
+      - kind: Scalar
+        style: Single
+        tag: '!!str'
+        text: single
+
+- name: Nested structures across documents
+  text: |
+    outer:
+      inner:
+        deep: value1
+    ---
+    list:
+      - nested:
+          item: value2
+  node: |
+    - mapping:
+      - plain: outer
+      - mapping:
+        - plain: inner
+        - mapping:
+          - plain: deep
+          - plain: value1
+    - mapping:
+      - plain: list
+      - sequence:
+        - mapping:
+          - plain: nested
+          - mapping:
+            - plain: item
+            - plain: value2
+  NODE: |
+    - kind: Document
+      content:
+      - kind: Mapping
+        style: Plain
+        tag: '!!map'
+        content:
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: outer
+        - kind: Mapping
+          style: Plain
+          tag: '!!map'
+          content:
+          - kind: Scalar
+            style: Plain
+            tag: '!!str'
+            text: inner
+          - kind: Mapping
+            style: Plain
+            tag: '!!map'
+            content:
+            - kind: Scalar
+              style: Plain
+              tag: '!!str'
+              text: deep
+            - kind: Scalar
+              style: Plain
+              tag: '!!str'
+              text: value1
+    - kind: Document
+      content:
+      - kind: Mapping
+        style: Plain
+        tag: '!!map'
+        content:
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: list
+        - kind: Sequence
+          style: Plain
+          tag: '!!seq'
+          content:
+          - kind: Mapping
+            style: Plain
+            tag: '!!map'
+            content:
+            - kind: Scalar
+              style: Plain
+              tag: '!!str'
+              text: nested
+            - kind: Mapping
+              style: Plain
+              tag: '!!map'
+              content:
+              - kind: Scalar
+                style: Plain
+                tag: '!!str'
+                text: item
+              - kind: Scalar
+                style: Plain
+                tag: '!!str'
+                text: value2
+
+- name: Documents with full metadata
+  text: |
+    # head1
+    &anchor1 !!str value1 # line1
+    # foot1
+    ---
+    # head2
+    &anchor2 !!seq
+    - item # line2
+    # foot2
+    ---
+    # head3
+    &anchor3 !!map
+    key: val # line3
+    # foot3
+  node: |
+    - foot: '# foot1'
+      anchor: anchor1
+      head: '# head1'
+      line: '# line1'
+      plain: value1
+    - foot: '# foot2'
+      tag: '!!seq'
+      anchor: anchor2
+      sequence:
+      - head: '# head2'
+        line: '# line2'
+        plain: item
+    - tag: '!!map'
+      anchor: anchor3
+      mapping:
+      - head: '# head3'
+        foot: '# foot3'
+        plain: key
+      - line: '# line3'
+        plain: val
+  NODE: |
+    - kind: Document
+      foot: '# foot1'
+      content:
+      - kind: Scalar
+        style: Plain
+        tag: '!!str'
+        anchor: anchor1
+        head: '# head1'
+        line: '# line1'
+        text: value1
+    - kind: Document
+      foot: '# foot2'
+      content:
+      - kind: Sequence
+        style: Plain
+        tag: '!!seq'
+        anchor: anchor2
+        content:
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          head: '# head2'
+          line: '# line2'
+          text: item
+    - kind: Document
+      content:
+      - kind: Mapping
+        style: Plain
+        tag: '!!map'
+        anchor: anchor3
+        content:
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          head: '# head3'
+          foot: '# foot3'
+          text: key
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          line: '# line3'
+          text: val
+
+- name: Documents with integers and special values
+  text: |
+    42
+    ---
+    3.14
+    ---
+    true
+    ---
+    null
+  node: |
+    - plain: "42"
+    - plain: "3.14"
+    - plain: "true"
+    - plain: "null"
+  NODE: |
+    - kind: Document
+      content:
+      - kind: Scalar
+        style: Plain
+        tag: '!!int'
+        text: "42"
+    - kind: Document
+      content:
+      - kind: Scalar
+        style: Plain
+        tag: '!!float'
+        text: "3.14"
+    - kind: Document
+      content:
+      - kind: Scalar
+        style: Plain
+        tag: '!!bool'
+        text: "true"
+    - kind: Document
+      content:
+      - kind: Scalar
+        style: Plain
+        tag: '!!null'
+        text: "null"
+
+- name: Documents with flow style
+  text: |
+    {key1: value1}
+    ---
+    [item1, item2]
+  node: |
+    - mapping:
+      - plain: key1
+      - plain: value1
+    - sequence:
+      - plain: item1
+      - plain: item2
+  NODE: |
+    - kind: Document
+      content:
+      - kind: Mapping
+        style: Flow
+        tag: '!!map'
+        content:
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: key1
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: value1
+    - kind: Document
+      content:
+      - kind: Sequence
+        style: Flow
+        tag: '!!seq'
+        content:
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: item1
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: item2
