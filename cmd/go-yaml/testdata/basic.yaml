@@ -76,7 +76,8 @@
     - {event: DOCUMENT-END}
 
 - name: Flow style mapping
-  text: "{a: b, c: d}"
+  text: |
+    {a: b, c: d}
   token: |
     - {token: STREAM-START}
     - {token: FLOW-MAPPING-START}
