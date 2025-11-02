@@ -124,7 +124,12 @@ define yts_pass_fail
 endef
 export yts_pass_fail
 
-$(GOLANGCI-LINT): $(GO-DEPS)
+# Downloads and installs golangci-lint to LOCAL-BIN (.cache/local/bin).
+golangci-lint-install:
 	curl -sSfL $(GOLANGCI-LINT-INSTALL) | \
 	  bash -s -- -b $(LOCAL-BIN) $(GOLANGCI-LINT-VERSION)
+
+# Downloads golangci-lint binary and moves to versioned path
+# (.cache/local/bin/golangci-lint-<version>).
+$(GOLANGCI-LINT): golangci-lint-install
 	mv $(LOCAL-BIN)/golangci-lint $@
