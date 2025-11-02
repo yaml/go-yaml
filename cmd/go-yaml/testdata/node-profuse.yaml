@@ -1,7 +1,8 @@
 # Node profuse mode tests - comparing -n and -N flags
 
 - name: Plain scalar
-  text: "hello"
+  text: |
+    hello
   node: |
     plain: hello
   NODE: |
@@ -13,7 +14,8 @@
       text: hello
 
 - name: Double quoted scalar
-  text: '"hello"'
+  text: |
+    "hello"
   node: |
     double: hello
   NODE: |
@@ -25,7 +27,8 @@
       text: hello
 
 - name: Integer scalar
-  text: "42"
+  text: |
+    42
   node: |
     plain: "42"
   NODE: |
@@ -37,7 +40,8 @@
       text: "42"
 
 - name: Explicit tag
-  text: "!!str 42"
+  text: |
+    !!str 42
   node: |
     plain: "42"
   NODE: |
@@ -49,7 +53,8 @@
       text: "42"
 
 - name: Mapping with plain scalars
-  text: "key: value"
+  text: |
+    key: value
   node: |
     mapping:
     - plain: key

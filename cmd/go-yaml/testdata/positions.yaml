@@ -1,14 +1,17 @@
 # Position format tests for go-yaml CLI
 
 - name: Single character position
-  text: "a"
+  text: |
+    a
   TOKEN: |
     - {token: STREAM-START, pos: 1/0}
     - {token: SCALAR, value: a, pos: 1/0-1}
     - {token: STREAM-END, pos: 2/0}
 
-- name: Same line range
-  text: "key: value"
+- name: |
+    Same line range
+  text: |
+    key: value
   TOKEN: |
     - {token: STREAM-START, pos: 1/0}
     - {token: BLOCK-MAPPING-START, pos: 1/0}
@@ -19,7 +22,8 @@
     - {token: BLOCK-END, pos: 2/0}
     - {token: STREAM-END, pos: 2/0}
 
-- name: Multi-line literal scalar
+- name: |
+    Multi-line literal scalar
   text: |
     key: |
       line1
@@ -34,8 +38,10 @@
     - {token: BLOCK-END, pos: 4/0}
     - {token: STREAM-END, pos: 4/0}
 
-- name: Comment position with line comment
-  text: "a: b #c"
+- name: |
+    Comment position with line comment
+  text: |
+    a: b #c
   TOKEN: |
     - {token: STREAM-START, pos: 1/0}
     - {token: BLOCK-MAPPING-START, pos: 1/0}
