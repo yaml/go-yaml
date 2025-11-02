@@ -6,12 +6,54 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
+// MapItem is a single item in a MapSlice.
+type MapItem struct {
+	Key   string
+	Value interface{}
+}
+
+// MapSlice is a slice of MapItems that preserves order when marshaled to YAML.
+type MapSlice []MapItem
+
+// MarshalYAML implements yaml.Marshaler for MapSlice to preserve key order.
+func (ms MapSlice) MarshalYAML() (interface{}, error) {
+	// Convert MapSlice to yaml.Node with MappingNode kind to preserve order
+	node := &yaml.Node{
+		Kind: yaml.MappingNode,
+	}
+	for _, item := range ms {
+		// Add key node
+		keyNode := &yaml.Node{
+			Kind:  yaml.ScalarNode,
+			Value: item.Key,
+		}
+		// Add value node - let yaml encoder handle the value
+		var docNode yaml.Node
+		valueBytes, err := yaml.Marshal(item.Value)
+		if err != nil {
+			return nil, err
+		}
+		if err := yaml.Unmarshal(valueBytes, &docNode); err != nil {
+			return nil, err
+		}
+		// Extract the actual content from the document node
+		var valueNode *yaml.Node
+		if docNode.Kind == yaml.DocumentNode && len(docNode.Content) > 0 {
+			valueNode = docNode.Content[0]
+		} else {
+			valueNode = &docNode
+		}
+		node.Content = append(node.Content, keyNode, valueNode)
+	}
+	return node, nil
+}
+
 // NodeInfo represents the information about a YAML node
 type NodeInfo struct {
 	Kind    string      `yaml:"kind"`
 	Style   string      `yaml:"style,omitempty"`
-	Anchor  string      `yaml:"anchor,omitempty"`
 	Tag     string      `yaml:"tag,omitempty"`
+	Anchor  string      `yaml:"anchor,omitempty"`
 	Head    string      `yaml:"head,omitempty"`
 	Line    string      `yaml:"line,omitempty"`
 	Foot    string      `yaml:"foot,omitempty"`
@@ -168,123 +210,121 @@ func FormatNodeCompact(n yaml.Node) interface{} {
 			return nil
 		}
 
-		// Document has properties - create a result map
-		result := make(map[string]interface{})
+		// Document has properties - create a result map with ordered keys
+		result := MapSlice{}
 
-		// Add optional fields
-		if n.Anchor != "" {
-			result["anchor"] = n.Anchor
-		}
+		// Add optional fields in order: tag, anchor, comments
 		if tag := formatTag(n.Tag, n.Style, false); tag != "" && tag != "!!str" {
-			result["tag"] = tag
+			result = append(result, MapItem{Key: "tag", Value: tag})
+		}
+		if n.Anchor != "" {
+			result = append(result, MapItem{Key: "anchor", Value: n.Anchor})
 		}
 		if n.HeadComment != "" {
-			result["head"] = n.HeadComment
+			result = append(result, MapItem{Key: "head", Value: n.HeadComment})
 		}
 		if n.LineComment != "" {
-			result["line"] = n.LineComment
+			result = append(result, MapItem{Key: "line", Value: n.LineComment})
 		}
 		if n.FootComment != "" {
-			result["foot"] = n.FootComment
+			result = append(result, MapItem{Key: "foot", Value: n.FootComment})
 		}
 
 		// Add content if present
 		if n.Content != nil && len(n.Content) > 0 {
 			content := FormatNodeCompact(*n.Content[0])
 			// Merge the content into result at the top level
-			if contentMap, ok := content.(map[string]interface{}); ok {
-				for k, v := range contentMap {
-					result[k] = v
-				}
+			if contentMap, ok := content.(MapSlice); ok {
+				result = append(result, contentMap...)
 			}
 		}
 
 		return result
 
 	case yaml.MappingNode:
-		result := make(map[string]interface{})
+		result := MapSlice{}
 
-		// Add optional fields
-		if n.Anchor != "" {
-			result["anchor"] = n.Anchor
-		}
+		// Add optional fields in order: tag, anchor, comments
 		if tag := formatTag(n.Tag, n.Style, false); tag != "" && tag != "!!str" {
-			result["tag"] = tag
+			result = append(result, MapItem{Key: "tag", Value: tag})
+		}
+		if n.Anchor != "" {
+			result = append(result, MapItem{Key: "anchor", Value: n.Anchor})
 		}
 		if n.HeadComment != "" {
-			result["head"] = n.HeadComment
+			result = append(result, MapItem{Key: "head", Value: n.HeadComment})
 		}
 		if n.LineComment != "" {
-			result["line"] = n.LineComment
+			result = append(result, MapItem{Key: "line", Value: n.LineComment})
 		}
 		if n.FootComment != "" {
-			result["foot"] = n.FootComment
+			result = append(result, MapItem{Key: "foot", Value: n.FootComment})
 		}
 
-		// Convert content
+		// Convert content (added last)
 		var content []interface{}
 		for _, node := range n.Content {
 			content = append(content, FormatNodeCompact(*node))
 		}
-		result["mapping"] = content
+		result = append(result, MapItem{Key: "mapping", Value: content})
 		return result
 
 	case yaml.SequenceNode:
-		result := make(map[string]interface{})
+		result := MapSlice{}
 
-		// Add optional fields
-		if n.Anchor != "" {
-			result["anchor"] = n.Anchor
-		}
+		// Add optional fields in order: tag, anchor, comments
 		if tag := formatTag(n.Tag, n.Style, false); tag != "" && tag != "!!str" {
-			result["tag"] = tag
+			result = append(result, MapItem{Key: "tag", Value: tag})
+		}
+		if n.Anchor != "" {
+			result = append(result, MapItem{Key: "anchor", Value: n.Anchor})
 		}
 		if n.HeadComment != "" {
-			result["head"] = n.HeadComment
+			result = append(result, MapItem{Key: "head", Value: n.HeadComment})
 		}
 		if n.LineComment != "" {
-			result["line"] = n.LineComment
+			result = append(result, MapItem{Key: "line", Value: n.LineComment})
 		}
 		if n.FootComment != "" {
-			result["foot"] = n.FootComment
+			result = append(result, MapItem{Key: "foot", Value: n.FootComment})
 		}
 
-		// Convert content
+		// Convert content (added last)
 		var content []interface{}
 		for _, node := range n.Content {
 			content = append(content, FormatNodeCompact(*node))
 		}
-		result["sequence"] = content
+		result = append(result, MapItem{Key: "sequence", Value: content})
 		return result
 
 	case yaml.ScalarNode:
-		result := make(map[string]interface{})
+		result := MapSlice{}
 
-		// Add optional fields
-		if n.Anchor != "" {
-			result["anchor"] = n.Anchor
-		}
+		// Add optional fields in order: tag, anchor, comments
 		if tag := formatTag(n.Tag, n.Style, false); tag != "" && tag != "!!str" {
-			result["tag"] = tag
+			result = append(result, MapItem{Key: "tag", Value: tag})
+		}
+		if n.Anchor != "" {
+			result = append(result, MapItem{Key: "anchor", Value: n.Anchor})
 		}
 		if n.HeadComment != "" {
-			result["head"] = n.HeadComment
+			result = append(result, MapItem{Key: "head", Value: n.HeadComment})
 		}
 		if n.LineComment != "" {
-			result["line"] = n.LineComment
+			result = append(result, MapItem{Key: "line", Value: n.LineComment})
 		}
 		if n.FootComment != "" {
-			result["foot"] = n.FootComment
+			result = append(result, MapItem{Key: "foot", Value: n.FootComment})
 		}
 
-		// Use style name as the key
+		// Use style name as the key (added last)
 		styleName := formatStyleName(n.Style)
-		result[styleName] = n.Value
+		result = append(result, MapItem{Key: styleName, Value: n.Value})
 		return result
 
 	case yaml.AliasNode:
-		result := make(map[string]interface{})
-		result["alias"] = n.Value
+		result := MapSlice{}
+		result = append(result, MapItem{Key: "alias", Value: n.Value})
 		return result
 
 	default:
