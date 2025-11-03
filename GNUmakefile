@@ -90,11 +90,7 @@ fmt: $(GOLANGCI-LINT-VERSIONED)
 	$< fmt ./...
 
 lint: $(GOLANGCI-LINT-VERSIONED)
-	$< run
-
-fumpt: $(GO)
-	@go install mvdan.cc/gofumpt@latest
-	gofumpt -l -w $(GO-FILES)
+	$< run ./...
 
 cli: $(CLI-BINARY)
 
