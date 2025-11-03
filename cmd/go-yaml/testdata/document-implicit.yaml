@@ -1,0 +1,254 @@
+# Tests for implicit/explicit document markers in -e and -E modes
+
+- name: Single implicit document
+  text: |
+    key: value
+  event: |
+    - {event: DOCUMENT-START}
+    - {event: MAPPING-START}
+    - {event: SCALAR, value: key}
+    - {event: SCALAR, value: value}
+    - {event: MAPPING-END}
+    - {event: DOCUMENT-END}
+  EVENT: |
+    - {event: DOCUMENT-START, implicit: true, pos: 1/0}
+    - {event: MAPPING-START, style: Plain, pos: 1/0}
+    - {event: SCALAR, value: key, style: Plain, pos: 1/0-3}
+    - {event: SCALAR, value: value, style: Plain, pos: 1/5-10}
+    - {event: MAPPING-END, pos: 1/0}
+    - {event: DOCUMENT-END, implicit: true, pos: 1/0}
+
+- name: Single explicit document
+  text: |
+    ---
+    key: value
+  event: |
+    - {event: DOCUMENT-START, explicit: true}
+    - {event: MAPPING-START}
+    - {event: SCALAR, value: key}
+    - {event: SCALAR, value: value}
+    - {event: MAPPING-END}
+    - {event: DOCUMENT-END}
+  EVENT: |
+    - {event: DOCUMENT-START, pos: 1/0}
+    - {event: MAPPING-START, style: Plain, pos: 2/0}
+    - {event: SCALAR, value: key, style: Plain, pos: 2/0-3}
+    - {event: SCALAR, value: value, style: Plain, pos: 2/5-10}
+    - {event: MAPPING-END, pos: 2/0}
+    - {event: DOCUMENT-END, implicit: true, pos: 1/0}
+
+- name: Implicit then explicit document
+  text: |
+    first
+    ---
+    second
+  event: |
+    - {event: DOCUMENT-START}
+    - {event: SCALAR, value: first}
+    - {event: DOCUMENT-END}
+    - {event: DOCUMENT-START, explicit: true}
+    - {event: SCALAR, value: second}
+    - {event: DOCUMENT-END}
+  EVENT: |
+    - {event: DOCUMENT-START, implicit: true, pos: 1/0}
+    - {event: SCALAR, value: first, style: Plain, pos: 1/0-5}
+    - {event: DOCUMENT-END, implicit: true, pos: 1/0}
+    - {event: DOCUMENT-START, pos: 2/0}
+    - {event: SCALAR, value: second, style: Plain, pos: 3/0-6}
+    - {event: DOCUMENT-END, implicit: true, pos: 2/0}
+
+- name: Two explicit documents
+  text: |
+    ---
+    first
+    ---
+    second
+  event: |
+    - {event: DOCUMENT-START, explicit: true}
+    - {event: SCALAR, value: first}
+    - {event: DOCUMENT-END}
+    - {event: DOCUMENT-START, explicit: true}
+    - {event: SCALAR, value: second}
+    - {event: DOCUMENT-END}
+  EVENT: |
+    - {event: DOCUMENT-START, pos: 1/0}
+    - {event: SCALAR, value: first, style: Plain, pos: 2/0-5}
+    - {event: DOCUMENT-END, implicit: true, pos: 1/0}
+    - {event: DOCUMENT-START, pos: 3/0}
+    - {event: SCALAR, value: second, style: Plain, pos: 4/0-6}
+    - {event: DOCUMENT-END, implicit: true, pos: 3/0}
+
+- name: Document with explicit end marker
+  text: |
+    ---
+    key: value
+    ...
+  event: |
+    - {event: DOCUMENT-START, explicit: true}
+    - {event: MAPPING-START}
+    - {event: SCALAR, value: key}
+    - {event: SCALAR, value: value}
+    - {event: MAPPING-END}
+    - {event: DOCUMENT-END, explicit: true}
+  EVENT: |
+    - {event: DOCUMENT-START, pos: 1/0}
+    - {event: MAPPING-START, style: Plain, pos: 2/0}
+    - {event: SCALAR, value: key, style: Plain, pos: 2/0-3}
+    - {event: SCALAR, value: value, style: Plain, pos: 2/5-10}
+    - {event: MAPPING-END, pos: 2/0}
+    - {event: DOCUMENT-END, pos: 1/0}
+
+- name: Implicit doc with explicit end then explicit doc
+  text: |
+    first
+    ...
+    ---
+    second
+  event: |
+    - {event: DOCUMENT-START}
+    - {event: SCALAR, value: first}
+    - {event: DOCUMENT-END, explicit: true}
+    - {event: DOCUMENT-START, explicit: true}
+    - {event: SCALAR, value: second}
+    - {event: DOCUMENT-END}
+  EVENT: |
+    - {event: DOCUMENT-START, implicit: true, pos: 1/0}
+    - {event: SCALAR, value: first, style: Plain, pos: 1/0-5}
+    - {event: DOCUMENT-END, pos: 1/0}
+    - {event: DOCUMENT-START, pos: 3/0}
+    - {event: SCALAR, value: second, style: Plain, pos: 4/0-6}
+    - {event: DOCUMENT-END, implicit: true, pos: 3/0}
+
+- name: Three documents with mixed markers
+  text: |
+    first
+    ---
+    second
+    ---
+    third
+  event: |
+    - {event: DOCUMENT-START}
+    - {event: SCALAR, value: first}
+    - {event: DOCUMENT-END}
+    - {event: DOCUMENT-START, explicit: true}
+    - {event: SCALAR, value: second}
+    - {event: DOCUMENT-END}
+    - {event: DOCUMENT-START, explicit: true}
+    - {event: SCALAR, value: third}
+    - {event: DOCUMENT-END}
+  EVENT: |
+    - {event: DOCUMENT-START, implicit: true, pos: 1/0}
+    - {event: SCALAR, value: first, style: Plain, pos: 1/0-5}
+    - {event: DOCUMENT-END, implicit: true, pos: 1/0}
+    - {event: DOCUMENT-START, pos: 2/0}
+    - {event: SCALAR, value: second, style: Plain, pos: 3/0-6}
+    - {event: DOCUMENT-END, implicit: true, pos: 2/0}
+    - {event: DOCUMENT-START, pos: 4/0}
+    - {event: SCALAR, value: third, style: Plain, pos: 5/0-5}
+    - {event: DOCUMENT-END, implicit: true, pos: 4/0}
+
+- name: Explicit document with mapping
+  text: |
+    ---
+    doc1: value1
+    doc2: value2
+    ...
+  event: |
+    - {event: DOCUMENT-START, explicit: true}
+    - {event: MAPPING-START}
+    - {event: SCALAR, value: doc1}
+    - {event: SCALAR, value: value1}
+    - {event: SCALAR, value: doc2}
+    - {event: SCALAR, value: value2}
+    - {event: MAPPING-END}
+    - {event: DOCUMENT-END, explicit: true}
+  EVENT: |
+    - {event: DOCUMENT-START, pos: 1/0}
+    - {event: MAPPING-START, style: Plain, pos: 2/0}
+    - {event: SCALAR, value: doc1, style: Plain, pos: 2/0-4}
+    - {event: SCALAR, value: value1, style: Plain, pos: 2/6-12}
+    - {event: SCALAR, value: doc2, style: Plain, pos: 3/0-4}
+    - {event: SCALAR, value: value2, style: Plain, pos: 3/6-12}
+    - {event: MAPPING-END, pos: 2/0}
+    - {event: DOCUMENT-END, pos: 1/0}
+
+- name: Empty explicit documents
+  text: |
+    ---
+    ---
+  event: |
+    - {event: DOCUMENT-START, explicit: true}
+    - {event: SCALAR, tag: '!!null'}
+    - {event: DOCUMENT-END}
+    - {event: DOCUMENT-START, explicit: true}
+    - {event: SCALAR, tag: '!!null'}
+    - {event: DOCUMENT-END}
+  EVENT: |
+    - {event: DOCUMENT-START, pos: 1/0}
+    - {event: SCALAR, style: Plain, tag: '!!null', pos: 2/0}
+    - {event: DOCUMENT-END, implicit: true, pos: 1/0}
+    - {event: DOCUMENT-START, pos: 2/0}
+    - {event: SCALAR, style: Plain, tag: '!!null', pos: 3/0}
+    - {event: DOCUMENT-END, implicit: true, pos: 2/0}
+
+- name: Implicit sequence document
+  text: |
+    - item1
+    - item2
+  event: |
+    - {event: DOCUMENT-START}
+    - {event: SEQUENCE-START}
+    - {event: SCALAR, value: item1}
+    - {event: SCALAR, value: item2}
+    - {event: SEQUENCE-END}
+    - {event: DOCUMENT-END}
+  EVENT: |
+    - {event: DOCUMENT-START, implicit: true, pos: 1/0}
+    - {event: SEQUENCE-START, style: Plain, pos: 1/0}
+    - {event: SCALAR, value: item1, style: Plain, pos: 1/2-7}
+    - {event: SCALAR, value: item2, style: Plain, pos: 2/2-7}
+    - {event: SEQUENCE-END, pos: 1/0}
+    - {event: DOCUMENT-END, implicit: true, pos: 1/0}
+
+- name: Explicit sequence document
+  text: |
+    ---
+    - item1
+    - item2
+  event: |
+    - {event: DOCUMENT-START, explicit: true}
+    - {event: SEQUENCE-START}
+    - {event: SCALAR, value: item1}
+    - {event: SCALAR, value: item2}
+    - {event: SEQUENCE-END}
+    - {event: DOCUMENT-END}
+  EVENT: |
+    - {event: DOCUMENT-START, pos: 1/0}
+    - {event: SEQUENCE-START, style: Plain, pos: 2/0}
+    - {event: SCALAR, value: item1, style: Plain, pos: 2/2-7}
+    - {event: SCALAR, value: item2, style: Plain, pos: 3/2-7}
+    - {event: SEQUENCE-END, pos: 2/0}
+    - {event: DOCUMENT-END, implicit: true, pos: 1/0}
+
+- name: All explicit markers
+  text: |
+    ---
+    first
+    ...
+    ---
+    second
+    ...
+  event: |
+    - {event: DOCUMENT-START, explicit: true}
+    - {event: SCALAR, value: first}
+    - {event: DOCUMENT-END, explicit: true}
+    - {event: DOCUMENT-START, explicit: true}
+    - {event: SCALAR, value: second}
+    - {event: DOCUMENT-END, explicit: true}
+  EVENT: |
+    - {event: DOCUMENT-START, pos: 1/0}
+    - {event: SCALAR, value: first, style: Plain, pos: 2/0-5}
+    - {event: DOCUMENT-END, pos: 1/0}
+    - {event: DOCUMENT-START, pos: 4/0}
+    - {event: SCALAR, value: second, style: Plain, pos: 5/0-6}
+    - {event: DOCUMENT-END, pos: 4/0}
