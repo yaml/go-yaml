@@ -30,7 +30,6 @@ MAKES-CLEAN := $(CLI-BINARY)
 MAKES-REALCLEAN := $(dir $(YTS-DIR))
 
 # Setup and include go.mk and shell.mk:
-GO-FILES := $(shell find -not \( -path ./.cache -prune \) -name '*.go' | sort)
 GO-CMDS-SKIP := test fmt vet
 ifndef GO-VERSION-NEEDED
 GO-NO-DEP-GO := true
@@ -78,8 +77,6 @@ test: test-unit test-cli test-yts-all
 test-unit: $(GO-DEPS)
 	go test$(if $v, -v)
 
-test-data: $(YTS-DIR)
-
 test-yts: $(GO-DEPS) $(YTS-DIR)
 	go test$(if $v, -v) ./yts -count=$(count)
 
@@ -93,6 +90,8 @@ test-yts-fail: $(GO-DEPS) $(YTS-DIR)
 
 test-cli: $(GO-DEPS) cli
 	go test$(if $v, -v) ./cmd/go-yaml -count=$(count)
+
+get-test-data: $(YTS-DIR)
 
 # Install golangci-lint for GitHub Actions:
 golangci-lint-install: $(GOLANGCI-LINT)
