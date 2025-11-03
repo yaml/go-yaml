@@ -23,6 +23,7 @@ import (
 	"io"
 	"math"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -37,6 +38,16 @@ import (
 var negativeZero = math.Copysign(0.0, -1.0)
 
 var unmarshalIntTest = 123
+
+// archSafeInt returns an int64 representation of v that is safe for the current architecture.
+func archSafeInt(v int64) any {
+	if strconv.IntSize == 64 || math.MinInt32 <= v && v <= math.MaxInt32 {
+		return int(v) // int is safe
+	}
+
+	// on 32-bit systems, and v is overflows int, we need to return an int64
+	return int64(v)
+}
 
 var unmarshalTests = []struct {
 	data  string
@@ -244,7 +255,7 @@ var unmarshalTests = []struct {
 	},
 	{
 		"bin: -0b1000000000000000000000000000000000000000000000000000000000000000",
-		map[string]any{"bin": -9223372036854775808},
+		map[string]any{"bin": archSafeInt(-9223372036854775808)},
 	},
 	{
 		"decimal: +685_230",
@@ -439,7 +450,7 @@ var unmarshalTests = []struct {
 	},
 	{
 		"int_overflow: 9223372036854775808", // math.MaxInt64 + 1
-		map[string]int{},
+		map[string]int64{},
 	},
 
 	// int64
