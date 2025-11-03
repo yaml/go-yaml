@@ -138,46 +138,27 @@ func (p *Parser) processComments(yamlToken *libyaml.Token, mainToken *Token) {
 		}
 
 		// Create comment tokens for head, line, and foot comments
-		if len(comment.Head) > 0 {
-			commentToken := &Token{
-				Type:        "COMMENT",
-				Value:       string(comment.Head),
-				CommentType: "head",
-				StartLine:   int(comment.StartMark.Line) + 1,
-				StartColumn: int(comment.StartMark.Column),
-				EndLine:     int(comment.EndMark.Line) + 1,
-				EndColumn:   int(comment.EndMark.Column),
-			}
-			p.pendingTokens = append(p.pendingTokens, commentToken)
-		}
-
-		if len(comment.Line) > 0 {
-			commentToken := &Token{
-				Type:        "COMMENT",
-				Value:       string(comment.Line),
-				CommentType: "line",
-				StartLine:   int(comment.StartMark.Line) + 1,
-				StartColumn: int(comment.StartMark.Column),
-				EndLine:     int(comment.EndMark.Line) + 1,
-				EndColumn:   int(comment.EndMark.Column),
-			}
-			p.pendingTokens = append(p.pendingTokens, commentToken)
-		}
-
-		if len(comment.Foot) > 0 {
-			commentToken := &Token{
-				Type:        "COMMENT",
-				Value:       string(comment.Foot),
-				CommentType: "foot",
-				StartLine:   int(comment.StartMark.Line) + 1,
-				StartColumn: int(comment.StartMark.Column),
-				EndLine:     int(comment.EndMark.Line) + 1,
-				EndColumn:   int(comment.EndMark.Column),
-			}
-			p.pendingTokens = append(p.pendingTokens, commentToken)
-		}
+		p.appendCommentTokenIfNotEmpty(comment.Head, "head", comment)
+		p.appendCommentTokenIfNotEmpty(comment.Line, "line", comment)
+		p.appendCommentTokenIfNotEmpty(comment.Foot, "foot", comment)
 
 		p.commentsHead++
+	}
+}
+
+// appendCommentTokenIfNotEmpty creates and appends a comment token if the value is not empty.
+func (p *Parser) appendCommentTokenIfNotEmpty(value []byte, commentType string, comment *libyaml.Comment) {
+	if len(value) > 0 {
+		commentToken := &Token{
+			Type:        "COMMENT",
+			Value:       string(value),
+			CommentType: commentType,
+			StartLine:   int(comment.StartMark.Line) + 1,
+			StartColumn: int(comment.StartMark.Column),
+			EndLine:     int(comment.EndMark.Line) + 1,
+			EndColumn:   int(comment.EndMark.Column),
+		}
+		p.pendingTokens = append(p.pendingTokens, commentToken)
 	}
 }
 
