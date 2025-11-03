@@ -39,6 +39,15 @@ GO-CMDS-RULES := true
 
 include $(MAKES)/go.mk
 
+# Set this from the `make` command to override:
+GOLANGCI-LINT-VERSION ?= v2.6.0
+GOLANGCI-LINT-INSTALLER := \
+  https://github.com/golangci/golangci-lint/raw/main/install.sh
+GOLANGCI-LINT := $(LOCAL-BIN)/golangci-lint
+GOLANGCI-LINT-VERSIONED := $(GOLANGCI-LINT)-$(GOLANGCI-LINT-VERSION)
+
+SHELL-DEPS += $(GOLANGCI-LINT-VERSIONED)
+
 ifdef GO-VERSION-NEEDED
 GO-DEPS += $(GO)
 else
@@ -48,11 +57,6 @@ endif
 SHELL-NAME := makes go-yaml
 include $(MAKES)/clean.mk
 include $(MAKES)/shell.mk
-
-GOLANGCI-LINT-VERSION ?= v2.6.0
-GOLANGCI-LINT-INSTALL := \
-  https://github.com/golangci/golangci-lint/raw/main/install.sh
-GOLANGCI-LINT := $(LOCAL-BIN)/golangci-lint-$(GOLANGCI-LINT-VERSION)
 
 MAKES-CLEAN := $(dir $(YTS-DIR)) $(GOLANGCI-LINT)
 
@@ -79,10 +83,13 @@ test-yts-fail: $(GO-DEPS) $(YTS-DIR)
 	@echo 'Testing yaml-test-suite failures'
 	@RUNFAILING=1 bash -c "$$yts_pass_fail"
 
-fmt: $(GOLANGCI-LINT)
+# Install golangci-lint for GitHub Actions:
+golangci-lint-install: $(GOLANGCI-LINT)
+
+fmt: $(GOLANGCI-LINT-VERSIONED)
 	$< fmt ./...
 
-lint: $(GOLANGCI-LINT)
+lint: $(GOLANGCI-LINT-VERSIONED)
 	$< run
 
 fumpt: $(GO)
@@ -101,6 +108,17 @@ $(CLI-BINARY): $(GO)
 $(YTS-DIR):
 	git clone -q $(YTS-URL) $@
 	git -C $@ checkout -q $(YTS-TAG)
+
+# Downloads golangci-lint binary and moves to versioned path
+# (.cache/local/bin/golangci-lint-<version>).
+$(GOLANGCI-LINT-VERSIONED): $(GO-DEPS)
+	curl -sSfL $(GOLANGCI-LINT-INSTALLER) | \
+	  bash -s -- -b $(LOCAL-BIN) $(GOLANGCI-LINT-VERSION)
+	mv $(GOLANGCI-LINT) $@
+
+# Moves golangci-lint-<version> to golangci-lint for CI requirement
+$(GOLANGCI-LINT): $(GOLANGCI-LINT-VERSIONED)
+	cp $< $@
 
 define yts_pass_fail
 ( result=.cache/local/tmp/yts-test-results
@@ -123,13 +141,3 @@ define yts_pass_fail
 )
 endef
 export yts_pass_fail
-
-# Downloads and installs golangci-lint to LOCAL-BIN (.cache/local/bin).
-golangci-lint-install:
-	curl -sSfL $(GOLANGCI-LINT-INSTALL) | \
-	  bash -s -- -b $(LOCAL-BIN) $(GOLANGCI-LINT-VERSION)
-
-# Downloads golangci-lint binary and moves to versioned path
-# (.cache/local/bin/golangci-lint-<version>).
-$(GOLANGCI-LINT): golangci-lint-install
-	mv $(LOCAL-BIN)/golangci-lint $@
