@@ -2866,6 +2866,7 @@ func (parser *Parser) scanLineComment(token_mark Mark) bool {
 	}
 	if len(text) > 0 {
 		parser.comments = append(parser.comments, Comment{
+			ScanMark:  token_mark,
 			TokenMark: token_mark,
 			StartMark: start_mark,
 			EndMark:   parser.mark,
