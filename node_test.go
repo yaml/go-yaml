@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -2798,21 +2797,21 @@ var nodeTests = []struct {
 }
 
 func TestNodeRoundtrip(t *testing.T) {
-	defer os.Setenv("TZ", os.Getenv("TZ"))
-	os.Setenv("TZ", "UTC")
-	for i, item := range nodeTests {
-		t.Run(fmt.Sprintf("test %d", i), func(t *testing.T) {
-			t.Logf("test %d: %q", i, item.yaml)
+	t.Setenv("TZ", "UTC")
+	for _, item := range nodeTests {
+		item := item
+		t.Run("", func(t *testing.T) {
+			t.Logf("yaml: %q", item.yaml)
 			if strings.Contains(item.yaml, "#") {
 				var buf bytes.Buffer
-				fprintComments(&buf, &item.node, "    ")
+				fprintComments(t, &buf, &item.node, "    ")
 				t.Logf("  expected comments:\n%s", buf.Bytes())
 			}
 
 			decode := true
 			encode := true
-
 			testYaml := item.yaml
+
 			if s := strings.TrimPrefix(testYaml, "[decode]"); s != testYaml {
 				encode = false
 				testYaml = s
@@ -2823,30 +2822,35 @@ func TestNodeRoundtrip(t *testing.T) {
 			}
 
 			if decode {
-				var node yaml.Node
-				err := yaml.Unmarshal([]byte(testYaml), &node)
-				assert.NoError(t, err)
-				if strings.Contains(item.yaml, "#") {
-					var buf bytes.Buffer
-					fprintComments(&buf, &node, "    ")
-					t.Logf("  obtained comments:\n%s", buf.Bytes())
-				}
+				t.Run("decode", func(t *testing.T) {
+					var node yaml.Node
+					err := yaml.Unmarshal([]byte(testYaml), &node)
+					assert.NoError(t, err)
+					if strings.Contains(item.yaml, "#") {
+						var buf bytes.Buffer
+						fprintComments(t, &buf, &node, "    ")
+						t.Logf("  obtained comments:\n%s", buf.Bytes())
+					}
 
-				assertNodeEqual(t, &item.node, &node)
+					assertNodeEqual(t, &item.node, &node)
+				})
 			}
-			if encode {
-				node := deepCopyNode(&item.node, nil)
-				buf := bytes.Buffer{}
-				enc := yaml.NewEncoder(&buf)
-				enc.SetIndent(2)
-				err := enc.Encode(node)
-				assert.NoError(t, err)
-				err = enc.Close()
-				assert.NoError(t, err)
-				assert.Equal(t, buf.String(), testYaml)
 
-				// Ensure there were no mutations to the tree.
-				assertNodeEqual(t, &item.node, node)
+			if encode {
+				t.Run("encode", func(t *testing.T) {
+					node := deepCopyNode(&item.node, nil)
+					buf := bytes.Buffer{}
+					enc := yaml.NewEncoder(&buf)
+					enc.SetIndent(2)
+					err := enc.Encode(node)
+					assert.NoError(t, err)
+					err = enc.Close()
+					assert.NoError(t, err)
+					assert.Equal(t, buf.String(), testYaml)
+
+					// Ensure there were no mutations to the tree.
+					assertNodeEqual(t, &item.node, node)
+				})
 			}
 		})
 	}
@@ -2929,16 +2933,16 @@ func deepCopyNode(node *yaml.Node, cache map[*yaml.Node]*yaml.Node) *yaml.Node {
 	if cache == nil {
 		cache = make(map[*yaml.Node]*yaml.Node)
 	}
-	copy := *node
-	cache[node] = &copy
-	copy.Content = nil
+	copied := *node
+	cache[node] = &copied
+	copied.Content = nil
 	for _, elem := range node.Content {
-		copy.Content = append(copy.Content, deepCopyNode(elem, cache))
+		copied.Content = append(copied.Content, deepCopyNode(elem, cache))
 	}
 	if node.Alias != nil {
-		copy.Alias = deepCopyNode(node.Alias, cache)
+		copied.Alias = deepCopyNode(node.Alias, cache)
 	}
-	return &copy
+	return &copied
 }
 
 var savedNodes = make(map[string]*yaml.Node)
@@ -3017,34 +3021,35 @@ var setStringTests = []struct {
 }
 
 func TestSetString(t *testing.T) {
-	defer os.Setenv("TZ", os.Getenv("TZ"))
-	os.Setenv("TZ", "UTC")
-	for i, item := range setStringTests {
-		t.Logf("test %d: %q", i, item.str)
+	t.Setenv("TZ", "UTC")
+	for _, item := range setStringTests {
+		item := item
+		t.Run("", func(t *testing.T) {
+			t.Logf("str: %q", item.str)
 
-		var node yaml.Node
+			var node yaml.Node
+			node.SetString(item.str)
 
-		node.SetString(item.str)
+			assertNodeEqual(t, &item.node, &node)
 
-		assertNodeEqual(t, &item.node, &node)
+			buf := bytes.Buffer{}
+			enc := yaml.NewEncoder(&buf)
+			enc.SetIndent(2)
+			err := enc.Encode(&item.node)
+			assert.NoError(t, err)
+			err = enc.Close()
+			assert.NoError(t, err)
+			assert.Equal(t, item.yaml, buf.String())
 
-		buf := bytes.Buffer{}
-		enc := yaml.NewEncoder(&buf)
-		enc.SetIndent(2)
-		err := enc.Encode(&item.node)
-		assert.NoError(t, err)
-		err = enc.Close()
-		assert.NoError(t, err)
-		assert.Equal(t, item.yaml, buf.String())
+			var doc yaml.Node
+			err = yaml.Unmarshal([]byte(item.yaml), &doc)
+			assert.NoError(t, err)
 
-		var doc yaml.Node
-		err = yaml.Unmarshal([]byte(item.yaml), &doc)
-		assert.NoError(t, err)
-
-		var str string
-		err = node.Decode(&str)
-		assert.NoError(t, err)
-		assert.Equal(t, item.str, str)
+			var str string
+			err = node.Decode(&str)
+			assert.NoError(t, err)
+			assert.Equal(t, item.str, str)
+		})
 	}
 }
 
@@ -3112,18 +3117,21 @@ var nodeEncodeDecodeTests = []struct {
 }}
 
 func TestNodeEncodeDecode(t *testing.T) {
-	for i, item := range nodeEncodeDecodeTests {
-		t.Logf("Encode/Decode test value #%d: %#v", i, item.value)
+	for _, item := range nodeEncodeDecodeTests {
+		item := item
+		t.Run("", func(t *testing.T) {
+			t.Logf("Encode/Decode test value: %#v", item.value)
 
-		var v any
-		err := item.node.Decode(&v)
-		assert.NoError(t, err)
-		assert.DeepEqual(t, item.value, v)
+			var v any
+			err := item.node.Decode(&v)
+			assert.NoError(t, err)
+			assert.DeepEqual(t, item.value, v)
 
-		var n yaml.Node
-		err = n.Encode(item.value)
-		assert.NoError(t, err)
-		assert.DeepEqual(t, item.node, n)
+			var n yaml.Node
+			err = n.Encode(item.value)
+			assert.NoError(t, err)
+			assert.DeepEqual(t, item.node, n)
+		})
 	}
 }
 
@@ -3166,39 +3174,60 @@ func TestNodeOmitEmpty(t *testing.T) {
 	assert.ErrorMatches(t, "yaml: cannot encode node with unknown kind 0", err)
 }
 
-func fprintComments(out io.Writer, node *yaml.Node, indent string) {
+func fprintComments(tb testing.TB, out io.Writer, node *yaml.Node, indent string) {
+	tb.Helper()
+
 	switch node.Kind {
 	case yaml.ScalarNode:
-		fmt.Fprintf(out, "%s<%s> ", indent, node.Value)
-		fprintCommentSet(out, node)
-		fmt.Fprintf(out, "\n")
+		_, err := fmt.Fprintf(out, "%s<%s> ", indent, node.Value)
+		assert.NoError(tb, err)
+		fprintCommentSet(tb, out, node)
+		_, err = fmt.Fprintf(out, "\n")
+		assert.NoError(tb, err)
 	case yaml.DocumentNode:
-		fmt.Fprintf(out, "%s<DOC> ", indent)
-		fprintCommentSet(out, node)
-		fmt.Fprintf(out, "\n")
+		_, err := fmt.Fprintf(out, "%s<DOC> ", indent)
+		assert.NoError(tb, err)
+		fprintCommentSet(tb, out, node)
+		_, err = fmt.Fprintf(out, "\n")
+		assert.NoError(tb, err)
 		for i := 0; i < len(node.Content); i++ {
-			fprintComments(out, node.Content[i], indent+"  ")
+			fprintComments(tb, out, node.Content[i], indent+"  ")
 		}
 	case yaml.MappingNode:
-		fmt.Fprintf(out, "%s<MAP> ", indent)
-		fprintCommentSet(out, node)
-		fmt.Fprintf(out, "\n")
+		_, err := fmt.Fprintf(out, "%s<MAP> ", indent)
+		assert.NoError(tb, err)
+		fprintCommentSet(tb, out, node)
+		_, err = fmt.Fprintf(out, "\n")
+		assert.NoError(tb, err)
 		for i := 0; i < len(node.Content); i += 2 {
-			fprintComments(out, node.Content[i], indent+"  ")
-			fprintComments(out, node.Content[i+1], indent+"  ")
+			fprintComments(tb, out, node.Content[i], indent+"  ")
+			fprintComments(tb, out, node.Content[i+1], indent+"  ")
 		}
 	case yaml.SequenceNode:
-		fmt.Fprintf(out, "%s<SEQ> ", indent)
-		fprintCommentSet(out, node)
-		fmt.Fprintf(out, "\n")
+		_, err := fmt.Fprintf(out, "%s<SEQ> ", indent)
+		assert.NoError(tb, err)
+		fprintCommentSet(tb, out, node)
+		_, err = fmt.Fprintf(out, "\n")
+		assert.NoError(tb, err)
 		for i := 0; i < len(node.Content); i++ {
-			fprintComments(out, node.Content[i], indent+"  ")
+			fprintComments(tb, out, node.Content[i], indent+"  ")
 		}
+	case yaml.AliasNode:
+		_, err := fmt.Fprintf(out, "%s<ALIAS: %s> ", indent, node.Value)
+		assert.NoError(tb, err)
+		fprintCommentSet(tb, out, node)
+		_, err = fmt.Fprintf(out, "\n")
+		assert.NoError(tb, err)
+	default:
+		tb.Fatalf("unknown node kind: %+v", node.Kind)
 	}
 }
 
-func fprintCommentSet(out io.Writer, node *yaml.Node) {
+func fprintCommentSet(tb testing.TB, out io.Writer, node *yaml.Node) {
+	tb.Helper()
+
 	if len(node.HeadComment)+len(node.LineComment)+len(node.FootComment) > 0 {
-		fmt.Fprintf(out, "%q / %q / %q", node.HeadComment, node.LineComment, node.FootComment)
+		_, err := fmt.Fprintf(out, "%q / %q / %q", node.HeadComment, node.LineComment, node.FootComment)
+		assert.NoError(tb, err)
 	}
 }
