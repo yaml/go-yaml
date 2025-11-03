@@ -49,8 +49,24 @@ func shouldSkipTest(t *testing.T) {
 
 func TestYAMLSuite(t *testing.T) {
 	testDir := "./testdata/data-2022-01-17"
+
 	if _, err := os.Stat(testDir + "/229Q"); os.IsNotExist(err) {
-		t.Fatalf(`YTS tests require data files to be present at '%s'.
+
+		// by default we skip the tests if data files are missing
+		// but on CI and make test-yts we want them to fail
+		report := t.Skipf
+		switch {
+		case
+			os.Getenv("GITHUB_ACTIONS") == "true",
+			os.Getenv("MAKE_YTS") == "true":
+			// on CI and make test-yts we want the tests to fail if data is missing
+			report = t.Fatalf
+		}
+
+		// this helps developers to use go test ./... without problems
+		// they will be informed about the missing data files
+
+		report(`YTS tests require data files to be present at '%s'.
 Run 'make test-data' to download them first,
 or just run the tests with 'make test-all'.`, testDir)
 	}

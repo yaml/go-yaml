@@ -74,10 +74,10 @@ check:
 test: test-unit test-yts-all
 
 test-unit: $(GO-DEPS)
-	go test$(if $v, -v) -vet=off
+	go test$(if $v, -v) -vet=off ./...
 
 test-yts: $(GO-DEPS) $(YTS-DIR)
-	go test$(if $v, -v) ./yts -count=$(count)
+	MAKE=1 go test$(if $v, -v) ./yts -count=$(count)
 
 test-yts-all: $(GO-DEPS) $(YTS-DIR)
 	@echo 'Testing yaml-test-suite'
