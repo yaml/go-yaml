@@ -60,11 +60,20 @@ include $(MAKES)/shell.mk
 
 MAKES-CLEAN += $(GOLANGCI-LINT)
 
+MAKE := $(MAKE) --no-print-directory
+
 v ?=
 count ?= 1
 
 
 # Test rules:
+check:
+	$(MAKE) fmt
+	$(MAKE) tidy
+	$(MAKE) lint
+	$(MAKE) vet
+	$(MAKE) test
+
 test: test-unit test-cli test-yts-all
 
 test-unit: $(GO-DEPS)
@@ -89,13 +98,10 @@ test-cli: $(GO-DEPS) cli
 # Install golangci-lint for GitHub Actions:
 golangci-lint-install: $(GOLANGCI-LINT)
 
-fmt: $(GOLANGCI-LINT-VERSIONED)
-	$< fmt ./...
-
 lint: $(GOLANGCI-LINT-VERSIONED)
 	$< run
 
-fumpt: $(GO)
+fmt fumpt: $(GO)
 	@go install mvdan.cc/gofumpt@latest
 	gofumpt -l -w $(GO-FILES)
 
