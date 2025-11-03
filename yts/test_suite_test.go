@@ -176,7 +176,7 @@ func normalizeLineEndings(s string) string {
 
 func runTest(t *testing.T, testPath string) {
 	t.Helper()
-	
+
 	// Read test description
 	testDescription := string(readFile(t, false, testPath, "==="))
 	if testDescription == "" {
