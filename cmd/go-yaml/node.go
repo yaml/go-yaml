@@ -204,7 +204,7 @@ func FormatNodeCompact(n yaml.Node) interface{} {
 
 		// If document has no properties, return content directly (unwrap)
 		if !hasProperties {
-			if n.Content != nil && len(n.Content) > 0 {
+			if len(n.Content) > 0 {
 				return FormatNodeCompact(*n.Content[0])
 			}
 			return nil
@@ -231,7 +231,7 @@ func FormatNodeCompact(n yaml.Node) interface{} {
 		}
 
 		// Add content if present
-		if n.Content != nil && len(n.Content) > 0 {
+		if len(n.Content) > 0 {
 			content := FormatNodeCompact(*n.Content[0])
 			// Merge the content into result at the top level
 			if contentMap, ok := content.(MapSlice); ok {

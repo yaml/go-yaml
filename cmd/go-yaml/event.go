@@ -101,9 +101,10 @@ func processEventsDecode(profuse, compact bool) error {
 		// Augment document start/end events with implicit flags
 		if docIndex < len(implicitFlags) {
 			for _, event := range events {
-				if event.Type == "DOCUMENT-START" {
+				switch event.Type {
+				case "DOCUMENT-START":
 					event.Implicit = implicitFlags[docIndex].StartImplicit
-				} else if event.Type == "DOCUMENT-END" {
+				case "DOCUMENT-END":
 					event.Implicit = implicitFlags[docIndex].EndImplicit
 				}
 			}
@@ -250,9 +251,10 @@ func processEventsUnmarshal(profuse, compact bool) error {
 		// Augment document start/end events with implicit flags
 		if docIndex < len(implicitFlags) {
 			for _, event := range events {
-				if event.Type == "DOCUMENT-START" {
+				switch event.Type {
+				case "DOCUMENT-START":
 					event.Implicit = implicitFlags[docIndex].StartImplicit
-				} else if event.Type == "DOCUMENT-END" {
+				case "DOCUMENT-END":
 					event.Implicit = implicitFlags[docIndex].EndImplicit
 				}
 			}
