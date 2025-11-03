@@ -28,20 +28,10 @@ func (ms MapSlice) MarshalYAML() (interface{}, error) {
 			Value: item.Key,
 		}
 		// Add value node - let yaml encoder handle the value
-		var docNode yaml.Node
-		valueBytes, err := yaml.Marshal(item.Value)
-		if err != nil {
+		// Encode item.Value directly into a yaml.Node
+		valueNode := &yaml.Node{}
+		if err := valueNode.Encode(item.Value); err != nil {
 			return nil, err
-		}
-		if err := yaml.Unmarshal(valueBytes, &docNode); err != nil {
-			return nil, err
-		}
-		// Extract the actual content from the document node
-		var valueNode *yaml.Node
-		if docNode.Kind == yaml.DocumentNode && len(docNode.Content) > 0 {
-			valueNode = docNode.Content[0]
-		} else {
-			valueNode = &docNode
 		}
 		node.Content = append(node.Content, keyNode, valueNode)
 	}
