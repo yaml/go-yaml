@@ -53,6 +53,9 @@ GO-DEPS += $(GO)
 else
 SHELL-DEPS := $(filter-out $(GO),$(SHELL-DEPS))
 endif
+GO-DEPS += clean-cache
+
+YTS-DEPS := $(GO-DEPS) $(YTS-DIR)
 
 SHELL-NAME := makes go-yaml
 include $(MAKES)/clean.mk
@@ -65,23 +68,29 @@ count ?= 1
 
 
 # Test rules:
-test: $(GO-DEPS)
+check:
+	$(MAKE) fmt
+	$(MAKE) tidy
+	$(MAKE) lint
+	$(MAKE) test
+
+test: test-yaml test-yts-all
+
+test-yaml: $(GO-DEPS)
 	go test$(if $v, -v) -vet=off .
 
-test-data: $(YTS-DIR)
-
-test-all: test test-yts-all
-
-test-yts: $(GO-DEPS) $(YTS-DIR)
+test-yts: $(YTS-DEPS)
 	go test$(if $v, -v) ./yts -count=$(count)
 
-test-yts-all: $(GO-DEPS) $(YTS-DIR)
+test-yts-all: $(YTS-DEPS)
 	@echo 'Testing yaml-test-suite'
 	@RUNALL=1 bash -c "$$yts_pass_fail"
 
-test-yts-fail: $(GO-DEPS) $(YTS-DIR)
+test-yts-fail: $(YTS-DEPS)
 	@echo 'Testing yaml-test-suite failures'
 	@RUNFAILING=1 bash -c "$$yts_pass_fail"
+
+get-test-data: $(YTS-DIR)
 
 # Install golangci-lint for GitHub Actions:
 golangci-lint-install: $(GOLANGCI-LINT)
@@ -93,6 +102,9 @@ lint: $(GOLANGCI-LINT-VERSIONED)
 	$< run ./...
 
 cli: $(CLI-BINARY)
+
+clean-cache:
+	go clean -testcache
 
 $(CLI-BINARY): $(GO)
 	go build -o $@ ./cmd/$@
