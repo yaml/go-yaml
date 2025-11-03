@@ -21,7 +21,7 @@ GO-VERSION-NEEDED := $(GO-VERSION)
 # yaml-test-suite info:
 YTS-URL ?= https://github.com/yaml/yaml-test-suite
 YTS-TAG ?= data-2022-01-17
-YTS-DIR := yts/testdata/$(YTS-TAG)
+YTS-DIR := testdata/yts-$(YTS-TAG)
 
 CLI-BINARY := go-yaml
 
@@ -74,10 +74,10 @@ check:
 test: test-unit test-yts-all
 
 test-unit: $(GO-DEPS)
-	go test$(if $v, -v) -vet=off
+	go test$(if $v, -v) -vet=off ./...
 
 test-yts: $(GO-DEPS) $(YTS-DIR)
-	go test$(if $v, -v) ./yts -count=$(count)
+	go test$(if $v, -v) ./testdata/yts -count=$(count)
 
 test-yts-all: $(GO-DEPS) $(YTS-DIR)
 	@echo 'Testing yaml-test-suite'
