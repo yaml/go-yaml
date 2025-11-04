@@ -2,7 +2,9 @@ package yts
 
 import (
 	"encoding/json"
+	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -10,6 +12,29 @@ import (
 
 	"go.yaml.in/yaml/v4"
 )
+
+const (
+	ytsURL = "https://github.com/yaml/yaml-test-suite"
+	ytsTAG = "data-2022-01-17"
+	ytsDir = "testdata/" + ytsTAG
+)
+
+func TestMain(m *testing.M) {
+	if _, err := os.Stat(ytsDir); os.IsNotExist(err) {
+		log.Printf("Downloading YTS test suite into %s...", ytsDir)
+		err = exec.Command("git", "clone", "-q", ytsURL, ytsDir).Run()
+		if err != nil {
+			log.Fatalf("git clone failed: %v", err)
+		}
+		log.Printf("Checking out YTS tag %s...", ytsTAG)
+		err = exec.Command("git", "-C", ytsDir, "checkout", "-q", ytsTAG).Run()
+		if err != nil {
+			log.Fatalf("git checkout failed: %v", err)
+		}
+	}
+
+	os.Exit(m.Run())
+}
 
 var knownFailingTests = loadKnownFailingTests()
 
@@ -48,13 +73,7 @@ func shouldSkipTest(t *testing.T) {
 }
 
 func TestYAMLSuite(t *testing.T) {
-	testDir := "./testdata/data-2022-01-17"
-	if _, err := os.Stat(testDir + "/229Q"); os.IsNotExist(err) {
-		t.Fatalf(`YTS tests require data files to be present at '%s'.
-Run 'make test-data' to download them first,
-or just run the tests with 'make test-all'.`, testDir)
-	}
-	runTestsInDir(t, testDir)
+	runTestsInDir(t, ytsDir)
 }
 
 func runTestsInDir(t *testing.T, dirPath string) {
