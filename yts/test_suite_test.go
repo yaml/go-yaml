@@ -113,7 +113,6 @@ func runTest(t *testing.T, testPath string) {
 
 	inYAML := mustRead(t, testPath, "in.yaml")
 	expectError := fileExists(testPath, "error")
-	expectedEvents := normalizeLineEndings(string(mustRead(t, testPath, "test.event")))
 
 	var unmarshaledValue any
 	var unmarshalErr error
@@ -139,6 +138,7 @@ func runTest(t *testing.T, testPath string) {
 
 	t.Run("EventComparisonTest", func(t *testing.T) {
 		shouldSkipTest(t)
+		expectedEvents := normalizeLineEndings(string(mustRead(t, testPath, "test.event")))
 		expectedEvents = strings.TrimSuffix(expectedEvents, "\n")
 		actualEvents, eventErr := getEvents(inYAML)
 
