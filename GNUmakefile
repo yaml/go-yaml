@@ -18,16 +18,13 @@ GO-VERSION ?= 1.24.0
 endif
 GO-VERSION-NEEDED := $(GO-VERSION)
 
-# yaml-test-suite info:
-YTS-URL ?= https://github.com/yaml/yaml-test-suite
-YTS-TAG ?= data-2022-01-17
-YTS-DIR := yts/testdata/$(YTS-TAG)
+YTS-DIR := yts/testdata
 
 CLI-BINARY := go-yaml
 
 MAKES-NO-CLEAN := true
 MAKES-CLEAN := $(CLI-BINARY)
-MAKES-REALCLEAN := $(dir $(YTS-DIR))
+MAKES-REALCLEAN := $(YTS-DIR)
 
 # Setup and include go.mk and shell.mk:
 GO-FILES := $(shell find -not \( -path ./.cache -prune \) -name '*.go' | sort)
@@ -58,7 +55,7 @@ SHELL-NAME := makes go-yaml
 include $(MAKES)/clean.mk
 include $(MAKES)/shell.mk
 
-MAKES-CLEAN := $(dir $(YTS-DIR)) $(GOLANGCI-LINT)
+MAKES-CLEAN := $(YTS-DIR) $(GOLANGCI-LINT)
 
 v ?=
 count ?= 1
@@ -68,18 +65,16 @@ count ?= 1
 test: $(GO-DEPS)
 	go test$(if $v, -v) -vet=off ./...
 
-test-data: $(YTS-DIR)
-
 test-all: test test-yts-all
 
-test-yts: $(GO-DEPS) $(YTS-DIR)
+test-yts: $(GO-DEPS)
 	go test$(if $v, -v) ./yts -count=$(count)
 
-test-yts-all: $(GO-DEPS) $(YTS-DIR)
+test-yts-all: $(GO-DEPS)
 	@echo 'Testing yaml-test-suite'
 	@RUNALL=1 bash -c "$$yts_pass_fail"
 
-test-yts-fail: $(GO-DEPS) $(YTS-DIR)
+test-yts-fail: $(GO-DEPS)
 	@echo 'Testing yaml-test-suite failures'
 	@RUNFAILING=1 bash -c "$$yts_pass_fail"
 
@@ -96,11 +91,6 @@ cli: $(CLI-BINARY)
 
 $(CLI-BINARY): $(GO)
 	go build -o $@ ./cmd/$@
-
-# Setup rules:
-$(YTS-DIR):
-	git clone -q $(YTS-URL) $@
-	git -C $@ checkout -q $(YTS-TAG)
 
 # Downloads golangci-lint binary and moves to versioned path
 # (.cache/local/bin/golangci-lint-<version>).
