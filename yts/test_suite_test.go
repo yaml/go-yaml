@@ -90,6 +90,7 @@ func getEvents(in []byte) (string, error) {
 }
 
 func mustRead(t *testing.T, path, name string) []byte {
+	t.Helper()
 	data, err := os.ReadFile(filepath.Join(path, name))
 	if err != nil {
 		t.Fatalf("Failed to read %s (%s): %v", name, path, err)
@@ -164,7 +165,7 @@ func runTest(t *testing.T, testPath string) {
 
 	t.Run("MarshalCanonicalTest", func(t *testing.T) {
 		shouldSkipTest(t)
-		var unmarshaledValue interface{}
+		var unmarshaledValue any
 
 		if expectError || !fileExists(testPath, "out.yaml") {
 			return
@@ -195,7 +196,7 @@ func runTest(t *testing.T, testPath string) {
 
 	t.Run("RoundtripTest", func(t *testing.T) {
 		shouldSkipTest(t)
-		var unmarshaledValue interface{}
+		var unmarshaledValue any
 
 		if expectError {
 			return
@@ -214,7 +215,7 @@ func runTest(t *testing.T, testPath string) {
 				testPath, testDescription, marshalErr)
 		}
 
-		var roundtrippedValue interface{}
+		var roundtrippedValue any
 		if err := yaml.Unmarshal(marshaledYAML, &roundtrippedValue); err != nil {
 			t.Errorf(
 				"Test: %s\nDescription: %s\nError: Failed to roundtrip in.yaml: %v",
@@ -236,12 +237,12 @@ func runTest(t *testing.T, testPath string) {
 		}
 		inJSON := mustRead(t, testPath, "in.json")
 
-		var unmarshaledValue interface{}
+		var unmarshaledValue any
 		if err := yaml.Unmarshal(inYAML, &unmarshaledValue); err != nil {
 			t.Errorf("Test: %s\nDescription: %s\nError: Failed to unmarshal in.yaml: %v", testPath, testDescription, err)
 		}
 
-		var jsonValue interface{}
+		var jsonValue any
 
 		if err := json.Unmarshal(inJSON, &jsonValue); err != nil {
 			t.Errorf(
