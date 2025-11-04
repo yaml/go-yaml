@@ -58,7 +58,7 @@ SHELL-NAME := makes go-yaml
 include $(MAKES)/clean.mk
 include $(MAKES)/shell.mk
 
-MAKES-CLEAN := $(dir $(YTS-DIR)) $(GOLANGCI-LINT)
+MAKES-CLEAN += $(dir $(YTS-DIR)) $(GOLANGCI-LINT)
 
 v ?=
 count ?= 1
@@ -66,7 +66,7 @@ count ?= 1
 
 # Test rules:
 test: $(GO-DEPS)
-	go test$(if $v, -v) -vet=off ./...
+	go test$(if $v, -v) -vet=off .
 
 test-data: $(YTS-DIR)
 
