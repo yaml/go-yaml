@@ -22,7 +22,12 @@
 
 package libyaml
 
-import "fmt"
+import "errors"
+
+// Construct writer error.
+func writerError(problem string) error {
+	return errors.New(problem)
+}
 
 // Flush the output buffer.
 func (emitter *Emitter) flush() error {
@@ -36,7 +41,7 @@ func (emitter *Emitter) flush() error {
 	}
 
 	if err := emitter.write_handler(emitter, emitter.buffer[:emitter.buffer_pos]); err != nil {
-		return fmt.Errorf("write error: %w", err)
+		return writerError("write error: " + err.Error())
 	}
 	emitter.buffer_pos = 0
 	return nil
