@@ -79,15 +79,14 @@ func (p *parser) destroy() {
 func (p *parser) expect(e libyaml.EventType) {
 	if p.event.Type == libyaml.NO_EVENT {
 		if !p.parser.Parse(&p.event) {
-			p.fail()
+			p.fail(p.parser.Error)
 		}
 	}
 	if p.event.Type == libyaml.STREAM_END_EVENT {
 		failf("attempted to go past the end of stream; corrupted value?")
 	}
 	if p.event.Type != e {
-		p.parser.Problem = fmt.Sprintf("expected %s event but got %s", e, p.event.Type)
-		p.fail()
+		p.fail(fmt.Errorf("expected %s event but got %s", e, p.event.Type))
 	}
 	p.event.Delete()
 	p.event.Type = libyaml.NO_EVENT
@@ -102,40 +101,14 @@ func (p *parser) peek() libyaml.EventType {
 	// It's curious choice from the underlying API to generally return a
 	// positive result on success, but on this case return true in an error
 	// scenario. This was the source of bugs in the past (issue #666).
-	if !p.parser.Parse(&p.event) || p.parser.ErrorType != libyaml.NO_ERROR {
-		p.fail()
+	if !p.parser.Parse(&p.event) || p.parser.Error != nil {
+		p.fail(p.parser.Error)
 	}
 	return p.event.Type
 }
 
-func (p *parser) fail() {
-	var line int
-	if p.parser.ContextMark.Line != 0 {
-		line = p.parser.ContextMark.Line
-		// Scanner errors don't iterate line before returning error
-		if p.parser.ErrorType == libyaml.SCANNER_ERROR {
-			line++
-		}
-	} else if p.parser.ProblemMark.Line != 0 {
-		line = p.parser.ProblemMark.Line
-		// Scanner errors don't iterate line before returning error
-		if p.parser.ErrorType == libyaml.SCANNER_ERROR {
-			line++
-		}
-	}
-	var column int
-	if p.parser.ContextMark.Column != 0 {
-		column = p.parser.ContextMark.Column
-	} else if p.parser.ProblemMark.Column != 0 {
-		column = p.parser.ProblemMark.Column
-	}
-	var msg string
-	if len(p.parser.Problem) > 0 {
-		msg = p.parser.Problem
-	} else {
-		msg = "unknown problem parsing YAML content"
-	}
-	fail(&ParserError{msg, line, column})
+func (p *parser) fail(err error) {
+	fail(err)
 }
 
 func (p *parser) anchor(n *Node, anchor []byte) {

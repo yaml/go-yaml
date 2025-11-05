@@ -23,15 +23,25 @@
 package libyaml
 
 import (
+	"errors"
+	"fmt"
 	"io"
 )
 
 // Set the reader error and return 0.
 func (parser *Parser) setReaderError(problem string, offset int, value int) bool {
-	parser.ErrorType = READER_ERROR
-	parser.Problem = problem
-	parser.ProblemOffset = offset
-	parser.ProblemValue = value
+	return parser.directlySetReaderError(
+		errors.New(problem),
+		offset, value,
+	)
+}
+
+func (parser *Parser) directlySetReaderError(err error, offset int, value int) bool {
+	parser.Error = &ReaderError{
+		Offset: offset,
+		Value:  value,
+		Err:    err,
+	}
 	return false
 }
 
@@ -101,7 +111,10 @@ func (parser *Parser) updateRawBuffer() bool {
 	if err == io.EOF {
 		parser.eof = true
 	} else if err != nil {
-		return parser.setReaderError("input error: "+err.Error(), parser.offset, -1)
+		return parser.directlySetReaderError(
+			fmt.Errorf("input error: %w", err),
+			parser.offset, -1,
+		)
 	}
 	return true
 }
