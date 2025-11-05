@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"go.yaml.in/yaml/v4"
+	"go.yaml.in/yaml/v4/internal/libyaml"
 	"go.yaml.in/yaml/v4/internal/testutil/assert"
 )
 
@@ -1119,7 +1120,7 @@ func (errReader) Read([]byte) (int, error) {
 
 func TestDecoderReadError(t *testing.T) {
 	err := yaml.NewDecoder(errReader{}).Decode(&struct{}{})
-	assert.ErrorMatches(t, `yaml: input error: some read error`, err)
+	assert.ErrorMatches(t, `yaml: offset 0: input error: some read error`, err)
 }
 
 func TestUnmarshalNaN(t *testing.T) {
@@ -1140,24 +1141,24 @@ var unmarshalErrorTests = []struct {
 	data, error string
 }{
 	{"v: !!float 'error'", "yaml: cannot decode !!str `error` as a !!float"},
-	{"v: [A,", "yaml: line 1: did not find expected node content"},
-	{"v:\n- [A,", "yaml: line 2: did not find expected node content"},
-	{"a:\n- b: *,", "yaml: line 2: did not find expected alphabetic or numeric character"},
-	{"a: *b\n", "yaml: line 1: unknown anchor 'b' referenced"},
+	{"v: [A,", "yaml: while parsing a flow node at line 1: did not find expected node content"},
+	{"v:\n- [A,", "yaml: while parsing a flow node at line 2: did not find expected node content"},
+	{"a:\n- b: *,", "yaml: while scanning an alias at line 2, column 5: line 2, column 6: did not find expected alphabetic or numeric character"},
+	{"a: *b\n", "yaml: unknown anchor 'b' referenced"},
 	{"a: &a\n  b: *a\n", "yaml: anchor 'a' value contains itself"},
-	{"value: -", "yaml: block sequence entries are not allowed in this context"},
+	{"value: -", "yaml: line 1, column 7: block sequence entries are not allowed in this context"},
 	{"a: !!binary ==", "yaml: !!binary value contains invalid base64 data"},
-	{"{[.]}", `yaml: cannot use '\[\]interface \{\}\{"\."\}' as a map key; try decoding into yaml.Node`},
-	{"{{.}}", `yaml: cannot use 'map\[string]interface \{\}\{".":interface \{\}\(nil\)\}' as a map key; try decoding into yaml.Node`},
-	{"b: *a\na: &a {c: 1}", `yaml: line 1: unknown anchor 'a' referenced`},
-	{"%TAG !%79! tag:yaml.org,2002:\n---\nv: !%79!int '1'", "yaml: did not find expected whitespace"},
-	{"a:\n  1:\nb\n  2:", ".*could not find expected ':'"},
-	{"a: 1\nb: 2\nc 2\nd: 3\n", "^yaml: line 3: could not find expected ':'$"},
-	{"#\n-\n{", "yaml: line 3: could not find expected ':'"},   // Issue #665
-	{"0: [:!00 \xef", "yaml: incomplete UTF-8 octet sequence"}, // Issue #666
+	{"{[.]}", `yaml: cannot use '[]interface {}{"."}' as a map key; try decoding into yaml.Node`},
+	{"{{.}}", `yaml: cannot use 'map[string]interface {}{".":interface {}(nil)}' as a map key; try decoding into yaml.Node`},
+	{"b: *a\na: &a {c: 1}", `yaml: unknown anchor 'a' referenced`},
+	{"%TAG !%79! tag:yaml.org,2002:\n---\nv: !%79!int '1'", "yaml: while scanning a %TAG directive at line 1: line 1, column 6: did not find expected whitespace"},
+	{"a:\n  1:\nb\n  2:", "yaml: while scanning a simple key at line 3: line 4, column 3: could not find expected ':'"},
+	{"a: 1\nb: 2\nc 2\nd: 3\n", "yaml: while scanning a simple key at line 3: line 4: could not find expected ':'"},
+	{"#\n-\n{", "yaml: while scanning a simple key at line 3: line 4: could not find expected ':'"}, // Issue #665
+	{"0: [:!00 \xef", "yaml: offset 9: incomplete UTF-8 octet sequence"},                            // Issue #666
 	// anchor cannot contain a colon
 	// https://github.com/yaml/go-yaml/issues/109
-	{"foo: &bar: bar\n*bar: : quz\n", "^yaml: mapping values are not allowed in this context$"},
+	{"foo: &bar: bar\n*bar: : quz\n", "yaml: line 1, column 9: mapping values are not allowed in this context"},
 	{
 		"a: &a [00,00,00,00,00,00,00,00,00]\n" +
 			"b: &b [*a,*a,*a,*a,*a,*a,*a,*a,*a]\n" +
@@ -1177,7 +1178,10 @@ func TestUnmarshalErrors(t *testing.T) {
 		t.Run(fmt.Sprintf("test %d: %q", i, item.data), func(t *testing.T) {
 			var value any
 			err := yaml.Unmarshal([]byte(item.data), &value)
-			assert.ErrorMatchesf(t, item.error, err, "Partial unmarshal: %#v", value)
+			if err == nil {
+				t.Fatalf("got nil; want error %q - Partial unmarshal: %#v", item.error, value)
+			}
+			assert.Equalf(t, item.error, err.Error(), "Partial unmarshal: %#v", value)
 		})
 	}
 }
@@ -1187,7 +1191,10 @@ func TestDecoderErrors(t *testing.T) {
 		t.Run(fmt.Sprintf("test %d: %q", i, item.data), func(t *testing.T) {
 			var value any
 			err := yaml.NewDecoder(strings.NewReader(item.data)).Decode(&value)
-			assert.ErrorMatchesf(t, item.error, err, "Partial unmarshal: %#v", value)
+			if err == nil {
+				t.Fatalf("got nil; want error %q - Partial unmarshal: %#v", item.error, value)
+			}
+			assert.Equalf(t, item.error, err.Error(), "Partial unmarshal: %#v", value)
 		})
 	}
 }
@@ -1198,12 +1205,22 @@ func TestParserErrorUnmarshal(t *testing.T) {
 	}
 	data := "a: 1\n=\nb: 2"
 	err := yaml.Unmarshal([]byte(data), &v)
-	asErr := new(yaml.ParserError)
+	asErr := new(yaml.ScannerError)
 	assert.ErrorAs(t, err, &asErr)
-	expectedErr := &yaml.ParserError{
+	expectedErr := &yaml.ScannerError{
+		ContextMark: libyaml.Mark{
+			Index:  5,
+			Line:   2,
+			Column: 0,
+		},
+		ContextMessage: "while scanning a simple key",
+
+		Mark: libyaml.Mark{
+			Index:  7,
+			Line:   3,
+			Column: 0,
+		},
 		Message: "could not find expected ':'",
-		Line:    2,
-		Column:  0,
 	}
 	assert.DeepEqual(t, expectedErr, asErr)
 }
@@ -1212,12 +1229,15 @@ func TestParserErrorDecoder(t *testing.T) {
 	var v any
 	data := "value: -"
 	err := yaml.NewDecoder(strings.NewReader(data)).Decode(&v)
-	asErr := new(yaml.ParserError)
+	asErr := new(yaml.ScannerError)
 	assert.ErrorAs(t, err, &asErr)
-	expectedErr := &yaml.ParserError{
+	expectedErr := &yaml.ScannerError{
+		Mark: libyaml.Mark{
+			Index:  7,
+			Line:   1,
+			Column: 7,
+		},
 		Message: "block sequence entries are not allowed in this context",
-		Line:    0,
-		Column:  7,
 	}
 	assert.DeepEqual(t, expectedErr, asErr)
 }
