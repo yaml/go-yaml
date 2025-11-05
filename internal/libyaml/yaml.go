@@ -25,6 +25,7 @@ package libyaml
 import (
 	"fmt"
 	"io"
+	"strings"
 )
 
 // VersionDirective holds the YAML version directive data.
@@ -82,8 +83,22 @@ const (
 // Mark holds the pointer position.
 type Mark struct {
 	Index  int // The position index.
-	Line   int // The position line.
-	Column int // The position column.
+	Line   int // The position line (1-indexed).
+	Column int // The position column (0-indexed).
+}
+
+func (m Mark) String() string {
+	var builder strings.Builder
+	if m.Line == 0 {
+		return "<unknown position>"
+	}
+
+	fmt.Fprintf(&builder, "line %d", m.Line)
+	if m.Column != 0 {
+		fmt.Fprintf(&builder, ", column %d", m.Column)
+	}
+
+	return builder.String()
 }
 
 // Node Styles
@@ -561,19 +576,7 @@ type AliasData struct {
 // state of the parser.
 type Parser struct {
 	// Error handling
-
-	ErrorType ErrorType // Error type.
-
-	Problem string // Error description.
-
-	// The byte about which the problem occurred.
-	ProblemOffset int
-	ProblemValue  int
-	ProblemMark   Mark
-
-	// The error Context.
-	Context     string
-	ContextMark Mark
+	Error error
 
 	// Reader stuff
 

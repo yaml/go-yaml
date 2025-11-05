@@ -24,7 +24,6 @@ package libyaml
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 )
 
@@ -144,7 +143,9 @@ func (emitter *Emitter) writeLineBreak(s []byte, i *int) error {
 
 // Construct emitter error.
 func emitterError(problem string) error {
-	return errors.New(problem)
+	return EmitterError{
+		Message: problem,
+	}
 }
 
 // Emit an event.
