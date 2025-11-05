@@ -36,7 +36,9 @@ func (emitter *Emitter) flush() error {
 	}
 
 	if err := emitter.write_handler(emitter, emitter.buffer[:emitter.buffer_pos]); err != nil {
-		return fmt.Errorf("write error: %w", err)
+		return WriterError{
+			Err: fmt.Errorf("write error: %w", err),
+		}
 	}
 	emitter.buffer_pos = 0
 	return nil

@@ -604,7 +604,7 @@ func (parser *Parser) Scan(token *Token) bool {
 	*token = Token{} // [Go] Is this necessary?
 
 	// No tokens after STREAM-END or error.
-	if parser.stream_end_produced || parser.ErrorType != NO_ERROR {
+	if parser.stream_end_produced || parser.Error != nil {
 		return true
 	}
 
@@ -629,11 +629,19 @@ func (parser *Parser) Scan(token *Token) bool {
 
 // Set the scanner error and return false.
 func (parser *Parser) setScannerError(context string, context_mark Mark, problem string) bool {
-	parser.ErrorType = SCANNER_ERROR
-	parser.Context = context
-	parser.ContextMark = context_mark
-	parser.Problem = problem
-	parser.ProblemMark = parser.mark
+	mark := parser.mark
+	mark.Line += 1
+	if len(context) > 0 {
+		context_mark.Line += 1
+	}
+
+	parser.Error = &ScannerError{
+		ContextMark:    context_mark,
+		ContextMessage: context,
+
+		Mark:    mark,
+		Message: problem,
+	}
 	return false
 }
 
@@ -1295,7 +1303,7 @@ func (parser *Parser) fetchBlockEntry() bool {
 	if parser.flow_level == 0 {
 		// Check if we are allowed to start a new entry.
 		if !parser.simple_key_allowed {
-			return parser.setScannerError("", parser.mark,
+			return parser.setScannerError("", Mark{},
 				"block sequence entries are not allowed in this context")
 		}
 		// Add the BLOCK-SEQUENCE-START token if needed.
@@ -1338,7 +1346,7 @@ func (parser *Parser) fetchKey() bool {
 	if parser.flow_level == 0 {
 		// Check if we are allowed to start a new key (not necessary simple).
 		if !parser.simple_key_allowed {
-			return parser.setScannerError("", parser.mark,
+			return parser.setScannerError("", Mark{},
 				"mapping keys are not allowed in this context")
 		}
 		// Add the BLOCK-MAPPING-START token if needed.
@@ -1409,7 +1417,7 @@ func (parser *Parser) fetchValue() bool {
 
 			// Check if we are allowed to start a complex value.
 			if !parser.simple_key_allowed {
-				return parser.setScannerError("", parser.mark,
+				return parser.setScannerError("", Mark{},
 					"mapping values are not allowed in this context")
 			}
 
@@ -2544,7 +2552,7 @@ func (parser *Parser) scanFlowScalar(token *Token, single bool) bool {
 				case 'U':
 					code_length = 8
 				default:
-					parser.setScannerError("while parsing a quoted scalar",
+					parser.setScannerError("while scanning a quoted scalar",
 						start_mark, "found unknown escape character")
 					return false
 				}
@@ -2562,7 +2570,7 @@ func (parser *Parser) scanFlowScalar(token *Token, single bool) bool {
 					}
 					for k := 0; k < code_length; k++ {
 						if !isHex(parser.buffer, parser.buffer_pos+k) {
-							parser.setScannerError("while parsing a quoted scalar",
+							parser.setScannerError("while scanning a quoted scalar",
 								start_mark, "did not find expected hexadecimal number")
 							return false
 						}
@@ -2571,7 +2579,7 @@ func (parser *Parser) scanFlowScalar(token *Token, single bool) bool {
 
 					// Check the value and write the character.
 					if (value >= 0xD800 && value <= 0xDFFF) || value > 0x10FFFF {
-						parser.setScannerError("while parsing a quoted scalar",
+						parser.setScannerError("while scanning a quoted scalar",
 							start_mark, "found invalid Unicode character escape code")
 						return false
 					}
