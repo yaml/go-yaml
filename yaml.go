@@ -25,7 +25,6 @@ import (
 	"fmt"
 	"io"
 	"reflect"
-	"strconv"
 	"strings"
 	"sync"
 	"unicode"
@@ -319,24 +318,10 @@ func failf(format string, args ...any) {
 	panic(&yamlError{fmt.Errorf("yaml: "+format, args...)})
 }
 
-// ParserError represents a fatal error encountered during the parsing phase.
-// These errors typically indicate a syntax issue in the YAML document that
-// prevents further processing.
-type ParserError struct {
-	Message string
-	Line    int
-	Column  int
-}
-
-func (e *ParserError) Error() string {
-	var b strings.Builder
-	b.WriteString("yaml: ")
-	if e.Line != 0 {
-		b.WriteString("line " + strconv.Itoa(e.Line) + ": ")
-	}
-	b.WriteString(e.Message)
-	return b.String()
-}
+type ParserError = libyaml.ParserError
+type ScannerError = libyaml.ScannerError
+type ReaderError = libyaml.ReaderError
+type WriterError = libyaml.WriterError
 
 // UnmarshalError represents a single, non-fatal error that occurred during
 // the unmarshaling of a YAML document into a Go value.
@@ -802,7 +787,7 @@ func ParserGetEvents(in []byte) (string, error) {
 	var event libyaml.Event
 	for {
 		if !p.parser.Parse(&event) {
-			return "", errors.New(p.parser.Problem)
+			return "", p.parser.Error
 		}
 		formatted := formatEvent(&event)
 		events.WriteString(formatted)
