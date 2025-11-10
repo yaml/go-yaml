@@ -145,8 +145,10 @@ func processEventsDecode(profuse, compact bool) error {
 				}
 
 				var buf bytes.Buffer
-				enc := yaml.NewEncoder(&buf)
-				enc.SetIndent(2)
+				enc, err := yaml.NewEncoderWithOptions(&buf, yaml.WithIndent(2))
+				if err != nil {
+					return fmt.Errorf("failed to create YAML encoder: %w", err)
+				}
 				if err := enc.Encode([]*yaml.Node{compactNode}); err != nil {
 					enc.Close()
 					return fmt.Errorf("failed to marshal compact event info: %w", err)
@@ -160,8 +162,10 @@ func processEventsDecode(profuse, compact bool) error {
 				info := formatEventInfo(event, profuse)
 
 				var buf bytes.Buffer
-				enc := yaml.NewEncoder(&buf)
-				enc.SetIndent(2)
+				enc, err := yaml.NewEncoderWithOptions(&buf, yaml.WithIndent(2))
+				if err != nil {
+					return fmt.Errorf("failed to create YAML encoder: %w", err)
+				}
 				if err := enc.Encode([]*EventInfo{info}); err != nil {
 					enc.Close()
 					return fmt.Errorf("failed to marshal event info: %w", err)
@@ -272,8 +276,10 @@ func processEventsUnmarshal(profuse, compact bool) error {
 				}
 
 				var buf bytes.Buffer
-				enc := yaml.NewEncoder(&buf)
-				enc.SetIndent(2)
+				enc, err := yaml.NewEncoderWithOptions(&buf, yaml.WithIndent(2))
+				if err != nil {
+					return fmt.Errorf("failed to create YAML encoder: %w", err)
+				}
 				if err := enc.Encode([]*yaml.Node{compactNode}); err != nil {
 					enc.Close()
 					return fmt.Errorf("failed to marshal compact event info: %w", err)
@@ -287,8 +293,10 @@ func processEventsUnmarshal(profuse, compact bool) error {
 				info := formatEventInfo(event, profuse)
 
 				var buf bytes.Buffer
-				enc := yaml.NewEncoder(&buf)
-				enc.SetIndent(2)
+				enc, err := yaml.NewEncoderWithOptions(&buf, yaml.WithIndent(2))
+				if err != nil {
+					return fmt.Errorf("failed to create YAML encoder: %w", err)
+				}
 				if err := enc.Encode([]*EventInfo{info}); err != nil {
 					enc.Close()
 					return fmt.Errorf("failed to marshal event info: %w", err)
