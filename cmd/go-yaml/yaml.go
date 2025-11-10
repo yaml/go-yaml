@@ -62,8 +62,10 @@ func processYAMLDecode(preserve, marshal bool) error {
 				fmt.Print(string(output))
 			} else {
 				// Use Encoder for output
-				encoder := yaml.NewEncoder(os.Stdout)
-				encoder.SetIndent(2)
+				encoder, err := yaml.NewEncoderWithOptions(os.Stdout, yaml.WithIndent(2))
+				if err != nil {
+					return fmt.Errorf("failed to create YAML encoder: %w", err)
+				}
 				if err := encoder.Encode(outNode); err != nil {
 					encoder.Close()
 					return fmt.Errorf("failed to encode YAML: %w", err)
@@ -101,8 +103,10 @@ func processYAMLDecode(preserve, marshal bool) error {
 				fmt.Print(string(output))
 			} else {
 				// Use Encoder for output
-				encoder := yaml.NewEncoder(os.Stdout)
-				encoder.SetIndent(2)
+				encoder, err := yaml.NewEncoderWithOptions(os.Stdout, yaml.WithIndent(2))
+				if err != nil {
+					return fmt.Errorf("failed to create YAML encoder: %w", err)
+				}
 				if err := encoder.Encode(data); err != nil {
 					encoder.Close()
 					return fmt.Errorf("failed to encode YAML: %w", err)
@@ -166,8 +170,10 @@ func processYAMLUnmarshal(preserve, marshal bool) error {
 				fmt.Print(string(output))
 			} else {
 				// Use Encoder for output
-				encoder := yaml.NewEncoder(os.Stdout)
-				encoder.SetIndent(2)
+				encoder, err := yaml.NewEncoderWithOptions(os.Stdout, yaml.WithIndent(2))
+				if err != nil {
+					return fmt.Errorf("failed to create YAML encoder: %w", err)
+				}
 				if err := encoder.Encode(outNode); err != nil {
 					encoder.Close()
 					return fmt.Errorf("failed to encode YAML: %w", err)
@@ -190,8 +196,10 @@ func processYAMLUnmarshal(preserve, marshal bool) error {
 				fmt.Print(string(output))
 			} else {
 				// Use Encoder for output
-				encoder := yaml.NewEncoder(os.Stdout)
-				encoder.SetIndent(2)
+				encoder, err := yaml.NewEncoderWithOptions(os.Stdout, yaml.WithIndent(2))
+				if err != nil {
+					return fmt.Errorf("failed to create YAML encoder: %w", err)
+				}
 				if err := encoder.Encode(data); err != nil {
 					encoder.Close()
 					return fmt.Errorf("failed to encode YAML: %w", err)
