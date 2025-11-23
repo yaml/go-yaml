@@ -3174,6 +3174,46 @@ func TestNodeOmitEmpty(t *testing.T) {
 	assert.ErrorMatches(t, "yaml: cannot encode node with unknown kind 0", err)
 }
 
+func TestNodeDecodeWithOptions(t *testing.T) {
+	node := yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+		Content: []*yaml.Node{{
+			Kind:  yaml.ScalarNode,
+			Value: "a",
+			Tag:   "!!str",
+		}, {
+			Kind:  yaml.ScalarNode,
+			Value: "1",
+			Tag:   "!!int",
+		}, {
+			Kind:  yaml.ScalarNode,
+			Value: "c",
+			Tag:   "!!str",
+		}, {
+			Kind:  yaml.ScalarNode,
+			Value: "2",
+			Tag:   "!!int",
+		}},
+	}
+	var value, res1, res2 struct {
+		A int
+	}
+	value.A = 1
+
+	err := node.DecodeWithOptions(&res1, yaml.DecodeOptions{KnownFields: true})
+	if err == nil || !strings.Contains(err.Error(), "field c not found in type struct") {
+		t.Fatalf("expected error about unknown field c, got: %v", err)
+	}
+	err = node.DecodeWithOptions(&res2, yaml.DecodeOptions{KnownFields: false})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res2 != value {
+		t.Fatalf("unexpected result: want: %#v got: %#v", value, res2)
+	}
+}
+
 func fprintComments(tb testing.TB, out io.Writer, node *yaml.Node, indent string) {
 	tb.Helper()
 
