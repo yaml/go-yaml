@@ -575,8 +575,8 @@ type AliasData struct {
 // Parser structure holds all information about the current
 // state of the parser.
 type Parser struct {
-	// Error handling
-	Error error
+	// Err handling
+	Err error
 
 	// Reader stuff
 

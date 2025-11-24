@@ -318,10 +318,12 @@ func failf(format string, args ...any) {
 	panic(&yamlError{fmt.Errorf("yaml: "+format, args...)})
 }
 
-type ParserError = libyaml.ParserError
-type ScannerError = libyaml.ScannerError
-type ReaderError = libyaml.ReaderError
-type WriterError = libyaml.WriterError
+type (
+	ParserError  = libyaml.ParserError
+	ScannerError = libyaml.ScannerError
+	ReaderError  = libyaml.ReaderError
+	WriterError  = libyaml.WriterError
+)
 
 // UnmarshalError represents a single, non-fatal error that occurred during
 // the unmarshaling of a YAML document into a Go value.
@@ -787,7 +789,7 @@ func ParserGetEvents(in []byte) (string, error) {
 	var event libyaml.Event
 	for {
 		if !p.parser.Parse(&event) {
-			return "", p.parser.Error
+			return "", p.parser.Err
 		}
 		formatted := formatEvent(&event)
 		events.WriteString(formatted)

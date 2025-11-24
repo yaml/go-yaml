@@ -604,7 +604,7 @@ func (parser *Parser) Scan(token *Token) bool {
 	*token = Token{} // [Go] Is this necessary?
 
 	// No tokens after STREAM-END or error.
-	if parser.stream_end_produced || parser.Error != nil {
+	if parser.stream_end_produced || parser.Err != nil {
 		return true
 	}
 
@@ -631,17 +631,20 @@ func (parser *Parser) Scan(token *Token) bool {
 func (parser *Parser) setScannerError(context string, context_mark Mark, problem string) bool {
 	mark := parser.mark
 	mark.Line += 1
-	if len(context) > 0 {
-		context_mark.Line += 1
-	}
 
-	parser.Error = &ScannerError{
-		ContextMark:    context_mark,
-		ContextMessage: context,
-
+	scannerErr := ScannerError{
 		Mark:    mark,
 		Message: problem,
 	}
+
+	if len(context) > 0 {
+		context_mark.Line += 1
+
+		scannerErr.ContextMark = context_mark
+		scannerErr.ContextMessage = context
+	}
+
+	parser.Err = scannerErr
 	return false
 }
 

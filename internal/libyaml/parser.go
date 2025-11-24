@@ -121,7 +121,7 @@ func (parser *Parser) Parse(event *Event) bool {
 	*event = Event{}
 
 	// No events after the end of the stream or error.
-	if parser.stream_end_produced || parser.Error != nil || parser.state == PARSE_END_STATE {
+	if parser.stream_end_produced || parser.Err != nil || parser.state == PARSE_END_STATE {
 		return true
 	}
 
@@ -131,7 +131,7 @@ func (parser *Parser) Parse(event *Event) bool {
 
 // Set parser error.
 func (parser *Parser) setParserError(problem string, problem_mark Mark) bool {
-	parser.Error = &ParserError{
+	parser.Err = ParserError{
 		Mark:    problem_mark,
 		Message: problem,
 	}
@@ -139,7 +139,7 @@ func (parser *Parser) setParserError(problem string, problem_mark Mark) bool {
 }
 
 func (parser *Parser) setParserErrorContext(context string, context_mark Mark, problem string, problem_mark Mark) bool {
-	parser.Error = &ParserError{
+	parser.Err = ParserError{
 		ContextMark:    context_mark,
 		ContextMessage: context,
 

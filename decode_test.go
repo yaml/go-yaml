@@ -1187,9 +1187,9 @@ func TestParserErrorUnmarshal(t *testing.T) {
 	}
 	data := "a: 1\n=\nb: 2"
 	err := yaml.Unmarshal([]byte(data), &v)
-	asErr := new(yaml.ScannerError)
+	var asErr yaml.ScannerError
 	assert.ErrorAs(t, err, &asErr)
-	expectedErr := &yaml.ScannerError{
+	expectedErr := yaml.ScannerError{
 		ContextMark: libyaml.Mark{
 			Index:  5,
 			Line:   2,
@@ -1211,9 +1211,9 @@ func TestParserErrorDecoder(t *testing.T) {
 	var v any
 	data := "value: -"
 	err := yaml.NewDecoder(strings.NewReader(data)).Decode(&v)
-	asErr := new(yaml.ScannerError)
+	var asErr yaml.ScannerError
 	assert.ErrorAs(t, err, &asErr)
-	expectedErr := &yaml.ScannerError{
+	expectedErr := yaml.ScannerError{
 		Mark: libyaml.Mark{
 			Index:  7,
 			Line:   1,
