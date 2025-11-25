@@ -16,6 +16,7 @@
 package yaml
 
 import (
+	"context"
 	"encoding"
 	"fmt"
 	"io"
@@ -31,6 +32,7 @@ import (
 )
 
 type encoder struct {
+	context  context.Context
 	emitter  libyaml.Emitter
 	event    libyaml.Event
 	out      []byte
@@ -39,9 +41,10 @@ type encoder struct {
 	doneInit bool
 }
 
-func newEncoder() *encoder {
+func newEncoder(ctx context.Context) *encoder {
 	e := &encoder{
 		emitter: libyaml.NewEmitter(),
+		context: ctx,
 	}
 	e.emitter.SetOutputString(&e.out)
 	e.emitter.SetUnicode(true)
@@ -139,6 +142,17 @@ func (e *encoder) marshal(tag string, in reflect.Value) {
 		return
 	case time.Duration:
 		e.stringv(tag, reflect.ValueOf(value.String()))
+		return
+	case MarshalerWithContext:
+		v, err := value.MarshalYAML(e.context)
+		if err != nil {
+			fail(err)
+		}
+		if v == nil {
+			e.nilv()
+			return
+		}
+		e.marshal(tag, reflect.ValueOf(v))
 		return
 	case Marshaler:
 		v, err := value.MarshalYAML()

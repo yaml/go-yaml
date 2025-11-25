@@ -17,6 +17,7 @@ package yaml_test
 
 import (
 	"bytes"
+	"context"
 	"encoding"
 	"errors"
 	"fmt"
@@ -2121,6 +2122,29 @@ a:
 	if err == nil {
 		t.Errorf("expected error, got none")
 	}
+}
+
+type typeWithContext struct {
+	value   map[string]any
+	context context.Context
+}
+
+func (t *typeWithContext) UnmarshalYAML(ctx context.Context, value *yaml.Node) error {
+	t.context = ctx
+	t.value = make(map[string]any)
+	value.Decode(&t.value)
+	return nil
+}
+
+func TestDecodeWithContext(t *testing.T) {
+	type contextKey struct{}
+	ctx := context.WithValue(context.Background(), contextKey{}, "value")
+	var v typeWithContext
+	err := yaml.UnmarshalWithContext(ctx, []byte("foo: bar"), &v)
+
+	assert.NoError(t, err)
+	assert.Equal(t, v.context.Value(contextKey{}), "value")
+	assert.DeepEqual(t, v.value, map[string]any{"foo": "bar"})
 }
 
 //var data []byte

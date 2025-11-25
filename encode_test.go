@@ -17,6 +17,7 @@ package yaml_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math"
 	"net"
@@ -1406,4 +1407,12 @@ func TestUnicodeWhitespaceHandling(t *testing.T) {
 			assert.Equal(t, testCase.expected, string(data))
 		})
 	}
+}
+
+func TestMarshalWithContext(t *testing.T) {
+	type contextKey struct{}
+	ctx := context.WithValue(context.Background(), contextKey{}, "value")
+	data, err := yaml.MarshalWithContext(ctx, map[string]string{"foo": "bar"})
+	assert.NoError(t, err)
+	assert.Equal(t, "foo: bar\n", string(data))
 }
