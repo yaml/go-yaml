@@ -337,7 +337,7 @@ var (
 	ifaceType      = generalMapType.Elem()
 )
 
-func newDecoder(opts ...Option) (*decoder, error) {
+func newDecoder(opts ...DecoderOption) (*decoder, error) {
 	d := &decoder{
 		stringMapType:  stringMapType,
 		generalMapType: generalMapType,
@@ -345,13 +345,10 @@ func newDecoder(opts ...Option) (*decoder, error) {
 	}
 	d.aliases = make(map[*Node]bool)
 
-	config, err := newConfig(opts...)
-	if err != nil {
-		return nil, fmt.Errorf("configuring decoder: %w", err)
-	}
-
-	if config.knownFields != nil {
-		d.knownFields = *config.knownFields
+	for _, opt := range opts {
+		if err := opt(d); err != nil {
+			return nil, fmt.Errorf("configuring decoder: %w", err)
+		}
 	}
 
 	return d, nil
