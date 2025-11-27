@@ -98,7 +98,7 @@ func Unmarshal(in []byte, out any) (err error) {
 //
 // See the documentation of [Unmarshal] for details about the
 // conversion of YAML into a Go value.
-func UnmarshalWithOptions(in []byte, out any, opts ...Option) error {
+func UnmarshalWithOptions(in []byte, out any, opts ...DecoderOption) error {
 	return unmarshal(in, out, opts...)
 }
 
@@ -127,8 +127,8 @@ func NewDecoder(r io.Reader) *Decoder {
 // The decoder introduces its own buffering and may read
 // data from r beyond the YAML values requested.
 //
-// The [Option]s can be used to customize the behavior of the decoder.
-func NewDecoderWithOptions(r io.Reader, opts ...Option) (*Decoder, error) {
+// The [DecoderOption]s can be used to customize the behavior of the decoder.
+func NewDecoderWithOptions(r io.Reader, opts ...DecoderOption) (*Decoder, error) {
 	decoder, err := newDecoder(opts...)
 	if err != nil {
 		return nil, err
@@ -184,7 +184,7 @@ func (n *Node) Decode(v any) (err error) {
 //
 // See the documentation for [UnmarshalWithOptions] for details about the
 // conversion of YAML into a Go value.
-func (n *Node) DecodeWithOptions(v any, opts ...Option) (err error) {
+func (n *Node) DecodeWithOptions(v any, opts ...DecoderOption) (err error) {
 	defer handleErr(&err)
 	var d *decoder
 	d, err = newDecoder(opts...)
@@ -202,7 +202,7 @@ func (n *Node) DecodeWithOptions(v any, opts ...Option) (err error) {
 	return nil
 }
 
-func unmarshal(in []byte, out any, opts ...Option) (err error) {
+func unmarshal(in []byte, out any, opts ...DecoderOption) (err error) {
 	defer handleErr(&err)
 	var d *decoder
 	d, err = newDecoder(opts...)
@@ -276,13 +276,14 @@ func Marshal(in any) (out []byte, err error) {
 // MarshalWithOptions serializes the value provided into a YAML document using the provided [Option]s.
 //
 // See the documentation of [Marshal] for details about the conversion of Go values into YAML.
-func MarshalWithOptions(in any, opts ...Option) (out []byte, err error) {
+func MarshalWithOptions(in any, opts ...EncoderOption) (out []byte, err error) {
 	defer handleErr(&err)
-	e, err := newEncoder(opts...)
+	e, err := newEncoder(nil, opts...)
 	if err != nil {
 		return nil, err
 	}
 	defer e.destroy()
+
 	e.marshalDoc("", reflect.ValueOf(in))
 	e.finish()
 	out = e.out
@@ -295,7 +296,7 @@ type Encoder struct {
 }
 
 // NewEncoder returns a new encoder that writes to w.
-// The Encoder should be closed after use to flush all data
+// The [Encoder] should be closed after use to flush all data
 // to w.
 //
 // If you have a need to control the encoding process, consider using [NewEncoderWithOptions].
@@ -310,13 +311,11 @@ func NewEncoder(w io.Writer) *Encoder {
 }
 
 // NewEncoderWithOptions returns a new encoder that writes to w.
-// The Encoder should be closed after use to flush all data to w.
+// The [Encoder] should be closed after use to flush all data to w.
 //
-// The [Option]s can be used to customize the behavior of the encoder.
-func NewEncoderWithOptions(w io.Writer, opts ...Option) (*Encoder, error) {
-	opts = append([]Option{withWriter(w)}, opts...)
-
-	enc, err := newEncoder(opts...)
+// The [EncoderOption]s can be used to customize the behavior of the encoder.
+func NewEncoderWithOptions(w io.Writer, opts ...EncoderOption) (*Encoder, error) {
+	enc, err := newEncoder(w, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("creating encoder: %w", err)
 	}
@@ -353,9 +352,9 @@ func (n *Node) Encode(v any) error {
 //
 // See the documentation of [MarshalWithOptions] for details about the
 // conversion of Go values into YAML.
-func (n *Node) EncodeWithOptions(v any, opts ...Option) (err error) {
+func (n *Node) EncodeWithOptions(v any, opts ...EncoderOption) (err error) {
 	defer handleErr(&err)
-	e, err := newEncoder(opts...)
+	e, err := newEncoder(nil, opts...)
 	if err != nil {
 		return err
 	}
