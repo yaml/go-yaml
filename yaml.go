@@ -902,3 +902,143 @@ func formatEvent(e *libyaml.Event) string {
 	}
 	return b.String()
 }
+
+// Tester provides an interface for YAML test suite compliance.
+// It allows iterating through parser events one at a time.
+type Tester struct {
+	parser     *parser
+	gotStrEnd  bool
+}
+
+// NewTester creates a new Tester from a byte slice.
+func NewTester(in []byte) *Tester {
+	return &Tester{
+		parser: newParser(in),
+	}
+}
+
+// NewTesterFromReader creates a new Tester from an io.Reader.
+func NewTesterFromReader(r io.Reader) *Tester {
+	return &Tester{
+		parser: newParserFromReader(r),
+	}
+}
+
+// escaped converts bytes to an escaped string for test output.
+func escaped(b []byte) string {
+	var result strings.Builder
+	for _, c := range b {
+		switch c {
+		case '\\':
+			result.WriteString("\\\\")
+		case 0:
+			result.WriteString("\\0")
+		case '\b':
+			result.WriteString("\\b")
+		case '\n':
+			result.WriteString("\\n")
+		case '\r':
+			result.WriteString("\\r")
+		case '\t':
+			result.WriteString("\\t")
+		default:
+			result.WriteByte(c)
+		}
+	}
+	return result.String()
+}
+
+// NextEvent returns the next event from the parser as a test-suite formatted string.
+// Returns nil when there are no more events.
+func (tst *Tester) NextEvent() *string {
+	if tst.gotStrEnd {
+		return nil
+	}
+
+	var event libyaml.Event
+	if !tst.parser.parser.Parse(&event) {
+		return nil
+	}
+	defer event.Delete()
+
+	var str string
+	switch event.Type {
+	case libyaml.NO_EVENT:
+		return nil
+
+	case libyaml.STREAM_START_EVENT:
+		str = "+STR"
+
+	case libyaml.STREAM_END_EVENT:
+		str = "-STR"
+		tst.gotStrEnd = true
+
+	case libyaml.DOCUMENT_START_EVENT:
+		if event.Implicit {
+			str = "+DOC"
+		} else {
+			str = "+DOC ---"
+		}
+
+	case libyaml.DOCUMENT_END_EVENT:
+		if event.Implicit {
+			str = "-DOC"
+		} else {
+			str = "-DOC ..."
+		}
+
+	case libyaml.MAPPING_START_EVENT:
+		str = "+MAP"
+		if len(event.Anchor) > 0 {
+			str += " &" + string(event.Anchor)
+		}
+		if len(event.Tag) > 0 {
+			str += " <" + string(event.Tag) + ">"
+		}
+
+	case libyaml.MAPPING_END_EVENT:
+		str = "-MAP"
+
+	case libyaml.SEQUENCE_START_EVENT:
+		str = "+SEQ"
+		if len(event.Anchor) > 0 {
+			str += " &" + string(event.Anchor)
+		}
+		if len(event.Tag) > 0 {
+			str += " <" + string(event.Tag) + ">"
+		}
+
+	case libyaml.SEQUENCE_END_EVENT:
+		str = "-SEQ"
+
+	case libyaml.SCALAR_EVENT:
+		str = "=VAL"
+		if len(event.Anchor) > 0 {
+			str += " &" + string(event.Anchor)
+		}
+		if len(event.Tag) > 0 {
+			str += " <" + string(event.Tag) + ">"
+		}
+		switch event.ScalarStyle() {
+		case libyaml.PLAIN_SCALAR_STYLE:
+			str += " :"
+		case libyaml.SINGLE_QUOTED_SCALAR_STYLE:
+			str += " '"
+		case libyaml.DOUBLE_QUOTED_SCALAR_STYLE:
+			str += " \""
+		case libyaml.LITERAL_SCALAR_STYLE:
+			str += " |"
+		case libyaml.FOLDED_SCALAR_STYLE:
+			str += " >"
+		}
+		str += escaped(event.Value)
+
+	case libyaml.ALIAS_EVENT:
+		str = "=ALI *" + string(event.Anchor)
+
+	default:
+		panic("internal error: Unexpected event: (please report): " + event.Type.String())
+	}
+
+	return &str
+}
