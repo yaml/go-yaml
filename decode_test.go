@@ -1134,13 +1134,13 @@ var unmarshalErrorTests = []struct {
 	{"v: [A,", "yaml: line 1: did not find expected node content"},
 	{"v:\n- [A,", "yaml: line 2: did not find expected node content"},
 	{"a:\n- b: *,", "yaml: line 2: did not find expected alphabetic or numeric character"},
-	{"a: *b\n", "yaml: unknown anchor 'b' referenced"},
+	{"a: *b\n", "yaml: line 1: unknown anchor 'b' referenced"},
 	{"a: &a\n  b: *a\n", "yaml: anchor 'a' value contains itself"},
 	{"value: -", "yaml: block sequence entries are not allowed in this context"},
 	{"a: !!binary ==", "yaml: !!binary value contains invalid base64 data"},
 	{"{[.]}", `yaml: cannot use '\[\]interface \{\}\{"\."\}' as a map key; try decoding into yaml.Node`},
 	{"{{.}}", `yaml: cannot use 'map\[string]interface \{\}\{".":interface \{\}\(nil\)\}' as a map key; try decoding into yaml.Node`},
-	{"b: *a\na: &a {c: 1}", `yaml: unknown anchor 'a' referenced`},
+	{"b: *a\na: &a {c: 1}", `yaml: line 1: unknown anchor 'a' referenced`},
 	{"%TAG !%79! tag:yaml.org,2002:\n---\nv: !%79!int '1'", "yaml: did not find expected whitespace"},
 	{"a:\n  1:\nb\n  2:", ".*could not find expected ':'"},
 	{"a: 1\nb: 2\nc 2\nd: 3\n", "^yaml: line 3: could not find expected ':'$"},
@@ -2129,6 +2129,31 @@ a:
 	err := yaml.Unmarshal([]byte(data), &x)
 	if err == nil {
 		t.Errorf("expected error, got none")
+	}
+}
+
+func TestParserErrorUnknownAnchorPosition(t *testing.T) {
+	tests := []struct {
+		data   string
+		line   int
+		column int
+	}{
+		{"*x", 1, 1},
+		{"a: *x", 1, 4},
+		{"a:\n  b: *x", 2, 6},
+	}
+
+	for _, test := range tests {
+		var n yaml.Node
+		err := yaml.Unmarshal([]byte(test.data), &n)
+		asErr := new(yaml.ParserError)
+		assert.ErrorAs(t, err, &asErr)
+		expected := &yaml.ParserError{
+			Message: "unknown anchor 'x' referenced",
+			Line:    test.line,
+			Column:  test.column,
+		}
+		assert.DeepEqual(t, expected, asErr)
 	}
 }
 
