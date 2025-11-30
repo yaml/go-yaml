@@ -16,6 +16,7 @@
 package yaml
 
 import (
+	"context"
 	"encoding"
 	"encoding/base64"
 	"fmt"
@@ -312,6 +313,7 @@ func (p *parser) mapping() *Node {
 // Decoder, unmarshals a node into a provided value.
 
 type decoder struct {
+	ctx     context.Context
 	doc     *Node
 	aliases map[*Node]bool
 	terrors []*UnmarshalError
@@ -336,8 +338,9 @@ var (
 	ifaceType      = generalMapType.Elem()
 )
 
-func newDecoder() *decoder {
+func newDecoder(ctx context.Context) *decoder {
 	d := &decoder{
+		ctx:            ctx,
 		stringMapType:  stringMapType,
 		generalMapType: generalMapType,
 		uniqueKeys:     true,
@@ -367,6 +370,24 @@ func (d *decoder) terror(n *Node, tag string, out reflect.Value) {
 
 func (d *decoder) callUnmarshaler(n *Node, u Unmarshaler) (good bool) {
 	err := u.UnmarshalYAML(n)
+	switch e := err.(type) {
+	case nil:
+		return true
+	case *TypeError:
+		d.terrors = append(d.terrors, e.Errors...)
+		return false
+	default:
+		d.terrors = append(d.terrors, &UnmarshalError{
+			Err:    err,
+			Line:   n.Line,
+			Column: n.Column,
+		})
+		return false
+	}
+}
+
+func (d *decoder) callUnmarshalerWithContext(n *Node, u UnmarshalerWithContext) (good bool) {
+	err := u.UnmarshalYAML(d.ctx, n)
 	switch e := err.(type) {
 	case nil:
 		return true
@@ -434,6 +455,10 @@ func (d *decoder) prepare(n *Node, out reflect.Value) (newout reflect.Value, unm
 		}
 		if out.CanAddr() {
 			outi := out.Addr().Interface()
+			if u, ok := outi.(UnmarshalerWithContext); ok {
+				good = d.callUnmarshalerWithContext(n, u)
+				return out, true, good
+			}
 			if u, ok := outi.(Unmarshaler); ok {
 				good = d.callUnmarshaler(n, u)
 				return out, true, good

@@ -21,6 +21,7 @@
 package yaml
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -40,6 +41,11 @@ type Unmarshaler interface {
 	UnmarshalYAML(value *Node) error
 }
 
+// UnmarshalerWithContext is the same as Unmarshaler, but it also receives a context.
+type UnmarshalerWithContext interface {
+	UnmarshalYAML(ctx context.Context, value *Node) error
+}
+
 type obsoleteUnmarshaler interface {
 	UnmarshalYAML(unmarshal func(any) error) error
 }
@@ -52,6 +58,11 @@ type obsoleteUnmarshaler interface {
 // and returns with the provided error.
 type Marshaler interface {
 	MarshalYAML() (any, error)
+}
+
+// MarshalerWithContext is the same as Marshaler, but it also receives a context.
+type MarshalerWithContext interface {
+	MarshalYAML(ctx context.Context) (any, error)
 }
 
 // Unmarshal decodes the first document found within the in byte slice
@@ -88,7 +99,13 @@ type Marshaler interface {
 // See the documentation of Marshal for the format of tags and a list of
 // supported tag options.
 func Unmarshal(in []byte, out any) (err error) {
-	return unmarshal(in, out, false)
+	return unmarshal(context.Background(), in, out, false)
+}
+
+// UnmarshalWithContext is the same as Unmarshal, but also provides
+// a context to the UnmarshalerWithContext implementations.
+func UnmarshalWithContext(ctx context.Context, in []byte, out any) (err error) {
+	return unmarshal(ctx, in, out, false)
 }
 
 // A Decoder reads and decodes YAML values from an input stream.
@@ -119,7 +136,16 @@ func (dec *Decoder) KnownFields(enable bool) {
 // See the documentation for Unmarshal for details about the
 // conversion of YAML into a Go value.
 func (dec *Decoder) Decode(v any) (err error) {
-	d := newDecoder()
+	return dec.DecodeWithContext(context.Background(), v)
+}
+
+// DecodeWithContext reads the next YAML-encoded value from its input
+// and stores it in the value pointed to by v.
+//
+// See the documentation for Unmarshal for details about the
+// conversion of YAML into a Go value.
+func (dec *Decoder) DecodeWithContext(ctx context.Context, v any) (err error) {
+	d := newDecoder(ctx)
 	d.knownFields = dec.knownFields
 	defer handleErr(&err)
 	node := dec.parser.parse()
@@ -142,7 +168,11 @@ func (dec *Decoder) Decode(v any) (err error) {
 // See the documentation for Unmarshal for details about the
 // conversion of YAML into a Go value.
 func (n *Node) Decode(v any) (err error) {
-	d := newDecoder()
+	return n.DecodeWithContext(context.Background(), v)
+}
+
+func (n *Node) DecodeWithContext(ctx context.Context, v any) (err error) {
+	d := newDecoder(ctx)
 	defer handleErr(&err)
 	out := reflect.ValueOf(v)
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
@@ -155,9 +185,9 @@ func (n *Node) Decode(v any) (err error) {
 	return nil
 }
 
-func unmarshal(in []byte, out any, strict bool) (err error) {
+func unmarshal(ctx context.Context, in []byte, out any, strict bool) (err error) {
 	defer handleErr(&err)
-	d := newDecoder()
+	d := newDecoder(ctx)
 	p := newParser(in)
 	defer p.destroy()
 	node := p.parse()
@@ -217,8 +247,14 @@ func unmarshal(in []byte, out any, strict bool) (err error) {
 //	yaml.Marshal(&T{B: 2}) // Returns "b: 2\n"
 //	yaml.Marshal(&T{F: 1}} // Returns "a: 1\nb: 0\n"
 func Marshal(in any) (out []byte, err error) {
+	return MarshalWithContext(context.Background(), in)
+}
+
+// MarshalWithContext is the same as Marshal, but also provides
+// a context to the MarshalerWithContext implementations.
+func MarshalWithContext(ctx context.Context, in any) (out []byte, err error) {
 	defer handleErr(&err)
-	e := newEncoder()
+	e := newEncoder(ctx)
 	defer e.destroy()
 	e.marshalDoc("", reflect.ValueOf(in))
 	e.finish()
@@ -258,8 +294,17 @@ func (e *Encoder) Encode(v any) (err error) {
 // See the documentation for Marshal for details about the
 // conversion of Go values into YAML.
 func (n *Node) Encode(v any) (err error) {
+	return n.EncodeWithContext(context.Background(), v)
+}
+
+// EncodeWithContext is the same as Encode, but also provides
+// a context to the MarshalerWithContext implementations.
+//
+// See the documentation for Marshal for details about the
+// conversion of Go values into YAML.
+func (n *Node) EncodeWithContext(ctx context.Context, v any) (err error) {
 	defer handleErr(&err)
-	e := newEncoder()
+	e := newEncoder(ctx)
 	defer e.destroy()
 	e.marshalDoc("", reflect.ValueOf(v))
 	e.finish()
