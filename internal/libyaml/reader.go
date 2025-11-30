@@ -363,18 +363,31 @@ func (parser *Parser) updateBuffer(length int) bool {
 				panic("impossible")
 			}
 
+			// YAML 1.2 compatible character sets
 			// Check if the character is in the allowed range:
-			//      #x9 | #xA | #xD | [#x20-#x7E]               (8 bit)
-			//      | #x85 | [#xA0-#xD7FF] | [#xE000-#xFFFD]    (16 bit)
-			//      | [#x10000-#x10FFFF]                        (32 bit)
+			// For JSON compatibility in quoted scalars, we must allow all
+			// non-C0 characters. This includes ASCII DEL (0x7F) and the
+			// C1 control block [#x80-#x9F].
+			// ref: https://yaml.org/spec/1.2.2/#51-character-set
 			switch {
+			// 8 bit set
+			// Tab (\t)
 			case value == 0x09:
+			// Line feed (LF \n)
 			case value == 0x0A:
+			// Carriage Return (CR \r)
 			case value == 0x0D:
+			// 16 bit set
+			// Printable ASCII
 			case value >= 0x20 && value <= 0x7E:
-			case value == 0x85:
+			// DEL, C1 control
+			// incompatible with YAML versions <= 1.1
+			case value >= 0x7F && value <= 0x9F:
+			// and Basic Multilingual Plane (BMP),
 			case value >= 0xA0 && value <= 0xD7FF:
+			// Additional Unicode Areas
 			case value >= 0xE000 && value <= 0xFFFD:
+			// 32 bit set
 			case value >= 0x10000 && value <= 0x10FFFF:
 			default:
 				return parser.setReaderError(
