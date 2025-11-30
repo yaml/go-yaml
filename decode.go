@@ -216,7 +216,8 @@ func (p *parser) alias() *Node {
 	n := p.node(AliasNode, "", "", string(p.event.Anchor))
 	n.Alias = p.anchors[n.Value]
 	if n.Alias == nil {
-		failf("unknown anchor '%s' referenced", n.Value)
+		msg := fmt.Sprintf("unknown anchor '%s' referenced", n.Value)
+		fail(&ParserError{msg, n.Line, n.Column})
 	}
 	p.expect(libyaml.ALIAS_EVENT)
 	return n
