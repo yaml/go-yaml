@@ -927,6 +927,11 @@ var unmarshalTests = []struct {
 		"true #" + strings.Repeat(" ", 512*3),
 		"true",
 	},
+	// Control characters
+	{
+		"\u0080",
+		"\u0080",
+	},
 
 	// CRLF
 	{
