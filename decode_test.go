@@ -570,6 +570,14 @@ var unmarshalTests = []struct {
 		map[string]any{"v": float64(-1)},
 	},
 	{
+		"v: !!float 9223372036854775807",
+		map[string]any{"v": float64(math.MaxInt64)},
+	},
+	{
+		"v: !!float 18446744073709551615",
+		map[string]any{"v": float64(math.MaxUint64)},
+	},
+	{
 		"v: !!null ''",
 		map[string]any{"v": nil},
 	},
