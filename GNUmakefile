@@ -68,6 +68,9 @@ count ?= 1
 test: $(GO-DEPS)
 	go test$(if $v, -v) -vet=off .
 
+test-cover: $(GO-DEPS)
+	go test$(if $v, -v) -vet=off --cover . ./internal/...
+
 test-data: $(YTS-DIR)
 
 test-all: test test-yts-all
