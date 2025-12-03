@@ -2075,6 +2075,11 @@ func TestUnmarshalKnownFields(t *testing.T) {
 		dec.KnownFields(item.known)
 		err := dec.Decode(value.Interface())
 		assert.ErrorMatches(t, item.error, err)
+
+		dec, err = yaml.NewDecoderWithOptions(bytes.NewBuffer([]byte(item.data)), yaml.WithKnownFields(item.known))
+		assert.NoError(t, err)
+		err = dec.Decode(value.Interface())
+		assert.ErrorMatches(t, item.error, err)
 	}
 }
 

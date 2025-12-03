@@ -184,8 +184,10 @@ func main() {
 
 				// Use encoder with 2-space indentation
 				var buf bytes.Buffer
-				enc := yaml.NewEncoder(&buf)
-				enc.SetIndent(2)
+				enc, err := yaml.NewEncoderWithOptions(&buf, yaml.WithIndent(2))
+				if err != nil {
+					log.Fatal("Failed to create YAML encoder:", err)
+				}
 				if err := enc.Encode(info); err != nil {
 					log.Fatal("Failed to marshal node info:", err)
 				}
@@ -236,8 +238,10 @@ func ProcessNodeUnmarshal() error {
 
 		// Use encoder with 2-space indentation
 		var buf bytes.Buffer
-		enc := yaml.NewEncoder(&buf)
-		enc.SetIndent(2)
+		enc, err := yaml.NewEncoderWithOptions(&buf, yaml.WithIndent(2))
+		if err != nil {
+			log.Fatal("Failed to create YAML encoder:", err)
+		}
 		if err := enc.Encode(info); err != nil {
 			enc.Close()
 			return fmt.Errorf("failed to marshal node info: %w", err)

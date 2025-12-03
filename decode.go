@@ -337,14 +337,21 @@ var (
 	ifaceType      = generalMapType.Elem()
 )
 
-func newDecoder() *decoder {
+func newDecoder(opts ...DecoderOption) (*decoder, error) {
 	d := &decoder{
 		stringMapType:  stringMapType,
 		generalMapType: generalMapType,
 		uniqueKeys:     true,
 	}
 	d.aliases = make(map[*Node]bool)
-	return d
+
+	for _, opt := range opts {
+		if err := opt(d); err != nil {
+			return nil, fmt.Errorf("configuring decoder: %w", err)
+		}
+	}
+
+	return d, nil
 }
 
 func (d *decoder) terror(n *Node, tag string, out reflect.Value) {
