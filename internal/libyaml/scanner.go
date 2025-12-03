@@ -798,7 +798,7 @@ func (parser *Parser) fetchNextToken() (ok bool) {
 	}
 
 	// Is it the value indicator?
-	if parser.buffer[parser.buffer_pos] == ':' && (parser.flow_level > 0 || isBlankOrZero(parser.buffer, parser.buffer_pos+1)) {
+	if parser.buffer[parser.buffer_pos] == ':' && (parser.flow_level > 0 && !parser.isFlowSequence() || isBlankOrZero(parser.buffer, parser.buffer_pos+1)) {
 		return parser.fetchValue()
 	}
 
@@ -877,6 +877,14 @@ func (parser *Parser) fetchNextToken() (ok bool) {
 	return parser.setScannerError(
 		"while scanning for the next token", parser.mark,
 		"found character that cannot start any token")
+}
+
+func (parser *Parser) isFlowSequence() bool {
+	if len(parser.tokens) == 0 {
+		return false
+	}
+	return parser.tokens[len(parser.tokens)-1].Type == FLOW_ENTRY_TOKEN ||
+		parser.tokens[len(parser.tokens)-1].Type == FLOW_SEQUENCE_START_TOKEN
 }
 
 func (parser *Parser) simpleKeyIsValid(simple_key *SimpleKey) (valid, ok bool) {
