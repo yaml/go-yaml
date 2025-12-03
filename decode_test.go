@@ -296,6 +296,15 @@ var unmarshalTests = []struct {
 		"seq: [A,1,C]",
 		map[string]any{"seq": []any{"A", 1, "C"}},
 	},
+	{
+		"seq: [:A,1,:C]",
+		map[string]any{"seq": []any{":A", 1, ":C"}},
+	},
+	{
+		"seq: [:: A,1,:C]",
+		map[string]any{"seq": []any{map[string]any{":": "A"}, 1, ":C"}},
+	},
+
 	// Block sequence
 	{
 		"seq:\n - A\n - B",
