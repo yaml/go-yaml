@@ -80,8 +80,6 @@ TestYAMLSuite/CFD4/EventComparisonTest
 TestYAMLSuite/CN3R/EventComparisonTest
 TestYAMLSuite/CVW2/UnmarshalTest
 TestYAMLSuite/CVW2/EventComparisonTest
-TestYAMLSuite/DBG4/UnmarshalTest
-TestYAMLSuite/DBG4/EventComparisonTest
 TestYAMLSuite/DFF7/MarshalTest
 TestYAMLSuite/DK3J/EventComparisonTest
 TestYAMLSuite/DK3J/MarshalTest
@@ -108,7 +106,6 @@ TestYAMLSuite/FRK4/EventComparisonTest
 TestYAMLSuite/G4RS/EventComparisonTest
 TestYAMLSuite/G5U8/UnmarshalTest
 TestYAMLSuite/G5U8/EventComparisonTest
-TestYAMLSuite/00#07/UnmarshalTest
 TestYAMLSuite/00#07/EventComparisonTest
 TestYAMLSuite/HRE5/UnmarshalTest
 TestYAMLSuite/HRE5/EventComparisonTest
