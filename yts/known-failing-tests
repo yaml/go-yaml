@@ -239,3 +239,4 @@ TestYAMLSuite/UGM3/MarshalTest
 TestYAMLSuite/YD5X/JSONComparisonTest
 TestYAMLSuite/ZF4X/JSONComparisonTest
 TestYAMLSuite/ZWK4/JSONComparisonTest
+Adds unit tests to libyaml, adds make test-cover
