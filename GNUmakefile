@@ -30,7 +30,7 @@ MAKES-CLEAN := $(CLI-BINARY)
 MAKES-REALCLEAN := $(dir $(YTS-DIR))
 
 # Setup and include go.mk and shell.mk:
-GO-FILES := $(shell find -not \( -path ./.cache -prune \) -name '*.go' | sort)
+GO-FILES := $(shell find . -not \( -path ./.cache -prune \) -name '*.go' | sort)
 GO-CMDS-SKIP := test fmt vet
 ifndef GO-VERSION-NEEDED
 GO-NO-DEP-GO := true
