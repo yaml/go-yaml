@@ -1,0 +1,146 @@
+# SPDX-License-Identifier: Apache-2.0
+# YAML helper function tests
+#
+# Purpose: Tests utility functions and type conversions (String() methods, style accessors).
+#
+# Test Types:
+#   enum-string    - Tests String() methods of enum types (converts enum value to string)
+#   style-accessor - Tests style accessor methods on Event type
+#
+# Common Keys:
+#   name   - Test case name (string)
+#   type   - Test type (enum-string | style-accessor)
+#   enum   - Enum type to test (for enum-string): ScalarStyle | TokenType | EventType | ParserState
+#   value  - Enum value to test (for enum-string): integer or constant name
+#   want   - Expected result (format varies by test type):
+#            * For enum-string: string representing the expected String() output
+#   method - Style accessor method name (for style-accessor): ScalarStyle | SequenceStyle | MappingStyle
+#   style  - Style value to set and test (for style-accessor): style constant name
+
+# ScalarStyle.String() tests
+- name: Scalar style plain
+  type: enum-string
+  enum: ScalarStyle
+  value: PLAIN_SCALAR_STYLE
+  want: Plain
+
+- name: Scalar style single
+  type: enum-string
+  enum: ScalarStyle
+  value: SINGLE_QUOTED_SCALAR_STYLE
+  want: Single
+
+- name: Scalar style double
+  type: enum-string
+  enum: ScalarStyle
+  value: DOUBLE_QUOTED_SCALAR_STYLE
+  want: Double
+
+- name: Scalar style literal
+  type: enum-string
+  enum: ScalarStyle
+  value: LITERAL_SCALAR_STYLE
+  want: Literal
+
+- name: Scalar style folded
+  type: enum-string
+  enum: ScalarStyle
+  value: FOLDED_SCALAR_STYLE
+  want: Folded
+
+- name: Scalar style any
+  type: enum-string
+  enum: ScalarStyle
+  value: ANY_SCALAR_STYLE
+  want: ''
+
+- name: Scalar style unknown
+  type: enum-string
+  enum: ScalarStyle
+  value: 99
+  want: ''
+
+# TokenType.String() tests
+- name: Token no token
+  type: enum-string
+  enum: TokenType
+  value: NO_TOKEN
+  want: NO_TOKEN
+
+- name: Token stream start
+  type: enum-string
+  enum: TokenType
+  value: STREAM_START_TOKEN
+  want: STREAM_START_TOKEN
+
+- name: Token scalar
+  type: enum-string
+  enum: TokenType
+  value: SCALAR_TOKEN
+  want: SCALAR_TOKEN
+
+- name: Token unknown
+  type: enum-string
+  enum: TokenType
+  value: 99
+  want: <unknown token>
+
+# EventType.String() tests
+- name: Event no event
+  type: enum-string
+  enum: EventType
+  value: NO_EVENT
+  want: none
+
+- name: Event stream start
+  type: enum-string
+  enum: EventType
+  value: STREAM_START_EVENT
+  want: stream start
+
+- name: Event scalar
+  type: enum-string
+  enum: EventType
+  value: SCALAR_EVENT
+  want: scalar
+
+- name: Event unknown
+  type: enum-string
+  enum: EventType
+  value: 99
+  want: unknown event 99
+
+# ParserState.String() tests
+- name: Parser state stream start
+  type: enum-string
+  enum: ParserState
+  value: PARSE_STREAM_START_STATE
+  want: PARSE_STREAM_START_STATE
+
+- name: Parser state end
+  type: enum-string
+  enum: ParserState
+  value: PARSE_END_STATE
+  want: PARSE_END_STATE
+
+- name: Parser state unknown
+  type: enum-string
+  enum: ParserState
+  value: 99
+  want: <unknown parser state>
+
+# Event style accessor tests
+- name: Event scalar style
+  type: style-accessor
+  method: ScalarStyle
+  style: DOUBLE_QUOTED_SCALAR_STYLE
+
+- name: Event sequence style
+  type: style-accessor
+  method: SequenceStyle
+  style: FLOW_SEQUENCE_STYLE
+
+- name: Event mapping style
+  type: style-accessor
+  method: MappingStyle
+  style: BLOCK_MAPPING_STYLE

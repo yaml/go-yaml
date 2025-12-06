@@ -23,11 +23,15 @@ YTS-URL ?= https://github.com/yaml/yaml-test-suite
 YTS-TAG ?= data-2022-01-17
 YTS-DIR := yts/testdata/$(YTS-TAG)
 
+# yaml v3 worktree:
+V3-TAG := v3.0.4
+V3-DIR := .cache/yaml-v3
+
 CLI-BINARY := go-yaml
 
 MAKES-NO-CLEAN := true
 MAKES-CLEAN := $(CLI-BINARY)
-MAKES-REALCLEAN := $(dir $(YTS-DIR))
+MAKES-REALCLEAN := $(dir $(YTS-DIR)) $(V3-DIR)
 
 # Setup and include go.mk and shell.mk:
 GO-FILES := $(shell find -not \( -path ./.cache -prune \) -name '*.go' | sort)
@@ -65,8 +69,8 @@ count ?= 1
 
 
 # Test rules:
-test: $(GO-DEPS)
-	go test$(if $v, -v) -vet=off .
+test: $(GO-DEPS) $(V3-DIR)
+	go test$(if $v, -v) -vet=off --cover . ./internal/...
 
 test-data: $(YTS-DIR)
 
@@ -101,6 +105,9 @@ $(CLI-BINARY): $(GO)
 $(YTS-DIR):
 	git clone -q $(YTS-URL) $@
 	git -C $@ checkout -q $(YTS-TAG)
+
+$(V3-DIR):
+	git worktree add -f $@ $(V3-TAG)
 
 # Downloads golangci-lint binary and moves to versioned path
 # (.cache/local/bin/golangci-lint-<version>).

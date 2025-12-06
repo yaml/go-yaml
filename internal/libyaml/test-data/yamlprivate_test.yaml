@@ -1,0 +1,611 @@
+# SPDX-License-Identifier: Apache-2.0
+# Character classification and utility function tests
+#
+# Purpose: Tests internal character classification and conversion functions used
+#          throughout the YAML parser and emitter.
+#
+# Test Types:
+#   char-predicate - Tests is* functions that return boolean
+#   char-convert   - Tests as* and width functions that return integer
+#
+# Common Keys:
+#   name  - Test case name (string)
+#   type  - Test type (char-predicate | char-convert)
+#   func  - Function to call (isAlpha, isDigit, asHex, width, etc.)
+#   input - Input bytes (string or hex bytes like [0x00])
+#   index - Byte index to test (integer, defaults to 0)
+#   want  - Expected result:
+#           * For char-predicate: boolean (defaults to true if omitted; set to false if needed)
+#           * For char-convert: integer (required)
+
+# isAlpha tests
+- name: Is alpha - letters
+  type: char-predicate
+  func: isAlpha
+  input: abc
+
+- name: Is alpha - uppercase
+  type: char-predicate
+  func: isAlpha
+  input: ABC
+
+- name: Is alpha - digits
+  type: char-predicate
+  func: isAlpha
+  input: '123'
+
+- name: Is alpha - underscore
+  type: char-predicate
+  func: isAlpha
+  input: _-
+
+- name: Is alpha - dash at index 1
+  type: char-predicate
+  func: isAlpha
+  input: _-
+  index: 1
+
+- name: Is alpha - space
+  type: char-predicate
+  func: isAlpha
+  input: ' '
+  want: false
+
+- name: Is alpha - exclamation
+  type: char-predicate
+  func: isAlpha
+  input: '!'
+  want: false
+
+- name: Is alpha - at sign
+  type: char-predicate
+  func: isAlpha
+  input: '@'
+  want: false
+
+# isFlowIndicator tests
+- name: Is flow indicator - left bracket
+  type: char-predicate
+  func: isFlowIndicator
+  input: '['
+
+- name: Is flow indicator - right bracket
+  type: char-predicate
+  func: isFlowIndicator
+  input: ']'
+
+- name: Is flow indicator - left brace
+  type: char-predicate
+  func: isFlowIndicator
+  input: '{'
+
+- name: Is flow indicator - right brace
+  type: char-predicate
+  func: isFlowIndicator
+  input: '}'
+
+- name: Is flow indicator - comma
+  type: char-predicate
+  func: isFlowIndicator
+  input: ','
+
+- name: Is flow indicator - letter
+  type: char-predicate
+  func: isFlowIndicator
+  input: a
+  want: false
+
+- name: Is flow indicator - colon
+  type: char-predicate
+  func: isFlowIndicator
+  input: ':'
+  want: false
+
+# isAnchorChar tests
+- name: Is anchor char - letters
+  type: char-predicate
+  func: isAnchorChar
+  input: abc
+
+- name: Is anchor char - digits
+  type: char-predicate
+  func: isAnchorChar
+  input: '123'
+
+- name: Is anchor char - underscore dash
+  type: char-predicate
+  func: isAnchorChar
+  input: _-
+
+- name: Is anchor char - colon
+  type: char-predicate
+  func: isAnchorChar
+  input: ':'
+  want: false
+
+- name: Is anchor char - left bracket
+  type: char-predicate
+  func: isAnchorChar
+  input: '['
+  want: false
+
+- name: Is anchor char - space
+  type: char-predicate
+  func: isAnchorChar
+  input: ' '
+  want: false
+
+- name: Is anchor char - newline
+  type: char-predicate
+  func: isAnchorChar
+  input: "\n"
+  want: false
+
+- name: Is anchor char - BOM
+  type: char-predicate
+  func: isAnchorChar
+  input: [0xEF, 0xBB, 0xBF]
+  want: false
+
+# isColon tests
+- name: Is colon - colon
+  type: char-predicate
+  func: isColon
+  input: ':'
+
+- name: Is colon - letter
+  type: char-predicate
+  func: isColon
+  input: a
+  want: false
+
+# isDigit tests
+- name: Is digit - zero
+  type: char-predicate
+  func: isDigit
+  input: '0'
+
+- name: Is digit - five
+  type: char-predicate
+  func: isDigit
+  input: '5'
+
+- name: Is digit - nine
+  type: char-predicate
+  func: isDigit
+  input: '9'
+
+- name: Is digit - letter
+  type: char-predicate
+  func: isDigit
+  input: a
+  want: false
+
+- name: Is digit - space
+  type: char-predicate
+  func: isDigit
+  input: ' '
+  want: false
+
+# isHex tests
+- name: Is hex - zero
+  type: char-predicate
+  func: isHex
+  input: '0'
+
+- name: Is hex - nine
+  type: char-predicate
+  func: isHex
+  input: '9'
+
+- name: Is hex - uppercase A
+  type: char-predicate
+  func: isHex
+  input: A
+
+- name: Is hex - uppercase F
+  type: char-predicate
+  func: isHex
+  input: F
+
+- name: Is hex - lowercase a
+  type: char-predicate
+  func: isHex
+  input: a
+
+- name: Is hex - lowercase f
+  type: char-predicate
+  func: isHex
+  input: f
+
+- name: Is hex - uppercase G
+  type: char-predicate
+  func: isHex
+  input: G
+  want: false
+
+- name: Is hex - lowercase g
+  type: char-predicate
+  func: isHex
+  input: g
+  want: false
+
+# isASCII tests
+- name: Is ASCII - letter
+  type: char-predicate
+  func: isASCII
+  input: a
+
+- name: Is ASCII - 0x7F
+  type: char-predicate
+  func: isASCII
+  input: [0x7F]
+
+- name: Is ASCII - 0x80
+  type: char-predicate
+  func: isASCII
+  input: [0x80]
+  want: false
+
+- name: Is ASCII - 0xFF
+  type: char-predicate
+  func: isASCII
+  input: [0xFF]
+  want: false
+
+# isPrintable tests
+- name: Is printable - LF
+  type: char-predicate
+  func: isPrintable
+  input: [0x0A]
+
+- name: Is printable - space
+  type: char-predicate
+  func: isPrintable
+  input: [0x20]
+
+- name: Is printable - tilde
+  type: char-predicate
+  func: isPrintable
+  input: [0x7E]
+
+- name: Is printable - nbsp
+  type: char-predicate
+  func: isPrintable
+  input: [0xC2, 0xA0]
+
+- name: Is printable - null
+  type: char-predicate
+  func: isPrintable
+  input: [0x00]
+  want: false
+
+- name: Is printable - control char
+  type: char-predicate
+  func: isPrintable
+  input: [0x19]
+  want: false
+
+# isZeroChar tests
+- name: Is zero char - null
+  type: char-predicate
+  func: isZeroChar
+  input: [0x00]
+
+- name: Is zero char - letter
+  type: char-predicate
+  func: isZeroChar
+  input: a
+  want: false
+
+# isBOM tests
+- name: Is BOM - UTF-8 BOM
+  type: char-predicate
+  func: isBOM
+  input: [0xEF, 0xBB, 0xBF]
+
+- name: Is BOM - regular text
+  type: char-predicate
+  func: isBOM
+  input: abc
+  want: false
+
+# isSpace tests
+- name: Is space - space
+  type: char-predicate
+  func: isSpace
+  input: ' '
+
+- name: Is space - letter
+  type: char-predicate
+  func: isSpace
+  input: a
+  want: false
+
+# isTab tests
+- name: Is tab - tab
+  type: char-predicate
+  func: isTab
+  input: "\t"
+
+- name: Is tab - space
+  type: char-predicate
+  func: isTab
+  input: ' '
+  want: false
+
+# isBlank tests
+- name: Is blank - space
+  type: char-predicate
+  func: isBlank
+  input: ' '
+
+- name: Is blank - tab
+  type: char-predicate
+  func: isBlank
+  input: "\t"
+
+- name: Is blank - letter
+  type: char-predicate
+  func: isBlank
+  input: a
+  want: false
+
+- name: Is blank - newline
+  type: char-predicate
+  func: isBlank
+  input: "\n"
+  want: false
+
+# isLineBreak tests
+- name: Is line break - CR
+  type: char-predicate
+  func: isLineBreak
+  input: "\r"
+
+- name: Is line break - LF
+  type: char-predicate
+  func: isLineBreak
+  input: "\n"
+
+- name: Is line break - NEL
+  type: char-predicate
+  func: isLineBreak
+  input: [0xC2, 0x85]
+
+- name: Is line break - LS
+  type: char-predicate
+  func: isLineBreak
+  input: [0xE2, 0x80, 0xA8]
+
+- name: Is line break - PS
+  type: char-predicate
+  func: isLineBreak
+  input: [0xE2, 0x80, 0xA9]
+
+- name: Is line break - letter
+  type: char-predicate
+  func: isLineBreak
+  input: a
+  want: false
+
+- name: Is line break - space
+  type: char-predicate
+  func: isLineBreak
+  input: ' '
+  want: false
+
+# isCRLF tests
+- name: Is CRLF - CRLF
+  type: char-predicate
+  func: isCRLF
+  input: "\r\n"
+
+- name: Is CRLF - LF only
+  type: char-predicate
+  func: isCRLF
+  input: [0x0A, 0x00]
+  want: false
+
+- name: Is CRLF - CR only
+  type: char-predicate
+  func: isCRLF
+  input: [0x0D, 0x00]
+  want: false
+
+# isBreakOrZero tests
+- name: Is break or zero - CR
+  type: char-predicate
+  func: isBreakOrZero
+  input: "\r"
+
+- name: Is break or zero - LF
+  type: char-predicate
+  func: isBreakOrZero
+  input: "\n"
+
+- name: Is break or zero - null
+  type: char-predicate
+  func: isBreakOrZero
+  input: [0x00]
+
+- name: Is break or zero - NEL
+  type: char-predicate
+  func: isBreakOrZero
+  input: [0xC2, 0x85]
+
+- name: Is break or zero - letter
+  type: char-predicate
+  func: isBreakOrZero
+  input: a
+  want: false
+
+# isSpaceOrZero tests
+- name: Is space or zero - space
+  type: char-predicate
+  func: isSpaceOrZero
+  input: ' '
+
+- name: Is space or zero - CR
+  type: char-predicate
+  func: isSpaceOrZero
+  input: "\r"
+
+- name: Is space or zero - LF
+  type: char-predicate
+  func: isSpaceOrZero
+  input: "\n"
+
+- name: Is space or zero - null
+  type: char-predicate
+  func: isSpaceOrZero
+  input: [0x00]
+
+- name: Is space or zero - letter
+  type: char-predicate
+  func: isSpaceOrZero
+  input: a
+  want: false
+
+# isBlankOrZero tests
+- name: Is blank or zero - space
+  type: char-predicate
+  func: isBlankOrZero
+  input: ' '
+
+- name: Is blank or zero - tab
+  type: char-predicate
+  func: isBlankOrZero
+  input: "\t"
+
+- name: Is blank or zero - CR
+  type: char-predicate
+  func: isBlankOrZero
+  input: "\r"
+
+- name: Is blank or zero - LF
+  type: char-predicate
+  func: isBlankOrZero
+  input: "\n"
+
+- name: Is blank or zero - null
+  type: char-predicate
+  func: isBlankOrZero
+  input: [0x00]
+
+- name: Is blank or zero - letter
+  type: char-predicate
+  func: isBlankOrZero
+  input: a
+  want: false
+
+# Converter functions - asDigit tests
+- name: As digit - zero
+  type: char-convert
+  func: asDigit
+  input: '0'
+  want: 0
+
+- name: As digit - five
+  type: char-convert
+  func: asDigit
+  input: '5'
+  want: 5
+
+- name: As digit - nine
+  type: char-convert
+  func: asDigit
+  input: '9'
+  want: 9
+
+# asHex tests
+- name: As hex - zero
+  type: char-convert
+  func: asHex
+  input: '0'
+  want: 0
+
+- name: As hex - nine
+  type: char-convert
+  func: asHex
+  input: '9'
+  want: 9
+
+- name: As hex - uppercase A
+  type: char-convert
+  func: asHex
+  input: A
+  want: 10
+
+- name: As hex - uppercase F
+  type: char-convert
+  func: asHex
+  input: F
+  want: 15
+
+- name: As hex - lowercase a
+  type: char-convert
+  func: asHex
+  input: a
+  want: 10
+
+- name: As hex - lowercase f
+  type: char-convert
+  func: asHex
+  input: f
+  want: 15
+
+# width tests
+- name: Width - 0x00
+  type: char-convert
+  func: width
+  input: [0x00]
+  want: 1
+
+- name: Width - 0x7F
+  type: char-convert
+  func: width
+  input: [0x7F]
+  want: 1
+
+- name: Width - 0xC0
+  type: char-convert
+  func: width
+  input: [0xC0]
+  want: 2
+
+- name: Width - 0xDF
+  type: char-convert
+  func: width
+  input: [0xDF]
+  want: 2
+
+- name: Width - 0xE0
+  type: char-convert
+  func: width
+  input: [0xE0]
+  want: 3
+
+- name: Width - 0xEF
+  type: char-convert
+  func: width
+  input: [0xEF]
+  want: 3
+
+- name: Width - 0xF0
+  type: char-convert
+  func: width
+  input: [0xF0]
+  want: 4
+
+- name: Width - 0xF7
+  type: char-convert
+  func: width
+  input: [0xF7]
+  want: 4
+
+- name: Width - 0xF8
+  type: char-convert
+  func: width
+  input: [0xF8]
+  want: 0
