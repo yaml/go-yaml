@@ -1,0 +1,239 @@
+# SPDX-License-Identifier: Apache-2.0
+# API tests for constructors and methods
+#
+# Purpose: Tests the public API of Parser and Emitter types (constructors, methods, cleanup).
+#
+# Test Types:
+#   api-new       - Tests constructors (NewParser, NewEmitter)
+#   api-method    - Tests methods and resulting field state
+#   api-panic     - Tests methods that should panic under certain conditions
+#   api-delete    - Tests cleanup via Delete() method
+#   api-new-event - Tests event constructor functions
+#
+# Common Keys:
+#   name  - Test case name (string)
+#   type  - Test type (api-new | api-method | api-panic | api-delete | api-new-event)
+#   using - Constructor name (NewParser | NewEmitter) - which type to instantiate
+#   call  - Method call specification [MethodName, arg1, arg2, ...] - method to call with arguments
+#   setup - Setup method call [MethodName, arg1, arg2, ...] - called before main method (for api-panic)
+#   bytes - Boolean flag, when true converts string arguments to []byte
+#   test  - Field validation specifications (for api-new, api-method, api-delete):
+#            Map of field names to check specifications. Each field can have:
+#            * nil - Boolean, check if field is nil (true) or not nil (false)
+#            * cap - Integer, check slice capacity equals this value
+#            * len - Integer, check length (for slices/strings) equals this value
+#            * ==  - Value, check field equals this value
+#            Examples:
+#            * buffer: {nil: false, cap: 512}  - buffer is not nil and has capacity 512
+#            * input: {==: 'test'}             - input field equals 'test'
+#            * states: {nil: false}            - states field is not nil
+#   want  - Expected result (format varies by test type):
+#           * For api-panic: string containing expected panic message substring
+#           * For other types: format varies
+
+# Constructor tests
+- name: New parser
+  type: api-new
+  using: NewParser
+  test:
+    raw-buffer:
+      nil: false
+      cap: 512  # input_raw_buffer_size
+    buffer:
+      nil: false
+      cap: 1536  # input_buffer_size
+
+- name: New emitter
+  type: api-new
+  using: NewEmitter
+  test:
+    buffer:
+      nil: false
+      len: 128  # output_buffer_size
+    raw-buffer: {nil: false}
+    states: {nil: false}
+    events: {nil: false}
+    best-width: {==: -1}
+
+# Method tests
+- name: Parser set input string
+  type: api-method
+  using: NewParser
+  bytes: true
+  call: [SetInputString, 'key: value']
+  test:
+    input: {==: 'key: value'}
+    input-pos: {==: 0}
+    read-handler: {nil: false}
+
+- name: Parser set encoding
+  type: api-method
+  using: NewParser
+  call: [SetEncoding, UTF8_ENCODING]
+  test:
+    encoding: {==: UTF8_ENCODING}
+
+- name: Emitter set canonical true
+  type: api-method
+  using: NewEmitter
+  call: [SetCanonical, true]
+  test:
+    canonical: {==: true}
+
+- name: Emitter set canonical false
+  type: api-method
+  using: NewEmitter
+  call: [SetCanonical, false]
+  test:
+    canonical: {==: false}
+
+- name: Emitter set indent 2
+  type: api-method
+  using: NewEmitter
+  call: [SetIndent, 2]
+  test:
+    BestIndent: {==: 2}
+
+- name: Emitter set indent 5
+  type: api-method
+  using: NewEmitter
+  call: [SetIndent, 5]
+  test:
+    BestIndent: {==: 5}
+
+- name: Emitter set indent clamp low
+  type: api-method
+  using: NewEmitter
+  call: [SetIndent, 1]
+  test:
+    BestIndent: {==: 2}
+
+- name: Emitter set indent clamp high
+  type: api-method
+  using: NewEmitter
+  call: [SetIndent, 10]
+  test:
+    BestIndent: {==: 2}
+
+- name: Emitter set width 80
+  type: api-method
+  using: NewEmitter
+  call: [SetWidth, 80]
+  test:
+    best-width: {==: 80}
+
+- name: Emitter set width -1
+  type: api-method
+  using: NewEmitter
+  call: [SetWidth, -1]
+  test:
+    best-width: {==: -1}
+
+- name: Emitter set width clamp
+  type: api-method
+  using: NewEmitter
+  call: [SetWidth, -10]
+  test:
+    best-width: {==: -1}
+
+- name: Emitter set unicode true
+  type: api-method
+  using: NewEmitter
+  call: [SetUnicode, true]
+  test:
+    unicode: {==: true}
+
+- name: Emitter set unicode false
+  type: api-method
+  using: NewEmitter
+  call: [SetUnicode, false]
+  test:
+    unicode: {==: false}
+
+- name: Emitter set line break
+  type: api-method
+  using: NewEmitter
+  call: [SetLineBreak, LN_BREAK]
+  test:
+    line-break: {==: LN_BREAK}
+
+# Panic tests
+- name: Parser set input string twice
+  type: api-panic
+  using: NewParser
+  bytes: true
+  setup: [SetInputString, first]
+  call: [SetInputString, second]
+  want: must set the input source only once
+
+- name: Parser set encoding twice
+  type: api-panic
+  using: NewParser
+  setup: [SetEncoding, UTF8_ENCODING]
+  call: [SetEncoding, UTF16LE_ENCODING]
+  want: must set the encoding only once
+
+- name: Emitter set encoding twice
+  type: api-panic
+  using: NewEmitter
+  setup: [SetEncoding, UTF8_ENCODING]
+  call: [SetEncoding, UTF16LE_ENCODING]
+  want: must set the output encoding only once
+
+# Delete tests
+- name: Parser delete
+  type: api-delete
+  using: NewParser
+  bytes: true
+  setup: [SetInputString, test]
+  test:
+    input: {len: 0}
+    buffer: {len: 0}
+
+- name: Emitter delete
+  type: api-delete
+  using: NewEmitter
+  test:
+    output-buffer: {nil: true}
+    buffer: {len: 0}
+
+# Event constructor tests
+- name: New stream start event
+  type: api-new-event
+  call: [NewStreamStartEvent, UTF8_ENCODING]
+  test:
+    Type: {==: STREAM_START_EVENT}
+    encoding: {==: UTF8_ENCODING}
+
+- name: New stream end event
+  type: api-new-event
+  call: [NewStreamEndEvent]
+  test:
+    Type: {==: STREAM_END_EVENT}
+
+- name: New document end event
+  type: api-new-event
+  call: [NewDocumentEndEvent, false]
+  test:
+    Type: {==: DOCUMENT_END_EVENT}
+    Implicit: {==: false}
+
+- name: New alias event
+  type: api-new-event
+  bytes: true
+  call: [NewAliasEvent, myanchor]
+  test:
+    Type: {==: ALIAS_EVENT}
+    Anchor: {==: myanchor}
+
+- name: New sequence end event
+  type: api-new-event
+  call: [NewSequenceEndEvent]
+  test:
+    Type: {==: SEQUENCE_END_EVENT}
+
+- name: New mapping end event
+  type: api-new-event
+  call: [NewMappingEndEvent]
+  test:
+    Type: {==: MAPPING_END_EVENT}
