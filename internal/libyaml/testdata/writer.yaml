@@ -1,0 +1,73 @@
+# SPDX-License-Identifier: Apache-2.0
+# Writer tests for Emitter output handling
+#
+# Purpose: Tests Emitter methods that handle writing and flushing output,
+#          including buffer management and write handlers.
+#
+# Format: Test cases use type-as-key format:
+#   - test-type:
+#       name: Test case name
+#       ...
+#
+# Test Types:
+#   writer-flush - Tests flush method with various scenarios
+#   writer-error - Tests flush with error conditions
+#   writer-panic - Tests methods that should panic
+#
+# Common Keys:
+#   name - Test case name (string, title case)
+#   type - Output handler type (string | writer | error-writer)
+#   data - Data to write to buffer (string or hex byte array)
+#   data2 - Second data chunk for multi-flush tests (optional)
+#   func - Function to call for panic tests (flush, etc.)
+#   want - Expected result:
+#          * For writer-flush: expected output string
+#          * For writer-error: error message substring
+#          * For writer-panic: panic message substring
+#   test - Field checks to perform after flush (list of operator: [field, value])
+#          Field check operators:
+#          * eq: [field, value]  - Equals
+#          * len: [field, N]     - Length equals N
+#
+# flush tests
+- writer-flush:
+    name: Flush empty buffer
+    type: string
+    want: ''
+    test:
+    - eq: [buffer_pos, 0]
+
+- writer-flush:
+    name: Flush with data
+    type: string
+    data: test data
+    want: test data
+    test:
+    - eq: [buffer_pos, 0]
+
+- writer-flush:
+    name: Flush multiple times
+    type: string
+    data: first
+    data2: second
+    want: firstsecond
+
+- writer-flush:
+    name: Flush with writer
+    type: writer
+    data: test data
+    want: test data
+
+# error tests
+- writer-error:
+    name: Flush with write error
+    type: error-writer
+    data: test
+    want: write error
+
+# panic tests
+- writer-panic:
+    name: Flush without write handler
+    func: flush
+    data: test
+    want: write handler not set

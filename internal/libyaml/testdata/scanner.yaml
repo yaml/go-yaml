@@ -1,0 +1,305 @@
+# SPDX-License-Identifier: Apache-2.0
+# Scanner test cases for libyaml scanner
+#
+# Purpose: Tests the YAML scanner/tokenizer that converts YAML text into tokens.
+#
+# Format: Test cases use type-as-key format:
+#   - test-type:
+#       name: Test case name
+#       ...
+#
+# Test Types:
+#   scan-tokens          - Verifies token sequence only
+#   scan-tokens-detailed - Verifies complete token properties (value, style, etc.)
+#   scan-error           - Validates error detection for invalid input
+#
+# Common Keys:
+#   name - Test case name (string)
+#   yaml - Input YAML string to scan
+#   want - Expected result (format varies by test type):
+#          * For scan-error: boolean (defaults to true if omitted; set to false if no error expected)
+#          * For scan-tokens: list of token type names (scalars or type-as-key format)
+#          * For scan-tokens-detailed: list of token specifications (type-as-key format)
+#
+# Token Specification Format (for want lists):
+#   Simplified (type only): - TOKEN_TYPE
+#   Detailed (with fields): - TOKEN_TYPE:
+#                               value: ...
+#                               style: ...
+
+# Simple token type tests
+- scan-tokens:
+    name: Simple scalar
+    yaml: |-
+      hello
+    want:
+    - STREAM_START_TOKEN
+    - SCALAR_TOKEN
+    - STREAM_END_TOKEN
+
+- scan-tokens:
+    name: Simple mapping
+    yaml: |-
+      key: value
+    want:
+    - STREAM_START_TOKEN
+    - BLOCK_MAPPING_START_TOKEN
+    - KEY_TOKEN
+    - SCALAR_TOKEN
+    - VALUE_TOKEN
+    - SCALAR_TOKEN
+    - BLOCK_END_TOKEN
+    - STREAM_END_TOKEN
+
+- scan-tokens:
+    name: Block sequence
+    yaml: |
+      - item1
+      - item2
+    want:
+    - STREAM_START_TOKEN
+    - BLOCK_SEQUENCE_START_TOKEN
+    - BLOCK_ENTRY_TOKEN
+    - SCALAR_TOKEN
+    - BLOCK_ENTRY_TOKEN
+    - SCALAR_TOKEN
+    - BLOCK_END_TOKEN
+    - STREAM_END_TOKEN
+
+- scan-tokens:
+    name: Flow sequence
+    yaml: |-
+      [1, 2, 3]
+    want:
+    - STREAM_START_TOKEN
+    - FLOW_SEQUENCE_START_TOKEN
+    - SCALAR_TOKEN
+    - FLOW_ENTRY_TOKEN
+    - SCALAR_TOKEN
+    - FLOW_ENTRY_TOKEN
+    - SCALAR_TOKEN
+    - FLOW_SEQUENCE_END_TOKEN
+    - STREAM_END_TOKEN
+
+- scan-tokens:
+    name: Flow mapping
+    yaml: |-
+      {a: 1, b: 2}
+    want:
+    - STREAM_START_TOKEN
+    - FLOW_MAPPING_START_TOKEN
+    - KEY_TOKEN
+    - SCALAR_TOKEN
+    - VALUE_TOKEN
+    - SCALAR_TOKEN
+    - FLOW_ENTRY_TOKEN
+    - KEY_TOKEN
+    - SCALAR_TOKEN
+    - VALUE_TOKEN
+    - SCALAR_TOKEN
+    - FLOW_MAPPING_END_TOKEN
+    - STREAM_END_TOKEN
+
+- scan-tokens:
+    name: Document markers
+    yaml: |
+      ---
+      key: value
+      ...
+    want:
+    - STREAM_START_TOKEN
+    - DOCUMENT_START_TOKEN
+    - BLOCK_MAPPING_START_TOKEN
+    - KEY_TOKEN
+    - SCALAR_TOKEN
+    - VALUE_TOKEN
+    - SCALAR_TOKEN
+    - BLOCK_END_TOKEN
+    - DOCUMENT_END_TOKEN
+    - STREAM_END_TOKEN
+
+- scan-tokens:
+    name: Empty input
+    yaml: |-
+    want:
+    - STREAM_START_TOKEN
+    - STREAM_END_TOKEN
+
+- scan-tokens:
+    name: Complex nesting
+    yaml: |
+      parent:
+        - item1
+        - nested:
+            key: value
+    want:
+    - STREAM_START_TOKEN
+    - BLOCK_MAPPING_START_TOKEN
+    - KEY_TOKEN
+    - SCALAR_TOKEN
+    - VALUE_TOKEN
+    - BLOCK_SEQUENCE_START_TOKEN
+    - BLOCK_ENTRY_TOKEN
+    - SCALAR_TOKEN
+    - BLOCK_ENTRY_TOKEN
+    - BLOCK_MAPPING_START_TOKEN
+    - KEY_TOKEN
+    - SCALAR_TOKEN
+    - VALUE_TOKEN
+    - BLOCK_MAPPING_START_TOKEN
+    - KEY_TOKEN
+    - SCALAR_TOKEN
+    - VALUE_TOKEN
+    - SCALAR_TOKEN
+    - BLOCK_END_TOKEN
+    - BLOCK_END_TOKEN
+    - BLOCK_END_TOKEN
+    - BLOCK_END_TOKEN
+    - STREAM_END_TOKEN
+
+# Detailed token tests (checking token properties)
+- scan-tokens-detailed:
+    name: Anchor and alias
+    yaml: |
+      - &anchor value
+      - *anchor
+    want:
+    - STREAM_START_TOKEN
+    - BLOCK_SEQUENCE_START_TOKEN
+    - BLOCK_ENTRY_TOKEN
+    - ANCHOR_TOKEN:
+        value: anchor
+    - SCALAR_TOKEN:
+        value: value
+    - BLOCK_ENTRY_TOKEN
+    - ALIAS_TOKEN:
+        value: anchor
+    - BLOCK_END_TOKEN
+    - STREAM_END_TOKEN
+
+- scan-tokens-detailed:
+    name: Tag
+    yaml: |-
+      !!str value
+    want:
+    - STREAM_START_TOKEN
+    - TAG_TOKEN:
+        value: '!!'
+    - SCALAR_TOKEN:
+        value: value
+    - STREAM_END_TOKEN
+
+- scan-tokens-detailed:
+    name: Single quoted scalar
+    yaml: |-
+      'hello world'
+    want:
+    - STREAM_START_TOKEN
+    - SCALAR_TOKEN:
+        style: SINGLE_QUOTED_SCALAR_STYLE
+        value: hello world
+    - STREAM_END_TOKEN
+
+- scan-tokens-detailed:
+    name: Double quoted scalar
+    yaml: |-
+      "hello world"
+    want:
+    - STREAM_START_TOKEN
+    - SCALAR_TOKEN:
+        style: DOUBLE_QUOTED_SCALAR_STYLE
+        value: hello world
+    - STREAM_END_TOKEN
+
+- scan-tokens-detailed:
+    name: Literal scalar
+    yaml: |
+      key: |
+        line1
+        line2
+    want:
+    - STREAM_START_TOKEN
+    - BLOCK_MAPPING_START_TOKEN
+    - KEY_TOKEN
+    - SCALAR_TOKEN:
+        value: key
+    - VALUE_TOKEN
+    - SCALAR_TOKEN:
+        style: LITERAL_SCALAR_STYLE
+        value: "line1\nline2\n"
+    - BLOCK_END_TOKEN
+    - STREAM_END_TOKEN
+
+- scan-tokens-detailed:
+    name: Folded scalar
+    yaml: |
+      key: >
+        folded text
+    want:
+    - STREAM_START_TOKEN
+    - BLOCK_MAPPING_START_TOKEN
+    - KEY_TOKEN
+    - SCALAR_TOKEN:
+        value: key
+    - VALUE_TOKEN
+    - SCALAR_TOKEN:
+        style: FOLDED_SCALAR_STYLE
+        value: "folded text\n"
+    - BLOCK_END_TOKEN
+    - STREAM_END_TOKEN
+
+- scan-tokens-detailed:
+    name: Version directive
+    yaml: |
+      %YAML 1.1
+      ---
+      key: value
+    want:
+    - STREAM_START_TOKEN
+    - VERSION_DIRECTIVE_TOKEN
+    - DOCUMENT_START_TOKEN
+    - BLOCK_MAPPING_START_TOKEN
+    - KEY_TOKEN
+    - SCALAR_TOKEN:
+        value: key
+    - VALUE_TOKEN
+    - SCALAR_TOKEN:
+        value: value
+    - BLOCK_END_TOKEN
+    - STREAM_END_TOKEN
+
+- scan-tokens-detailed:
+    name: Tag directive
+    yaml: |
+      %TAG !yaml! tag:yaml.org,2002:
+      ---
+      key: value
+    want:
+    - STREAM_START_TOKEN
+    - TAG_DIRECTIVE_TOKEN
+    - DOCUMENT_START_TOKEN
+    - BLOCK_MAPPING_START_TOKEN
+    - KEY_TOKEN
+    - SCALAR_TOKEN:
+        value: key
+    - VALUE_TOKEN
+    - SCALAR_TOKEN:
+        value: value
+    - BLOCK_END_TOKEN
+    - STREAM_END_TOKEN
+
+- scan-tokens-detailed:
+    name: Escape sequences
+    yaml: |-
+      "hello\nworld"
+    want:
+    - STREAM_START_TOKEN
+    - SCALAR_TOKEN:
+        style: DOUBLE_QUOTED_SCALAR_STYLE
+        value: "hello\nworld"
+    - STREAM_END_TOKEN
+
+# Error test
+- scan-error:
+    name: Invalid character
+    yaml: "\x01"

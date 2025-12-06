@@ -1544,7 +1544,6 @@ func (emitter *Emitter) writeIndent() error {
 		}
 	}
 	emitter.whitespace = true
-	// emitter.indention = true
 	emitter.space_above = false
 	emitter.foot_indent = -1
 	return nil
@@ -1673,7 +1672,6 @@ func (emitter *Emitter) writePlainScalar(value []byte, allow_breaks bool) error 
 			if err := emitter.writeLineBreak(value, &i); err != nil {
 				return err
 			}
-			// emitter.indention = true
 			breaks = true
 		} else {
 			if breaks {
@@ -1730,7 +1728,6 @@ func (emitter *Emitter) writeSingleQuotedScalar(value []byte, allow_breaks bool)
 			if err := emitter.writeLineBreak(value, &i); err != nil {
 				return err
 			}
-			// emitter.indention = true
 			breaks = true
 		} else {
 			if breaks {
@@ -1932,7 +1929,6 @@ func (emitter *Emitter) writeLiteralScalar(value []byte) error {
 	if err := emitter.processLineCommentLinebreak(true); err != nil {
 		return err
 	}
-	// emitter.indention = true
 	emitter.whitespace = true
 	breaks := true
 	for i := 0; i < len(value); {
@@ -1940,7 +1936,6 @@ func (emitter *Emitter) writeLiteralScalar(value []byte) error {
 			if err := emitter.writeLineBreak(value, &i); err != nil {
 				return err
 			}
-			// emitter.indention = true
 			breaks = true
 		} else {
 			if breaks {
@@ -1970,7 +1965,6 @@ func (emitter *Emitter) writeFoldedScalar(value []byte) error {
 		return err
 	}
 
-	// emitter.indention = true
 	emitter.whitespace = true
 
 	breaks := true
@@ -1991,7 +1985,6 @@ func (emitter *Emitter) writeFoldedScalar(value []byte) error {
 			if err := emitter.writeLineBreak(value, &i); err != nil {
 				return err
 			}
-			// emitter.indention = true
 			breaks = true
 		} else {
 			if breaks {
@@ -2025,7 +2018,6 @@ func (emitter *Emitter) writeComment(comment []byte) error {
 			if err := emitter.writeLineBreak(comment, &i); err != nil {
 				return err
 			}
-			// emitter.indention = true
 			breaks = true
 			pound = false
 		} else {
@@ -2059,6 +2051,5 @@ func (emitter *Emitter) writeComment(comment []byte) error {
 	}
 
 	emitter.whitespace = true
-	// emitter.indention = true
 	return nil
 }

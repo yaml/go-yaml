@@ -1,0 +1,166 @@
+# SPDX-License-Identifier: Apache-2.0
+# Reader tests for Parser input handling
+#
+# Purpose: Tests Parser methods that handle reading and processing YAML input,
+#          including encoding detection, buffer management, and error handling.
+#
+# Format: Test cases use type-as-key format:
+#   - test-type:
+#       name: Test case name
+#       ...
+#
+# Test Types:
+#   reader-set-error          - Tests setReaderError method
+#   reader-determine-encoding - Tests determineEncoding method
+#   reader-update-raw-buffer  - Tests updateRawBuffer method
+#   reader-update-buffer      - Tests updateBuffer method
+#   reader-panic              - Tests methods that should panic
+#
+# Common Keys:
+#   name - Test case name (string, title case)
+#   data - Input bytes (string or hex byte array like [0xEF, 0xBB, 0xBF])
+#   args - Arguments to pass to method (scalar value or array of values)
+#   init - Setup to perform before test (map of field: value)
+#          * eof: true - Set parser.eof to true before test
+#   want  - Expected return value:
+#           * For reader-set-error: boolean (false for error cases)
+#           * For reader-determine-encoding: boolean (defaults to true if omitted)
+#           * For reader-update-raw-buffer: boolean (defaults to true if omitted)
+#           * For reader-update-buffer: boolean (defaults to true if omitted)
+#           * For reader-panic: panic message substring (string)
+#   func - Function to call for panic tests (updateBuffer, etc.)
+#   test - Field checks to perform after method call (list of operator: [field, value])
+#          Field check operators:
+#          * eq: [field, value]      - Equals (supports constants like UTF8_ENCODING or hex like 0x61)
+#          * len-gt: [field, N]      - Length greater than N
+#          * gte: [field, N]         - Greater than or equal to N
+#          * eq: [buffer-N, X]       - Check byte at index N equals X (e.g., eq: [buffer-0, 0x61])
+
+# setReaderError tests
+- reader-set-error:
+    name: Set reader error
+    args: [test problem, 10, 0x1234]
+    want: false
+    test:
+    - eq: [ErrorType, READER_ERROR]
+    - eq: [Problem, test problem]
+    - eq: [ProblemOffset, 10]
+    - eq: [ProblemValue, 0x1234]
+
+# determineEncoding tests
+- reader-determine-encoding:
+    name: Determine encoding UTF-8 with BOM
+    data: [0xEF, 0xBB, 0xBF, 0x74, 0x65, 0x73, 0x74]
+    test:
+    - eq: [encoding, UTF8_ENCODING]
+    - eq: [raw_buffer_pos, 3]
+
+- reader-determine-encoding:
+    name: Determine encoding UTF-16LE
+    data: [0xFF, 0xFE, 0x74, 0x65, 0x73, 0x74]
+    test:
+    - eq: [encoding, UTF16LE_ENCODING]
+
+- reader-determine-encoding:
+    name: Determine encoding UTF-16BE
+    data: [0xFE, 0xFF, 0x74, 0x65, 0x73, 0x74]
+    test:
+    - eq: [encoding, UTF16BE_ENCODING]
+
+- reader-determine-encoding:
+    name: Determine encoding default UTF-8
+    data: "test: value"
+    test:
+    - eq: [encoding, UTF8_ENCODING]
+
+# updateRawBuffer tests
+- reader-update-raw-buffer:
+    name: Update raw buffer with data
+    data: test data
+    test:
+    - len-gt: [raw_buffer, 0]
+
+- reader-update-raw-buffer:
+    name: Update raw buffer at EOF
+    data: ''
+
+- reader-update-raw-buffer:
+    name: Update raw buffer when already EOF
+    data: ''
+    init:
+      eof: true
+
+# updateBuffer tests
+- reader-update-buffer:
+    name: Update buffer single byte UTF-8
+    data: abc
+    args: 3
+    test:
+    - gte: [unread, 3]
+    - eq: [buffer-0, 0x61]
+    - eq: [buffer-1, 0x62]
+    - eq: [buffer-2, 0x63]
+
+- reader-update-buffer:
+    name: Update buffer multi-byte UTF-8
+    data: [0x61, 0xC2, 0xA9, 0x62]
+    args: 3
+    test:
+    - gte: [unread, 3]
+
+- reader-update-buffer:
+    name: Update buffer control character error
+    data: [0x01]
+    args: 1
+    want: false
+    test:
+    - eq: [ErrorType, READER_ERROR]
+
+- reader-update-buffer:
+    name: Update buffer allowed control characters
+    data: [0x09, 0x0A, 0x0D]
+    args: 3
+
+- reader-update-buffer:
+    name: Update buffer UTF-16LE
+    data: [0xFF, 0xFE, 0x61, 0x00]
+    args: 1
+    test:
+    - eq: [encoding, UTF16LE_ENCODING]
+
+- reader-update-buffer:
+    name: Update buffer UTF-16BE
+    data: [0xFE, 0xFF, 0x00, 0x61]
+    args: 1
+    test:
+    - eq: [encoding, UTF16BE_ENCODING]
+
+- reader-update-buffer:
+    name: Update buffer surrogate pair UTF-16
+    data: [0xFF, 0xFE, 0x3D, 0xD8, 0x4A, 0xDC]
+    args: 1
+    test:
+    - gte: [unread, 1]
+
+- reader-update-buffer:
+    name: Update buffer invalid surrogate pair
+    data: [0xFF, 0xFE, 0x3D, 0xD8, 0x00, 0x00]
+    args: 1
+    want: false
+    test:
+    - eq: [ErrorType, READER_ERROR]
+
+- reader-update-buffer:
+    name: Update buffer unexpected low surrogate
+    data: [0xFF, 0xFE, 0x00, 0xDC, 0x00, 0x00]
+    args: 1
+    want: false
+    test:
+    - eq: [ErrorType, READER_ERROR]
+
+# Panic tests
+- reader-panic:
+    name: Update buffer without read handler
+    func: updateBuffer
+    args: 1
+    want: read handler must be set
