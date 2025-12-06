@@ -66,7 +66,7 @@ count ?= 1
 
 # Test rules:
 test: $(GO-DEPS)
-	go test$(if $v, -v) -vet=off .
+	go test$(if $v, -v) -vet=off --cover . ./internal/...
 
 test-data: $(YTS-DIR)
 

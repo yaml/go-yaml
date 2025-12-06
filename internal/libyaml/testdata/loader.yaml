@@ -1,0 +1,100 @@
+# SPDX-License-Identifier: Apache-2.0
+# Data loader test cases for scalar type resolution
+#
+# Purpose: Tests the YAML data loader's ability to correctly parse and resolve
+# different numeric types (positive/negative integers, floats, scientific notation)
+#
+# Test Types:
+#   scalar-resolution - Verifies that scalar values are resolved to correct Go types
+
+- scalar-resolution:
+    name: Positive integer
+    yaml: "42"
+    want: 42
+
+- scalar-resolution:
+    name: Negative integer
+    yaml: "-42"
+    want: -42
+
+- scalar-resolution:
+    name: Zero
+    yaml: "0"
+    want: 0
+
+- scalar-resolution:
+    name: Hex integer lowercase
+    yaml: "0xff"
+    want: 255
+
+- scalar-resolution:
+    name: Hex integer uppercase
+    yaml: "0XFF"
+    want: 255
+
+- scalar-resolution:
+    name: Float with decimal point
+    yaml: "3.14"
+    want: 3.14
+
+- scalar-resolution:
+    name: Negative float
+    yaml: "-2.5"
+    want: -2.5
+
+- scalar-resolution:
+    name: Float starting with decimal
+    yaml: ".5"
+    want: 0.5
+
+- scalar-resolution:
+    name: Float with trailing zeros
+    yaml: "1.500"
+    want: 1.5
+
+- scalar-resolution:
+    name: Boolean true
+    yaml: "true"
+    want: true
+
+- scalar-resolution:
+    name: Boolean false
+    yaml: "false"
+    want: false
+
+- scalar-resolution:
+    name: Null keyword
+    yaml: 'null'
+    want: null
+
+- scalar-resolution:
+    name: String value
+    yaml: "hello"
+    want: 'hello'
+
+- scalar-resolution:
+    name: String that looks like number but quoted
+    yaml: '"42"'
+    want: '42'
+
+- scalar-resolution:
+    name: Mapping with numeric values
+    yaml: |
+      int: 42
+      neg: -10
+      float: 3.14
+    want:
+      int: 42
+      neg: -10
+      float: 3.14
+
+- scalar-resolution:
+    name: Sequence with mixed numeric types
+    yaml: |
+      - 42
+      - -10
+      - 3.14
+    want:
+    - 42
+    - -10
+    - 3.14

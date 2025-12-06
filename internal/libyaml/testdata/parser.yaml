@@ -1,0 +1,342 @@
+# SPDX-License-Identifier: Apache-2.0
+# Parser test cases for libyaml parser
+#
+# Purpose: Tests the YAML parser that converts tokens into events following YAML grammar rules.
+#
+# Format: Test cases use type-as-key format:
+#   - test-type:
+#       name: Test case name
+#       ...
+#
+# Test Types:
+#   parse-events          - Verifies event sequence only
+#   parse-events-detailed - Verifies complete event properties (anchor, tag, value, etc.)
+#   parse-error           - Validates error detection for invalid input
+#
+# Common Keys:
+#   name - Test case name (string)
+#   yaml - Input YAML string to parse
+#   want - Expected result (format varies by test type):
+#          * For parse-error: boolean (defaults to true if omitted; set to false if no error expected)
+#          * For parse-events: list of event type names (scalars or type-as-key format)
+#          * For parse-events-detailed: list of event specifications (type-as-key format)
+#
+# Event Specification Format (for want lists):
+#   Simplified (type only): - EVENT_TYPE
+#   Detailed (with fields): - EVENT_TYPE:
+#                               value: ...
+#                               anchor: ...
+#                               tag: ...
+#                               implicit: ...
+#                               style: ...
+#                               version-directive: {major: N, minor: N}
+#                               tag-directives: [{handle: ..., prefix: ...}]
+
+# Simple event type tests (just checking event type sequence)
+- parse-events:
+    name: Simple scalar
+    yaml: |
+      hello
+    want:
+    - STREAM_START_EVENT
+    - DOCUMENT_START_EVENT
+    - SCALAR_EVENT
+    - DOCUMENT_END_EVENT
+    - STREAM_END_EVENT
+
+- parse-events:
+    name: Simple mapping
+    yaml: |
+      key: value
+    want:
+    - STREAM_START_EVENT
+    - DOCUMENT_START_EVENT
+    - MAPPING_START_EVENT
+    - SCALAR_EVENT
+    - SCALAR_EVENT
+    - MAPPING_END_EVENT
+    - DOCUMENT_END_EVENT
+    - STREAM_END_EVENT
+
+- parse-events:
+    name: Block sequence
+    yaml: |
+      - item1
+      - item2
+    want:
+    - STREAM_START_EVENT
+    - DOCUMENT_START_EVENT
+    - SEQUENCE_START_EVENT
+    - SCALAR_EVENT
+    - SCALAR_EVENT
+    - SEQUENCE_END_EVENT
+    - DOCUMENT_END_EVENT
+    - STREAM_END_EVENT
+
+- parse-events:
+    name: Flow sequence
+    yaml: |
+      [1, 2, 3]
+    want:
+    - STREAM_START_EVENT
+    - DOCUMENT_START_EVENT
+    - SEQUENCE_START_EVENT
+    - SCALAR_EVENT
+    - SCALAR_EVENT
+    - SCALAR_EVENT
+    - SEQUENCE_END_EVENT
+    - DOCUMENT_END_EVENT
+    - STREAM_END_EVENT
+
+- parse-events:
+    name: Flow mapping
+    yaml: |
+      {a: 1, b: 2}
+    want:
+    - STREAM_START_EVENT
+    - DOCUMENT_START_EVENT
+    - MAPPING_START_EVENT
+    - SCALAR_EVENT
+    - SCALAR_EVENT
+    - SCALAR_EVENT
+    - SCALAR_EVENT
+    - MAPPING_END_EVENT
+    - DOCUMENT_END_EVENT
+    - STREAM_END_EVENT
+
+- parse-events:
+    name: Empty input
+    yaml: ''
+    want:
+    - STREAM_START_EVENT
+    - STREAM_END_EVENT
+
+# Detailed tests (checking event properties like anchor, tag, value)
+- parse-events-detailed:
+    name: Explicit document
+    yaml: |
+      ---
+      key: value
+      ...
+    want:
+    - STREAM_START_EVENT
+    - DOCUMENT_START_EVENT:
+        implicit: false
+    - MAPPING_START_EVENT
+    - SCALAR_EVENT:
+        value: key
+    - SCALAR_EVENT:
+        value: value
+    - MAPPING_END_EVENT
+    - DOCUMENT_END_EVENT
+    - STREAM_END_EVENT
+
+- parse-events-detailed:
+    name: Anchor and alias
+    yaml: |
+      - &anchor value
+      - *anchor
+    want:
+    - STREAM_START_EVENT
+    - DOCUMENT_START_EVENT
+    - SEQUENCE_START_EVENT
+    - SCALAR_EVENT:
+        anchor: anchor
+        value: value
+    - ALIAS_EVENT:
+        anchor: anchor
+    - SEQUENCE_END_EVENT
+    - DOCUMENT_END_EVENT
+    - STREAM_END_EVENT
+
+- parse-events-detailed:
+    name: Tag
+    yaml: |
+      !!str value
+    want:
+    - STREAM_START_EVENT
+    - DOCUMENT_START_EVENT
+    - SCALAR_EVENT:
+        tag: tag:yaml.org,2002:str
+        value: value
+    - DOCUMENT_END_EVENT
+    - STREAM_END_EVENT
+
+- parse-events-detailed:
+    name: Scalar value
+    yaml: |
+      key: hello world
+    want:
+    - STREAM_START_EVENT
+    - DOCUMENT_START_EVENT
+    - MAPPING_START_EVENT
+    - SCALAR_EVENT:
+        value: key
+    - SCALAR_EVENT:
+        value: hello world
+    - MAPPING_END_EVENT
+    - DOCUMENT_END_EVENT
+    - STREAM_END_EVENT
+
+- parse-events-detailed:
+    name: Implicit document
+    yaml: |
+      value
+    want:
+    - STREAM_START_EVENT
+    - DOCUMENT_START_EVENT:
+        implicit: true
+    - SCALAR_EVENT:
+        value: value
+    - DOCUMENT_END_EVENT
+    - STREAM_END_EVENT
+
+- parse-events-detailed:
+    name: Version directive
+    yaml: |
+      %YAML 1.1
+      ---
+      key: value
+    want:
+    - STREAM_START_EVENT
+    - DOCUMENT_START_EVENT:
+        version-directive:
+          major: 1
+          minor: 1
+    - MAPPING_START_EVENT
+    - SCALAR_EVENT:
+        value: key
+    - SCALAR_EVENT:
+        value: value
+    - MAPPING_END_EVENT
+    - DOCUMENT_END_EVENT
+    - STREAM_END_EVENT
+
+- parse-events-detailed:
+    name: Tag directive
+    yaml: |
+      %TAG !yaml! tag:yaml.org,2002:
+      ---
+      key: value
+    want:
+    - STREAM_START_EVENT
+    - DOCUMENT_START_EVENT:
+        tag-directives:
+        - handle: '!yaml!'
+          prefix: 'tag:yaml.org,2002:'
+    - MAPPING_START_EVENT
+    - SCALAR_EVENT:
+        value: key
+    - SCALAR_EVENT:
+        value: value
+    - MAPPING_END_EVENT
+    - DOCUMENT_END_EVENT
+    - STREAM_END_EVENT
+
+# Structural tests (complex structures)
+- parse-events:
+    name: Nested structures
+    yaml: |
+      parent:
+      - item1
+      - item2:
+          nested: value
+    want:
+    - STREAM_START_EVENT
+    - DOCUMENT_START_EVENT
+    - MAPPING_START_EVENT
+    - SCALAR_EVENT
+    - SEQUENCE_START_EVENT
+    - SCALAR_EVENT
+    - MAPPING_START_EVENT
+    - SCALAR_EVENT
+    - MAPPING_START_EVENT
+    - SCALAR_EVENT
+    - SCALAR_EVENT
+    - MAPPING_END_EVENT
+    - MAPPING_END_EVENT
+    - SEQUENCE_END_EVENT
+    - MAPPING_END_EVENT
+    - DOCUMENT_END_EVENT
+    - STREAM_END_EVENT
+
+- parse-events:
+    name: Multiple documents
+    yaml: |
+      ---
+      doc1
+      ---
+      doc2
+    want:
+    - STREAM_START_EVENT
+    - DOCUMENT_START_EVENT
+    - SCALAR_EVENT
+    - DOCUMENT_END_EVENT
+    - DOCUMENT_START_EVENT
+    - SCALAR_EVENT
+    - DOCUMENT_END_EVENT
+    - STREAM_END_EVENT
+
+- parse-events:
+    name: Complex mapping
+    yaml: |
+      ? key1
+      : value1
+      ? key2
+      : value2
+    want:
+    - STREAM_START_EVENT
+    - DOCUMENT_START_EVENT
+    - MAPPING_START_EVENT
+    - SCALAR_EVENT
+    - SCALAR_EVENT
+    - SCALAR_EVENT
+    - SCALAR_EVENT
+    - MAPPING_END_EVENT
+    - DOCUMENT_END_EVENT
+    - STREAM_END_EVENT
+
+- parse-events:
+    name: Flow sequence in mapping
+    yaml: |
+      key: [1, 2, 3]
+    want:
+    - STREAM_START_EVENT
+    - DOCUMENT_START_EVENT
+    - MAPPING_START_EVENT
+    - SCALAR_EVENT
+    - SEQUENCE_START_EVENT
+    - SCALAR_EVENT
+    - SCALAR_EVENT
+    - SCALAR_EVENT
+    - SEQUENCE_END_EVENT
+    - MAPPING_END_EVENT
+    - DOCUMENT_END_EVENT
+    - STREAM_END_EVENT
+
+- parse-events:
+    name: Block mapping in sequence
+    yaml: |
+      - key1: value1
+      - key2: value2
+    want:
+    - STREAM_START_EVENT
+    - DOCUMENT_START_EVENT
+    - SEQUENCE_START_EVENT
+    - MAPPING_START_EVENT
+    - SCALAR_EVENT
+    - SCALAR_EVENT
+    - MAPPING_END_EVENT
+    - MAPPING_START_EVENT
+    - SCALAR_EVENT
+    - SCALAR_EVENT
+    - MAPPING_END_EVENT
+    - SEQUENCE_END_EVENT
+    - DOCUMENT_END_EVENT
+    - STREAM_END_EVENT
+
+# Error tests
+- parse-error:
+    name: Error state
+    yaml: |
+      key: : invalid
