@@ -652,12 +652,12 @@ func (d *decoder) scalar(n *Node, out reflect.Value) bool {
 				return true
 			}
 		case float64:
-			if !isDuration && resolved <= math.MaxInt64 && !out.OverflowInt(int64(resolved)) {
+			if !isDuration && resolved >= math.MinInt64 && resolved <= math.MaxInt64 && !out.OverflowInt(int64(resolved)) {
 				out.SetInt(int64(resolved))
 				return true
 			}
 		case string:
-			if out.Type() == durationType {
+			if isDuration {
 				d, err := time.ParseDuration(resolved)
 				if err == nil {
 					out.SetInt(int64(d))
@@ -683,7 +683,7 @@ func (d *decoder) scalar(n *Node, out reflect.Value) bool {
 				return true
 			}
 		case float64:
-			if resolved <= math.MaxUint64 && !out.OverflowUint(uint64(resolved)) {
+			if resolved >= 0 && resolved <= math.MaxUint64 && !out.OverflowUint(uint64(resolved)) {
 				out.SetUint(uint64(resolved))
 				return true
 			}
