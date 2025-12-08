@@ -1709,6 +1709,25 @@ func TestObsoleteUnmarshalerRetry(t *testing.T) {
 	assert.DeepEqual(t, obsoleteSliceUnmarshaler([]int{1}), su)
 }
 
+type knownFieldsUnmarshaler[T any] struct {
+	dest T
+}
+
+func (u *knownFieldsUnmarshaler[T]) UnmarshalYAML(node *yaml.Node) error {
+	d := node.NewDecoder()
+	d.KnownFields(true)
+	return d.Decode(&u.dest)
+}
+
+func TestKnownFieldsUnmarshaler(t *testing.T) {
+	type testData struct {
+		A int `yaml:"a"`
+	}
+	var kfu knownFieldsUnmarshaler[testData]
+	err := yaml.Unmarshal([]byte("{'a':1,'b':2}"), &kfu)
+	assert.NotNil(t, err)
+}
+
 // From http://yaml.org/type/merge.html
 var mergeTests = `
 anchors:
