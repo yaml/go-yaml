@@ -747,6 +747,16 @@ var unmarshalTests = []struct {
 		"a: 3s",
 		map[string]time.Duration{"a": 3 * time.Second},
 	},
+	// Zero duration as a string.
+	{
+		"a: '0'",
+		map[string]time.Duration{"a": 0},
+	},
+	// Zero duration as an int.
+	{
+		"a: 0",
+		map[string]time.Duration{"a": 0},
+	},
 
 	// Issue #24.
 	{
