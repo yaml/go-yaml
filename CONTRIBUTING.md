@@ -101,7 +101,8 @@ foo: &a1 bar
 
 ## Development Process
 
-- Installing Go is not necessary. See "The Makefile" below.
+- Installing Go is not necessary. The Makefile auto-installs Go.
+  Set `GO_YAML_PATH` (either by exporting it or passing it as a Make variable) to use your own Go installation.
 - Fork and clone the repository
 - Make your changes
 - Run tests, linters and formatters
@@ -120,6 +121,8 @@ useful targets:
 - `make test` runs the tests
 - `make test v=1 count=3` runs the tests with options
 - `make test GO-VERSION=1.23.4` runs the tests with a specific Go version
+- `make test GO_YAML_PATH=/path/to/go/bin` uses your own Go installation
+- `make test-all` runs all tests including yaml-test-suite
 - `make shell` opens a shell with the project's dependencies set up
 - `make shell GO-VERSION=1.23.4` opens a shell with a specific Go version
 - `make fmt` runs `golangci-lint fmt ./...`

@@ -1,7 +1,7 @@
 # Auto-install https://github.com/makeplus/makes at specific commit:
 MAKES := .cache/makes
 MAKES-LOCAL := .cache/local
-MAKES-COMMIT ?= 654f7c57ca30a2b08cb4aab8bb0c0d509510ad81
+MAKES-COMMIT ?= 00846e21dee1d325a3bbcc48c34a3d98bb9c7b3f
 $(shell [ -d $(MAKES) ] || ( \
   git clone -q https://github.com/makeplus/makes $(MAKES) && \
   git -C $(MAKES) reset -q --hard $(MAKES-COMMIT)))
@@ -10,10 +10,11 @@ ifneq ($(shell git -C $(MAKES) rev-parse HEAD), \
 $(error $(MAKES) is not at the correct commit: $(MAKES-COMMIT))
 endif
 include $(MAKES)/init.mk
-include $(MAKES)/clean.mk
 
-# Only auto-install go if no go exists or GO-VERSION specified:
-ifeq (,$(shell command -v go))
+# Auto-install go unless GO_YAML_PATH is set:
+ifdef GO_YAML_PATH
+override export PATH := $(GO_YAML_PATH):$(PATH)
+else
 GO-VERSION ?= 1.24.0
 endif
 GO-VERSION-NEEDED := $(GO-VERSION)
@@ -115,6 +116,7 @@ $(GOLANGCI-LINT): $(GOLANGCI-LINT-VERSIONED)
 
 define yts_pass_fail
 ( result=.cache/local/tmp/yts-test-results
+  mkdir -p $$(dirname $$result)
   go test ./yts -count=1 -v |
     awk '/     --- (PASS|FAIL): / {print $$2, $$3}' > $$result
   known_count=$$(grep -c '' yts/known-failing-tests)

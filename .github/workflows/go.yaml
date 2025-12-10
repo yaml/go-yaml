@@ -15,44 +15,67 @@ jobs:
     - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
       with:
         persist-credentials: false
-    - name: Set up Go
-      uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
-      with:
-        go-version: stable
-    - name: Install golangci-lint
-      run: |
-        make golangci-lint-install
-        echo "${{ github.workspace }}/.cache/local/bin" >> "$GITHUB_PATH"
-    # yamllint disable-line rule:line-length
-    - uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20  # v9.2.0
-      with:
-        install-mode: none
+    - name: Run linter
+      run: make lint
   go-versions:
     name: Lookup Go versions
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.versions.outputs.matrix }}
+      matrix: ${{ steps.latest-patches.outputs.matrix }}
     steps:
     - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
     # yamllint disable-line rule:line-length
     - uses: arnested/go-version-action@978371bd4d8cad0f54106c8be4273e2fcdd74f57  # v1.1.23
       id: versions
+    - name: Get latest patch for each minor version
+      id: latest-patches
+      run: |
+        # Get all versions with patches
+        all_versions=$(echo '${{ steps.versions.outputs.matrix }}' |jq -r '.[]')
+
+        # Fetch all Go versions from go.dev
+        curl -s 'https://go.dev/dl/?mode=json&include=all' \
+          > /tmp/go-versions.json
+
+        # Get minor versions from the matrix (without patch level)
+        minor_versions=$(echo "$all_versions" | sed 's/\.[0-9]*$//' | sort -u)
+
+        # For each minor version, find the latest patch
+        latest_patches=()
+        for minor in $minor_versions; do
+          # Find latest stable patch for this minor version
+          latest=$(jq -r --arg minor "$minor" \
+            '[.[] | select(.stable == true and
+             (.version | startswith("go" + $minor + "."))) | .version] |
+             map(sub("^go"; "")) | sort_by(split(".") | map(tonumber)) |
+               last' /tmp/go-versions.json)
+
+          if [ -n "$latest" ] && [ "$latest" != "null" ]; then
+            latest_patches+=("\"$latest\"")
+          fi
+        done
+
+        # Create JSON array
+        matrix=$(printf '%s\n' "${latest_patches[@]}" | jq -sc .)
+        echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+        echo "Latest patch versions: $matrix"
   build:
     runs-on: ubuntu-latest
     needs: go-versions
     continue-on-error: true  # make sure to run all versions, even if one fails
     strategy:
       matrix:
-        go-versions: ${{ fromJSON(needs.go-versions.outputs.matrix) }}
+        go-version: ${{ fromJSON(needs.go-versions.outputs.matrix) }}
     steps:
     - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
       with:
         persist-credentials: false
-    - name: Set up Go
-      uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
-      with:
-        go-version: ${{ matrix.go-versions }}
-    - name: Run yaml-test-suit tests
-      run: make test-yts
-    - name: Run go test
-      run: go test -vet=off -v -race ./...
+    - name: Show Go version
+      run: |
+        echo "=========================================="
+        echo "TESTING WITH GO VERSION: ${{ matrix.go-version }}"
+        echo "=========================================="
+    - name: Run yaml-test-suite tests
+      run: make test-yts GO-VERSION=${{ matrix.go-version }}
+    - name: Run unit tests
+      run: make test v=1 GO-VERSION=${{ matrix.go-version }}

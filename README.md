@@ -180,8 +180,10 @@ b:
 ## Testing with `make`
 
 Running `make test` in this directory should just work.
-You don't need to have `go` installed and even if you do the `GNUmakefile` will
-ignore it and setup / cache its own version under `.cache/`.
+You don't need to have `go` installed.
+The `GNUmakefile` will automatically install and cache Go under `.cache/`.
+If you want to use your own Go installation, set `GO_YAML_PATH` to the
+directory containing the `go` binary.
 
 The only things you need are:
 * Linux or macOS
@@ -194,6 +196,7 @@ Some `make` commands are:
 
 * `make test`
 * `make test GO-VERSION=1.2.34`
+* `make test GO_YAML_PATH=/usr/local/go/bin`
 * `make shell` Start a shell with the local `go` environment
 * `make shell GO-VERSION=1.2.34`
 * `make distclean` - Removes `.cache/`
