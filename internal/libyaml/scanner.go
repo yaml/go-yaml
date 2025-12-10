@@ -883,8 +883,8 @@ func (parser *Parser) isFlowSequence() bool {
 	if len(parser.tokens) == 0 {
 		return false
 	}
-	return parser.tokens[len(parser.tokens)-1].Type == FLOW_ENTRY_TOKEN ||
-		parser.tokens[len(parser.tokens)-1].Type == FLOW_SEQUENCE_START_TOKEN
+	previousToken := parser.tokens[len(parser.tokens)-1]
+	return previousToken.Type == FLOW_ENTRY_TOKEN || previousToken.Type == FLOW_SEQUENCE_START_TOKEN
 }
 
 func (parser *Parser) simpleKeyIsValid(simple_key *SimpleKey) (valid, ok bool) {
