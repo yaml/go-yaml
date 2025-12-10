@@ -1,7 +1,7 @@
 # Auto-install https://github.com/makeplus/makes at specific commit:
 MAKES := .cache/makes
 MAKES-LOCAL := .cache/local
-MAKES-COMMIT ?= 654f7c57ca30a2b08cb4aab8bb0c0d509510ad81
+MAKES-COMMIT ?= 00846e21dee1d325a3bbcc48c34a3d98bb9c7b3f
 $(shell [ -d $(MAKES) ] || ( \
   git clone -q https://github.com/makeplus/makes $(MAKES) && \
   git -C $(MAKES) reset -q --hard $(MAKES-COMMIT)))
@@ -10,11 +10,12 @@ ifneq ($(shell git -C $(MAKES) rev-parse HEAD), \
 $(error $(MAKES) is not at the correct commit: $(MAKES-COMMIT))
 endif
 include $(MAKES)/init.mk
-include $(MAKES)/clean.mk
 
-# Only auto-install go if no go exists or GO-VERSION specified:
-ifeq (,$(shell command -v go))
-GO-VERSION ?= 1.24.0
+# Auto-install go unless GO_YAML_PATH is set:
+ifdef GO_YAML_PATH
+override export PATH := $(GO_YAML_PATH):$(PATH)
+else
+GO-VERSION ?= 1.25.5
 endif
 GO-VERSION-NEEDED := $(GO-VERSION)
 
@@ -24,10 +25,6 @@ YTS-TAG ?= data-2022-01-17
 YTS-DIR := yts/testdata/$(YTS-TAG)
 
 CLI-BINARY := go-yaml
-
-MAKES-NO-CLEAN := true
-MAKES-CLEAN := $(CLI-BINARY)
-MAKES-REALCLEAN := $(dir $(YTS-DIR))
 
 # Setup and include go.mk and shell.mk:
 GO-FILES := $(shell find -not \( -path ./.cache -prune \) -name '*.go' | sort)
@@ -58,7 +55,8 @@ SHELL-NAME := makes go-yaml
 include $(MAKES)/clean.mk
 include $(MAKES)/shell.mk
 
-MAKES-CLEAN += $(dir $(YTS-DIR)) $(GOLANGCI-LINT)
+MAKES-CLEAN := $(CLI-BINARY) $(GOLANGCI-LINT)
+MAKES-REALCLEAN := $(dir $(YTS-DIR))
 
 v ?=
 count ?= 1
@@ -115,6 +113,7 @@ $(GOLANGCI-LINT): $(GOLANGCI-LINT-VERSIONED)
 
 define yts_pass_fail
 ( result=.cache/local/tmp/yts-test-results
+  mkdir -p $$(dirname $$result)
   go test ./yts -count=1 -v |
     awk '/     --- (PASS|FAIL): / {print $$2, $$3}' > $$result
   known_count=$$(grep -c '' yts/known-failing-tests)

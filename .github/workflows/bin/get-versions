@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+
+# Convert ["1.18","1.19","1.20","1.21","1.22","1.23","1.24","1.25"]
+# Into ["1.18.10","1.19.13","1.20.14","1.21.13","1.22.12","1.23.12","1.24.11","1.25.5"]
+
+set -euo pipefail
+
+matrix=${1:?Go versions as JSON sequence required}
+
+# Get all versions with patches
+our_versions=$(jq -r '.[]' <<<"$matrix")
+
+# Fetch all Go versions from go.dev
+go_versions=$(curl -s 'https://go.dev/dl/?mode=json&include=all')
+
+# For each minor version, find the latest patch
+latest_patches=()
+for minor in $our_versions; do
+  # Find latest stable patch for this minor version
+  latest=$(
+    jq -r --arg minor "$minor" '
+       [.[] | select(.stable == true and
+       (.version |
+          startswith("go" + $minor + "."))) |
+          .version] |
+          map(sub("^go"; "")) |
+          sort_by(split(".") | map(tonumber)) |
+       last' \
+       <<<"$go_versions")
+
+  if [[ $latest ]] && [[ $latest != null ]]; then
+    latest_patches+=("\"$latest\"")
+  fi
+done
+
+# Create JSON array
+matrix=$(printf '%s\n' "${latest_patches[@]}" | jq -sc .)
+
+echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+echo "Latest patch versions: $matrix"
+
