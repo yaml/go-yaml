@@ -103,6 +103,8 @@ foo: &a1 bar
 
 - Installing Go is not necessary. The Makefile auto-installs Go.
   Set `GO_YAML_PATH` (either by exporting it or passing it as a Make variable) to use your own Go installation.
+  **Note:** `GO-VERSION` and `GO_YAML_PATH` are mutually exclusive.
+  When `GO_YAML_PATH` is set, the Makefile uses your own Go installation and ignores any `GO-VERSION` setting.
 - Fork and clone the repository
 - Make your changes
 - Run tests, linters and formatters
@@ -132,6 +134,10 @@ useful targets:
 - `make distclean` cleans the project completely
 
 The Makefile will install all requirements for any target, including Go itself.
+
+**Note:** `GO-VERSION` and `GO_YAML_PATH` are mutually exclusive.
+When `GO_YAML_PATH` is set, the Makefile uses your own Go installation and
+ignores any `GO-VERSION` setting.
 
 
 ## Getting Help

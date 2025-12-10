@@ -201,6 +201,10 @@ Some `make` commands are:
 * `make shell GO-VERSION=1.2.34`
 * `make distclean` - Removes `.cache/`
 
+**Note:** `GO-VERSION` and `GO_YAML_PATH` are mutually exclusive.
+When `GO_YAML_PATH` is set, the Makefile uses your own Go installation and
+ignores any `GO-VERSION` setting.
+
 
 ## The `go-yaml` CLI Tool
 
