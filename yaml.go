@@ -94,6 +94,7 @@ func Unmarshal(in []byte, out any) (err error) {
 // A Decoder reads and decodes YAML values from an input stream.
 type Decoder struct {
 	parser      *parser
+	node        *Node
 	knownFields bool
 }
 
@@ -122,7 +123,15 @@ func (dec *Decoder) Decode(v any) (err error) {
 	d := newDecoder()
 	d.knownFields = dec.knownFields
 	defer handleErr(&err)
-	node := dec.parser.parse()
+	var node *Node
+	switch {
+	case dec.node != nil:
+		node = dec.node
+	case dec.parser != nil:
+		node = dec.parser.parse()
+	default:
+		return errors.New("yaml: decode without node or parser")
+	}
 	if node == nil {
 		return io.EOF
 	}
@@ -137,22 +146,25 @@ func (dec *Decoder) Decode(v any) (err error) {
 	return nil
 }
 
-// Decode decodes the node and stores its data into the value pointed to by v.
-//
-// See the documentation for Unmarshal for details about the
-// conversion of YAML into a Go value.
+// Decode populates the value pointed to by v with the data represented by n.
+// It uses a Decoder initialized with the default options for Node.
+// For details on how YAML nodes are converted into Go values, see the
+// documentation for Decoder.
 func (n *Node) Decode(v any) (err error) {
-	d := newDecoder()
-	defer handleErr(&err)
-	out := reflect.ValueOf(v)
-	if out.Kind() == reflect.Pointer && !out.IsNil() {
-		out = out.Elem()
+	d := n.NewDecoder()
+	return d.Decode(v)
+}
+
+// NewDecoder creates and returns a new Decoder configured to read from n.
+// The returned Decoder uses the default decoding behavior.
+//
+// For more information about the YAML-to-Go conversion rules, refer to the
+// Unmarshal documentation.
+func (n *Node) NewDecoder() *Decoder {
+	return &Decoder{
+		node:        n,
+		knownFields: false,
 	}
-	d.unmarshal(n, out)
-	if len(d.terrors) > 0 {
-		return &TypeError{d.terrors}
-	}
-	return nil
 }
 
 func unmarshal(in []byte, out any, strict bool) (err error) {
