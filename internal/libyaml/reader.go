@@ -28,8 +28,7 @@ import (
 	"io"
 )
 
-// Set the reader error and return 0.
-func (parser *Parser) setReaderError(problem string, offset int, value int) error {
+func formatReaderError(problem string, offset int, value int) error {
 	return ReaderError{
 		Offset: offset,
 		Value:  value,
@@ -218,7 +217,7 @@ func (parser *Parser) updateBuffer(length int) error {
 					width = 4
 				default:
 					// The leading octet is invalid.
-					return parser.setReaderError(
+					return formatReaderError(
 						"invalid leading UTF-8 octet",
 						parser.offset, int(octet))
 				}
@@ -226,7 +225,7 @@ func (parser *Parser) updateBuffer(length int) error {
 				// Check if the raw buffer contains an incomplete character.
 				if width > raw_unread {
 					if parser.eof {
-						return parser.setReaderError(
+						return formatReaderError(
 							"incomplete UTF-8 octet sequence",
 							parser.offset, -1)
 					}
@@ -253,7 +252,7 @@ func (parser *Parser) updateBuffer(length int) error {
 
 					// Check if the octet is valid.
 					if (octet & 0xC0) != 0x80 {
-						return parser.setReaderError(
+						return formatReaderError(
 							"invalid trailing UTF-8 octet",
 							parser.offset+k, int(octet))
 					}
@@ -269,14 +268,14 @@ func (parser *Parser) updateBuffer(length int) error {
 				case width == 3 && value >= 0x800:
 				case width == 4 && value >= 0x10000:
 				default:
-					return parser.setReaderError(
+					return formatReaderError(
 						"invalid length of a UTF-8 sequence",
 						parser.offset, -1)
 				}
 
 				// Check the range of the value.
 				if value >= 0xD800 && value <= 0xDFFF || value > 0x10FFFF {
-					return parser.setReaderError(
+					return formatReaderError(
 						"invalid Unicode character",
 						parser.offset, int(value))
 				}
@@ -316,7 +315,7 @@ func (parser *Parser) updateBuffer(length int) error {
 				// Check for incomplete UTF-16 character.
 				if raw_unread < 2 {
 					if parser.eof {
-						return parser.setReaderError(
+						return formatReaderError(
 							"incomplete UTF-16 character",
 							parser.offset, -1)
 					}
@@ -329,7 +328,7 @@ func (parser *Parser) updateBuffer(length int) error {
 
 				// Check for unexpected low surrogate area.
 				if value&0xFC00 == 0xDC00 {
-					return parser.setReaderError(
+					return formatReaderError(
 						"unexpected low surrogate area",
 						parser.offset, int(value))
 				}
@@ -341,7 +340,7 @@ func (parser *Parser) updateBuffer(length int) error {
 					// Check for incomplete surrogate pair.
 					if raw_unread < 4 {
 						if parser.eof {
-							return parser.setReaderError(
+							return formatReaderError(
 								"incomplete UTF-16 surrogate pair",
 								parser.offset, -1)
 						}
@@ -354,7 +353,7 @@ func (parser *Parser) updateBuffer(length int) error {
 
 					// Check for a low surrogate area.
 					if value2&0xFC00 != 0xDC00 {
-						return parser.setReaderError(
+						return formatReaderError(
 							"expected low surrogate area",
 							parser.offset+2, int(value2))
 					}
@@ -396,7 +395,7 @@ func (parser *Parser) updateBuffer(length int) error {
 			// 32 bit set
 			case value >= 0x10000 && value <= 0x10FFFF:
 			default:
-				return parser.setReaderError(
+				return formatReaderError(
 					"control characters are not allowed",
 					parser.offset, int(value))
 			}

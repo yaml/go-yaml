@@ -32,7 +32,7 @@ func runReaderSetErrorTest(t *testing.T, tc TestCase) {
 	value, ok := tc.Args[2].(int)
 	assert.Truef(t, ok, "Args[2] should be int, got %T", tc.Args[2])
 
-	err := parser.setReaderError(problem, offset, value)
+	err := formatReaderError(problem, offset, value)
 
 	// Check return value: Want is a bool where true means success (no error).
 	want, ok := tc.Want.(bool)
