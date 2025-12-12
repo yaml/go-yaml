@@ -15,44 +15,36 @@ jobs:
     - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
       with:
         persist-credentials: false
-    - name: Set up Go
-      uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
-      with:
-        go-version: stable
-    - name: Install golangci-lint
-      run: |
-        make golangci-lint-install
-        echo "${{ github.workspace }}/.cache/local/bin" >> "$GITHUB_PATH"
-    # yamllint disable-line rule:line-length
-    - uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20  # v9.2.0
-      with:
-        install-mode: none
+    - name: Run linter
+      run: make lint
+
   go-versions:
     name: Lookup Go versions
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.versions.outputs.matrix }}
+      matrix: ${{ steps.latest-patches.outputs.matrix }}
     steps:
     - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
     # yamllint disable-line rule:line-length
     - uses: arnested/go-version-action@978371bd4d8cad0f54106c8be4273e2fcdd74f57  # v1.1.23
       id: versions
+    - name: Get latest patch for each minor version
+      id: latest-patches
+      run: .github/workflows/bin/get-versions
+           '${{ steps.versions.outputs.matrix }}'
+
   build:
     runs-on: ubuntu-latest
     needs: go-versions
     continue-on-error: true  # make sure to run all versions, even if one fails
     strategy:
       matrix:
-        go-versions: ${{ fromJSON(needs.go-versions.outputs.matrix) }}
+        go-version: ${{ fromJSON(needs.go-versions.outputs.matrix) }}
     steps:
     - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
       with:
         persist-credentials: false
-    - name: Set up Go
-      uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
-      with:
-        go-version: ${{ matrix.go-versions }}
-    - name: Run yaml-test-suit tests
-      run: make test-yts
-    - name: Run go test
-      run: go test -vet=off -v -race ./...
+    - name: Run yaml-test-suite tests
+      run: make test-yts GO-VERSION=${{ matrix.go-version }}
+    - name: Run unit tests
+      run: make test v=1 GO-VERSION=${{ matrix.go-version }}
