@@ -92,7 +92,9 @@ func runParseErrorTest(t *testing.T, tc TestCase) {
 	parser.SetInputString([]byte(tc.Yaml))
 
 	var event Event
-	for parser.Parse(&event) && event.Type != STREAM_END_EVENT {
+	var parserErr error
+	for parserErr == nil && event.Type != STREAM_END_EVENT {
+		parserErr = parser.Parse(&event)
 	}
 
 	// Convert Want from interface{} to check for error
@@ -112,8 +114,8 @@ func runParseErrorTest(t *testing.T, tc TestCase) {
 		}
 	}
 	if wantError {
-		assert.Truef(t, parser.Err != nil, "Expected parser error, but got none")
+		assert.Truef(t, parserErr != nil, "Expected parser error, but got none")
 	} else {
-		assert.Truef(t, parser.Err == nil, "Expected no parser error, but got %v", parser.Err)
+		assert.Truef(t, parserErr == nil, "Expected no parser error, but got %v", parserErr)
 	}
 }

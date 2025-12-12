@@ -3,7 +3,9 @@
 package libyaml
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"strings"
 )
 
@@ -75,11 +77,11 @@ func LoadYAML(data []byte) (any, error) {
 
 	for {
 		var event Event
-		if !parser.Parse(&event) {
-			if parser.Err != nil {
-				return nil, parser.Err
+		if err := parser.Parse(&event); err != nil {
+			if errors.Is(err, io.EOF) {
+				break
 			}
-			break
+			return nil, err
 		}
 
 		switch event.Type {

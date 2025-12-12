@@ -29,13 +29,12 @@ import (
 )
 
 // Set the reader error and return 0.
-func (parser *Parser) setReaderError(problem string, offset int, value int) bool {
-	parser.Err = ReaderError{
+func (parser *Parser) setReaderError(problem string, offset int, value int) error {
+	return ReaderError{
 		Offset: offset,
 		Value:  value,
 		Err:    errors.New(problem),
 	}
-	return false
 }
 
 // Byte order marks.
@@ -47,11 +46,11 @@ const (
 
 // Determine the input stream encoding by checking the BOM symbol. If no BOM is
 // found, the UTF-8 encoding is assumed. Return 1 on success, 0 on failure.
-func (parser *Parser) determineEncoding() bool {
+func (parser *Parser) determineEncoding() error {
 	// Ensure that we had enough bytes in the raw buffer.
 	for !parser.eof && len(parser.raw_buffer)-parser.raw_buffer_pos < 3 {
-		if !parser.updateRawBuffer() {
-			return false
+		if err := parser.updateRawBuffer(); err != nil {
+			return err
 		}
 	}
 
@@ -74,21 +73,21 @@ func (parser *Parser) determineEncoding() bool {
 	} else {
 		parser.encoding = UTF8_ENCODING
 	}
-	return true
+	return nil
 }
 
 // Update the raw buffer.
-func (parser *Parser) updateRawBuffer() bool {
+func (parser *Parser) updateRawBuffer() error {
 	size_read := 0
 
 	// Return if the raw buffer is full.
 	if parser.raw_buffer_pos == 0 && len(parser.raw_buffer) == cap(parser.raw_buffer) {
-		return true
+		return nil
 	}
 
 	// Return on EOF.
 	if parser.eof {
-		return true
+		return nil
 	}
 
 	// Move the remaining bytes in the raw buffer to the beginning.
@@ -104,21 +103,20 @@ func (parser *Parser) updateRawBuffer() bool {
 	if err == io.EOF {
 		parser.eof = true
 	} else if err != nil {
-		parser.Err = ReaderError{
+		return ReaderError{
 			Offset: parser.offset,
 			Value:  -1,
 			Err:    fmt.Errorf("input error: %w", err),
 		}
-		return false
 	}
-	return true
+	return nil
 }
 
 // Ensure that the buffer contains at least `length` characters.
 // Return true on success, false on failure.
 //
 // The length is supposed to be significantly less that the buffer size.
-func (parser *Parser) updateBuffer(length int) bool {
+func (parser *Parser) updateBuffer(length int) error {
 	if parser.read_handler == nil {
 		panic("read handler must be set")
 	}
@@ -141,13 +139,13 @@ func (parser *Parser) updateBuffer(length int) bool {
 
 	// Return if the buffer contains enough characters.
 	if parser.unread >= length {
-		return true
+		return nil
 	}
 
 	// Determine the input encoding if it is not known yet.
 	if parser.encoding == ANY_ENCODING {
-		if !parser.determineEncoding() {
-			return false
+		if err := parser.determineEncoding(); err != nil {
+			return err
 		}
 	}
 
@@ -171,9 +169,9 @@ func (parser *Parser) updateBuffer(length int) bool {
 
 		// Fill the raw buffer if necessary.
 		if !first || parser.raw_buffer_pos == len(parser.raw_buffer) {
-			if !parser.updateRawBuffer() {
+			if err := parser.updateRawBuffer(); err != nil {
 				parser.buffer = parser.buffer[:buffer_len]
-				return false
+				return err
 			}
 		}
 		first = false
@@ -453,5 +451,5 @@ func (parser *Parser) updateBuffer(length int) bool {
 		buffer_len++
 	}
 	parser.buffer = parser.buffer[:buffer_len]
-	return true
+	return nil
 }

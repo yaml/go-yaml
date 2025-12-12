@@ -25,6 +25,7 @@ package libyaml
 import (
 	"bytes"
 	"fmt"
+	"io"
 )
 
 // Introduction
@@ -502,13 +503,6 @@ import (
 //      BLOCK-END
 //
 
-// Ensure that the buffer contains the required number of characters.
-// Return true on success, false on failure (reader error or memory error).
-func (parser *Parser) cache(length int) bool {
-	// [Go] This was inlined: !A.cache(B) -> unread < B && !A.update(B)
-	return parser.unread >= length || parser.updateBuffer(length)
-}
-
 // Advance the buffer pointer.
 func (parser *Parser) skip() {
 	if !isBlank(parser.buffer, parser.buffer_pos) {
@@ -599,19 +593,24 @@ func (parser *Parser) readLine(s []byte) []byte {
 }
 
 // Scan gets the next token.
-func (parser *Parser) Scan(token *Token) bool {
+func (parser *Parser) Scan(token *Token) error {
 	// Erase the token object.
 	*token = Token{} // [Go] Is this necessary?
 
+	if parser.lastError != nil {
+		return parser.lastError
+	}
+
 	// No tokens after STREAM-END or error.
-	if parser.stream_end_produced || parser.Err != nil {
-		return true
+	if parser.stream_end_produced {
+		return io.EOF
 	}
 
 	// Ensure that the tokens queue contains enough tokens.
 	if !parser.token_available {
-		if !parser.fetchMoreTokens() {
-			return false
+		if err := parser.fetchMoreTokens(); err != nil {
+			parser.lastError = err
+			return err
 		}
 	}
 
@@ -624,11 +623,11 @@ func (parser *Parser) Scan(token *Token) bool {
 	if token.Type == STREAM_END_TOKEN {
 		parser.stream_end_produced = true
 	}
-	return true
+	return nil
 }
 
 // Set the scanner error and return false.
-func (parser *Parser) setScannerError(context string, context_mark Mark, problem string) bool {
+func (parser *Parser) formatScannerError(context string, context_mark Mark, problem string) error {
 	mark := parser.mark
 	mark.Line += 1
 
@@ -644,16 +643,15 @@ func (parser *Parser) setScannerError(context string, context_mark Mark, problem
 		scannerErr.ContextMessage = context
 	}
 
-	parser.Err = scannerErr
-	return false
+	return scannerErr
 }
 
-func (parser *Parser) setScannerTagError(directive bool, context_mark Mark, problem string) bool {
+func (parser *Parser) setScannerTagError(directive bool, context_mark Mark, problem string) error {
 	context := "while parsing a tag"
 	if directive {
 		context = "while parsing a %TAG directive"
 	}
-	return parser.setScannerError(context, context_mark, problem)
+	return parser.formatScannerError(context, context_mark, problem)
 }
 
 func trace(args ...any) func() {
@@ -665,7 +663,7 @@ func trace(args ...any) func() {
 
 // Ensure that the tokens queue contains at least one token which can be
 // returned to the Parser.
-func (parser *Parser) fetchMoreTokens() bool {
+func (parser *Parser) fetchMoreTokens() error {
 	// While we need more tokens to fetch, do it.
 	for {
 		// [Go] The comment parsing logic requires a lookahead of two tokens
@@ -678,27 +676,29 @@ func (parser *Parser) fetchMoreTokens() bool {
 			head_tok_idx, ok := parser.simple_keys_by_tok[parser.tokens_parsed]
 			if !ok {
 				break
-			} else if valid, ok := parser.simpleKeyIsValid(&parser.simple_keys[head_tok_idx]); !ok {
-				return false
+			} else if valid, err := parser.simpleKeyIsValid(&parser.simple_keys[head_tok_idx]); err != nil {
+				return err
 			} else if !valid {
 				break
 			}
 		}
 		// Fetch the next token.
-		if !parser.fetchNextToken() {
-			return false
+		if err := parser.fetchNextToken(); err != nil {
+			return err
 		}
 	}
 
 	parser.token_available = true
-	return true
+	return nil
 }
 
 // The dispatcher for token fetchers.
-func (parser *Parser) fetchNextToken() (ok bool) {
+func (parser *Parser) fetchNextToken() (err error) {
 	// Ensure that the buffer is initialized.
-	if parser.unread < 1 && !parser.updateBuffer(1) {
-		return false
+	if parser.unread < 1 {
+		if err := parser.updateBuffer(1); err != nil {
+			return err
+		}
 	}
 
 	// Check if we just started scanning.  Fetch STREAM-START then.
@@ -709,8 +709,8 @@ func (parser *Parser) fetchNextToken() (ok bool) {
 	scan_mark := parser.mark
 
 	// Eat whitespaces and comments until we reach the next token.
-	if !parser.scanToNextToken() {
-		return false
+	if err := parser.scanToNextToken(); err != nil {
+		return err
 	}
 
 	// [Go] While unrolling indents, transform the head comments of prior
@@ -718,14 +718,16 @@ func (parser *Parser) fetchNextToken() (ok bool) {
 	// the respective indexes.
 
 	// Check the indentation level against the current column.
-	if !parser.unrollIndent(parser.mark.Column, scan_mark) {
-		return false
+	if err := parser.unrollIndent(parser.mark.Column, scan_mark); err != nil {
+		return err
 	}
 
 	// Ensure that the buffer contains at least 4 characters.  4 is the length
 	// of the longest indicators ('--- ' and '... ').
-	if parser.unread < 4 && !parser.updateBuffer(4) {
-		return false
+	if parser.unread < 4 {
+		if err := parser.updateBuffer(4); err != nil {
+			return err
+		}
 	}
 
 	// Is it the end of the stream?
@@ -757,7 +759,7 @@ func (parser *Parser) fetchNextToken() (ok bool) {
 		comment_mark = parser.tokens[len(parser.tokens)-1].StartMark
 	}
 	defer func() {
-		if !ok {
+		if err != nil {
 			return
 		}
 		if len(parser.tokens) > 0 && parser.tokens[len(parser.tokens)-1].Type == BLOCK_ENTRY_TOKEN {
@@ -765,10 +767,7 @@ func (parser *Parser) fetchNextToken() (ok bool) {
 			// a head comment for whatever follows.
 			return
 		}
-		if !parser.scanLineComment(comment_mark) {
-			ok = false
-			return
-		}
+		err = parser.scanLineComment(comment_mark)
 	}()
 
 	// Is it the flow sequence start indicator?
@@ -885,7 +884,7 @@ func (parser *Parser) fetchNextToken() (ok bool) {
 	}
 
 	// If we don't determine the token type so far, it is an error.
-	return parser.setScannerError(
+	return parser.formatScannerError(
 		"while scanning for the next token", parser.mark,
 		"found character that cannot start any token")
 }
@@ -898,9 +897,9 @@ func (parser *Parser) isFlowSequence() bool {
 	return previousToken.Type == FLOW_ENTRY_TOKEN || previousToken.Type == FLOW_SEQUENCE_START_TOKEN
 }
 
-func (parser *Parser) simpleKeyIsValid(simple_key *SimpleKey) (valid, ok bool) {
+func (parser *Parser) simpleKeyIsValid(simple_key *SimpleKey) (valid bool, err error) {
 	if !simple_key.possible {
-		return false, true
+		return false, nil
 	}
 
 	// The 1.2 specification says:
@@ -914,19 +913,19 @@ func (parser *Parser) simpleKeyIsValid(simple_key *SimpleKey) (valid, ok bool) {
 	if simple_key.mark.Line < parser.mark.Line || simple_key.mark.Index+1024 < parser.mark.Index {
 		// Check if the potential simple key to be removed is required.
 		if simple_key.required {
-			return false, parser.setScannerError(
+			return false, parser.formatScannerError(
 				"while scanning a simple key", simple_key.mark,
 				"could not find expected ':'")
 		}
 		simple_key.possible = false
-		return false, true
+		return false, nil
 	}
-	return true, true
+	return true, nil
 }
 
 // Check if a simple key may start at the current position and add it if
 // needed.
-func (parser *Parser) saveSimpleKey() bool {
+func (parser *Parser) saveSimpleKey() error {
 	// A simple key is required at the current position if the scanner is in
 	// the block context and the current column coincides with the indentation
 	// level.
@@ -944,22 +943,22 @@ func (parser *Parser) saveSimpleKey() bool {
 			mark:         parser.mark,
 		}
 
-		if !parser.removeSimpleKey() {
-			return false
+		if err := parser.removeSimpleKey(); err != nil {
+			return err
 		}
 		parser.simple_keys[len(parser.simple_keys)-1] = simple_key
 		parser.simple_keys_by_tok[simple_key.token_number] = len(parser.simple_keys) - 1
 	}
-	return true
+	return nil
 }
 
 // Remove a potential simple key at the current flow level.
-func (parser *Parser) removeSimpleKey() bool {
+func (parser *Parser) removeSimpleKey() error {
 	i := len(parser.simple_keys) - 1
 	if parser.simple_keys[i].possible {
 		// If the key is required, it is an error.
 		if parser.simple_keys[i].required {
-			return parser.setScannerError(
+			return parser.formatScannerError(
 				"while scanning a simple key", parser.simple_keys[i].mark,
 				"could not find expected ':'")
 		}
@@ -967,14 +966,14 @@ func (parser *Parser) removeSimpleKey() bool {
 		parser.simple_keys[i].possible = false
 		delete(parser.simple_keys_by_tok, parser.simple_keys[i].token_number)
 	}
-	return true
+	return nil
 }
 
 // max_flow_level limits the flow_level
 const max_flow_level = 10000
 
 // Increase the flow level and resize the simple key list if needed.
-func (parser *Parser) increaseFlowLevel() bool {
+func (parser *Parser) increaseFlowLevel() error {
 	// Reset the simple key on the next level.
 	parser.simple_keys = append(parser.simple_keys, SimpleKey{
 		possible:     false,
@@ -986,22 +985,22 @@ func (parser *Parser) increaseFlowLevel() bool {
 	// Increase the flow level.
 	parser.flow_level++
 	if parser.flow_level > max_flow_level {
-		return parser.setScannerError(
+		return parser.formatScannerError(
 			"while increasing flow level", parser.simple_keys[len(parser.simple_keys)-1].mark,
 			fmt.Sprintf("exceeded max depth of %d", max_flow_level))
 	}
-	return true
+	return nil
 }
 
 // Decrease the flow level.
-func (parser *Parser) decreaseFlowLevel() bool {
+func (parser *Parser) decreaseFlowLevel() error {
 	if parser.flow_level > 0 {
 		parser.flow_level--
 		last := len(parser.simple_keys) - 1
 		delete(parser.simple_keys_by_tok, parser.simple_keys[last].token_number)
 		parser.simple_keys = parser.simple_keys[:last]
 	}
-	return true
+	return nil
 }
 
 // max_indents limits the indents stack size
@@ -1010,10 +1009,10 @@ const max_indents = 10000
 // Push the current indentation level to the stack and set the new level
 // the current column is greater than the indentation level.  In this case,
 // append or insert the specified token into the token queue.
-func (parser *Parser) rollIndent(column, number int, typ TokenType, mark Mark) bool {
+func (parser *Parser) rollIndent(column, number int, typ TokenType, mark Mark) error {
 	// In the flow context, do nothing.
 	if parser.flow_level > 0 {
-		return true
+		return nil
 	}
 
 	if parser.indent < column {
@@ -1022,7 +1021,7 @@ func (parser *Parser) rollIndent(column, number int, typ TokenType, mark Mark) b
 		parser.indents = append(parser.indents, parser.indent)
 		parser.indent = column
 		if len(parser.indents) > max_indents {
-			return parser.setScannerError(
+			return parser.formatScannerError(
 				"while increasing indent level", parser.simple_keys[len(parser.simple_keys)-1].mark,
 				fmt.Sprintf("exceeded max depth of %d", max_indents))
 		}
@@ -1038,16 +1037,16 @@ func (parser *Parser) rollIndent(column, number int, typ TokenType, mark Mark) b
 		}
 		parser.insertToken(number, &token)
 	}
-	return true
+	return nil
 }
 
 // Pop indentation levels from the indents stack until the current level
 // becomes less or equal to the column.  For each indentation level, append
 // the BLOCK-END token.
-func (parser *Parser) unrollIndent(column int, scan_mark Mark) bool {
+func (parser *Parser) unrollIndent(column int, scan_mark Mark) error {
 	// In the flow context, do nothing.
 	if parser.flow_level > 0 {
-		return true
+		return nil
 	}
 
 	block_mark := scan_mark
@@ -1094,11 +1093,11 @@ func (parser *Parser) unrollIndent(column int, scan_mark Mark) bool {
 		parser.indent = parser.indents[len(parser.indents)-1]
 		parser.indents = parser.indents[:len(parser.indents)-1]
 	}
-	return true
+	return nil
 }
 
 // Initialize the scanner and produce the STREAM-START token.
-func (parser *Parser) fetchStreamStart() bool {
+func (parser *Parser) fetchStreamStart() error {
 	// Set the initial indentation.
 	parser.indent = -1
 
@@ -1121,11 +1120,11 @@ func (parser *Parser) fetchStreamStart() bool {
 		encoding:  parser.encoding,
 	}
 	parser.insertToken(-1, &token)
-	return true
+	return nil
 }
 
 // Produce the STREAM-END token and shut down the scanner.
-func (parser *Parser) fetchStreamEnd() bool {
+func (parser *Parser) fetchStreamEnd() error {
 	// Force new line.
 	if parser.mark.Column != 0 {
 		parser.mark.Column = 0
@@ -1133,13 +1132,13 @@ func (parser *Parser) fetchStreamEnd() bool {
 	}
 
 	// Reset the indentation level.
-	if !parser.unrollIndent(-1, parser.mark) {
-		return false
+	if err := parser.unrollIndent(-1, parser.mark); err != nil {
+		return err
 	}
 
 	// Reset simple keys.
-	if !parser.removeSimpleKey() {
-		return false
+	if err := parser.removeSimpleKey(); err != nil {
+		return err
 	}
 
 	parser.simple_key_allowed = false
@@ -1151,43 +1150,43 @@ func (parser *Parser) fetchStreamEnd() bool {
 		EndMark:   parser.mark,
 	}
 	parser.insertToken(-1, &token)
-	return true
+	return nil
 }
 
 // Produce a VERSION-DIRECTIVE or TAG-DIRECTIVE token.
-func (parser *Parser) fetchDirective() bool {
+func (parser *Parser) fetchDirective() error {
 	// Reset the indentation level.
-	if !parser.unrollIndent(-1, parser.mark) {
-		return false
+	if err := parser.unrollIndent(-1, parser.mark); err != nil {
+		return err
 	}
 
 	// Reset simple keys.
-	if !parser.removeSimpleKey() {
-		return false
+	if err := parser.removeSimpleKey(); err != nil {
+		return err
 	}
 
 	parser.simple_key_allowed = false
 
 	// Create the YAML-DIRECTIVE or TAG-DIRECTIVE token.
 	token := Token{}
-	if !parser.scanDirective(&token) {
-		return false
+	if err := parser.scanDirective(&token); err != nil {
+		return err
 	}
 	// Append the token to the queue.
 	parser.insertToken(-1, &token)
-	return true
+	return nil
 }
 
 // Produce the DOCUMENT-START or DOCUMENT-END token.
-func (parser *Parser) fetchDocumentIndicator(typ TokenType) bool {
+func (parser *Parser) fetchDocumentIndicator(typ TokenType) error {
 	// Reset the indentation level.
-	if !parser.unrollIndent(-1, parser.mark) {
-		return false
+	if err := parser.unrollIndent(-1, parser.mark); err != nil {
+		return err
 	}
 
 	// Reset simple keys.
-	if !parser.removeSimpleKey() {
-		return false
+	if err := parser.removeSimpleKey(); err != nil {
+		return err
 	}
 
 	parser.simple_key_allowed = false
@@ -1209,19 +1208,19 @@ func (parser *Parser) fetchDocumentIndicator(typ TokenType) bool {
 	}
 	// Append the token to the queue.
 	parser.insertToken(-1, &token)
-	return true
+	return nil
 }
 
 // Produce the FLOW-SEQUENCE-START or FLOW-MAPPING-START token.
-func (parser *Parser) fetchFlowCollectionStart(typ TokenType) bool {
+func (parser *Parser) fetchFlowCollectionStart(typ TokenType) error {
 	// The indicators '[' and '{' may start a simple key.
-	if !parser.saveSimpleKey() {
-		return false
+	if err := parser.saveSimpleKey(); err != nil {
+		return err
 	}
 
 	// Increase the flow level.
-	if !parser.increaseFlowLevel() {
-		return false
+	if err := parser.increaseFlowLevel(); err != nil {
+		return err
 	}
 
 	// A simple key may follow the indicators '[' and '{'.
@@ -1240,19 +1239,19 @@ func (parser *Parser) fetchFlowCollectionStart(typ TokenType) bool {
 	}
 	// Append the token to the queue.
 	parser.insertToken(-1, &token)
-	return true
+	return nil
 }
 
 // Produce the FLOW-SEQUENCE-END or FLOW-MAPPING-END token.
-func (parser *Parser) fetchFlowCollectionEnd(typ TokenType) bool {
+func (parser *Parser) fetchFlowCollectionEnd(typ TokenType) error {
 	// Reset any potential simple key on the current flow level.
-	if !parser.removeSimpleKey() {
-		return false
+	if err := parser.removeSimpleKey(); err != nil {
+		return err
 	}
 
 	// Decrease the flow level.
-	if !parser.decreaseFlowLevel() {
-		return false
+	if err := parser.decreaseFlowLevel(); err != nil {
+		return err
 	}
 
 	// No simple keys after the indicators ']' and '}'.
@@ -1272,14 +1271,14 @@ func (parser *Parser) fetchFlowCollectionEnd(typ TokenType) bool {
 	}
 	// Append the token to the queue.
 	parser.insertToken(-1, &token)
-	return true
+	return nil
 }
 
 // Produce the FLOW-ENTRY token.
-func (parser *Parser) fetchFlowEntry() bool {
+func (parser *Parser) fetchFlowEntry() error {
 	// Reset any potential simple keys on the current flow level.
-	if !parser.removeSimpleKey() {
-		return false
+	if err := parser.removeSimpleKey(); err != nil {
+		return err
 	}
 
 	// Simple keys are allowed after ','.
@@ -1297,21 +1296,21 @@ func (parser *Parser) fetchFlowEntry() bool {
 		EndMark:   end_mark,
 	}
 	parser.insertToken(-1, &token)
-	return true
+	return nil
 }
 
 // Produce the BLOCK-ENTRY token.
-func (parser *Parser) fetchBlockEntry() bool {
+func (parser *Parser) fetchBlockEntry() error {
 	// Check if the scanner is in the block context.
 	if parser.flow_level == 0 {
 		// Check if we are allowed to start a new entry.
 		if !parser.simple_key_allowed {
-			return parser.setScannerError("", Mark{},
+			return parser.formatScannerError("", Mark{},
 				"block sequence entries are not allowed in this context")
 		}
 		// Add the BLOCK-SEQUENCE-START token if needed.
-		if !parser.rollIndent(parser.mark.Column, -1, BLOCK_SEQUENCE_START_TOKEN, parser.mark) {
-			return false
+		if err := parser.rollIndent(parser.mark.Column, -1, BLOCK_SEQUENCE_START_TOKEN, parser.mark); err != nil {
+			return err
 		}
 	} else { //nolint:staticcheck // there is no problem with this empty branch as it's documentation.
 
@@ -1321,8 +1320,8 @@ func (parser *Parser) fetchBlockEntry() bool {
 	}
 
 	// Reset any potential simple keys on the current flow level.
-	if !parser.removeSimpleKey() {
-		return false
+	if err := parser.removeSimpleKey(); err != nil {
+		return err
 	}
 
 	// Simple keys are allowed after '-'.
@@ -1340,27 +1339,27 @@ func (parser *Parser) fetchBlockEntry() bool {
 		EndMark:   end_mark,
 	}
 	parser.insertToken(-1, &token)
-	return true
+	return nil
 }
 
 // Produce the KEY token.
-func (parser *Parser) fetchKey() bool {
+func (parser *Parser) fetchKey() error {
 	// In the block context, additional checks are required.
 	if parser.flow_level == 0 {
 		// Check if we are allowed to start a new key (not necessary simple).
 		if !parser.simple_key_allowed {
-			return parser.setScannerError("", Mark{},
+			return parser.formatScannerError("", Mark{},
 				"mapping keys are not allowed in this context")
 		}
 		// Add the BLOCK-MAPPING-START token if needed.
-		if !parser.rollIndent(parser.mark.Column, -1, BLOCK_MAPPING_START_TOKEN, parser.mark) {
-			return false
+		if err := parser.rollIndent(parser.mark.Column, -1, BLOCK_MAPPING_START_TOKEN, parser.mark); err != nil {
+			return err
 		}
 	}
 
 	// Reset any potential simple keys on the current flow level.
-	if !parser.removeSimpleKey() {
-		return false
+	if err := parser.removeSimpleKey(); err != nil {
+		return err
 	}
 
 	// Simple keys are allowed after '?' in the block context.
@@ -1378,16 +1377,16 @@ func (parser *Parser) fetchKey() bool {
 		EndMark:   end_mark,
 	}
 	parser.insertToken(-1, &token)
-	return true
+	return nil
 }
 
 // Produce the VALUE token.
-func (parser *Parser) fetchValue() bool {
+func (parser *Parser) fetchValue() error {
 	simple_key := &parser.simple_keys[len(parser.simple_keys)-1]
 
 	// Have we found a simple key?
-	if valid, ok := parser.simpleKeyIsValid(simple_key); !ok {
-		return false
+	if valid, err := parser.simpleKeyIsValid(simple_key); err != nil {
+		return err
 	} else if valid {
 
 		// Create the KEY token and insert it into the queue.
@@ -1399,10 +1398,10 @@ func (parser *Parser) fetchValue() bool {
 		parser.insertToken(simple_key.token_number-parser.tokens_parsed, &token)
 
 		// In the block context, we may need to add the BLOCK-MAPPING-START token.
-		if !parser.rollIndent(simple_key.mark.Column,
+		if err := parser.rollIndent(simple_key.mark.Column,
 			simple_key.token_number,
-			BLOCK_MAPPING_START_TOKEN, simple_key.mark) {
-			return false
+			BLOCK_MAPPING_START_TOKEN, simple_key.mark); err != nil {
+			return err
 		}
 
 		// Remove the simple key.
@@ -1420,13 +1419,13 @@ func (parser *Parser) fetchValue() bool {
 
 			// Check if we are allowed to start a complex value.
 			if !parser.simple_key_allowed {
-				return parser.setScannerError("", Mark{},
+				return parser.formatScannerError("", Mark{},
 					"mapping values are not allowed in this context")
 			}
 
 			// Add the BLOCK-MAPPING-START token if needed.
-			if !parser.rollIndent(parser.mark.Column, -1, BLOCK_MAPPING_START_TOKEN, parser.mark) {
-				return false
+			if err := parser.rollIndent(parser.mark.Column, -1, BLOCK_MAPPING_START_TOKEN, parser.mark); err != nil {
+				return err
 			}
 		}
 
@@ -1446,14 +1445,14 @@ func (parser *Parser) fetchValue() bool {
 		EndMark:   end_mark,
 	}
 	parser.insertToken(-1, &token)
-	return true
+	return nil
 }
 
 // Produce the ALIAS or ANCHOR token.
-func (parser *Parser) fetchAnchor(typ TokenType) bool {
+func (parser *Parser) fetchAnchor(typ TokenType) error {
 	// An anchor or an alias could be a simple key.
-	if !parser.saveSimpleKey() {
-		return false
+	if err := parser.saveSimpleKey(); err != nil {
+		return err
 	}
 
 	// A simple key cannot follow an anchor or an alias.
@@ -1461,18 +1460,18 @@ func (parser *Parser) fetchAnchor(typ TokenType) bool {
 
 	// Create the ALIAS or ANCHOR token and append it to the queue.
 	var token Token
-	if !parser.scanAnchor(&token, typ) {
-		return false
+	if err := parser.scanAnchor(&token, typ); err != nil {
+		return err
 	}
 	parser.insertToken(-1, &token)
-	return true
+	return nil
 }
 
 // Produce the TAG token.
-func (parser *Parser) fetchTag() bool {
+func (parser *Parser) fetchTag() error {
 	// A tag could be a simple key.
-	if !parser.saveSimpleKey() {
-		return false
+	if err := parser.saveSimpleKey(); err != nil {
+		return err
 	}
 
 	// A simple key cannot follow a tag.
@@ -1480,18 +1479,18 @@ func (parser *Parser) fetchTag() bool {
 
 	// Create the TAG token and append it to the queue.
 	var token Token
-	if !parser.scanTag(&token) {
-		return false
+	if err := parser.scanTag(&token); err != nil {
+		return err
 	}
 	parser.insertToken(-1, &token)
-	return true
+	return nil
 }
 
 // Produce the SCALAR(...,literal) or SCALAR(...,folded) tokens.
-func (parser *Parser) fetchBlockScalar(literal bool) bool {
+func (parser *Parser) fetchBlockScalar(literal bool) error {
 	// Remove any potential simple keys.
-	if !parser.removeSimpleKey() {
-		return false
+	if err := parser.removeSimpleKey(); err != nil {
+		return err
 	}
 
 	// A simple key may follow a block scalar.
@@ -1499,18 +1498,18 @@ func (parser *Parser) fetchBlockScalar(literal bool) bool {
 
 	// Create the SCALAR token and append it to the queue.
 	var token Token
-	if !parser.scanBlockScalar(&token, literal) {
-		return false
+	if err := parser.scanBlockScalar(&token, literal); err != nil {
+		return err
 	}
 	parser.insertToken(-1, &token)
-	return true
+	return nil
 }
 
 // Produce the SCALAR(...,single-quoted) or SCALAR(...,double-quoted) tokens.
-func (parser *Parser) fetchFlowScalar(single bool) bool {
+func (parser *Parser) fetchFlowScalar(single bool) error {
 	// A plain scalar could be a simple key.
-	if !parser.saveSimpleKey() {
-		return false
+	if err := parser.saveSimpleKey(); err != nil {
+		return err
 	}
 
 	// A simple key cannot follow a flow scalar.
@@ -1518,18 +1517,18 @@ func (parser *Parser) fetchFlowScalar(single bool) bool {
 
 	// Create the SCALAR token and append it to the queue.
 	var token Token
-	if !parser.scanFlowScalar(&token, single) {
-		return false
+	if err := parser.scanFlowScalar(&token, single); err != nil {
+		return err
 	}
 	parser.insertToken(-1, &token)
-	return true
+	return nil
 }
 
 // Produce the SCALAR(...,plain) token.
-func (parser *Parser) fetchPlainScalar() bool {
+func (parser *Parser) fetchPlainScalar() error {
 	// A plain scalar could be a simple key.
-	if !parser.saveSimpleKey() {
-		return false
+	if err := parser.saveSimpleKey(); err != nil {
+		return err
 	}
 
 	// A simple key cannot follow a flow scalar.
@@ -1537,22 +1536,24 @@ func (parser *Parser) fetchPlainScalar() bool {
 
 	// Create the SCALAR token and append it to the queue.
 	var token Token
-	if !parser.scanPlainScalar(&token) {
-		return false
+	if err := parser.scanPlainScalar(&token); err != nil {
+		return err
 	}
 	parser.insertToken(-1, &token)
-	return true
+	return nil
 }
 
 // Eat whitespaces and comments until the next token is found.
-func (parser *Parser) scanToNextToken() bool {
+func (parser *Parser) scanToNextToken() error {
 	scan_mark := parser.mark
 
 	// Until the next token is not found.
 	for {
 		// Allow the BOM mark to start a line.
-		if parser.unread < 1 && !parser.updateBuffer(1) {
-			return false
+		if parser.unread < 1 {
+			if err := parser.updateBuffer(1); err != nil {
+				return err
+			}
 		}
 		if parser.mark.Column == 0 && isBOM(parser.buffer, parser.buffer_pos) {
 			parser.skip()
@@ -1563,14 +1564,18 @@ func (parser *Parser) scanToNextToken() bool {
 		//  - in the flow context
 		//  - in the block context, but not at the beginning of the line or
 		//  after '-', '?', or ':' (complex value).
-		if parser.unread < 1 && !parser.updateBuffer(1) {
-			return false
+		if parser.unread < 1 {
+			if err := parser.updateBuffer(1); err != nil {
+				return err
+			}
 		}
 
 		for parser.buffer[parser.buffer_pos] == ' ' || ((parser.flow_level > 0 || !parser.simple_key_allowed) && parser.buffer[parser.buffer_pos] == '\t') {
 			parser.skip()
-			if parser.unread < 1 && !parser.updateBuffer(1) {
-				return false
+			if parser.unread < 1 {
+				if err := parser.updateBuffer(1); err != nil {
+					return err
+				}
 			}
 		}
 
@@ -1599,15 +1604,17 @@ func (parser *Parser) scanToNextToken() bool {
 
 		// Eat a comment until a line break.
 		if parser.buffer[parser.buffer_pos] == '#' {
-			if !parser.scanComments(scan_mark) {
-				return false
+			if err := parser.scanComments(scan_mark); err != nil {
+				return err
 			}
 		}
 
 		// If it is a line break, eat it.
 		if isLineBreak(parser.buffer, parser.buffer_pos) {
-			if parser.unread < 2 && !parser.updateBuffer(2) {
-				return false
+			if parser.unread < 2 {
+				if err := parser.updateBuffer(2); err != nil {
+					return err
+				}
 			}
 			parser.skipLine()
 
@@ -1620,7 +1627,7 @@ func (parser *Parser) scanToNextToken() bool {
 		}
 	}
 
-	return true
+	return nil
 }
 
 // Scan a YAML-DIRECTIVE or TAG-DIRECTIVE token.
@@ -1631,23 +1638,23 @@ func (parser *Parser) scanToNextToken() bool {
 //	^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //	%TAG    !yaml!  tag:yaml.org,2002:  \n
 //	^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-func (parser *Parser) scanDirective(token *Token) bool {
+func (parser *Parser) scanDirective(token *Token) error {
 	// Eat '%'.
 	start_mark := parser.mark
 	parser.skip()
 
 	// Scan the directive name.
 	var name []byte
-	if !parser.scanDirectiveName(start_mark, &name) {
-		return false
+	if err := parser.scanDirectiveName(start_mark, &name); err != nil {
+		return err
 	}
 
 	// Is it a YAML directive?
 	if bytes.Equal(name, []byte("YAML")) {
 		// Scan the VERSION directive value.
 		var major, minor int8
-		if !parser.scanVersionDirectiveValue(start_mark, &major, &minor) {
-			return false
+		if err := parser.scanVersionDirectiveValue(start_mark, &major, &minor); err != nil {
+			return err
 		}
 		end_mark := parser.mark
 
@@ -1664,8 +1671,8 @@ func (parser *Parser) scanDirective(token *Token) bool {
 	} else if bytes.Equal(name, []byte("TAG")) {
 		// Scan the TAG directive value.
 		var handle, prefix []byte
-		if !parser.scanTagDirectiveValue(start_mark, &handle, &prefix) {
-			return false
+		if err := parser.scanTagDirectiveValue(start_mark, &handle, &prefix); err != nil {
+			return err
 		}
 		end_mark := parser.mark
 
@@ -1680,20 +1687,23 @@ func (parser *Parser) scanDirective(token *Token) bool {
 
 		// Unknown directive.
 	} else {
-		parser.setScannerError("while scanning a directive",
+		return parser.formatScannerError("while scanning a directive",
 			start_mark, "found unknown directive name")
-		return false
 	}
 
 	// Eat the rest of the line including any comments.
-	if parser.unread < 1 && !parser.updateBuffer(1) {
-		return false
+	if parser.unread < 1 {
+		if err := parser.updateBuffer(1); err != nil {
+			return err
+		}
 	}
 
 	for isBlank(parser.buffer, parser.buffer_pos) {
 		parser.skip()
-		if parser.unread < 1 && !parser.updateBuffer(1) {
-			return false
+		if parser.unread < 1 {
+			if err := parser.updateBuffer(1); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -1704,28 +1714,31 @@ func (parser *Parser) scanDirective(token *Token) bool {
 		//}
 		for !isBreakOrZero(parser.buffer, parser.buffer_pos) {
 			parser.skip()
-			if parser.unread < 1 && !parser.updateBuffer(1) {
-				return false
+			if parser.unread < 1 {
+				if err := parser.updateBuffer(1); err != nil {
+					return err
+				}
 			}
 		}
 	}
 
 	// Check if we are at the end of the line.
 	if !isBreakOrZero(parser.buffer, parser.buffer_pos) {
-		parser.setScannerError("while scanning a directive",
+		return parser.formatScannerError("while scanning a directive",
 			start_mark, "did not find expected comment or line break")
-		return false
 	}
 
 	// Eat a line break.
 	if isLineBreak(parser.buffer, parser.buffer_pos) {
-		if parser.unread < 2 && !parser.updateBuffer(2) {
-			return false
+		if parser.unread < 2 {
+			if err := parser.updateBuffer(2); err != nil {
+				return err
+			}
 		}
 		parser.skipLine()
 	}
 
-	return true
+	return nil
 }
 
 // Scan the directive name.
@@ -1736,35 +1749,37 @@ func (parser *Parser) scanDirective(token *Token) bool {
 //	 ^^^^
 //	%TAG    !yaml!  tag:yaml.org,2002:  \n
 //	 ^^^
-func (parser *Parser) scanDirectiveName(start_mark Mark, name *[]byte) bool {
+func (parser *Parser) scanDirectiveName(start_mark Mark, name *[]byte) error {
 	// Consume the directive name.
-	if parser.unread < 1 && !parser.updateBuffer(1) {
-		return false
+	if parser.unread < 1 {
+		if err := parser.updateBuffer(1); err != nil {
+			return err
+		}
 	}
 
 	var s []byte
 	for isAlpha(parser.buffer, parser.buffer_pos) {
 		s = parser.read(s)
-		if parser.unread < 1 && !parser.updateBuffer(1) {
-			return false
+		if parser.unread < 1 {
+			if err := parser.updateBuffer(1); err != nil {
+				return err
+			}
 		}
 	}
 
 	// Check if the name is empty.
 	if len(s) == 0 {
-		parser.setScannerError("while scanning a directive",
+		return parser.formatScannerError("while scanning a directive",
 			start_mark, "could not find expected directive name")
-		return false
 	}
 
 	// Check for an blank character after the name.
 	if !isBlankOrZero(parser.buffer, parser.buffer_pos) {
-		parser.setScannerError("while scanning a directive",
+		return parser.formatScannerError("while scanning a directive",
 			start_mark, "found unexpected non-alphabetical character")
-		return false
 	}
 	*name = s
-	return true
+	return nil
 }
 
 // Scan the value of VERSION-DIRECTIVE.
@@ -1773,36 +1788,40 @@ func (parser *Parser) scanDirectiveName(start_mark Mark, name *[]byte) bool {
 //
 //	%YAML   1.1     # a comment \n
 //	     ^^^^^^
-func (parser *Parser) scanVersionDirectiveValue(start_mark Mark, major, minor *int8) bool {
+func (parser *Parser) scanVersionDirectiveValue(start_mark Mark, major, minor *int8) error {
 	// Eat whitespaces.
-	if parser.unread < 1 && !parser.updateBuffer(1) {
-		return false
+	if parser.unread < 1 {
+		if err := parser.updateBuffer(1); err != nil {
+			return err
+		}
 	}
 	for isBlank(parser.buffer, parser.buffer_pos) {
 		parser.skip()
-		if parser.unread < 1 && !parser.updateBuffer(1) {
-			return false
+		if parser.unread < 1 {
+			if err := parser.updateBuffer(1); err != nil {
+				return err
+			}
 		}
 	}
 
 	// Consume the major version number.
-	if !parser.scanVersionDirectiveNumber(start_mark, major) {
-		return false
+	if err := parser.scanVersionDirectiveNumber(start_mark, major); err != nil {
+		return err
 	}
 
 	// Eat '.'.
 	if parser.buffer[parser.buffer_pos] != '.' {
-		return parser.setScannerError("while scanning a %YAML directive",
+		return parser.formatScannerError("while scanning a %YAML directive",
 			start_mark, "did not find expected digit or '.' character")
 	}
 
 	parser.skip()
 
 	// Consume the minor version number.
-	if !parser.scanVersionDirectiveNumber(start_mark, minor) {
-		return false
+	if err := parser.scanVersionDirectiveNumber(start_mark, minor); err != nil {
+		return err
 	}
-	return true
+	return nil
 }
 
 const max_number_length = 2
@@ -1815,33 +1834,37 @@ const max_number_length = 2
 //	        ^
 //	%YAML   1.1     # a comment \n
 //	          ^
-func (parser *Parser) scanVersionDirectiveNumber(start_mark Mark, number *int8) bool {
+func (parser *Parser) scanVersionDirectiveNumber(start_mark Mark, number *int8) error {
 	// Repeat while the next character is digit.
-	if parser.unread < 1 && !parser.updateBuffer(1) {
-		return false
+	if parser.unread < 1 {
+		if err := parser.updateBuffer(1); err != nil {
+			return err
+		}
 	}
 	var value, length int8
 	for isDigit(parser.buffer, parser.buffer_pos) {
 		// Check if the number is too long.
 		length++
 		if length > max_number_length {
-			return parser.setScannerError("while scanning a %YAML directive",
+			return parser.formatScannerError("while scanning a %YAML directive",
 				start_mark, "found extremely long version number")
 		}
 		value = value*10 + int8(asDigit(parser.buffer, parser.buffer_pos))
 		parser.skip()
-		if parser.unread < 1 && !parser.updateBuffer(1) {
-			return false
+		if parser.unread < 1 {
+			if err := parser.updateBuffer(1); err != nil {
+				return err
+			}
 		}
 	}
 
 	// Check if the number was present.
 	if length == 0 {
-		return parser.setScannerError("while scanning a %YAML directive",
+		return parser.formatScannerError("while scanning a %YAML directive",
 			start_mark, "did not find expected version number")
 	}
 	*number = value
-	return true
+	return nil
 }
 
 // Scan the value of a TAG-DIRECTIVE token.
@@ -1850,65 +1873,73 @@ func (parser *Parser) scanVersionDirectiveNumber(start_mark Mark, number *int8) 
 //
 //	%TAG    !yaml!  tag:yaml.org,2002:  \n
 //	    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-func (parser *Parser) scanTagDirectiveValue(start_mark Mark, handle, prefix *[]byte) bool {
+func (parser *Parser) scanTagDirectiveValue(start_mark Mark, handle, prefix *[]byte) error {
 	var handle_value, prefix_value []byte
 
 	// Eat whitespaces.
-	if parser.unread < 1 && !parser.updateBuffer(1) {
-		return false
+	if parser.unread < 1 {
+		if err := parser.updateBuffer(1); err != nil {
+			return err
+		}
 	}
 
 	for isBlank(parser.buffer, parser.buffer_pos) {
 		parser.skip()
-		if parser.unread < 1 && !parser.updateBuffer(1) {
-			return false
+		if parser.unread < 1 {
+			if err := parser.updateBuffer(1); err != nil {
+				return err
+			}
 		}
 	}
 
 	// Scan a handle.
-	if !parser.scanTagHandle(true, start_mark, &handle_value) {
-		return false
+	if err := parser.scanTagHandle(true, start_mark, &handle_value); err != nil {
+		return err
 	}
 
 	// Expect a whitespace.
-	if parser.unread < 1 && !parser.updateBuffer(1) {
-		return false
+	if parser.unread < 1 {
+		if err := parser.updateBuffer(1); err != nil {
+			return err
+		}
 	}
 	if !isBlank(parser.buffer, parser.buffer_pos) {
-		parser.setScannerError("while scanning a %TAG directive",
+		return parser.formatScannerError("while scanning a %TAG directive",
 			start_mark, "did not find expected whitespace")
-		return false
 	}
 
 	// Eat whitespaces.
 	for isBlank(parser.buffer, parser.buffer_pos) {
 		parser.skip()
-		if parser.unread < 1 && !parser.updateBuffer(1) {
-			return false
+		if parser.unread < 1 {
+			if err := parser.updateBuffer(1); err != nil {
+				return err
+			}
 		}
 	}
 
 	// Scan a prefix.
-	if !parser.scanTagURI(true, nil, start_mark, &prefix_value) {
-		return false
+	if err := parser.scanTagURI(true, nil, start_mark, &prefix_value); err != nil {
+		return err
 	}
 
 	// Expect a whitespace or line break.
-	if parser.unread < 1 && !parser.updateBuffer(1) {
-		return false
+	if parser.unread < 1 {
+		if err := parser.updateBuffer(1); err != nil {
+			return err
+		}
 	}
 	if !isBlankOrZero(parser.buffer, parser.buffer_pos) {
-		parser.setScannerError("while scanning a %TAG directive",
+		return parser.formatScannerError("while scanning a %TAG directive",
 			start_mark, "did not find expected whitespace or line break")
-		return false
 	}
 
 	*handle = handle_value
 	*prefix = prefix_value
-	return true
+	return nil
 }
 
-func (parser *Parser) scanAnchor(token *Token, typ TokenType) bool {
+func (parser *Parser) scanAnchor(token *Token, typ TokenType) error {
 	var s []byte
 
 	// Eat the indicator character.
@@ -1916,14 +1947,18 @@ func (parser *Parser) scanAnchor(token *Token, typ TokenType) bool {
 	parser.skip()
 
 	// Consume the value.
-	if parser.unread < 1 && !parser.updateBuffer(1) {
-		return false
+	if parser.unread < 1 {
+		if err := parser.updateBuffer(1); err != nil {
+			return err
+		}
 	}
 
 	for isAnchorChar(parser.buffer, parser.buffer_pos) {
 		s = parser.read(s)
-		if parser.unread < 1 && !parser.updateBuffer(1) {
-			return false
+		if parser.unread < 1 {
+			if err := parser.updateBuffer(1); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -1946,9 +1981,8 @@ func (parser *Parser) scanAnchor(token *Token, typ TokenType) bool {
 		if typ == ANCHOR_TOKEN {
 			context = "while scanning an anchor"
 		}
-		parser.setScannerError(context, start_mark,
+		return parser.formatScannerError(context, start_mark,
 			"did not find expected alphabetic or numeric character")
-		return false
 	}
 
 	// Create a token.
@@ -1959,21 +1993,23 @@ func (parser *Parser) scanAnchor(token *Token, typ TokenType) bool {
 		Value:     s,
 	}
 
-	return true
+	return nil
 }
 
 /*
  * Scan a TAG token.
  */
 
-func (parser *Parser) scanTag(token *Token) bool {
+func (parser *Parser) scanTag(token *Token) error {
 	var handle, suffix []byte
 
 	start_mark := parser.mark
 
 	// Check if the tag is in the canonical form.
-	if parser.unread < 2 && !parser.updateBuffer(2) {
-		return false
+	if parser.unread < 2 {
+		if err := parser.updateBuffer(2); err != nil {
+			return err
+		}
 	}
 
 	if parser.buffer[parser.buffer_pos+1] == '<' {
@@ -1984,15 +2020,14 @@ func (parser *Parser) scanTag(token *Token) bool {
 		parser.skip()
 
 		// Consume the tag value.
-		if !parser.scanTagURI(false, nil, start_mark, &suffix) {
-			return false
+		if err := parser.scanTagURI(false, nil, start_mark, &suffix); err != nil {
+			return err
 		}
 
 		// Check for '>' and eat it.
 		if parser.buffer[parser.buffer_pos] != '>' {
-			parser.setScannerError("while scanning a tag",
+			return parser.formatScannerError("while scanning a tag",
 				start_mark, "did not find the expected '>'")
-			return false
 		}
 
 		parser.skip()
@@ -2000,20 +2035,20 @@ func (parser *Parser) scanTag(token *Token) bool {
 		// The tag has either the '!suffix' or the '!handle!suffix' form.
 
 		// First, try to scan a handle.
-		if !parser.scanTagHandle(false, start_mark, &handle) {
-			return false
+		if err := parser.scanTagHandle(false, start_mark, &handle); err != nil {
+			return err
 		}
 
 		// Check if it is, indeed, handle.
 		if handle[0] == '!' && len(handle) > 1 && handle[len(handle)-1] == '!' {
 			// Scan the suffix now.
-			if !parser.scanTagURI(false, nil, start_mark, &suffix) {
-				return false
+			if err := parser.scanTagURI(false, nil, start_mark, &suffix); err != nil {
+				return err
 			}
 		} else {
 			// It wasn't a handle after all.  Scan the rest of the tag.
-			if !parser.scanTagURI(false, handle, start_mark, &suffix) {
-				return false
+			if err := parser.scanTagURI(false, handle, start_mark, &suffix); err != nil {
+				return err
 			}
 
 			// Set the handle to '!'.
@@ -2028,13 +2063,14 @@ func (parser *Parser) scanTag(token *Token) bool {
 	}
 
 	// Check the character which ends the tag.
-	if parser.unread < 1 && !parser.updateBuffer(1) {
-		return false
+	if parser.unread < 1 {
+		if err := parser.updateBuffer(1); err != nil {
+			return err
+		}
 	}
 	if !isBlankOrZero(parser.buffer, parser.buffer_pos) {
-		parser.setScannerError("while scanning a tag",
+		return parser.formatScannerError("while scanning a tag",
 			start_mark, "did not find expected whitespace or line break")
-		return false
 	}
 
 	end_mark := parser.mark
@@ -2047,19 +2083,20 @@ func (parser *Parser) scanTag(token *Token) bool {
 		Value:     handle,
 		suffix:    suffix,
 	}
-	return true
+	return nil
 }
 
 // Scan a tag handle.
-func (parser *Parser) scanTagHandle(directive bool, start_mark Mark, handle *[]byte) bool {
+func (parser *Parser) scanTagHandle(directive bool, start_mark Mark, handle *[]byte) error {
 	// Check the initial '!' character.
-	if parser.unread < 1 && !parser.updateBuffer(1) {
-		return false
+	if parser.unread < 1 {
+		if err := parser.updateBuffer(1); err != nil {
+			return err
+		}
 	}
 	if parser.buffer[parser.buffer_pos] != '!' {
-		parser.setScannerTagError(directive,
+		return parser.setScannerTagError(directive,
 			start_mark, "did not find expected '!'")
-		return false
 	}
 
 	var s []byte
@@ -2068,13 +2105,17 @@ func (parser *Parser) scanTagHandle(directive bool, start_mark Mark, handle *[]b
 	s = parser.read(s)
 
 	// Copy all subsequent alphabetical and numerical characters.
-	if parser.unread < 1 && !parser.updateBuffer(1) {
-		return false
+	if parser.unread < 1 {
+		if err := parser.updateBuffer(1); err != nil {
+			return err
+		}
 	}
 	for isAlpha(parser.buffer, parser.buffer_pos) {
 		s = parser.read(s)
-		if parser.unread < 1 && !parser.updateBuffer(1) {
-			return false
+		if parser.unread < 1 {
+			if err := parser.updateBuffer(1); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -2085,18 +2126,17 @@ func (parser *Parser) scanTagHandle(directive bool, start_mark Mark, handle *[]b
 		// It's either the '!' tag or not really a tag handle.  If it's a %TAG
 		// directive, it's an error.  If it's a tag token, it must be a part of URI.
 		if directive && string(s) != "!" {
-			parser.setScannerTagError(directive,
+			return parser.setScannerTagError(directive,
 				start_mark, "did not find expected '!'")
-			return false
 		}
 	}
 
 	*handle = s
-	return true
+	return nil
 }
 
 // Scan a tag.
-func (parser *Parser) scanTagURI(directive bool, head []byte, start_mark Mark, uri *[]byte) bool {
+func (parser *Parser) scanTagURI(directive bool, head []byte, start_mark Mark, uri *[]byte) error {
 	// size_t length = head ? strlen((char *)head) : 0
 	var s []byte
 	hasTag := len(head) > 0
@@ -2109,8 +2149,10 @@ func (parser *Parser) scanTagURI(directive bool, head []byte, start_mark Mark, u
 	}
 
 	// Scan the tag.
-	if parser.unread < 1 && !parser.updateBuffer(1) {
-		return false
+	if parser.unread < 1 {
+		if err := parser.updateBuffer(1); err != nil {
+			return err
+		}
 	}
 
 	// The set of characters that may appear in URI is as follows:
@@ -2132,35 +2174,38 @@ func (parser *Parser) scanTagURI(directive bool, head []byte, start_mark Mark, u
 		parser.buffer[parser.buffer_pos] == '%' {
 		// Check if it is a URI-escape sequence.
 		if parser.buffer[parser.buffer_pos] == '%' {
-			if !parser.scanURIEscapes(directive, start_mark, &s) {
-				return false
+			if err := parser.scanURIEscapes(directive, start_mark, &s); err != nil {
+				return err
 			}
 		} else {
 			s = parser.read(s)
 		}
-		if parser.unread < 1 && !parser.updateBuffer(1) {
-			return false
+		if parser.unread < 1 {
+			if err := parser.updateBuffer(1); err != nil {
+				return err
+			}
 		}
 		hasTag = true
 	}
 
 	if !hasTag {
-		parser.setScannerTagError(directive,
+		return parser.setScannerTagError(directive,
 			start_mark, "did not find expected tag URI")
-		return false
 	}
 	*uri = s
-	return true
+	return nil
 }
 
 // Decode an URI-escape sequence corresponding to a single UTF-8 character.
-func (parser *Parser) scanURIEscapes(directive bool, start_mark Mark, s *[]byte) bool {
+func (parser *Parser) scanURIEscapes(directive bool, start_mark Mark, s *[]byte) error {
 	// Decode the required number of characters.
 	w := 1024
 	for w > 0 {
 		// Check for a URI-escaped octet.
-		if parser.unread < 3 && !parser.updateBuffer(3) {
-			return false
+		if parser.unread < 3 {
+			if err := parser.updateBuffer(3); err != nil {
+				return err
+			}
 		}
 
 		if !(parser.buffer[parser.buffer_pos] == '%' &&
@@ -2195,18 +2240,20 @@ func (parser *Parser) scanURIEscapes(directive bool, start_mark Mark, s *[]byte)
 		parser.skip()
 		w--
 	}
-	return true
+	return nil
 }
 
 // Scan a block scalar.
-func (parser *Parser) scanBlockScalar(token *Token, literal bool) bool {
+func (parser *Parser) scanBlockScalar(token *Token, literal bool) error {
 	// Eat the indicator '|' or '>'.
 	start_mark := parser.mark
 	parser.skip()
 
 	// Scan the additional block scalar indicators.
-	if parser.unread < 1 && !parser.updateBuffer(1) {
-		return false
+	if parser.unread < 1 {
+		if err := parser.updateBuffer(1); err != nil {
+			return err
+		}
 	}
 
 	// Check for a chomping indicator.
@@ -2221,15 +2268,16 @@ func (parser *Parser) scanBlockScalar(token *Token, literal bool) bool {
 		parser.skip()
 
 		// Check for an indentation indicator.
-		if parser.unread < 1 && !parser.updateBuffer(1) {
-			return false
+		if parser.unread < 1 {
+			if err := parser.updateBuffer(1); err != nil {
+				return err
+			}
 		}
 		if isDigit(parser.buffer, parser.buffer_pos) {
 			// Check that the indentation is greater than 0.
 			if parser.buffer[parser.buffer_pos] == '0' {
-				parser.setScannerError("while scanning a block scalar",
+				return parser.formatScannerError("while scanning a block scalar",
 					start_mark, "found an indentation indicator equal to 0")
-				return false
 			}
 
 			// Get the indentation level and eat the indicator.
@@ -2241,15 +2289,16 @@ func (parser *Parser) scanBlockScalar(token *Token, literal bool) bool {
 		// Do the same as above, but in the opposite order.
 
 		if parser.buffer[parser.buffer_pos] == '0' {
-			parser.setScannerError("while scanning a block scalar",
+			return parser.formatScannerError("while scanning a block scalar",
 				start_mark, "found an indentation indicator equal to 0")
-			return false
 		}
 		increment = asDigit(parser.buffer, parser.buffer_pos)
 		parser.skip()
 
-		if parser.unread < 1 && !parser.updateBuffer(1) {
-			return false
+		if parser.unread < 1 {
+			if err := parser.updateBuffer(1); err != nil {
+				return err
+			}
 		}
 		if parser.buffer[parser.buffer_pos] == '+' || parser.buffer[parser.buffer_pos] == '-' {
 			if parser.buffer[parser.buffer_pos] == '+' {
@@ -2262,38 +2311,45 @@ func (parser *Parser) scanBlockScalar(token *Token, literal bool) bool {
 	}
 
 	// Eat whitespaces and comments to the end of the line.
-	if parser.unread < 1 && !parser.updateBuffer(1) {
-		return false
+	if parser.unread < 1 {
+		if err := parser.updateBuffer(1); err != nil {
+			return err
+		}
 	}
 	for isBlank(parser.buffer, parser.buffer_pos) {
 		parser.skip()
-		if parser.unread < 1 && !parser.updateBuffer(1) {
-			return false
+		if parser.unread < 1 {
+			if err := parser.updateBuffer(1); err != nil {
+				return err
+			}
 		}
 	}
 	if parser.buffer[parser.buffer_pos] == '#' {
-		if !parser.scanLineComment(start_mark) {
-			return false
+		if err := parser.scanLineComment(start_mark); err != nil {
+			return err
 		}
 		for !isBreakOrZero(parser.buffer, parser.buffer_pos) {
 			parser.skip()
-			if parser.unread < 1 && !parser.updateBuffer(1) {
-				return false
+			if parser.unread < 1 {
+				if err := parser.updateBuffer(1); err != nil {
+					return err
+				}
 			}
 		}
 	}
 
 	// Check if we are at the end of the line.
 	if !isBreakOrZero(parser.buffer, parser.buffer_pos) {
-		parser.setScannerError("while scanning a block scalar",
+		return parser.formatScannerError("while scanning a block scalar",
 			start_mark, "did not find expected comment or line break")
-		return false
 	}
 
 	// Eat a line break.
 	if isLineBreak(parser.buffer, parser.buffer_pos) {
-		if parser.unread < 2 && !parser.updateBuffer(2) {
-			return false
+		if parser.unread < 2 {
+			if err := parser.updateBuffer(2); err != nil {
+				return err
+			}
 		}
 		parser.skipLine()
 	}
@@ -2312,13 +2368,15 @@ func (parser *Parser) scanBlockScalar(token *Token, literal bool) bool {
 
 	// Scan the leading line breaks and determine the indentation level if needed.
 	var s, leading_break, trailing_breaks []byte
-	if !parser.scanBlockScalarBreaks(&indent, &trailing_breaks, start_mark, &end_mark) {
-		return false
+	if err := parser.scanBlockScalarBreaks(&indent, &trailing_breaks, start_mark, &end_mark); err != nil {
+		return err
 	}
 
 	// Scan the block scalar content.
-	if parser.unread < 1 && !parser.updateBuffer(1) {
-		return false
+	if parser.unread < 1 {
+		if err := parser.updateBuffer(1); err != nil {
+			return err
+		}
 	}
 	var leading_blank, trailing_blank bool
 	for parser.mark.Column == indent && !isZeroChar(parser.buffer, parser.buffer_pos) {
@@ -2348,21 +2406,25 @@ func (parser *Parser) scanBlockScalar(token *Token, literal bool) bool {
 		// Consume the current line.
 		for !isBreakOrZero(parser.buffer, parser.buffer_pos) {
 			s = parser.read(s)
-			if parser.unread < 1 && !parser.updateBuffer(1) {
-				return false
+			if parser.unread < 1 {
+				if err := parser.updateBuffer(1); err != nil {
+					return err
+				}
 			}
 		}
 
 		// Consume the line break.
-		if parser.unread < 2 && !parser.updateBuffer(2) {
-			return false
+		if parser.unread < 2 {
+			if err := parser.updateBuffer(2); err != nil {
+				return err
+			}
 		}
 
 		leading_break = parser.readLine(leading_break)
 
 		// Eat the following indentation spaces and line breaks.
-		if !parser.scanBlockScalarBreaks(&indent, &trailing_breaks, start_mark, &end_mark) {
-			return false
+		if err := parser.scanBlockScalarBreaks(&indent, &trailing_breaks, start_mark, &end_mark); err != nil {
+			return err
 		}
 	}
 
@@ -2385,25 +2447,29 @@ func (parser *Parser) scanBlockScalar(token *Token, literal bool) bool {
 	if !literal {
 		token.Style = FOLDED_SCALAR_STYLE
 	}
-	return true
+	return nil
 }
 
 // Scan indentation spaces and line breaks for a block scalar.  Determine the
 // indentation level if needed.
-func (parser *Parser) scanBlockScalarBreaks(indent *int, breaks *[]byte, start_mark Mark, end_mark *Mark) bool {
+func (parser *Parser) scanBlockScalarBreaks(indent *int, breaks *[]byte, start_mark Mark, end_mark *Mark) error {
 	*end_mark = parser.mark
 
 	// Eat the indentation spaces and line breaks.
 	max_indent := 0
 	for {
 		// Eat the indentation spaces.
-		if parser.unread < 1 && !parser.updateBuffer(1) {
-			return false
+		if parser.unread < 1 {
+			if err := parser.updateBuffer(1); err != nil {
+				return err
+			}
 		}
 		for (*indent == 0 || parser.mark.Column < *indent) && isSpace(parser.buffer, parser.buffer_pos) {
 			parser.skip()
-			if parser.unread < 1 && !parser.updateBuffer(1) {
-				return false
+			if parser.unread < 1 {
+				if err := parser.updateBuffer(1); err != nil {
+					return err
+				}
 			}
 		}
 		if parser.mark.Column > max_indent {
@@ -2412,7 +2478,7 @@ func (parser *Parser) scanBlockScalarBreaks(indent *int, breaks *[]byte, start_m
 
 		// Check for a tab character messing the indentation.
 		if (*indent == 0 || parser.mark.Column < *indent) && isTab(parser.buffer, parser.buffer_pos) {
-			return parser.setScannerError("while scanning a block scalar",
+			return parser.formatScannerError("while scanning a block scalar",
 				start_mark, "found a tab character where an indentation space is expected")
 		}
 
@@ -2422,8 +2488,10 @@ func (parser *Parser) scanBlockScalarBreaks(indent *int, breaks *[]byte, start_m
 		}
 
 		// Consume the line break.
-		if parser.unread < 2 && !parser.updateBuffer(2) {
-			return false
+		if parser.unread < 2 {
+			if err := parser.updateBuffer(2); err != nil {
+				return err
+			}
 		}
 		// [Go] Should really be returning breaks instead.
 		*breaks = parser.readLine(*breaks)
@@ -2440,11 +2508,11 @@ func (parser *Parser) scanBlockScalarBreaks(indent *int, breaks *[]byte, start_m
 			*indent = 1
 		}
 	}
-	return true
+	return nil
 }
 
 // Scan a quoted scalar.
-func (parser *Parser) scanFlowScalar(token *Token, single bool) bool {
+func (parser *Parser) scanFlowScalar(token *Token, single bool) error {
 	// Eat the left quote.
 	start_mark := parser.mark
 	parser.skip()
@@ -2453,8 +2521,10 @@ func (parser *Parser) scanFlowScalar(token *Token, single bool) bool {
 	var s, leading_break, trailing_breaks, whitespaces []byte
 	for {
 		// Check that there are no document indicators at the beginning of the line.
-		if parser.unread < 4 && !parser.updateBuffer(4) {
-			return false
+		if parser.unread < 4 {
+			if err := parser.updateBuffer(4); err != nil {
+				return err
+			}
 		}
 
 		if parser.mark.Column == 0 &&
@@ -2465,16 +2535,14 @@ func (parser *Parser) scanFlowScalar(token *Token, single bool) bool {
 					parser.buffer[parser.buffer_pos+1] == '.' &&
 					parser.buffer[parser.buffer_pos+2] == '.')) &&
 			isBlankOrZero(parser.buffer, parser.buffer_pos+3) {
-			parser.setScannerError("while scanning a quoted scalar",
+			return parser.formatScannerError("while scanning a quoted scalar",
 				start_mark, "found unexpected document indicator")
-			return false
 		}
 
 		// Check for EOF.
 		if isZeroChar(parser.buffer, parser.buffer_pos) {
-			parser.setScannerError("while scanning a quoted scalar",
+			return parser.formatScannerError("while scanning a quoted scalar",
 				start_mark, "found unexpected end of stream")
-			return false
 		}
 
 		// Consume non-blank characters.
@@ -2494,8 +2562,10 @@ func (parser *Parser) scanFlowScalar(token *Token, single bool) bool {
 				break
 			} else if !single && parser.buffer[parser.buffer_pos] == '\\' && isLineBreak(parser.buffer, parser.buffer_pos+1) {
 				// It is an escaped line break.
-				if parser.unread < 3 && !parser.updateBuffer(3) {
-					return false
+				if parser.unread < 3 {
+					if err := parser.updateBuffer(3); err != nil {
+						return err
+					}
 				}
 				parser.skip()
 				parser.skipLine()
@@ -2555,9 +2625,8 @@ func (parser *Parser) scanFlowScalar(token *Token, single bool) bool {
 				case 'U':
 					code_length = 8
 				default:
-					parser.setScannerError("while scanning a quoted scalar",
+					return parser.formatScannerError("while scanning a quoted scalar",
 						start_mark, "found unknown escape character")
-					return false
 				}
 
 				parser.skip()
@@ -2568,23 +2637,23 @@ func (parser *Parser) scanFlowScalar(token *Token, single bool) bool {
 					var value int
 
 					// Scan the character value.
-					if parser.unread < code_length && !parser.updateBuffer(code_length) {
-						return false
+					if parser.unread < code_length {
+						if err := parser.updateBuffer(code_length); err != nil {
+							return err
+						}
 					}
 					for k := 0; k < code_length; k++ {
 						if !isHex(parser.buffer, parser.buffer_pos+k) {
-							parser.setScannerError("while scanning a quoted scalar",
+							return parser.formatScannerError("while scanning a quoted scalar",
 								start_mark, "did not find expected hexadecimal number")
-							return false
 						}
 						value = (value << 4) + asHex(parser.buffer, parser.buffer_pos+k)
 					}
 
 					// Check the value and write the character.
 					if (value >= 0xD800 && value <= 0xDFFF) || value > 0x10FFFF {
-						parser.setScannerError("while scanning a quoted scalar",
+						return parser.formatScannerError("while scanning a quoted scalar",
 							start_mark, "found invalid Unicode character escape code")
-						return false
 					}
 					if value <= 0x7F {
 						s = append(s, byte(value))
@@ -2611,13 +2680,17 @@ func (parser *Parser) scanFlowScalar(token *Token, single bool) bool {
 				// It is a non-escaped non-blank character.
 				s = parser.read(s)
 			}
-			if parser.unread < 2 && !parser.updateBuffer(2) {
-				return false
+			if parser.unread < 2 {
+				if err := parser.updateBuffer(2); err != nil {
+					return err
+				}
 			}
 		}
 
-		if parser.unread < 1 && !parser.updateBuffer(1) {
-			return false
+		if parser.unread < 1 {
+			if err := parser.updateBuffer(1); err != nil {
+				return err
+			}
 		}
 
 		// Check if we are at the end of the scalar.
@@ -2641,8 +2714,10 @@ func (parser *Parser) scanFlowScalar(token *Token, single bool) bool {
 					parser.skip()
 				}
 			} else {
-				if parser.unread < 2 && !parser.updateBuffer(2) {
-					return false
+				if parser.unread < 2 {
+					if err := parser.updateBuffer(2); err != nil {
+						return err
+					}
 				}
 
 				// Check if it is a first line break.
@@ -2654,8 +2729,10 @@ func (parser *Parser) scanFlowScalar(token *Token, single bool) bool {
 					trailing_breaks = parser.readLine(trailing_breaks)
 				}
 			}
-			if parser.unread < 1 && !parser.updateBuffer(1) {
-				return false
+			if parser.unread < 1 {
+				if err := parser.updateBuffer(1); err != nil {
+					return err
+				}
 			}
 		}
 
@@ -2695,11 +2772,11 @@ func (parser *Parser) scanFlowScalar(token *Token, single bool) bool {
 	if !single {
 		token.Style = DOUBLE_QUOTED_SCALAR_STYLE
 	}
-	return true
+	return nil
 }
 
 // Scan a plain scalar.
-func (parser *Parser) scanPlainScalar(token *Token) bool {
+func (parser *Parser) scanPlainScalar(token *Token) error {
 	var s, leading_break, trailing_breaks, whitespaces []byte
 	var leading_blanks bool
 	indent := parser.indent + 1
@@ -2710,8 +2787,10 @@ func (parser *Parser) scanPlainScalar(token *Token) bool {
 	// Consume the content of the plain scalar.
 	for {
 		// Check for a document indicator.
-		if parser.unread < 4 && !parser.updateBuffer(4) {
-			return false
+		if parser.unread < 4 {
+			if err := parser.updateBuffer(4); err != nil {
+				return err
+			}
 		}
 		if parser.mark.Column == 0 &&
 			((parser.buffer[parser.buffer_pos+0] == '-' &&
@@ -2770,8 +2849,10 @@ func (parser *Parser) scanPlainScalar(token *Token) bool {
 			s = parser.read(s)
 
 			end_mark = parser.mark
-			if parser.unread < 2 && !parser.updateBuffer(2) {
-				return false
+			if parser.unread < 2 {
+				if err := parser.updateBuffer(2); err != nil {
+					return err
+				}
 			}
 		}
 
@@ -2781,8 +2862,10 @@ func (parser *Parser) scanPlainScalar(token *Token) bool {
 		}
 
 		// Consume blank characters.
-		if parser.unread < 1 && !parser.updateBuffer(1) {
-			return false
+		if parser.unread < 1 {
+			if err := parser.updateBuffer(1); err != nil {
+				return err
+			}
 		}
 
 		for isBlank(parser.buffer, parser.buffer_pos) || isLineBreak(parser.buffer, parser.buffer_pos) {
@@ -2790,9 +2873,8 @@ func (parser *Parser) scanPlainScalar(token *Token) bool {
 
 				// Check for tab characters that abuse indentation.
 				if leading_blanks && parser.mark.Column < indent && isTab(parser.buffer, parser.buffer_pos) {
-					parser.setScannerError("while scanning a plain scalar",
+					return parser.formatScannerError("while scanning a plain scalar",
 						start_mark, "found a tab character that violates indentation")
-					return false
 				}
 
 				// Consume a space or a tab character.
@@ -2802,8 +2884,10 @@ func (parser *Parser) scanPlainScalar(token *Token) bool {
 					parser.skip()
 				}
 			} else {
-				if parser.unread < 2 && !parser.updateBuffer(2) {
-					return false
+				if parser.unread < 2 {
+					if err := parser.updateBuffer(2); err != nil {
+						return err
+					}
 				}
 
 				// Check if it is a first line break.
@@ -2815,8 +2899,10 @@ func (parser *Parser) scanPlainScalar(token *Token) bool {
 					trailing_breaks = parser.readLine(trailing_breaks)
 				}
 			}
-			if parser.unread < 1 && !parser.updateBuffer(1) {
-				return false
+			if parser.unread < 1 {
+				if err := parser.updateBuffer(1); err != nil {
+					return err
+				}
 			}
 		}
 
@@ -2839,20 +2925,22 @@ func (parser *Parser) scanPlainScalar(token *Token) bool {
 	if leading_blanks {
 		parser.simple_key_allowed = true
 	}
-	return true
+	return nil
 }
 
-func (parser *Parser) scanLineComment(token_mark Mark) bool {
+func (parser *Parser) scanLineComment(token_mark Mark) error {
 	if parser.newlines > 0 {
-		return true
+		return nil
 	}
 
 	var start_mark Mark
 	var text []byte
 
 	for peek := 0; peek < 512; peek++ {
-		if parser.unread < peek+1 && !parser.updateBuffer(peek+1) {
-			break
+		if parser.unread < peek+1 {
+			if parser.updateBuffer(peek+1) != nil {
+				break
+			}
 		}
 		if isBlank(parser.buffer, parser.buffer_pos+peek) {
 			continue
@@ -2860,15 +2948,19 @@ func (parser *Parser) scanLineComment(token_mark Mark) bool {
 		if parser.buffer[parser.buffer_pos+peek] == '#' {
 			seen := parser.mark.Index + peek
 			for {
-				if parser.unread < 1 && !parser.updateBuffer(1) {
-					return false
+				if parser.unread < 1 {
+					if err := parser.updateBuffer(1); err != nil {
+						return err
+					}
 				}
 				if isBreakOrZero(parser.buffer, parser.buffer_pos) {
 					if parser.mark.Index >= seen {
 						break
 					}
-					if parser.unread < 2 && !parser.updateBuffer(2) {
-						return false
+					if parser.unread < 2 {
+						if err := parser.updateBuffer(2); err != nil {
+							return err
+						}
 					}
 					parser.skipLine()
 				} else if parser.mark.Index >= seen {
@@ -2890,10 +2982,10 @@ func (parser *Parser) scanLineComment(token_mark Mark) bool {
 			line:       text,
 		})
 	}
-	return true
+	return nil
 }
 
-func (parser *Parser) scanComments(scan_mark Mark) bool {
+func (parser *Parser) scanComments(scan_mark Mark) error {
 	token := parser.tokens[len(parser.tokens)-1]
 
 	if token.Type == FLOW_ENTRY_TOKEN && len(parser.tokens) > 1 {
@@ -2929,8 +3021,10 @@ func (parser *Parser) scanComments(scan_mark Mark) bool {
 
 	peek := 0
 	for ; peek < 512; peek++ {
-		if parser.unread < peek+1 && !parser.updateBuffer(peek+1) {
-			break
+		if parser.unread < peek+1 {
+			if parser.updateBuffer(peek+1) != nil {
+				break
+			}
 		}
 		column++
 		if isBlank(parser.buffer, parser.buffer_pos+peek) {
@@ -3009,15 +3103,19 @@ func (parser *Parser) scanComments(scan_mark Mark) bool {
 		// Consume until after the consumed comment line.
 		seen := parser.mark.Index + peek
 		for {
-			if parser.unread < 1 && !parser.updateBuffer(1) {
-				return false
+			if parser.unread < 1 {
+				if err := parser.updateBuffer(1); err != nil {
+					return err
+				}
 			}
 			if isBreakOrZero(parser.buffer, parser.buffer_pos) {
 				if parser.mark.Index >= seen {
 					break
 				}
-				if parser.unread < 2 && !parser.updateBuffer(2) {
-					return false
+				if parser.unread < 2 {
+					if err := parser.updateBuffer(2); err != nil {
+						return err
+					}
 				}
 				parser.skipLine()
 			} else if parser.mark.Index >= seen {
@@ -3045,5 +3143,5 @@ func (parser *Parser) scanComments(scan_mark Mark) bool {
 			head:       text,
 		})
 	}
-	return true
+	return nil
 }

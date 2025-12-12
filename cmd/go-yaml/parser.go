@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 
@@ -29,10 +30,9 @@ func (p *Parser) Next() (*Token, error) {
 	}
 
 	var yamlToken libyaml.Token
-	if !p.parser.Scan(&yamlToken) {
-		if p.parser.Err != nil {
-			return nil,
-				fmt.Errorf("parser error: %w", p.parser.Err)
+	if err := p.parser.Scan(&yamlToken); err != nil {
+		if !errors.Is(err, io.EOF) {
+			return nil, fmt.Errorf("parser error: %w", err)
 		}
 		p.done = true
 		return nil, nil

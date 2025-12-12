@@ -575,11 +575,9 @@ type AliasData struct {
 // Parser structure holds all information about the current
 // state of the parser.
 type Parser struct {
-	// Err handling
-	Err error
+	lastError error
 
 	// Reader stuff
-
 	read_handler ReadHandler // Read handler.
 
 	input_reader io.Reader // File input data.
