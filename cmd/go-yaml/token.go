@@ -117,8 +117,10 @@ func processTokensDecode(profuse, compact bool) error {
 				}
 
 				var buf bytes.Buffer
-				enc := yaml.NewEncoder(&buf)
-				enc.SetIndent(2)
+				enc, err := yaml.NewEncoderWithOptions(&buf, yaml.WithIndent(2))
+				if err != nil {
+					return fmt.Errorf("failed to create YAML encoder: %w", err)
+				}
 				if err := enc.Encode([]*yaml.Node{compactNode}); err != nil {
 					enc.Close()
 					return fmt.Errorf("failed to marshal compact token info: %w", err)
@@ -132,8 +134,10 @@ func processTokensDecode(profuse, compact bool) error {
 				info := formatTokenInfo(token, profuse)
 
 				var buf bytes.Buffer
-				enc := yaml.NewEncoder(&buf)
-				enc.SetIndent(2)
+				enc, err := yaml.NewEncoderWithOptions(&buf, yaml.WithIndent(2))
+				if err != nil {
+					return fmt.Errorf("failed to create YAML encoder: %w", err)
+				}
 				if err := enc.Encode([]*TokenInfo{info}); err != nil {
 					enc.Close()
 					return fmt.Errorf("failed to marshal token info: %w", err)
@@ -211,8 +215,10 @@ func processTokensWithParser(profuse, compact bool) error {
 			}
 
 			var buf bytes.Buffer
-			enc := yaml.NewEncoder(&buf)
-			enc.SetIndent(2)
+			enc, err := yaml.NewEncoderWithOptions(&buf, yaml.WithIndent(2))
+			if err != nil {
+				return fmt.Errorf("failed to create YAML encoder: %w", err)
+			}
 			if err := enc.Encode([]*yaml.Node{compactNode}); err != nil {
 				enc.Close()
 				return fmt.Errorf("failed to marshal compact token info: %w", err)
@@ -222,8 +228,10 @@ func processTokensWithParser(profuse, compact bool) error {
 		} else {
 			// For non-compact mode, output each token as a separate mapping
 			var buf bytes.Buffer
-			enc := yaml.NewEncoder(&buf)
-			enc.SetIndent(2)
+			enc, err := yaml.NewEncoderWithOptions(&buf, yaml.WithIndent(2))
+			if err != nil {
+				return fmt.Errorf("failed to create YAML encoder: %w", err)
+			}
 			if err := enc.Encode([]*TokenInfo{info}); err != nil {
 				enc.Close()
 				return fmt.Errorf("failed to marshal token info: %w", err)
@@ -323,8 +331,10 @@ func processTokensUnmarshal(profuse, compact bool) error {
 				}
 
 				var buf bytes.Buffer
-				enc := yaml.NewEncoder(&buf)
-				enc.SetIndent(2)
+				enc, err := yaml.NewEncoderWithOptions(&buf, yaml.WithIndent(2))
+				if err != nil {
+					return fmt.Errorf("failed to create YAML encoder: %w", err)
+				}
 				if err := enc.Encode([]*yaml.Node{compactNode}); err != nil {
 					enc.Close()
 					return fmt.Errorf("failed to marshal compact token info: %w", err)
@@ -338,8 +348,10 @@ func processTokensUnmarshal(profuse, compact bool) error {
 				info := formatTokenInfo(token, profuse)
 
 				var buf bytes.Buffer
-				enc := yaml.NewEncoder(&buf)
-				enc.SetIndent(2)
+				enc, err := yaml.NewEncoderWithOptions(&buf, yaml.WithIndent(2))
+				if err != nil {
+					return fmt.Errorf("failed to create YAML encoder: %w", err)
+				}
 				if err := enc.Encode([]*TokenInfo{info}); err != nil {
 					enc.Close()
 					return fmt.Errorf("failed to marshal token info: %w", err)
