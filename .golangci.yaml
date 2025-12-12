@@ -8,6 +8,7 @@ linters:
   - nolintlint
   - staticcheck
   - modernize
+  - nilnesserr
   disable:
   - errcheck
   - ineffassign
