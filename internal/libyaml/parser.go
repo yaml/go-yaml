@@ -143,15 +143,14 @@ func (parser *Parser) Parse(event *Event) error {
 	return nil
 }
 
-// Set parser error.
-func (parser *Parser) setParserError(problem string, problem_mark Mark) error {
+func formatParserError(problem string, problem_mark Mark) error {
 	return ParserError{
 		Mark:    problem_mark,
 		Message: problem,
 	}
 }
 
-func (parser *Parser) setParserErrorContext(context string, context_mark Mark, problem string, problem_mark Mark) error {
+func formatParserErrorContext(context string, context_mark Mark, problem string, problem_mark Mark) error {
 	return ParserError{
 		ContextMark:    context_mark,
 		ContextMessage: context,
@@ -244,7 +243,7 @@ func (parser *Parser) parseStreamStart(event *Event) error {
 		return err
 	}
 	if token.Type != STREAM_START_TOKEN {
-		return parser.setParserError("did not find expected <stream-start>", token.StartMark)
+		return formatParserError("did not find expected <stream-start>", token.StartMark)
 	}
 	parser.state = PARSE_IMPLICIT_DOCUMENT_START_STATE
 	*event = Event{
@@ -333,7 +332,7 @@ func (parser *Parser) parseDocumentStart(event *Event, implicit bool) error {
 			return err
 		}
 		if token.Type != DOCUMENT_START_TOKEN {
-			return parser.setParserError(
+			return formatParserError(
 				"did not find expected <document start>", token.StartMark)
 		}
 		parser.states = append(parser.states, PARSE_DOCUMENT_END_STATE)
@@ -556,7 +555,7 @@ func (parser *Parser) parseNode(event *Event, block, indentless_sequence bool) e
 				}
 			}
 			if len(tag) == 0 {
-				return parser.setParserErrorContext(
+				return formatParserErrorContext(
 					"while parsing a node", start_mark,
 					"found undefined tag handle", tag_mark)
 			}
@@ -692,7 +691,7 @@ func (parser *Parser) parseNode(event *Event, block, indentless_sequence bool) e
 	if block {
 		context = "while parsing a block node"
 	}
-	return parser.setParserErrorContext(context, start_mark,
+	return formatParserErrorContext(context, start_mark,
 		"did not find expected node content", token.StartMark)
 }
 
@@ -748,7 +747,7 @@ func (parser *Parser) parseBlockSequenceEntry(event *Event, first bool) error {
 
 	context_mark := parser.marks[len(parser.marks)-1]
 	parser.marks = parser.marks[:len(parser.marks)-1]
-	return parser.setParserErrorContext(
+	return formatParserErrorContext(
 		"while parsing a block collection", context_mark,
 		"did not find expected '-' indicator", token.StartMark)
 }
@@ -892,7 +891,7 @@ func (parser *Parser) parseBlockMappingKey(event *Event, first bool) error {
 
 	context_mark := parser.marks[len(parser.marks)-1]
 	parser.marks = parser.marks[:len(parser.marks)-1]
-	return parser.setParserErrorContext(
+	return formatParserErrorContext(
 		"while parsing a block mapping", context_mark,
 		"did not find expected key", token.StartMark)
 }
@@ -966,7 +965,7 @@ func (parser *Parser) parseFlowSequenceEntry(event *Event, first bool) error {
 			} else {
 				context_mark := parser.marks[len(parser.marks)-1]
 				parser.marks = parser.marks[:len(parser.marks)-1]
-				return parser.setParserErrorContext(
+				return formatParserErrorContext(
 					"while parsing a flow sequence", context_mark,
 					"did not find expected ',' or ']'", token.StartMark)
 			}
@@ -1105,7 +1104,7 @@ func (parser *Parser) parseFlowMappingKey(event *Event, first bool) error {
 			} else {
 				context_mark := parser.marks[len(parser.marks)-1]
 				parser.marks = parser.marks[:len(parser.marks)-1]
-				return parser.setParserErrorContext(
+				return formatParserErrorContext(
 					"while parsing a flow mapping", context_mark,
 					"did not find expected ',' or '}'", token.StartMark)
 			}
@@ -1202,11 +1201,11 @@ func (parser *Parser) processDirectives(version_directive_ref **VersionDirective
 		switch token.Type {
 		case VERSION_DIRECTIVE_TOKEN:
 			if version_directive != nil {
-				return parser.setParserError(
+				return formatParserError(
 					"found duplicate %YAML directive", token.StartMark)
 			}
 			if token.major != 1 || token.minor != 1 {
-				return parser.setParserError(
+				return formatParserError(
 					"found incompatible YAML document", token.StartMark)
 			}
 			version_directive = &VersionDirective{
@@ -1252,7 +1251,7 @@ func (parser *Parser) appendTagDirective(value TagDirective, allow_duplicates bo
 			if allow_duplicates {
 				return nil
 			}
-			return parser.setParserError("found duplicate %TAG directive", mark)
+			return formatParserError("found duplicate %TAG directive", mark)
 		}
 	}
 
