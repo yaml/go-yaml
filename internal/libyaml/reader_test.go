@@ -32,12 +32,16 @@ func runReaderSetErrorTest(t *testing.T, tc TestCase) {
 	value, ok := tc.Args[2].(int)
 	assert.Truef(t, ok, "Args[2] should be int, got %T", tc.Args[2])
 
-	result := parser.setReaderError(problem, offset, value)
+	err := parser.setReaderError(problem, offset, value)
 
-	// Check return value
+	// Check return value: Want is a bool where true means success (no error).
 	want, ok := tc.Want.(bool)
 	assert.Truef(t, ok, "Want should be bool, got %T", tc.Want)
-	assert.Equalf(t, want, result, "setReaderError() = %v, want %v", result, want)
+	if want {
+		assert.NoErrorf(t, err, "setReaderError() returned error: %v", err)
+	} else {
+		assert.NotNilf(t, err, "setReaderError() = nil, want error")
+	}
 
 	// Run field checks
 	runFieldChecks(t, &parser, tc.Checks)
@@ -49,11 +53,15 @@ func runReaderDetermineEncodingTest(t *testing.T, tc TestCase) {
 	parser := NewParser()
 	parser.SetInputString(tc.Input)
 
-	result := parser.determineEncoding()
+	err := parser.determineEncoding()
 
 	// Check return value (defaults to true)
 	want := WantBool(t, tc.Want, true)
-	assert.Equalf(t, want, result, "determineEncoding() = %v, want %v", result, want)
+	if want {
+		assert.NoErrorf(t, err, "determineEncoding() returned error: %v", err)
+	} else {
+		assert.NotNilf(t, err, "determineEncoding() = nil, want error")
+	}
 
 	// Run field checks
 	runFieldChecks(t, &parser, tc.Checks)
@@ -70,11 +78,15 @@ func runReaderUpdateRawBufferTest(t *testing.T, tc TestCase) {
 		applySetup(t, &parser, tc.Setup)
 	}
 
-	result := parser.updateRawBuffer()
+	err := parser.updateRawBuffer()
 
 	// Check return value (defaults to true)
 	want := WantBool(t, tc.Want, true)
-	assert.Equalf(t, want, result, "updateRawBuffer() = %v, want %v", result, want)
+	if want {
+		assert.NoErrorf(t, err, "updateRawBuffer() returned error: %v", err)
+	} else {
+		assert.NotNilf(t, err, "updateRawBuffer() = nil, want error")
+	}
 
 	// Run field checks
 	runFieldChecks(t, &parser, tc.Checks)
@@ -96,11 +108,15 @@ func runReaderUpdateBufferTest(t *testing.T, tc TestCase) {
 	length, ok := tc.Args[0].(int)
 	assert.Truef(t, ok, "Args[0] should be int, got %T", tc.Args[0])
 
-	result := parser.updateBuffer(length)
+	err := parser.updateBuffer(length)
 
 	// Check return value (defaults to true)
 	want := WantBool(t, tc.Want, true)
-	assert.Equalf(t, want, result, "updateBuffer(%d) = %v, want %v", length, result, want)
+	if want {
+		assert.NoErrorf(t, err, "updateBuffer(%d) returned error: %v", length, err)
+	} else {
+		assert.NotNilf(t, err, "updateBuffer(%d) = nil, want error", length)
+	}
 
 	// Run field checks
 	runFieldChecks(t, &parser, tc.Checks)

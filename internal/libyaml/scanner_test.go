@@ -68,7 +68,9 @@ func runScanErrorTest(t *testing.T, tc TestCase) {
 	parser.SetInputString([]byte(tc.Yaml))
 
 	var token Token
-	for parser.Scan(&token) && token.Type != STREAM_END_TOKEN {
+	var scanErr error
+	for scanErr == nil && token.Type != STREAM_END_TOKEN {
+		scanErr = parser.Scan(&token)
 	}
 
 	// Convert Want from interface{} to check for error
@@ -88,8 +90,8 @@ func runScanErrorTest(t *testing.T, tc TestCase) {
 		}
 	}
 	if wantError {
-		assert.Truef(t, parser.Err != nil, "Expected scanner error, but got none")
+		assert.Truef(t, scanErr != nil, "Expected scanner error, but got none")
 	} else {
-		assert.Truef(t, parser.Err == nil, "Expected no scanner error, but got %v", parser.Err)
+		assert.Truef(t, scanErr == nil, "Expected no scanner error, but got %v", scanErr)
 	}
 }

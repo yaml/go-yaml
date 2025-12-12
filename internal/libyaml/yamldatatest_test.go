@@ -4,6 +4,7 @@ package libyaml
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -751,11 +752,11 @@ func parseEvents(input string) ([]EventType, bool) {
 	var types []EventType
 	for {
 		var event Event
-		if !parser.Parse(&event) {
-			if parser.Err != nil {
-				return nil, false
+		if err := parser.Parse(&event); err != nil {
+			if errors.Is(err, io.EOF) {
+				return types, true
 			}
-			return types, true
+			return nil, false
 		}
 		types = append(types, event.Type)
 		if event.Type == STREAM_END_EVENT {
@@ -773,11 +774,11 @@ func parseEventsDetailed(input string) ([]Event, bool) {
 	var events []Event
 	for {
 		var event Event
-		if !parser.Parse(&event) {
-			if parser.Err != nil {
-				return nil, false
+		if err := parser.Parse(&event); err != nil {
+			if errors.Is(err, io.EOF) {
+				return events, true
 			}
-			return events, true
+			return nil, false
 		}
 		events = append(events, event)
 		if event.Type == STREAM_END_EVENT {
@@ -795,11 +796,11 @@ func scanTokens(input string) ([]TokenType, bool) {
 	var types []TokenType
 	for {
 		var token Token
-		if !parser.Scan(&token) {
-			if parser.Err != nil {
-				return nil, false
+		if err := parser.Scan(&token); err != nil {
+			if errors.Is(err, io.EOF) {
+				return types, true
 			}
-			return types, true
+			return nil, false
 		}
 		types = append(types, token.Type)
 		if token.Type == STREAM_END_TOKEN {
@@ -817,11 +818,11 @@ func scanTokensDetailed(input string) ([]Token, bool) {
 	var tokens []Token
 	for {
 		var token Token
-		if !parser.Scan(&token) {
-			if parser.Err != nil {
-				return nil, false
+		if err := parser.Scan(&token); err != nil {
+			if errors.Is(err, io.EOF) {
+				return tokens, true
 			}
-			return tokens, true
+			return nil, false
 		}
 		tokens = append(tokens, token)
 		if token.Type == STREAM_END_TOKEN {
@@ -902,7 +903,7 @@ func RunRoundTripTest(t *testing.T, tc TestCase) {
 	var events []Event
 	for {
 		var event Event
-		if !parser.Parse(&event) {
+		if err := parser.Parse(&event); err != nil {
 			break
 		}
 		events = append(events, event)
