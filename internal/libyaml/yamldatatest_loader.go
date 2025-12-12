@@ -72,9 +72,8 @@ func LoadYAML(data []byte) (interface{}, error) {
 	for {
 		var event Event
 		if !parser.Parse(&event) {
-			if parser.ErrorType != NO_ERROR {
-				return nil, fmt.Errorf("parse error: %s at line %d, column %d",
-					parser.Problem, parser.ProblemMark.Line, parser.ProblemMark.Column)
+			if parser.Err != nil {
+				return nil, parser.Err
 			}
 			break
 		}

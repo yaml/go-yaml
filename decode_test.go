@@ -1144,13 +1144,13 @@ var unmarshalErrorTests = []struct {
 	{"v: [A,", "yaml: while parsing a flow node at line 1: did not find expected node content"},
 	{"v:\n- [A,", "yaml: while parsing a flow node at line 2: did not find expected node content"},
 	{"a:\n- b: *,", "yaml: while scanning an alias at line 2, column 5: line 2, column 6: did not find expected alphabetic or numeric character"},
-	{"a: *b\n", "yaml: unknown anchor 'b' referenced"},
+	{"a: *b\n", "yaml: line 1, column 4: unknown anchor 'b' referenced"},
 	{"a: &a\n  b: *a\n", "yaml: anchor 'a' value contains itself"},
 	{"value: -", "yaml: line 1, column 7: block sequence entries are not allowed in this context"},
 	{"a: !!binary ==", "yaml: !!binary value contains invalid base64 data"},
 	{"{[.]}", `yaml: cannot use '[]interface {}{"."}' as a map key; try decoding into yaml.Node`},
 	{"{{.}}", `yaml: cannot use 'map[string]interface {}{".":interface {}(nil)}' as a map key; try decoding into yaml.Node`},
-	{"b: *a\na: &a {c: 1}", `yaml: unknown anchor 'a' referenced`},
+	{"b: *a\na: &a {c: 1}", `yaml: line 1, column 4: unknown anchor 'a' referenced`},
 	{"%TAG !%79! tag:yaml.org,2002:\n---\nv: !%79!int '1'", "yaml: while scanning a %TAG directive at line 1: line 1, column 6: did not find expected whitespace"},
 	{"a:\n  1:\nb\n  2:", "yaml: while scanning a simple key at line 3: line 4, column 3: could not find expected ':'"},
 	{"a: 1\nb: 2\nc 2\nd: 3\n", "yaml: while scanning a simple key at line 3: line 4: could not find expected ':'"},
@@ -1205,9 +1205,9 @@ func TestParserErrorUnmarshal(t *testing.T) {
 	}
 	data := "a: 1\n=\nb: 2"
 	err := yaml.Unmarshal([]byte(data), &v)
-	asErr := new(yaml.ScannerError)
+	var asErr libyaml.ScannerError
 	assert.ErrorAs(t, err, &asErr)
-	expectedErr := &yaml.ScannerError{
+	expectedErr := libyaml.ScannerError{
 		ContextMark: libyaml.Mark{
 			Index:  5,
 			Line:   2,
@@ -1229,9 +1229,9 @@ func TestParserErrorDecoder(t *testing.T) {
 	var v any
 	data := "value: -"
 	err := yaml.NewDecoder(strings.NewReader(data)).Decode(&v)
-	asErr := new(yaml.ScannerError)
+	var asErr libyaml.ScannerError
 	assert.ErrorAs(t, err, &asErr)
-	expectedErr := &yaml.ScannerError{
+	expectedErr := libyaml.ScannerError{
 		Mark: libyaml.Mark{
 			Index:  7,
 			Line:   1,
@@ -2175,12 +2175,14 @@ func TestParserErrorUnknownAnchorPosition(t *testing.T) {
 	for _, test := range tests {
 		var n yaml.Node
 		err := yaml.Unmarshal([]byte(test.data), &n)
-		asErr := new(yaml.ParserError)
+		asErr := new(libyaml.ParserError)
 		assert.ErrorAs(t, err, &asErr)
-		expected := &yaml.ParserError{
+		expected := &libyaml.ParserError{
 			Message: "unknown anchor 'x' referenced",
-			Line:    test.line,
-			Column:  test.column,
+			Mark: libyaml.Mark{
+				Line:   test.line,
+				Column: test.column,
+			},
 		}
 		assert.DeepEqual(t, expected, asErr)
 	}
