@@ -718,7 +718,9 @@ func (parser *Parser) parseBlockSequenceEntry(event *Event, first bool) error {
 		mark := token.EndMark
 		prior_head_len := len(parser.HeadComment)
 		parser.skipToken()
-		parser.splitStemComment(prior_head_len)
+		if err := parser.splitStemComment(prior_head_len); err != nil {
+			return err
+		}
 		if err := parser.peekToken(&token); err != nil {
 			return err
 		}
@@ -766,7 +768,9 @@ func (parser *Parser) parseIndentlessSequenceEntry(event *Event) error {
 		mark := token.EndMark
 		prior_head_len := len(parser.HeadComment)
 		parser.skipToken()
-		parser.splitStemComment(prior_head_len)
+		if err := parser.splitStemComment(prior_head_len); err != nil {
+			return err
+		}
 		if err := parser.peekToken(&token); err != nil {
 			return err
 		}
