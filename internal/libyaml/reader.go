@@ -30,17 +30,10 @@ import (
 
 // Set the reader error and return 0.
 func (parser *Parser) setReaderError(problem string, offset int, value int) bool {
-	return parser.directlySetReaderError(
-		errors.New(problem),
-		offset, value,
-	)
-}
-
-func (parser *Parser) directlySetReaderError(err error, offset int, value int) bool {
-	parser.Error = &ReaderError{
+	parser.Err = ReaderError{
 		Offset: offset,
 		Value:  value,
-		Err:    err,
+		Err:    errors.New(problem),
 	}
 	return false
 }
@@ -111,10 +104,12 @@ func (parser *Parser) updateRawBuffer() bool {
 	if err == io.EOF {
 		parser.eof = true
 	} else if err != nil {
-		return parser.directlySetReaderError(
-			fmt.Errorf("input error: %w", err),
-			parser.offset, -1,
-		)
+		parser.Err = ReaderError{
+			Offset: parser.offset,
+			Value:  -1,
+			Err:    fmt.Errorf("input error: %w", err),
+		}
+		return false
 	}
 	return true
 }

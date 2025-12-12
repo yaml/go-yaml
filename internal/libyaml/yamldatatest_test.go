@@ -841,7 +841,7 @@ func parseEvents(input string) ([]EventType, bool) {
 	for {
 		var event Event
 		if !parser.Parse(&event) {
-			if parser.ErrorType != NO_ERROR {
+			if parser.Err != nil {
 				return nil, false
 			}
 			return types, true
@@ -863,7 +863,7 @@ func parseEventsDetailed(input string) ([]Event, bool) {
 	for {
 		var event Event
 		if !parser.Parse(&event) {
-			if parser.ErrorType != NO_ERROR {
+			if parser.Err != nil {
 				return nil, false
 			}
 			return events, true
@@ -885,7 +885,7 @@ func scanTokens(input string) ([]TokenType, bool) {
 	for {
 		var token Token
 		if !parser.Scan(&token) {
-			if parser.ErrorType != NO_ERROR {
+			if parser.Err != nil {
 				return nil, false
 			}
 			return types, true
@@ -907,7 +907,7 @@ func scanTokensDetailed(input string) ([]Token, bool) {
 	for {
 		var token Token
 		if !parser.Scan(&token) {
-			if parser.ErrorType != NO_ERROR {
+			if parser.Err != nil {
 				return nil, false
 			}
 			return tokens, true

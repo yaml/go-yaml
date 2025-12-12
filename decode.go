@@ -79,7 +79,7 @@ func (p *parser) destroy() {
 func (p *parser) expect(e libyaml.EventType) {
 	if p.event.Type == libyaml.NO_EVENT {
 		if !p.parser.Parse(&p.event) {
-			p.fail(p.parser.Error)
+			p.fail(p.parser.Err)
 		}
 	}
 	if p.event.Type == libyaml.STREAM_END_EVENT {
@@ -101,8 +101,8 @@ func (p *parser) peek() libyaml.EventType {
 	// It's curious choice from the underlying API to generally return a
 	// positive result on success, but on this case return true in an error
 	// scenario. This was the source of bugs in the past (issue #666).
-	if !p.parser.Parse(&p.event) || p.parser.Error != nil {
-		p.fail(p.parser.Error)
+	if !p.parser.Parse(&p.event) || p.parser.Err != nil {
+		p.fail(p.parser.Err)
 	}
 	return p.event.Type
 }
@@ -190,7 +190,13 @@ func (p *parser) alias() *Node {
 	n.Alias = p.anchors[n.Value]
 	if n.Alias == nil {
 		msg := fmt.Sprintf("unknown anchor '%s' referenced", n.Value)
-		fail(&ParserError{msg, n.Line, n.Column})
+		fail(&libyaml.ParserError{
+			Message: msg,
+			Mark: libyaml.Mark{
+				Line:   n.Line,
+				Column: n.Column,
+			},
+		})
 	}
 	p.expect(libyaml.ALIAS_EVENT)
 	return n

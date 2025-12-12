@@ -30,9 +30,9 @@ func (p *Parser) Next() (*Token, error) {
 
 	var yamlToken libyaml.Token
 	if !p.parser.Scan(&yamlToken) {
-		if p.parser.Error != nil {
+		if p.parser.Err != nil {
 			return nil,
-				fmt.Errorf("parser error: %w", p.parser.Error)
+				fmt.Errorf("parser error: %w", p.parser.Err)
 		}
 		p.done = true
 		return nil, nil
