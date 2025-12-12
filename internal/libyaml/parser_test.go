@@ -112,8 +112,8 @@ func runParseErrorTest(t *testing.T, tc TestCase) {
 		}
 	}
 	if wantError {
-		assert.Truef(t, parser.ErrorType != NO_ERROR, "Expected parser error, but got none")
+		assert.Truef(t, parser.Err != nil, "Expected parser error, but got none")
 	} else {
-		assert.Truef(t, parser.ErrorType == NO_ERROR, "Expected no parser error, but got %v", parser.ErrorType)
+		assert.Truef(t, parser.Err == nil, "Expected no parser error, but got %v", parser.Err)
 	}
 }

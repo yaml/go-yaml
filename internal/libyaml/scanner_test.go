@@ -88,8 +88,8 @@ func runScanErrorTest(t *testing.T, tc TestCase) {
 		}
 	}
 	if wantError {
-		assert.Truef(t, parser.ErrorType != NO_ERROR, "Expected scanner error, but got none")
+		assert.Truef(t, parser.Err != nil, "Expected scanner error, but got none")
 	} else {
-		assert.Truef(t, parser.ErrorType == NO_ERROR, "Expected no scanner error, but got %v", parser.ErrorType)
+		assert.Truef(t, parser.Err == nil, "Expected no scanner error, but got %v", parser.Err)
 	}
 }
