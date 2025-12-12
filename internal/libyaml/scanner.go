@@ -541,17 +541,10 @@ func (parser *Parser) read(s []byte) []byte {
 	if w == 0 {
 		panic("invalid character sequence")
 	}
-	if len(s) == 0 {
-		s = make([]byte, 0, 4)
-	}
-	if w == 1 && len(s)+w <= cap(s) {
-		s = s[:len(s)+1]
-		s[len(s)-1] = parser.buffer[parser.buffer_pos]
-		parser.buffer_pos++
-	} else {
-		s = append(s, parser.buffer[parser.buffer_pos:parser.buffer_pos+w]...)
-		parser.buffer_pos += w
-	}
+
+	s = append(s, parser.buffer[parser.buffer_pos:parser.buffer_pos+w]...)
+	parser.buffer_pos += w
+
 	parser.mark.Index++
 	parser.mark.Column++
 	parser.unread--
