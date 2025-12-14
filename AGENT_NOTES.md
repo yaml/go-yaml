@@ -1,37 +1,61 @@
-# Agent Configuration Notes
+# AI Agent Configuration Notes
 
-## Question: Does Copilot read .agents.md files?
+## Overview of AI Agent Instruction Files
 
-**Short Answer**: The behavior depends on which "Copilot" you're referring to.
+Different AI coding assistants read different instruction files. Here's a comprehensive breakdown:
 
-### GitHub Copilot (Code Completion)
+### GitHub Copilot Workspace
 
-GitHub Copilot, the code completion tool, does **not** read `.agents.md` files. It focuses on:
-- Immediate code context
-- Comments in the current file
-- File and symbol names
-- Common patterns in the codebase
+GitHub Copilot Workspace and some GitHub Copilot-powered agents can read instructions from:
+- **`.github/copilot-instructions.md`** (primary convention)
+- **`.github/*/instructions.md`** (workspace-specific)
 
-### GitHub Copilot Workspace / SWE Agents
-
-Some GitHub Copilot-powered agents (like SWE/coding agents) may have access to custom configuration, but the `.agents.md` convention is not a standard GitHub Copilot feature.
+These files are **GitHub-specific** and primarily work with GitHub Copilot Workspace and GitHub Copilot Chat.
 
 ### Claude-based Agents
 
-The `.agents.md` file convention is more commonly associated with **Claude/Anthropic-based** coding agents. These agents can be configured to:
-- Read custom instruction files
-- Follow repository-specific guidelines
-- Understand project-specific context
+Claude and Anthropic-based coding agents may read:
+- **`.cursorrules`** (Cursor editor convention)
+- **`.claude-instructions.md`** or **`.agents.md`** (custom conventions)
+- Custom instruction files specified in agent configuration
 
-## Recommendation
+### Aider
 
-For maximum compatibility across different AI coding assistants:
+Aider (AI pair programming tool) reads:
+- **`.aider.conf.yml`** (configuration file)
+- Can be configured to read custom instruction files
 
-1. **Use standard documentation**: README.md, CONTRIBUTING.md
-2. **Write clear comments**: In-code documentation is universally understood
-3. **Follow conventions**: Consistent naming and structure helps all tools
-4. **Test with your specific tool**: Different AI assistants have different capabilities
+### Cline, Roo-Coder, and Other VSCode Extensions
 
-## Conclusion
+Many VSCode AI extensions read:
+- **`.clinerules`** or **`.clineignore`** (Cline-specific)
+- **`.cursorrules`** (widely adopted convention)
+- Project-specific configuration files
 
-You are correct that `.agents.md` reading is "a Claude thing" - it's not a standard GitHub Copilot feature but is more commonly used with Claude-based agents.
+## Universal Best Practices
+
+For maximum compatibility across **all AI coding assistants** (GitHub Copilot, Claude, Cursor, Aider, etc.):
+
+1. **README.md** - All agents read this for project context
+2. **CONTRIBUTING.md** - Guidelines for contributing (widely supported)
+3. **Inline comments** - Code comments are universally understood
+4. **Standard documentation** - docs/, API documentation, etc.
+
+## File Naming Recommendations
+
+If you want instructions for **multiple agents**:
+
+- **`.github/copilot-instructions.md`** - For GitHub Copilot Workspace
+- **`.cursorrules`** - For Cursor, Cline, and many VSCode extensions (widely adopted)
+- **README.md** - Universal fallback for all agents
+
+## Specific Answers
+
+**Q: Does GitHub Copilot read `.agents.md`?**
+A: No. GitHub Copilot uses `.github/copilot-instructions.md` or `.github/*/instructions.md`.
+
+**Q: Does Claude read `.github/*/instructions/` folders?**
+A: No, this is a GitHub Copilot convention. Claude-based agents typically use custom instruction files like `.cursorrules` or agent-specific configuration.
+
+**Q: What file should I use for maximum compatibility?**
+A: Use **README.md** and **CONTRIBUTING.md** for universal support. Add `.github/copilot-instructions.md` for GitHub Copilot and `.cursorrules` for Cursor/Claude-based tools.
