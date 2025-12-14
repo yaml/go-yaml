@@ -29,7 +29,7 @@ Aider (AI pair programming tool) reads:
 
 Many VSCode AI extensions read:
 - **`.clinerules`** or **`.clineignore`** (Cline-specific)
-- **`.cursorrules`** (widely adopted convention)
+- **`.cursorrules`** (Cursor editor convention, adopted by some extensions)
 - Project-specific configuration files
 
 ## Universal Best Practices
