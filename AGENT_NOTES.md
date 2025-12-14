@@ -8,7 +8,7 @@ Different AI coding assistants read different instruction files. Here's a compre
 
 GitHub Copilot Workspace and some GitHub Copilot-powered agents can read instructions from:
 - **`.github/copilot-instructions.md`** (primary convention)
-- **`.github/*/instructions.md`** (workspace-specific)
+- **`.github/[workspace-name]/instructions.md`** (workspace-specific, e.g., `.github/docs/instructions.md`)
 
 These files are **GitHub-specific** and primarily work with GitHub Copilot Workspace and GitHub Copilot Chat.
 
@@ -52,9 +52,9 @@ If you want instructions for **multiple agents**:
 ## Specific Answers
 
 **Q: Does GitHub Copilot read `.agents.md`?**
-A: No. GitHub Copilot uses `.github/copilot-instructions.md` or `.github/*/instructions.md`.
+A: No. GitHub Copilot uses `.github/copilot-instructions.md` or `.github/[workspace-name]/instructions.md`.
 
-**Q: Does Claude read `.github/*/instructions/` folders?**
+**Q: Does Claude read `.github/[workspace-name]/instructions.md` files?**
 A: No, this is a GitHub Copilot convention. Claude-based agents typically use custom instruction files like `.cursorrules` or agent-specific configuration.
 
 **Q: What file should I use for maximum compatibility?**
