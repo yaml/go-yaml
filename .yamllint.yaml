@@ -14,6 +14,13 @@ rules:
   truthy:
     check-keys: false  # there is a problem with the "on" key in GitHub Actions
   quoted-strings:
-    check-keys: true  # by default, only values are checked
-    quote-type: single
     required: only-when-needed
+    check-keys: true  # by default, only values are checked
+    # We prefer single quotes over double quotes but double quotes are needed
+    # for certain strings.
+    # `any` allows double-quotes or single-quotes but still prevents unnecessary
+    # quotes.
+    # For now, this is as good as we can get with yamllint.
+    # Watch https://github.com/adrienverge/yamllint/pull/777
+    # for a possibly better option.
+    quote-type: any  # was `single` before

@@ -1,4 +1,5 @@
 name: Files Lint
+
 on:
   push:
     branches: [ main ]
@@ -10,48 +11,58 @@ permissions: read-all
 jobs:
   action-lint:
     runs-on: ubuntu-latest
+
     steps:
     - name: checkout-action
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+      uses: "actions/checkout\
+             @8e8c483db84b4bee98b60c0593521ed34d9990e8"  # v6.0.1
       with:
         persist-credentials: false
 
     - name: actionlint
-      # yamllint disable-line rule:line-length
-      uses: raven-actions/actionlint@3a24062651993d40fed1019b58ac6fbdfbf276cc  # v2.0.1
+      uses: "raven-actions/actionlint\
+             @3a24062651993d40fed1019b58ac6fbdfbf276cc"  # v2.0.1
 
   yamllint:
     runs-on: ubuntu-latest
+
     steps:
     - name: checkout-action
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+      uses: "actions/checkout\
+             @8e8c483db84b4bee98b60c0593521ed34d9990e8"  # v6.0.1
       with:
         persist-credentials: false
 
     - name: yamllint
-      # yamllint disable-line rule:line-length
-      uses: ibiqlik/action-yamllint@2576378a8e339169678f9939646ee3ee325e845c  # v3.1.1
+      uses: "ibiqlik/action-yamllint\
+             @2576378a8e339169678f9939646ee3ee325e845c"  # v3.1.1
 
   ls-lint:
     runs-on: ubuntu-latest
+
     steps:
     - name: checkout-action
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+      uses: "actions/checkout\
+             @8e8c483db84b4bee98b60c0593521ed34d9990e8"  # v6.0.1
       with:
         persist-credentials: false
 
     - name: ls-lint
-      uses: ls-lint/action@02e380fe8733d499cbfc9e22276de5085508a5bd  # v2.3.1
+      uses: "ls-lint/action\
+             @02e380fe8733d499cbfc9e22276de5085508a5bd"  # v2.3.1
       with:
         config: .ls-lint.yaml
 
   typos:
     runs-on: ubuntu-latest
+
     steps:
     - name: checkout-action
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+      uses: "actions/checkout\
+             @8e8c483db84b4bee98b60c0593521ed34d9990e8"  # v6.0.1
       with:
         persist-credentials: false
 
     - name: typos-action
-      uses: crate-ci/typos@2d0ce569feab1f8752f1dde43cc2f2aa53236e06  # v1.40.0
+      uses: "crate-ci/typos\
+             @2d0ce569feab1f8752f1dde43cc2f2aa53236e06"  # v1.40.0
