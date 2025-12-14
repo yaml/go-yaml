@@ -41,7 +41,6 @@ var (
 
 type encoder struct {
 	emitter               libyaml.Emitter
-	event                 libyaml.Event
 	out                   []byte
 	flow                  bool
 	indent                int
@@ -96,24 +95,22 @@ func (e *encoder) init() {
 		e.indent = 4
 	}
 	e.emitter.BestIndent = e.indent
-	e.event = libyaml.NewStreamStartEvent(libyaml.UTF8_ENCODING)
-	e.emit()
+	e.emit(libyaml.NewStreamStartEvent(libyaml.UTF8_ENCODING))
 	e.doneInit = true
 }
 
 func (e *encoder) finish() {
 	e.emitter.OpenEnded = false
-	e.event = libyaml.NewStreamEndEvent()
-	e.emit()
+	e.emit(libyaml.NewStreamEndEvent())
 }
 
 func (e *encoder) destroy() {
 	e.emitter.Delete()
 }
 
-func (e *encoder) emit() {
-	// This will internally delete the e.event value.
-	e.must(e.emitter.Emit(&e.event))
+func (e *encoder) emit(event libyaml.Event) {
+	// This will internally delete the event value.
+	e.must(e.emitter.Emit(&event))
 }
 
 func (e *encoder) must(err error) {
@@ -136,12 +133,10 @@ func (e *encoder) marshalDoc(tag string, in reflect.Value) {
 		e.nodev(in)
 	} else {
 		// Use !explicitStart for implicit flag (true = implicit/no marker)
-		e.event = libyaml.NewDocumentStartEvent(noVersionDirective, noTagDirective, !e.explicitStart)
-		e.emit()
+		e.emit(libyaml.NewDocumentStartEvent(noVersionDirective, noTagDirective, !e.explicitStart))
 		e.marshal(tag, in)
 		// Use !explicitEnd for implicit flag
-		e.event = libyaml.NewDocumentEndEvent(!e.explicitEnd)
-		e.emit()
+		e.emit(libyaml.NewDocumentEndEvent(!e.explicitEnd))
 	}
 }
 
@@ -348,11 +343,9 @@ func (e *encoder) mappingv(tag string, f func()) {
 		e.flow = false
 		style = libyaml.FLOW_MAPPING_STYLE
 	}
-	e.event = libyaml.NewMappingStartEvent(nil, []byte(tag), implicit, style)
-	e.emit()
+	e.emit(libyaml.NewMappingStartEvent(nil, []byte(tag), implicit, style))
 	f()
-	e.event = libyaml.NewMappingEndEvent()
-	e.emit()
+	e.emit(libyaml.NewMappingEndEvent())
 }
 
 func (e *encoder) slicev(tag string, in reflect.Value) {
@@ -362,14 +355,12 @@ func (e *encoder) slicev(tag string, in reflect.Value) {
 		e.flow = false
 		style = libyaml.FLOW_SEQUENCE_STYLE
 	}
-	e.event = libyaml.NewSequenceStartEvent(nil, []byte(tag), implicit, style)
-	e.emit()
+	e.emit(libyaml.NewSequenceStartEvent(nil, []byte(tag), implicit, style))
 	n := in.Len()
 	for i := 0; i < n; i++ {
 		e.marshal("", in.Index(i))
 	}
-	e.event = libyaml.NewSequenceEndEvent()
-	e.emit()
+	e.emit(libyaml.NewSequenceEndEvent())
 }
 
 // isBase60 returns whether s is in base 60 notation as defined in YAML 1.1.
@@ -516,12 +507,12 @@ func (e *encoder) emitScalar(value, anchor, tag string, style libyaml.ScalarStyl
 	if !implicit {
 		tag = longTag(tag)
 	}
-	e.event = libyaml.NewScalarEvent([]byte(anchor), []byte(tag), []byte(value), implicit, implicit, style)
-	e.event.HeadComment = head
-	e.event.LineComment = line
-	e.event.FootComment = foot
-	e.event.TailComment = tail
-	e.emit()
+	event := libyaml.NewScalarEvent([]byte(anchor), []byte(tag), []byte(value), implicit, implicit, style)
+	event.HeadComment = head
+	event.LineComment = line
+	event.FootComment = foot
+	event.TailComment = tail
+	e.emit(event)
 }
 
 func (e *encoder) nodev(in reflect.Value) {
@@ -569,15 +560,15 @@ func (e *encoder) node(node *Node, tail string) {
 
 	switch node.Kind {
 	case DocumentNode:
-		e.event = libyaml.NewDocumentStartEvent(noVersionDirective, noTagDirective, true)
-		e.event.HeadComment = []byte(node.HeadComment)
-		e.emit()
+		event := libyaml.NewDocumentStartEvent(noVersionDirective, noTagDirective, true)
+		event.HeadComment = []byte(node.HeadComment)
+		e.emit(event)
 		for _, node := range node.Content {
 			e.node(node, "")
 		}
-		e.event = libyaml.NewDocumentEndEvent(true)
-		e.event.FootComment = []byte(node.FootComment)
-		e.emit()
+		event = libyaml.NewDocumentEndEvent(true)
+		event.FootComment = []byte(node.FootComment)
+		e.emit(event)
 
 	case SequenceNode:
 		style := libyaml.BLOCK_SEQUENCE_STYLE
@@ -587,16 +578,16 @@ func (e *encoder) node(node *Node, tail string) {
 		if node.Style&FlowStyle != 0 || e.isSimpleCollection(node) {
 			style = libyaml.FLOW_SEQUENCE_STYLE
 		}
-		e.event = libyaml.NewSequenceStartEvent([]byte(node.Anchor), []byte(longTag(tag)), tag == "", style)
-		e.event.HeadComment = []byte(node.HeadComment)
-		e.emit()
+		event := libyaml.NewSequenceStartEvent([]byte(node.Anchor), []byte(longTag(tag)), tag == "", style)
+		event.HeadComment = []byte(node.HeadComment)
+		e.emit(event)
 		for _, node := range node.Content {
 			e.node(node, "")
 		}
-		e.event = libyaml.NewSequenceEndEvent()
-		e.event.LineComment = []byte(node.LineComment)
-		e.event.FootComment = []byte(node.FootComment)
-		e.emit()
+		event = libyaml.NewSequenceEndEvent()
+		event.LineComment = []byte(node.LineComment)
+		event.FootComment = []byte(node.FootComment)
+		e.emit(event)
 
 	case MappingNode:
 		style := libyaml.BLOCK_MAPPING_STYLE
@@ -606,10 +597,10 @@ func (e *encoder) node(node *Node, tail string) {
 		if node.Style&FlowStyle != 0 || e.isSimpleCollection(node) {
 			style = libyaml.FLOW_MAPPING_STYLE
 		}
-		e.event = libyaml.NewMappingStartEvent([]byte(node.Anchor), []byte(longTag(tag)), tag == "", style)
-		e.event.TailComment = []byte(tail)
-		e.event.HeadComment = []byte(node.HeadComment)
-		e.emit()
+		event := libyaml.NewMappingStartEvent([]byte(node.Anchor), []byte(longTag(tag)), tag == "", style)
+		event.TailComment = []byte(tail)
+		event.HeadComment = []byte(node.HeadComment)
+		e.emit(event)
 
 		// The tail logic below moves the foot comment of prior keys to the following key,
 		// since the value for each key may be a nested structure and the foot needs to be
@@ -631,18 +622,18 @@ func (e *encoder) node(node *Node, tail string) {
 			e.node(v, "")
 		}
 
-		e.event = libyaml.NewMappingEndEvent()
-		e.event.TailComment = []byte(tail)
-		e.event.LineComment = []byte(node.LineComment)
-		e.event.FootComment = []byte(node.FootComment)
-		e.emit()
+		event = libyaml.NewMappingEndEvent()
+		event.TailComment = []byte(tail)
+		event.LineComment = []byte(node.LineComment)
+		event.FootComment = []byte(node.FootComment)
+		e.emit(event)
 
 	case AliasNode:
-		e.event = libyaml.NewAliasEvent([]byte(node.Value))
-		e.event.HeadComment = []byte(node.HeadComment)
-		e.event.LineComment = []byte(node.LineComment)
-		e.event.FootComment = []byte(node.FootComment)
-		e.emit()
+		event := libyaml.NewAliasEvent([]byte(node.Value))
+		event.HeadComment = []byte(node.HeadComment)
+		event.LineComment = []byte(node.LineComment)
+		event.FootComment = []byte(node.FootComment)
+		e.emit(event)
 
 	case ScalarNode:
 		value := node.Value
