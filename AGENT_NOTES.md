@@ -46,7 +46,7 @@ For maximum compatibility across **all AI coding assistants** (GitHub Copilot, C
 If you want instructions for **multiple agents**:
 
 - **`.github/copilot-instructions.md`** - For GitHub Copilot Workspace
-- **`.cursorrules`** - For Cursor, Cline, and many VSCode extensions (widely adopted)
+- **`.cursorrules`** - For Cursor editor and some compatible VSCode extensions
 - **README.md** - Universal fallback for all agents
 
 ## Specific Answers
@@ -55,7 +55,7 @@ If you want instructions for **multiple agents**:
 A: No. GitHub Copilot uses `.github/copilot-instructions.md` or `.github/[workspace-name]/instructions.md`.
 
 **Q: Does Claude read `.github/[workspace-name]/instructions.md` files?**
-A: No, this is a GitHub Copilot convention. Claude-based agents typically use custom instruction files like `.cursorrules` or agent-specific configuration.
+A: No, this is a GitHub Copilot convention. Claude-based agents use custom instruction files that vary by implementation (e.g., `.cursorrules` in Cursor editor, or custom configuration in other tools).
 
 **Q: What file should I use for maximum compatibility?**
-A: Use **README.md** and **CONTRIBUTING.md** for universal support. Add `.github/copilot-instructions.md` for GitHub Copilot and `.cursorrules` for Cursor/Claude-based tools.
+A: Use **README.md** and **CONTRIBUTING.md** for universal support. Add `.github/copilot-instructions.md` for GitHub Copilot and tool-specific files (like `.cursorrules` for Cursor) as needed.
