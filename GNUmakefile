@@ -62,6 +62,7 @@ MAKES-CLEAN += $(dir $(YTS-DIR)) $(GOLANGCI-LINT)
 
 v ?=
 count ?= 1
+fuzztime ?= 60s
 
 
 # Test rules:
@@ -85,6 +86,9 @@ test-yts-fail: $(GO-DEPS) $(YTS-DIR)
 
 # Install golangci-lint for GitHub Actions:
 golangci-lint-install: $(GOLANGCI-LINT)
+
+fuzz: $(TEST-DEPS)
+	go test -fuzz=Fuzz -fuzztime=$(fuzztime)
 
 fmt: $(GOLANGCI-LINT-VERSIONED)
 	$< fmt ./...
