@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+
+# Show test count statistics for go-yaml
+
+set -euo pipefail
+
+# shellcheck disable=SC1091
+source "$(dirname "$0")/common.bash"
+
+main() (
+  echo '=== TEST COUNT SUMMARY ==='
+  echo
+
+  # Count YAML test cases
+  echo 'Data-driven YAML test cases:'
+  decode_count=$(grep -c '^- decode:' testdata/decode.yaml)
+  encode_count=$(grep -c '^- encode:' testdata/encode.yaml)
+  error_count=$(grep -c '^- unmarshal-error:' testdata/unmarshal_errors.yaml)
+  yaml_total=$((decode_count + encode_count + error_count))
+
+  printf '  %-22s %3d\n' 'decode.yaml:' "$decode_count"
+  printf '  %-22s %3d\n' 'encode.yaml:' "$encode_count"
+  printf '  %-22s %3d\n' 'unmarshal_errors.yaml:' "$error_count"
+  printf '  %-22s %3d\n' 'Subtotal:' "$yaml_total"
+  echo
+
+  # Count Go test cases
+  echo 'Go hardcoded test cases:'
+  unmarshal_count=$(awk '/^var unmarshalTests/,/^}$/{if(/^	{$/){count++}}END{print count}' decode_test.go)
+  marshal_count=$(awk '/^var marshalTests/,/^}$/{if(/^	{$/){count++}}END{print count}' encode_test.go)
+  go_total=$((unmarshal_count + marshal_count))
+
+  printf '  %-22s %3d\n' 'unmarshalTests:' "$unmarshal_count"
+  printf '  %-22s %3d\n' 'marshalTests:' "$marshal_count"
+  printf '  %-22s %3d\n' 'Subtotal:' "$go_total"
+  echo
+
+  # Total test cases
+  local case_total
+  case_total=$((yaml_total + go_total))
+  printf '%-24s %3d\n' 'Test case total:' "$case_total"
+  echo
+
+  # Count test executions (requires running tests)
+  echo 'Test executions (running tests to count...):'
+  test_output=$(go test -v . ./internal/... -vet=off 2>&1)
+  run_count=$(<<< "$test_output" grep -c '^=== RUN' || true)
+  pass_count=$(<<< "$test_output" grep -c 'PASS:' || true)
+
+  printf '  %-22s %4d\n' 'Unit test runs:' "$run_count"
+  printf '  %-22s %4d\n' 'Unit test passes:' "$pass_count"
+  echo
+)
+
+main "$@"

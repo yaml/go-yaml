@@ -1,0 +1,1281 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Decode test cases for go-yaml
+#
+# Purpose: Tests YAML unmarshaling/decoding of various YAML constructs into Go values.
+# Validates proper type conversion, null handling, numeric formats, sequences, mappings,
+# anchors/aliases, and special values.
+#
+# Format: Test cases use type-as-key format:
+#   - test-type:
+#       name: Test case name
+#       ...
+#
+# Test Types:
+#   decode - Validates YAML unmarshaling into Go values
+#
+# Common Keys:
+#   name - Test case name (string)
+#   yaml - Input YAML string to unmarshal
+#   type - Go type to unmarshal into (e.g., "map[string]any", "[]int")
+#   want - Expected result after unmarshaling (YAML representation)
+#
+# Data Types:
+#   Map types:        map[string]string, map[string]any, map[string]int64, etc.
+#   Slice types:      []string, []int, []any, etc.
+#   Numeric types:    map[string]int, map[string]uint64, map[string]float64, etc.
+#
+# Special Values:
+#   Constants like +Inf, -Inf, NaN, MaxInt64, etc. are resolved via ValueRegistry
+#   during test execution.
+
+- decode:
+    name: string value in map[string]string
+    yaml: 'v: hi'
+    type: map[string]string
+    want:
+      v: hi
+
+- decode:
+    name: string value in map[string]any
+    yaml: 'v: hi'
+    type: map[string]any
+    want:
+      v: hi
+
+- decode:
+    name: true as string in map[string]string
+    yaml: 'v: true'
+    type: map[string]string
+    want:
+      v: 'true'
+
+- decode:
+    name: true as bool in map[string]any
+    yaml: 'v: true'
+    type: map[string]any
+    want:
+      v: true
+
+- decode:
+    name: integer in map[string]any
+    yaml: 'v: 10'
+    type: map[string]any
+    want:
+      v: 10
+
+- decode:
+    name: binary integer in map[string]any
+    yaml: 'v: 0b10'
+    type: map[string]any
+    want:
+      v: 2
+
+- decode:
+    name: hex integer in map[string]any
+    yaml: 'v: 0xA'
+    type: map[string]any
+    want:
+      v: 10
+
+- decode:
+    name: large integer in map[string]int64
+    yaml: 'v: 4294967296'
+    type: map[string]int64
+    want:
+      v: 4294967296
+
+- decode:
+    name: float in map[string]any
+    yaml: 'v: 0.1'
+    type: map[string]any
+    want:
+      v: 0.1
+
+- decode:
+    name: float with leading dot in map[string]any
+    yaml: 'v: .1'
+    type: map[string]any
+    want:
+      v: 0.1
+
+- decode:
+    name: positive infinity in map[string]any
+    yaml: 'v: .Inf'
+    type: map[string]any
+    want:
+      v: '+Inf'
+
+- decode:
+    name: negative infinity in map[string]any
+    yaml: 'v: -.Inf'
+    type: map[string]any
+    want:
+      v: '-Inf'
+
+- decode:
+    name: negative integer in map[string]any
+    yaml: 'v: -10'
+    type: map[string]any
+    want:
+      v: -10
+
+- decode:
+    name: negative float in map[string]any
+    yaml: 'v: -.1'
+    type: map[string]any
+    want:
+      v: -0.1
+
+- decode:
+    name: negative zero in map[string]any
+    yaml: 'v: -0'
+    type: map[string]any
+    want:
+      v: '-0'
+
+- decode:
+    name: escaped newlines in map[string]string
+    yaml: |
+      a: "\t\n\t\n"
+    type: map[string]string
+    want:
+      a: "\t\n\t\n"
+
+- decode:
+    name: merge key as regular key
+    yaml: |
+      "<<": []
+    type: map[string]any
+    want:
+      '<<': []
+
+- decode:
+    name: merge key value as string
+    yaml: |
+      foo: "<<"
+    type: map[string]any
+    want:
+      foo: '<<'
+
+- decode:
+    name: canonical float
+    yaml: 'canonical: 6.8523e+5'
+    type: map[string]any
+    want:
+      canonical: 6.8523e+5
+
+- decode:
+    name: exponential float with underscores
+    yaml: 'expo: 685.230_15e+03'
+    type: map[string]any
+    want:
+      expo: 685.23015e+03
+
+- decode:
+    name: fixed float with underscores
+    yaml: 'fixed: 685_230.15'
+    type: map[string]any
+    want:
+      fixed: 685230.15
+
+- decode:
+    name: negative infinity
+    yaml: 'neginf: -.inf'
+    type: map[string]any
+    want:
+      neginf: '-Inf'
+
+- decode:
+    name: fixed float in map[string]float64
+    yaml: 'fixed: 685_230.15'
+    type: map[string]float64
+    want:
+      fixed: 685230.15
+
+# Bool tests - YAML 1.2 spec
+- decode:
+    name: canonical true
+    yaml: 'canonical: true'
+    type: map[string]any
+    want:
+      canonical: true
+
+- decode:
+    name: canonical false
+    yaml: 'canonical: false'
+    type: map[string]any
+    want:
+      canonical: false
+
+- decode:
+    name: True with capital T
+    yaml: 'bool: True'
+    type: map[string]any
+    want:
+      bool: true
+
+- decode:
+    name: False with capital F
+    yaml: 'bool: False'
+    type: map[string]any
+    want:
+      bool: false
+
+- decode:
+    name: TRUE all caps
+    yaml: 'bool: TRUE'
+    type: map[string]any
+    want:
+      bool: true
+
+- decode:
+    name: FALSE all caps
+    yaml: 'bool: FALSE'
+    type: map[string]any
+    want:
+      bool: false
+
+# Backwards compatibility with YAML 1.1 bool values
+- decode:
+    name: on as bool (1.1 compat)
+    yaml: 'option: on'
+    type: map[string]bool
+    want:
+      option: true
+
+- decode:
+    name: y as bool (1.1 compat)
+    yaml: 'option: y'
+    type: map[string]bool
+    want:
+      option: true
+
+- decode:
+    name: Off as bool (1.1 compat)
+    yaml: 'option: Off'
+    type: map[string]bool
+    want:
+      option: false
+
+- decode:
+    name: No as bool (1.1 compat)
+    yaml: 'option: No'
+    type: map[string]bool
+    want:
+      option: false
+
+- decode:
+    name: non-bool string ignored in bool map
+    yaml: 'option: other'
+    type: map[string]bool
+    want: {}
+
+# Integer tests from spec
+- decode:
+    name: canonical integer
+    yaml: 'canonical: 685230'
+    type: map[string]any
+    want:
+      canonical: 685230
+
+- decode:
+    name: decimal with underscores and plus
+    yaml: 'decimal: +685_230'
+    type: map[string]any
+    want:
+      decimal: 685230
+
+- decode:
+    name: octal with leading zero
+    yaml: 'octal: 02472256'
+    type: map[string]any
+    want:
+      octal: 685230
+
+- decode:
+    name: negative octal with leading zero
+    yaml: 'octal: -02472256'
+    type: map[string]any
+    want:
+      octal: -685230
+
+- decode:
+    name: octal with 0o prefix
+    yaml: 'octal: 0o2472256'
+    type: map[string]any
+    want:
+      octal: 685230
+
+- decode:
+    name: negative octal with 0o prefix
+    yaml: 'octal: -0o2472256'
+    type: map[string]any
+    want:
+      octal: -685230
+
+- decode:
+    name: hex with underscores
+    yaml: 'hexa: 0x_0A_74_AE'
+    type: map[string]any
+    want:
+      hexa: 685230
+
+- decode:
+    name: binary with underscores
+    yaml: 'bin: 0b1010_0111_0100_1010_1110'
+    type: map[string]any
+    want:
+      bin: 685230
+
+- decode:
+    name: negative binary
+    yaml: 'bin: -0b101010'
+    type: map[string]any
+    want:
+      bin: -42
+
+- decode:
+    name: binary MinInt64
+    yaml: 'bin: -0b1000000000000000000000000000000000000000000000000000000000000000'
+    type: map[string]any
+    want:
+      bin: MinInt64
+
+- decode:
+    name: decimal in map[string]int
+    yaml: 'decimal: +685_230'
+    type: map[string]int
+    want:
+      decimal: 685230
+
+# Null tests from spec
+- decode:
+    name: empty value as null
+    yaml: 'empty:'
+    type: map[string]any
+    want:
+      empty: null
+
+- decode:
+    name: tilde as null
+    yaml: 'canonical: ~'
+    type: map[string]any
+    want:
+      canonical: null
+
+- decode:
+    name: null keyword
+    yaml: 'english: null'
+    type: map[string]any
+    want:
+      english: null
+
+# Flow sequences
+- decode:
+    name: flow sequence two items
+    yaml: 'seq: [A,B]'
+    type: map[string]any
+    want:
+      seq: [A, B]
+
+- decode:
+    name: flow sequence with trailing comma
+    yaml: 'seq: [A,B,C,]'
+    type: map[string][]string
+    want:
+      seq: [A, B, C]
+
+- decode:
+    name: flow sequence mixed types to string slice
+    yaml: 'seq: [A,1,C]'
+    type: map[string][]string
+    want:
+      seq: [A, '1', C]
+
+- decode:
+    name: flow sequence mixed types to int slice
+    yaml: 'seq: [A,1,C]'
+    type: map[string][]int
+    want:
+      seq: [1]
+
+- decode:
+    name: flow sequence mixed types
+    yaml: 'seq: [A,1,C]'
+    type: map[string]any
+    want:
+      seq: [A, 1, C]
+
+- decode:
+    name: flow sequence with colon prefixed strings
+    yaml: 'seq: [:A,1,:C]'
+    type: map[string]any
+    want:
+      seq: [':A', 1, ':C']
+
+- decode:
+    name: flow sequence with inline map
+    yaml: 'seq: [:: A,1,:C]'
+    type: map[string]any
+    want:
+      seq:
+      - ':': A
+      - 1
+      - ':C'
+
+# Block sequences
+- decode:
+    name: block sequence two items
+    yaml: |
+      seq:
+       - A
+       - B
+    type: map[string]any
+    want:
+      seq: [A, B]
+
+- decode:
+    name: block sequence to string slice
+    yaml: |
+      seq:
+       - A
+       - B
+       - C
+    type: map[string][]string
+    want:
+      seq: [A, B, C]
+
+- decode:
+    name: block sequence mixed types to string slice
+    yaml: |
+      seq:
+       - A
+       - 1
+       - C
+    type: map[string][]string
+    want:
+      seq: [A, '1', C]
+
+- decode:
+    name: block sequence mixed types to int slice
+    yaml: |
+      seq:
+       - A
+       - 1
+       - C
+    type: map[string][]int
+    want:
+      seq: [1]
+
+- decode:
+    name: block sequence mixed types
+    yaml: |
+      seq:
+       - A
+       - 1
+       - C
+    type: map[string]any
+    want:
+      seq: [A, 1, C]
+
+# Literal and folded scalars
+- decode:
+    name: literal scalar
+    yaml: |
+      scalar: | # Comment
+
+       literal
+
+       	text
+
+    type: map[string]string
+    want:
+      scalar: "\nliteral\n\n\ttext\n"
+
+- decode:
+    name: folded scalar
+    yaml: |
+      scalar: > # Comment
+
+       folded
+       line
+
+       next
+       line
+        * one
+        * two
+
+       last
+       line
+
+    type: map[string]string
+    want:
+      scalar: "\nfolded line\nnext line\n * one\n * two\n\nlast line\n"
+
+# Maps
+- decode:
+    name: nested map
+    yaml: 'a: {b: c}'
+    type: map[any]any
+    want:
+      a:
+        b: c
+
+# Quoted values
+- decode:
+    name: quoted strings as keys and values
+    yaml: '''1'': ''"2"'''
+    type: map[any]any
+    want:
+      '1': '"2"'
+
+- decode:
+    name: multiline quoted string in sequence
+    yaml: |
+      v:
+      - A
+      - 'B
+
+        C'
+    type: map[string][]string
+    want:
+      v: [A, "B\nC"]
+
+# Uint and cross-type conversions
+- decode:
+    name: unsigned int
+    yaml: 'v: 42'
+    type: map[string]uint
+    want:
+      v: 42
+
+- decode:
+    name: negative to uint fails
+    yaml: 'v: -42'
+    type: map[string]uint
+    want: {}
+
+- decode:
+    name: large uint64
+    yaml: 'v: 4294967296'
+    type: map[string]uint64
+    want:
+      v: 4294967296
+
+- decode:
+    name: negative to uint64 fails
+    yaml: 'v: -4294967296'
+    type: map[string]uint64
+    want: {}
+
+# Int boundary tests
+- decode:
+    name: MaxInt32
+    yaml: 'int_max: 2147483647'
+    type: map[string]int
+    want:
+      int_max: MaxInt32
+
+- decode:
+    name: MinInt32
+    yaml: 'int_min: -2147483648'
+    type: map[string]int
+    want:
+      int_min: MinInt32
+
+- decode:
+    name: int overflow MaxInt64+1
+    yaml: 'int_overflow: 9223372036854775808'
+    type: map[string]int
+    want: {}
+
+# Int64 boundary tests
+- decode:
+    name: MaxInt64
+    yaml: 'int64_max: 9223372036854775807'
+    type: map[string]int64
+    want:
+      int64_max: MaxInt64
+
+- decode:
+    name: MaxInt64 in binary
+    yaml: 'int64_max_base2: 0b111111111111111111111111111111111111111111111111111111111111111'
+    type: map[string]int64
+    want:
+      int64_max_base2: MaxInt64
+
+- decode:
+    name: MinInt64
+    yaml: 'int64_min: -9223372036854775808'
+    type: map[string]int64
+    want:
+      int64_min: MinInt64
+
+- decode:
+    name: negative MaxInt64 in binary
+    yaml: 'int64_neg_base2: -0b111111111111111111111111111111111111111111111111111111111111111'
+    type: map[string]int64
+    want:
+      int64_neg_base2: -9223372036854775807
+
+- decode:
+    name: int64 overflow MaxInt64+1
+    yaml: 'int64_overflow: 9223372036854775808'
+    type: map[string]int64
+    want: {}
+
+# Uint boundary tests
+- decode:
+    name: uint min
+    yaml: 'uint_min: 0'
+    type: map[string]uint
+    want:
+      uint_min: 0
+
+- decode:
+    name: MaxUint32
+    yaml: 'uint_max: 4294967295'
+    type: map[string]uint
+    want:
+      uint_max: MaxUint32
+
+- decode:
+    name: uint underflow
+    yaml: 'uint_underflow: -1'
+    type: map[string]uint
+    want: {}
+
+- decode:
+    name: uint64 min
+    yaml: 'uint64_min: 0'
+    type: map[string]uint
+    want:
+      uint64_min: 0
+
+- decode:
+    name: MaxUint64
+    yaml: 'uint64_max: 18446744073709551615'
+    type: map[string]uint64
+    want:
+      uint64_max: MaxUint64
+
+- decode:
+    name: MaxUint64 in binary
+    yaml: 'uint64_max_base2: 0b1111111111111111111111111111111111111111111111111111111111111111'
+    type: map[string]uint64
+    want:
+      uint64_max_base2: MaxUint64
+
+- decode:
+    name: MaxInt64 as uint64
+    yaml: 'uint64_maxint64: 9223372036854775807'
+    type: map[string]uint64
+    want:
+      uint64_maxint64: MaxInt64
+
+- decode:
+    name: uint64 underflow
+    yaml: 'uint64_underflow: -1'
+    type: map[string]uint64
+    want: {}
+
+# Float32 boundary tests
+- decode:
+    name: MaxFloat32
+    yaml: 'float32_max: 3.40282346638528859811704183484516925440e+38'
+    type: map[string]float32
+    want:
+      float32_max: 3.4028235e+38
+
+- decode:
+    name: MaxUint64 as float32
+    yaml: 'float32_maxuint64: 18446744073709551615'
+    type: map[string]float32
+    want:
+      float32_maxuint64: 1.8446744e+19
+
+- decode:
+    name: MaxUint64+1 as float32
+    yaml: 'float32_maxuint64+1: 18446744073709551616'
+    type: map[string]float32
+    want:
+      float32_maxuint64+1: 1.8446744e+19
+
+# Float64 boundary tests
+- decode:
+    name: MaxFloat64
+    yaml: 'float64_max: 1.797693134862315708145274237317043567981e+308'
+    type: map[string]float64
+    want:
+      float64_max: MaxFloat64
+
+- decode:
+    name: SmallestNonzeroFloat64
+    yaml: 'float64_nonzero: 4.940656458412465441765687928682213723651e-324'
+    type: map[string]float64
+    want:
+      float64_nonzero: SmallestNonzeroFloat64
+
+- decode:
+    name: MaxUint64 as float64
+    yaml: 'float64_maxuint64: 18446744073709551615'
+    type: map[string]float64
+    want:
+      float64_maxuint64: 1.8446744073709552e+19
+
+- decode:
+    name: MaxUint64+1 as float64
+    yaml: 'float64_maxuint64+1: 18446744073709551616'
+    type: map[string]float64
+    want:
+      float64_maxuint64+1: 1.8446744073709552e+19
+
+# Overflow cases
+- decode:
+    name: int32 overflow
+    yaml: 'v: 4294967297'
+    type: map[string]int32
+    want: {}
+
+- decode:
+    name: int8 overflow
+    yaml: 'v: 128'
+    type: map[string]int8
+    want: {}
+
+# Explicit tags
+- decode:
+    name: explicit float tag on string
+    yaml: "v: !!float '1.1'"
+    type: map[string]any
+    want:
+      v: 1.1
+
+- decode:
+    name: explicit float tag on zero
+    yaml: 'v: !!float 0'
+    type: map[string]any
+    want:
+      v: 0.0
+
+- decode:
+    name: explicit float tag on negative one
+    yaml: 'v: !!float -1'
+    type: map[string]any
+    want:
+      v: -1.0
+
+- decode:
+    name: explicit null tag on empty string
+    yaml: "v: !!null ''"
+    type: map[string]any
+    want:
+      v: null
+
+- decode:
+    name: TAG directive with int
+    yaml: |
+      %TAG !y! tag:yaml.org,2002:
+      ---
+      v: !y!int '1'
+    type: map[string]any
+    want:
+      v: 1
+
+- decode:
+    name: non-specific tag
+    yaml: 'v: ! test'
+    type: map[string]any
+    want:
+      v: test
+
+# Anchors and aliases
+- decode:
+    name: anchor as key with alias
+    yaml: |
+      foo: &bar bar
+      *bar : quz
+    type: map[string]any
+    want:
+      foo: bar
+      bar: quz
+
+- decode:
+    name: anchor with special characters
+    yaml: |
+      foo: &b./ar bar
+      *b./ar : quz
+    type: map[string]any
+    want:
+      foo: bar
+      bar: quz
+
+- decode:
+    name: alias reuse (yaml-test-suite 3GZX)
+    yaml: |
+      First occurrence: &anchor Foo
+      Second occurrence: *anchor
+      Override anchor: &anchor Bar
+      Reuse anchor: *anchor
+    type: map[string]any
+    want:
+      First occurrence: Foo
+      Second occurrence: Foo
+      Override anchor: Bar
+      Reuse anchor: Bar
+
+# Flow sequences with special syntax
+- decode:
+    name: flow sequence with colon-prefixed values
+    yaml: 'seq: [:A,1,:C]'
+    type: map[string]any
+    want:
+      seq: [':A', 1, ':C']
+
+- decode:
+    name: 'flow sequence with nested map using ::'
+    yaml: 'seq: [:: A,1,:C]'
+    type: map[string]any
+    want:
+      seq:
+        - {':': A}
+        - 1
+        - ':C'
+
+# String edge cases
+- decode:
+    name: string with underscore after minus
+    yaml: 'a: -b_c'
+    type: map[string]any
+    want:
+      a: -b_c
+
+- decode:
+    name: string with underscore after plus
+    yaml: 'a: +b_c'
+    type: map[string]any
+    want:
+      a: +b_c
+
+- decode:
+    name: string starting with digit and underscore
+    yaml: 'a: 50cent_of_dollar'
+    type: map[string]any
+    want:
+      a: '50cent_of_dollar'
+
+# URLs and special strings
+- decode:
+    name: URL in flow mapping
+    yaml: 'a: {b: https://github.com/go-yaml/yaml}'
+    type: map[string]any
+    want:
+      a:
+        b: https://github.com/go-yaml/yaml
+
+- decode:
+    name: URL in flow sequence
+    yaml: 'a: [https://github.com/go-yaml/yaml]'
+    type: map[string]any
+    want:
+      a: [https://github.com/go-yaml/yaml]
+
+- decode:
+    name: angle brackets in string
+    yaml: 'a: <foo>'
+    type: map[string]string
+    want:
+      a: <foo>
+
+- decode:
+    name: base 60 float as string
+    yaml: |
+      a: 1:1
+    type: map[string]string
+    want:
+      a: '1:1'
+
+# Scientific notation
+- decode:
+    name: scientific notation lowercase e
+    yaml: |
+      a: 123456e1
+    type: map[string]any
+    want:
+      a: 1.23456e+06
+
+- decode:
+    name: scientific notation uppercase E
+    yaml: |
+      a: 123456E1
+    type: map[string]any
+    want:
+      a: 1.23456e+06
+
+# Unicode and encoding
+- decode:
+    name: unicode line breaks
+    yaml: |
+      %YAML 1.1
+      --- !!str
+      "Generic line break (no glyph)\n\
+       Generic line break (glyphed)\n\
+       Line separator\u2028\
+       Paragraph separator\u2029"
+    type: string
+    want: "Generic line break (no glyph)\nGeneric line break (glyphed)\nLine separator\u2028Paragraph separator\u2029"
+
+# Quoted multiline strings
+- decode:
+    name: quoted multiline string in sequence
+    yaml: |
+      v:
+      - A
+      - 'B
+
+        C'
+    type: map[string][]string
+    want:
+      v: [A, "B\nC"]
+
+# Document directives
+- decode:
+    name: document with trailing garbage
+    yaml: |
+      ---
+      hello
+      ...
+      }not yaml
+    type: string
+    want: hello
+
+# Struct field mapping tests
+- decode:
+    name: struct field Hello maps to yaml key hello
+    yaml: 'hello: world'
+    type: testStructHello
+    want:
+      hello: world
+
+- decode:
+    name: nested struct
+    yaml: 'a: {b: c}'
+    type: testStructA_NestedB
+    want:
+      a:
+        b: c
+
+- decode:
+    name: nested struct pointer
+    yaml: 'a: {b: c}'
+    type: testStructA_NestedBPtr
+    want:
+      a:
+        b: c
+
+- decode:
+    name: struct with map field
+    yaml: 'a: {b: c}'
+    type: testStructA_MapStringString
+    want:
+      a:
+        b: c
+
+- decode:
+    name: struct with pointer to map
+    yaml: 'a: {b: c}'
+    type: testStructA_MapStringStringPtr
+    want:
+      a:
+        b: c
+
+- decode:
+    name: struct with empty map field
+    yaml: 'a:'
+    type: testStructA_MapStringString
+    want:
+      a: {}
+
+- decode:
+    name: struct with int field
+    yaml: 'a: 1'
+    type: testStructA_Int
+    want:
+      a: 1
+
+- decode:
+    name: struct with float64 field from int
+    yaml: 'a: 1'
+    type: testStructA_Float64
+    want:
+      a: 1
+
+- decode:
+    name: struct with int field from float
+    yaml: 'a: 1.0'
+    type: testStructA_Int
+    want:
+      a: 1
+
+- decode:
+    name: struct with uint field from float
+    yaml: 'a: 1.0'
+    type: testStructA_Uint
+    want:
+      a: 1
+
+- decode:
+    name: struct with int slice field
+    yaml: 'a: [1, 2]'
+    type: testStructA_IntSlice
+    want:
+      a: [1, 2]
+
+- decode:
+    name: struct with int array field
+    yaml: 'a: [1, 2]'
+    type: testStructA_IntArray2
+    want:
+      a: [1, 2]
+
+- decode:
+    name: struct field mismatch ignored
+    yaml: 'a: 1'
+    type: testStructB_Int
+    want:
+      b: 0
+
+- decode:
+    name: struct with bool field YAML 1.1 YES
+    yaml: 'a: YES'
+    type: testStructA_Bool
+    want:
+      a: true
+
+- decode:
+    name: struct with four int fields from anchors
+    yaml: |
+      a: &x 1
+      b: &y 2
+      c: *x
+      d: *y
+    type: testStructABCD_Int
+    want:
+      a: 1
+      b: 2
+      c: 1
+      d: 2
+
+- decode:
+    name: struct field B with anchor list
+    yaml: |
+      a: &a [1, 2]
+      b: *a
+    type: testStructB_IntSlice
+    want:
+      b: [1, 2]
+
+- decode:
+    name: struct with empty slice field
+    yaml: 'a: []'
+    type: testStructA_IntSliceEmpty
+    want:
+      a: []
+
+# Struct tests with yaml tags
+- decode:
+    name: yaml tag field rename (B to a)
+    yaml: 'a: 1'
+    type: testStructB_Int_TagA
+    want:
+      a: 1
+
+- decode:
+    name: yaml tag ignored field
+    yaml: |
+      a: 1
+      b: 2
+    type: testStructAB_Int_BIgnored
+    want:
+      a: 1
+
+- decode:
+    name: inline struct field
+    yaml: |
+      a: 1
+      b: 2
+      c: 3
+    type: testStructA_Int_InlineB
+    want:
+      a: 1
+      b: 2
+      c: 3
+
+- decode:
+    name: inline struct pointer field
+    yaml: |
+      a: 1
+      b: 2
+      c: 3
+    type: testStructA_Int_InlineBPtr
+    want:
+      a: 1
+      b: 2
+      c: 3
+
+- decode:
+    name: inline struct pointer field nil
+    yaml: 'a: 1'
+    type: testStructA_Int_InlineBPtr
+    want:
+      a: 1
+
+- decode:
+    name: inline nested struct pointer
+    yaml: |
+      a: 1
+      c: 3
+      d: 4
+    type: testStructA_Int_InlineDPtr
+    want:
+      a: 1
+      c: 3
+      d: 4
+
+- decode:
+    name: inline map field
+    yaml: |
+      a: 1
+      b: 2
+      c: 3
+    type: testStructA_Int_InlineMapStringInt
+    want:
+      a: 1
+      b: 2
+      c: 3
+
+# Anchor and alias tests
+- decode:
+    name: anchor and alias basic
+    yaml: |
+      foo: &bar bar
+      *bar : quz
+    type: map[string]any
+    want:
+      foo: bar
+      bar: quz
+
+- decode:
+    name: anchor and alias with special characters
+    yaml: |
+      foo: &b./ar bar
+      *b./ar : quz
+    type: map[string]any
+    want:
+      foo: bar
+      bar: quz
+
+# Null value handling
+- decode:
+    name: null into map[string]string becomes empty string
+    yaml: |
+      foo: null
+    type: map[string]string
+    want:
+      foo: ''
+
+- decode:
+    name: null into map[string]any stays nil
+    yaml: |
+      foo: null
+    type: map[string]any
+    want:
+      foo: null
+
+# Tilde as null
+- decode:
+    name: tilde into map[string]string becomes empty string
+    yaml: |
+      foo: ~
+    type: map[string]string
+    want:
+      foo: ''
+
+- decode:
+    name: tilde into map[string]any stays nil
+    yaml: |
+      foo: ~
+    type: map[string]any
+    want:
+      foo: null
+
+# Quoted timestamp strings
+- decode:
+    name: quoted timestamp string stays as string
+    yaml: |
+      a: "2015-01-01"
+    type: map[string]any
+    want:
+      a: '2015-01-01'
+
+# C1 control characters
+- decode:
+    name: C1 control character U+0080
+    yaml: "\u0080"
+    type: string
+    want: "\u0080"
+
+- decode:
+    name: C1 control character U+009F
+    yaml: "\u009F"
+    type: string
+    want: "\u009F"
+
+# CRLF line endings
+- decode:
+    name: CRLF line endings
+    yaml: "a: b\r\nc:\r\n- d\r\n- e\r\n"
+    type: map[string]any
+    want:
+      a: b
+      c:
+        - d
+        - e
+
+# Question mark in values
+- decode:
+    name: question mark in middle of key and value
+    yaml: |
+      foo: {ba?r: a?bc}
+    type: map[string]any
+    want:
+      foo:
+        ba?r: a?bc
+
+- decode:
+    name: question mark at start of key and value
+    yaml: |
+      foo: {?bar: ?abc}
+    type: map[string]any
+    want:
+      foo:
+        '?bar': '?abc'
+
+- decode:
+    name: question mark at end of key and value
+    yaml: |
+      foo: {bar?: abc?}
+    type: map[string]any
+    want:
+      foo:
+        bar?: abc?
+
+- decode:
+    name: explicit key indicator with space
+    yaml: |
+      foo: {? key: value}
+    type: map[string]any
+    want:
+      foo:
+        key: value

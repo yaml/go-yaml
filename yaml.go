@@ -204,6 +204,7 @@ func unmarshal(in []byte, out any, strict bool) (err error) {
 //	             causing all of its fields or keys to be processed as if
 //	             they were part of the outer struct. For maps, keys must
 //	             not conflict with the yaml keys of other struct fields.
+//	             See doc/inline-tags.md for detailed examples and use cases.
 //
 // In addition, if the key is "-", the field is ignored.
 //

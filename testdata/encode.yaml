@@ -1,0 +1,698 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Encode test cases for go-yaml
+#
+# Purpose: Tests YAML marshaling/encoding of Go values into YAML output.
+# Validates proper formatting, quoting, type representation, null handling,
+# special values, and YAML syntax correctness.
+#
+# Format: Test cases use type-as-key format:
+#   - test-type:
+#       name: Test case name
+#       ...
+#
+# Test Types:
+#   encode - Validates YAML marshaling of Go values
+#
+# Common Keys:
+#   name - Test case name (string)
+#   data - Go value to marshal (YAML representation)
+#   type - Go type of the value (e.g., "map[string]any", "[]string")
+#   want - Expected YAML output (string, typically using | for multiline)
+#
+# Data Types:
+#   Map types:        map[string]string, map[string]any, map[string]uint64, etc.
+#   Slice types:      []string, []int, []any, map[string][]string, etc.
+#   Numeric types:    map[string]int, map[string]uint, map[string]float64, etc.
+#
+# Special Values:
+#   Constants like +Inf, -Inf, NaN are resolved via ValueRegistry during test
+#   execution. These are represented as string tokens in the data field and
+#   replaced with actual Go values (math.Inf, math.NaN) before marshaling.
+#
+# Note:
+#   The test framework unmarshals the 'data' into the specified 'type',
+#   then marshals it back to YAML and compares with 'want'. This ensures the
+#   value can be properly constructed from YAML representation.
+
+# Basic string values
+- encode:
+    name: string value in map[string]string
+    data:
+      v: hi
+    type: map[string]string
+    want: |
+      v: hi
+
+- encode:
+    name: string value in map[string]any
+    data:
+      v: hi
+    type: map[string]any
+    want: |
+      v: hi
+
+# String values that look like booleans
+- encode:
+    name: string "true" in map[string]string
+    data:
+      v: 'true'
+    type: map[string]string
+    want: |
+      v: "true"
+
+- encode:
+    name: string "false" in map[string]string
+    data:
+      v: 'false'
+    type: map[string]string
+    want: |
+      v: "false"
+
+# Boolean values
+- encode:
+    name: bool true in map[string]any
+    data:
+      v: true
+    type: map[string]any
+    want: |
+      v: true
+
+- encode:
+    name: bool false in map[string]any
+    data:
+      v: false
+    type: map[string]any
+    want: |
+      v: false
+
+# Integer values
+- encode:
+    name: positive integer in map[string]any
+    data:
+      v: 10
+    type: map[string]any
+    want: |
+      v: 10
+
+- encode:
+    name: negative integer in map[string]any
+    data:
+      v: -10
+    type: map[string]any
+    want: |
+      v: -10
+
+- encode:
+    name: uint value in map[string]uint
+    data:
+      v: 42
+    type: map[string]uint
+    want: |
+      v: 42
+
+- encode:
+    name: large int64 in map[string]any
+    data:
+      v: 4294967296
+    type: map[string]any
+    want: |
+      v: 4294967296
+
+- encode:
+    name: large int64 in map[string]int64
+    data:
+      v: 4294967296
+    type: map[string]int64
+    want: |
+      v: 4294967296
+
+- encode:
+    name: large uint64 in map[string]uint64
+    data:
+      v: 4294967296
+    type: map[string]uint64
+    want: |
+      v: 4294967296
+
+# String that looks like a number
+- encode:
+    name: string "10" in map[string]any
+    data:
+      v: '10'
+    type: map[string]any
+    want: |
+      v: "10"
+
+# Float values
+- encode:
+    name: float 0.1 in map[string]any
+    data:
+      v: 0.1
+    type: map[string]any
+    want: |
+      v: 0.1
+
+- encode:
+    name: explicit float64 0.1
+    data:
+      v: 0.1
+    type: map[string]any
+    want: |
+      v: 0.1
+
+- encode:
+    name: float32 0.99
+    data:
+      v: 0.99
+    type: map[string]any
+    want: |
+      v: 0.99
+
+- encode:
+    name: negative float in map[string]any
+    data:
+      v: -0.1
+    type: map[string]any
+    want: |
+      v: -0.1
+
+# Special float values
+- encode:
+    name: positive infinity
+    data:
+      v: +Inf
+    type: map[string]any
+    want: |
+      v: .inf
+
+- encode:
+    name: negative infinity
+    data:
+      v: -Inf
+    type: map[string]any
+    want: |
+      v: -.inf
+
+- encode:
+    name: NaN
+    data:
+      v: NaN
+    type: map[string]any
+    want: |
+      v: .nan
+
+# Null and empty string
+- encode:
+    name: null value in map[string]any
+    data:
+      v: null
+    type: map[string]any
+    want: |
+      v: null
+
+- encode:
+    name: empty string in map[string]any
+    data:
+      v: ''
+    type: map[string]any
+    want: |
+      v: ""
+
+# String slices
+- encode:
+    name: simple string slice
+    data:
+      v: [A, B]
+    type: map[string][]string
+    want: |
+      v:
+          - A
+          - B
+
+- encode:
+    name: string slice with multiline element
+    data:
+      v: ['A', "B\nC"]
+    type: map[string][]string
+    want: |
+      v:
+          - A
+          - |-
+            B
+            C
+
+# Complex nested structure
+- encode:
+    name: nested mixed slice with map
+    data:
+      v: ['A', 1, {B: [2, 3]}]
+    type: map[string][]any
+    want: |
+      v:
+          - A
+          - 1
+          - B:
+              - 2
+              - 3
+
+# Nested maps
+- encode:
+    name: nested map
+    data:
+      a:
+        b: c
+    type: map[string]any
+    want: |
+      a:
+          b: c
+
+# Special string values requiring quoting
+- encode:
+    name: dash string requiring quotes
+    data:
+      a: '-'
+    type: map[string]any
+    want: |
+      a: '-'
+
+# Special characters and edge cases
+- encode:
+    name: angle brackets in string
+    data:
+      a: '<foo>'
+    type: map[string]string
+    want: |
+      a: <foo>
+
+- encode:
+    name: colon-separated string (base 60 float compat)
+    data:
+      a: '1:1'
+    type: map[string]string
+    want: |
+      a: "1:1"
+
+- encode:
+    name: null byte in string
+    data:
+      a: "\x00"
+    type: map[string]string
+    want: |
+      a: "\0"
+
+- encode:
+    name: unicode string
+    data:
+      a: '你好'
+    type: map[string]string
+    want: |
+      a: 你好
+
+- encode:
+    name: timestamp-like string gets quoted
+    data:
+      a: '2015-02-24T18:19:39Z'
+    type: map[string]string
+    want: |
+      a: "2015-02-24T18:19:39Z"
+
+- encode:
+    name: string containing colon-space
+    data:
+      a: 'b: c'
+    type: map[string]string
+    want: |
+      a: 'b: c'
+
+- encode:
+    name: string with hash comment
+    data:
+      a: 'Hello #comment'
+    type: map[string]string
+    want: |
+      a: 'Hello #comment'
+
+- encode:
+    name: unicode string with hash comment
+    data:
+      a: '你好 #comment'
+    type: map[string]string
+    want: |
+      a: '你好 #comment'
+
+# Nested structures
+- encode:
+    name: deeply nested maps and sequences
+    data:
+      a:
+        b:
+          - c: 1
+            d: 2
+    type: map[string]any
+    want: |
+      a:
+          b:
+              - c: 1
+                d: 2
+
+# Tab handling
+- encode:
+    name: string with only tabs and newlines (quoted)
+    data:
+      a: "\t\n\t\n"
+    type: map[string]string
+    want: |
+      a: "\t\n\t\n"
+
+# Merge key edge cases
+- encode:
+    name: merge key as regular key
+    data:
+      '<<': []
+    type: map[string]any
+    want: |
+      "<<": []
+
+- encode:
+    name: merge key as value
+    data:
+      foo: '<<'
+    type: map[string]any
+    want: |
+      foo: "<<"
+
+# Long strings
+- encode:
+    name: long string no wrapping
+    data:
+      a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '
+    type: map[string]string
+    want: |
+      a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '
+
+# Struct encoding tests
+- encode:
+    name: empty struct
+    data: {}
+    type: testStructEmpty
+    want: |
+      {}
+
+- encode:
+    name: struct field Hello
+    data:
+      hello: world
+    type: testStructHello
+    want: |
+      hello: world
+
+- encode:
+    name: nested struct encoding
+    data:
+      a:
+        b: c
+    type: testStructA_NestedB
+    want: |
+      a:
+          b: c
+
+- encode:
+    name: nested struct pointer encoding
+    data:
+      a:
+        b: c
+    type: testStructA_NestedBPtr
+    want: |
+      a:
+          b: c
+
+- encode:
+    name: nested struct pointer null
+    data:
+      a: null
+    type: testStructA_NestedBPtr
+    want: |
+      a: null
+
+- encode:
+    name: struct int field
+    data:
+      a: 1
+    type: testStructA_Int
+    want: |
+      a: 1
+
+- encode:
+    name: struct int slice field
+    data:
+      a: [1, 2]
+    type: testStructA_IntSlice
+    want: |
+      a:
+          - 1
+          - 2
+
+- encode:
+    name: struct int array field
+    data:
+      a: [1, 2]
+    type: testStructA_IntArray2
+    want: |
+      a:
+          - 1
+          - 2
+
+- encode:
+    name: struct bool field
+    data:
+      a: true
+    type: testStructA_Bool
+    want: |
+      a: true
+
+- encode:
+    name: struct string field true
+    data:
+      a: 'true'
+    type: testStructA_String
+    want: |
+      a: "true"
+
+- encode:
+    name: struct string field off
+    data:
+      a: off
+    type: testStructA_String
+    want: |
+      a: "off"
+
+# Struct tests with yaml tags
+- encode:
+    name: yaml tag field rename (B to a)
+    data:
+      a: 1
+    type: testStructB_Int_TagA
+    want: |
+      a: 1
+
+
+# Scalar style encoding tests (simple cases without tabs/unicode)
+- encode:
+    name: scalar style - just newline (double quoted)
+    data: "\n"
+    type: string
+    want: |
+      "\n"
+
+- encode:
+    name: scalar style - hello newline world (literal)
+    data: "hello\nworld"
+    type: string
+    want: |
+      |-
+          hello
+          world
+
+- encode:
+    name: scalar style - simple hello (plain)
+    data: hello
+    type: string
+    want: |
+      hello
+
+- encode:
+    name: scalar style - number-like 123 (quoted)
+    data: '123'
+    type: string
+    want: |
+      "123"
+
+- encode:
+    name: scalar style - boolean-like true (quoted)
+    data: 'true'
+    type: string
+    want: |
+      "true"
+
+- encode:
+    name: scalar style - long multiline text (literal)
+    data: "This is a longer string\nwith multiple lines\nthat should use literal style"
+    type: string
+    want: |
+      |-
+          This is a longer string
+          with multiple lines
+          that should use literal style
+
+- encode:
+    name: scalar style - multiline starting with space (literal with indent)
+    data: " This starts with space\nand is long enough\nfor literal style"
+    type: string
+    want: |
+      |4-
+           This starts with space
+          and is long enough
+          for literal style
+
+- encode:
+    name: scalar style - a newline (literal 2 chars)
+    data: "a\n"
+    type: string
+    want: |
+      |
+          a
+
+- encode:
+    name: scalar style - a newline b (literal 3 chars)
+    data: "a\nb"
+    type: string
+    want: |
+      |-
+          a
+          b
+
+- encode:
+    name: scalar style - space a newline (literal with content)
+    data: " a\n"
+    type: string
+    want: |
+      |4
+           a
+
+# Whitespace-only strings (all simple cases)
+- encode:
+    name: whitespace only - just newline (double quoted)
+    data: "\n"
+    type: string
+    want: |
+      "\n"
+
+- encode:
+    name: whitespace only - two newlines (double quoted)
+    data: "\n\n"
+    type: string
+    want: |
+      "\n\n"
+
+- encode:
+    name: whitespace only - space newline (double quoted)
+    data: " \n"
+    type: string
+    want: |
+      " \n"
+
+- encode:
+    name: whitespace only - tab newline (double quoted)
+    data: "\t\n"
+    type: string
+    want: |
+      "\t\n"
+
+- encode:
+    name: whitespace only - space newline space (double quoted)
+    data: " \n "
+    type: string
+    want: |
+      " \n "
+
+- encode:
+    name: whitespace only - newline space newline (double quoted)
+    data: "\n \n"
+    type: string
+    want: |
+      "\n \n"
+
+- encode:
+    name: whitespace only - tab space newline tab (double quoted)
+    data: "\t \n\t"
+    type: string
+    want: |
+      "\t \n\t"
+
+- encode:
+    name: whitespace only - multiple spaces newline spaces (double quoted)
+    data: "   \n   "
+    type: string
+    want: |
+      "   \n   "
+
+- encode:
+    name: whitespace only - three newlines (double quoted)
+    data: "\n\n\n"
+    type: string
+    want: |
+      "\n\n\n"
+
+- encode:
+    name: whitespace only - space tab newline space tab (double quoted)
+    data: " \t\n \t"
+    type: string
+    want: |
+      " \t\n \t"
+
+# Whitespace with content (simple cases without leading tabs)
+- encode:
+    name: whitespace with content - hello newline (literal)
+    data: "hello\n"
+    type: string
+    want: |
+      |
+          hello
+
+- encode:
+    name: whitespace with content - space hello newline (literal with indent)
+    data: " hello\n"
+    type: string
+    want: |
+      |4
+           hello
+
+- encode:
+    name: whitespace with content - space newline hello (double quoted short)
+    data: " \nhello"
+    type: string
+    want: |
+      " \nhello"
+
+- encode:
+    name: whitespace with content - spaces hello spaces newline (double quoted trailing)
+    data: "  hello  \n"
+    type: string
+    want: |
+      "  hello  \n"
+
+- encode:
+    name: whitespace with content - hello spaces newline (double quoted trailing)
+    data: "hello  \n"
+    type: string
+    want: |
+      "hello  \n"
+
+- encode:
+    name: whitespace with content - hello newline spaces (double quoted trailing)
+    data: "hello\n  "
+    type: string
+    want: |
+      "hello\n  "
+

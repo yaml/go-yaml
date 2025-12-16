@@ -30,6 +30,7 @@ import (
 	"go.yaml.in/yaml/v4"
 	"go.yaml.in/yaml/v4/internal/libyaml"
 	"go.yaml.in/yaml/v4/internal/testutil/assert"
+	"go.yaml.in/yaml/v4/internal/testutil/datatest"
 )
 
 // negativeZero represents -0.0 for YAML test cases
@@ -38,6 +39,175 @@ import (
 var negativeZero = math.Copysign(0.0, -1.0)
 
 var unmarshalIntTest = 123
+
+// Named struct types for data-driven tests
+type (
+	testStructHello                struct{ Hello string }
+	testStructA_Int                struct{ A int }
+	testStructA_Float64            struct{ A float64 }
+	testStructA_Uint               struct{ A uint }
+	testStructA_Bool               struct{ A bool }
+	testStructA_IntSlice           struct{ A []int }
+	testStructA_IntArray2          struct{ A [2]int }
+	testStructA_MapStringString    struct{ A map[string]string }
+	testStructA_MapStringStringPtr struct{ A *map[string]string }
+	testStructB_Int                struct{ B int }
+	nestedStructB                  struct{ B string }
+	testStructA_NestedB            struct{ A nestedStructB }
+	testStructA_NestedBPtr         struct{ A *nestedStructB }
+	testStructABCD_Int             struct{ A, B, C, D int }
+	testStructB_IntSlice           struct{ B []int }
+	testStructA_IntSliceEmpty      struct{ A []int }
+	testStructA_String             struct{ A string }
+	testStructEmpty                struct{}
+)
+
+// Types with yaml struct tags
+type (
+	testStructB_Int_TagA struct {
+		B int `yaml:"a"`
+	}
+	testStructAB_Int_BIgnored struct {
+		A int
+		B int `yaml:"-"`
+	}
+	testStructA_Int_InlineB struct {
+		A int
+		C inlineB `yaml:",inline"`
+	}
+	testStructA_Int_InlineBPtr struct {
+		A int
+		C *inlineB `yaml:",inline"`
+	}
+	testStructA_Int_InlineDPtr struct {
+		A int
+		C *inlineD `yaml:",inline"`
+	}
+	testStructA_Int_InlineMapStringInt struct {
+		A int
+		C map[string]int `yaml:",inline"`
+	}
+)
+
+// Type and value registries for data-driven tests
+var (
+	decodeTypes  = datatest.NewTypeRegistry()
+	decodeValues = datatest.NewValueRegistry()
+)
+
+func init() {
+	// Register basic map types
+	decodeTypes.RegisterFactory("map[string]string", func() any {
+		return make(map[string]string)
+	})
+	decodeTypes.RegisterFactory("map[string]any", func() any {
+		return make(map[string]any)
+	})
+	decodeTypes.RegisterFactory("map[string]int64", func() any {
+		return make(map[string]int64)
+	})
+	decodeTypes.RegisterFactory("map[string]float64", func() any {
+		return make(map[string]float64)
+	})
+	decodeTypes.RegisterFactory("map[any]any", func() any {
+		return make(map[any]any)
+	})
+
+	// Register slice types
+	decodeTypes.RegisterFactory("[]string", func() any {
+		return []string{}
+	})
+	decodeTypes.RegisterFactory("[]int", func() any {
+		return []int{}
+	})
+	decodeTypes.RegisterFactory("[]any", func() any {
+		return []any{}
+	})
+
+	// Register primitive types
+	decodeTypes.RegisterFactory("string", func() any {
+		return ""
+	})
+
+	// Register map types with slice values
+	decodeTypes.RegisterFactory("map[string][]string", func() any {
+		return make(map[string][]string)
+	})
+	decodeTypes.RegisterFactory("map[string][]int", func() any {
+		return make(map[string][]int)
+	})
+
+	// Register additional map types
+	decodeTypes.RegisterFactory("map[string]bool", func() any {
+		return make(map[string]bool)
+	})
+	decodeTypes.RegisterFactory("map[string]int", func() any {
+		return make(map[string]int)
+	})
+	decodeTypes.RegisterFactory("map[any]string", func() any {
+		return make(map[any]string)
+	})
+	decodeTypes.RegisterFactory("map[string]uint", func() any {
+		return make(map[string]uint)
+	})
+	decodeTypes.RegisterFactory("map[string]uint64", func() any {
+		return make(map[string]uint64)
+	})
+	decodeTypes.RegisterFactory("map[string]int32", func() any {
+		return make(map[string]int32)
+	})
+	decodeTypes.RegisterFactory("map[string]int8", func() any {
+		return make(map[string]int8)
+	})
+	decodeTypes.RegisterFactory("map[string]float32", func() any {
+		return make(map[string]float32)
+	})
+
+	// Register struct types
+	decodeTypes.Register("testStructHello", testStructHello{})
+	decodeTypes.Register("testStructA_Int", testStructA_Int{})
+	decodeTypes.Register("testStructA_Float64", testStructA_Float64{})
+	decodeTypes.Register("testStructA_Uint", testStructA_Uint{})
+	decodeTypes.Register("testStructA_Bool", testStructA_Bool{})
+	decodeTypes.Register("testStructA_IntSlice", testStructA_IntSlice{})
+	decodeTypes.Register("testStructA_IntArray2", testStructA_IntArray2{})
+	decodeTypes.Register("testStructA_MapStringString", testStructA_MapStringString{})
+	decodeTypes.Register("testStructA_MapStringStringPtr", testStructA_MapStringStringPtr{})
+	decodeTypes.Register("testStructB_Int", testStructB_Int{})
+	decodeTypes.Register("testStructA_NestedB", testStructA_NestedB{})
+	decodeTypes.Register("testStructA_NestedBPtr", testStructA_NestedBPtr{})
+	decodeTypes.Register("testStructABCD_Int", testStructABCD_Int{})
+	decodeTypes.Register("testStructB_IntSlice", testStructB_IntSlice{})
+	decodeTypes.Register("testStructA_IntSliceEmpty", testStructA_IntSliceEmpty{})
+	decodeTypes.Register("testStructA_String", testStructA_String{})
+	decodeTypes.Register("testStructEmpty", testStructEmpty{})
+
+	// Register struct types with yaml tags
+	decodeTypes.Register("testStructB_Int_TagA", testStructB_Int_TagA{})
+	decodeTypes.Register("testStructAB_Int_BIgnored", testStructAB_Int_BIgnored{})
+	decodeTypes.Register("testStructA_Int_InlineB", testStructA_Int_InlineB{})
+	decodeTypes.Register("testStructA_Int_InlineBPtr", testStructA_Int_InlineBPtr{})
+	decodeTypes.Register("testStructA_Int_InlineDPtr", testStructA_Int_InlineDPtr{})
+	decodeTypes.Register("testStructA_Int_InlineMapStringInt", testStructA_Int_InlineMapStringInt{})
+
+	// Register math constants
+	decodeValues.Register("+Inf", math.Inf(+1))
+	decodeValues.Register("-Inf", math.Inf(-1))
+	decodeValues.Register("NaN", math.NaN())
+	decodeValues.Register("-0", negativeZero)
+
+	// Register math limit constants
+	decodeValues.Register("MaxInt32", math.MaxInt32)
+	decodeValues.Register("MinInt32", math.MinInt32)
+	decodeValues.Register("MaxInt64", math.MaxInt64)
+	decodeValues.Register("MinInt64", math.MinInt64)
+	decodeValues.Register("MaxUint32", math.MaxUint32)
+	decodeValues.Register("MaxUint64", uint64(math.MaxUint64))
+	decodeValues.Register("MaxFloat32", math.MaxFloat32)
+	decodeValues.Register("MaxFloat64", math.MaxFloat64)
+	decodeValues.Register("SmallestNonzeroFloat32", math.SmallestNonzeroFloat32)
+	decodeValues.Register("SmallestNonzeroFloat64", math.SmallestNonzeroFloat64)
+}
 
 var unmarshalTests = []struct {
 	data  string
@@ -49,77 +219,6 @@ var unmarshalTests = []struct {
 	},
 	{
 		"{}", &struct{}{},
-	},
-	{
-		"v: hi",
-		map[string]string{"v": "hi"},
-	},
-	{
-		"v: hi", map[string]any{"v": "hi"},
-	},
-	{
-		"v: true",
-		map[string]string{"v": "true"},
-	},
-	{
-		"v: true",
-		map[string]any{"v": true},
-	},
-	{
-		"v: 10",
-		map[string]any{"v": 10},
-	},
-	{
-		"v: 0b10",
-		map[string]any{"v": 2},
-	},
-	{
-		"v: 0xA",
-		map[string]any{"v": 10},
-	},
-	{
-		"v: 4294967296",
-		map[string]int64{"v": 4294967296},
-	},
-	{
-		"v: 0.1",
-		map[string]any{"v": 0.1},
-	},
-	{
-		"v: .1",
-		map[string]any{"v": 0.1},
-	},
-	{
-		"v: .Inf",
-		map[string]any{"v": math.Inf(+1)},
-	},
-	{
-		"v: -.Inf",
-		map[string]any{"v": math.Inf(-1)},
-	},
-	{
-		"v: -10",
-		map[string]any{"v": -10},
-	},
-	{
-		"v: -.1",
-		map[string]any{"v": -0.1},
-	},
-	{
-		"v: -0\n",
-		map[string]any{"v": negativeZero},
-	},
-	{
-		"a: \"\\t\\n\\t\\n\"\n",
-		map[string]string{"a": "\t\n\t\n"},
-	},
-	{
-		"\"<<\": []\n",
-		map[string]any{"<<": []any{}},
-	},
-	{
-		"foo: \"<<\"\n",
-		map[string]any{"foo": "<<"},
 	},
 
 	// Simple values.
@@ -136,462 +235,10 @@ var unmarshalTests = []struct {
 		"\t\n",
 	},
 
-	// Floats from spec
-	{
-		"canonical: 6.8523e+5",
-		map[string]any{"canonical": 6.8523e+5},
-	},
-	{
-		"expo: 685.230_15e+03",
-		map[string]any{"expo": 685.23015e+03},
-	},
-	{
-		"fixed: 685_230.15",
-		map[string]any{"fixed": 685230.15},
-	},
-	{
-		"neginf: -.inf",
-		map[string]any{"neginf": math.Inf(-1)},
-	},
-	{
-		"fixed: 685_230.15",
-		map[string]float64{"fixed": 685230.15},
-	},
-	//{"sexa: 190:20:30.15", map[string]any{"sexa": 0}}, // Unsupported
-	//{"notanum: .NaN", map[string]any{"notanum": math.NaN()}}, // Equality of NaN fails.
-
-	// Bools are per 1.2 spec.
-	{
-		"canonical: true",
-		map[string]any{"canonical": true},
-	},
-	{
-		"canonical: false",
-		map[string]any{"canonical": false},
-	},
-	{
-		"bool: True",
-		map[string]any{"bool": true},
-	},
-	{
-		"bool: False",
-		map[string]any{"bool": false},
-	},
-	{
-		"bool: TRUE",
-		map[string]any{"bool": true},
-	},
-	{
-		"bool: FALSE",
-		map[string]any{"bool": false},
-	},
-	// For backwards compatibility with 1.1, decoding old strings into typed values still works.
-	{
-		"option: on",
-		map[string]bool{"option": true},
-	},
-	{
-		"option: y",
-		map[string]bool{"option": true},
-	},
-	{
-		"option: Off",
-		map[string]bool{"option": false},
-	},
-	{
-		"option: No",
-		map[string]bool{"option": false},
-	},
-	{
-		"option: other",
-		map[string]bool{},
-	},
-	// Ints from spec
-	{
-		"canonical: 685230",
-		map[string]any{"canonical": 685230},
-	},
-	{
-		"decimal: +685_230",
-		map[string]any{"decimal": 685230},
-	},
-	{
-		"octal: 02472256",
-		map[string]any{"octal": 685230},
-	},
-	{
-		"octal: -02472256",
-		map[string]any{"octal": -685230},
-	},
-	{
-		"octal: 0o2472256",
-		map[string]any{"octal": 685230},
-	},
-	{
-		"octal: -0o2472256",
-		map[string]any{"octal": -685230},
-	},
-	{
-		"hexa: 0x_0A_74_AE",
-		map[string]any{"hexa": 685230},
-	},
-	{
-		"bin: 0b1010_0111_0100_1010_1110",
-		map[string]any{"bin": 685230},
-	},
-	{
-		"bin: -0b101010",
-		map[string]any{"bin": -42},
-	},
-	{
-		"bin: -0b1000000000000000000000000000000000000000000000000000000000000000",
-		map[string]any{"bin": -9223372036854775808},
-	},
-	{
-		"decimal: +685_230",
-		map[string]int{"decimal": 685230},
-	},
-
-	//{"sexa: 190:20:30", map[string]any{"sexa": 0}}, // Unsupported
-
-	// Nulls from spec
-	{
-		"empty:",
-		map[string]any{"empty": nil},
-	},
-	{
-		"canonical: ~",
-		map[string]any{"canonical": nil},
-	},
-	{
-		"english: null",
-		map[string]any{"english": nil},
-	},
-	{
-		"~: null key",
-		map[any]string{nil: "null key"},
-	},
-	{
-		"empty:",
-		map[string]*bool{"empty": nil},
-	},
-
-	// Flow sequence
-	{
-		"seq: [A,B]",
-		map[string]any{"seq": []any{"A", "B"}},
-	},
-	{
-		"seq: [A,B,C,]",
-		map[string][]string{"seq": {"A", "B", "C"}},
-	},
-	{
-		"seq: [A,1,C]",
-		map[string][]string{"seq": {"A", "1", "C"}},
-	},
-	{
-		"seq: [A,1,C]",
-		map[string][]int{"seq": {1}},
-	},
-	{
-		"seq: [A,1,C]",
-		map[string]any{"seq": []any{"A", 1, "C"}},
-	},
-	{
-		"seq: [:A,1,:C]",
-		map[string]any{"seq": []any{":A", 1, ":C"}},
-	},
-	{
-		"seq: [:: A,1,:C]",
-		map[string]any{"seq": []any{map[string]any{":": "A"}, 1, ":C"}},
-	},
-
-	// Block sequence
-	{
-		"seq:\n - A\n - B",
-		map[string]any{"seq": []any{"A", "B"}},
-	},
-	{
-		"seq:\n - A\n - B\n - C",
-		map[string][]string{"seq": {"A", "B", "C"}},
-	},
-	{
-		"seq:\n - A\n - 1\n - C",
-		map[string][]string{"seq": {"A", "1", "C"}},
-	},
-	{
-		"seq:\n - A\n - 1\n - C",
-		map[string][]int{"seq": {1}},
-	},
-	{
-		"seq:\n - A\n - 1\n - C",
-		map[string]any{"seq": []any{"A", 1, "C"}},
-	},
-
-	// Literal block scalar
-	{
-		"scalar: | # Comment\n\n literal\n\n \ttext\n\n",
-		map[string]string{"scalar": "\nliteral\n\n\ttext\n"},
-	},
-
-	// Folded block scalar
-	{
-		"scalar: > # Comment\n\n folded\n line\n \n next\n line\n  * one\n  * two\n\n last\n line\n\n",
-		map[string]string{"scalar": "\nfolded line\nnext line\n * one\n * two\n\nlast line\n"},
-	},
-
-	// Map inside interface with no type hints.
-	{
-		"a: {b: c}",
-		map[any]any{"a": map[string]any{"b": "c"}},
-	},
-	// Non-string map inside interface with no type hints.
-	{
-		"a: {b: c, 1: d}",
-		map[any]any{"a": map[any]any{"b": "c", 1: "d"}},
-	},
-
 	// Structs and type conversions.
-	{
-		"hello: world",
-		&struct{ Hello string }{"world"},
-	},
-	{
-		"a: {b: c}",
-		&struct{ A struct{ B string } }{struct{ B string }{"c"}},
-	},
-	{
-		"a: {b: c}",
-		&struct{ A *struct{ B string } }{&struct{ B string }{"c"}},
-	},
 	{
 		"a: 'null'",
 		&struct{ A *unmarshalerType }{&unmarshalerType{"null"}},
-	},
-	{
-		"a: {b: c}",
-		&struct{ A map[string]string }{map[string]string{"b": "c"}},
-	},
-	{
-		"a: {b: c}",
-		&struct{ A *map[string]string }{&map[string]string{"b": "c"}},
-	},
-	{
-		"a:",
-		&struct{ A map[string]string }{},
-	},
-	{
-		"a: 1",
-		&struct{ A int }{1},
-	},
-	{
-		"a: 1",
-		&struct{ A float64 }{1},
-	},
-	{
-		"a: 1.0",
-		&struct{ A int }{1},
-	},
-	{
-		"a: 1.0",
-		&struct{ A uint }{1},
-	},
-	{
-		"a: [1, 2]",
-		&struct{ A []int }{[]int{1, 2}},
-	},
-	{
-		"a: [1, 2]",
-		&struct{ A [2]int }{[2]int{1, 2}},
-	},
-	{
-		"a: 1",
-		&struct{ B int }{0},
-	},
-	{
-		"a: 1",
-		&struct {
-			B int `yaml:"a"`
-		}{1},
-	},
-	{
-		// Some limited backwards compatibility with the 1.1 spec.
-		"a: YES",
-		&struct{ A bool }{true},
-	},
-
-	// Some cross type conversions
-	{
-		"v: 42",
-		map[string]uint{"v": 42},
-	},
-	{
-		"v: -42",
-		map[string]uint{},
-	},
-	{
-		"v: 4294967296",
-		map[string]uint64{"v": 4294967296},
-	},
-	{
-		"v: -4294967296",
-		map[string]uint64{},
-	},
-
-	// int
-	{
-		"int_max: 2147483647",
-		map[string]int{"int_max": math.MaxInt32},
-	},
-	{
-		"int_min: -2147483648",
-		map[string]int{"int_min": math.MinInt32},
-	},
-	{
-		"int_overflow: 9223372036854775808", // math.MaxInt64 + 1
-		map[string]int{},
-	},
-
-	// int64
-	{
-		"int64_max: 9223372036854775807",
-		map[string]int64{"int64_max": math.MaxInt64},
-	},
-	{
-		"int64_max_base2: 0b111111111111111111111111111111111111111111111111111111111111111",
-		map[string]int64{"int64_max_base2": math.MaxInt64},
-	},
-	{
-		"int64_min: -9223372036854775808",
-		map[string]int64{"int64_min": math.MinInt64},
-	},
-	{
-		"int64_neg_base2: -0b111111111111111111111111111111111111111111111111111111111111111",
-		map[string]int64{"int64_neg_base2": -math.MaxInt64},
-	},
-	{
-		"int64_overflow: 9223372036854775808", // math.MaxInt64 + 1
-		map[string]int64{},
-	},
-
-	// uint
-	{
-		"uint_min: 0",
-		map[string]uint{"uint_min": 0},
-	},
-	{
-		"uint_max: 4294967295",
-		map[string]uint{"uint_max": math.MaxUint32},
-	},
-	{
-		"uint_underflow: -1",
-		map[string]uint{},
-	},
-
-	// uint64
-	{
-		"uint64_min: 0",
-		map[string]uint{"uint64_min": 0},
-	},
-	{
-		"uint64_max: 18446744073709551615",
-		map[string]uint64{"uint64_max": math.MaxUint64},
-	},
-	{
-		"uint64_max_base2: 0b1111111111111111111111111111111111111111111111111111111111111111",
-		map[string]uint64{"uint64_max_base2": math.MaxUint64},
-	},
-	{
-		"uint64_maxint64: 9223372036854775807",
-		map[string]uint64{"uint64_maxint64": math.MaxInt64},
-	},
-	{
-		"uint64_underflow: -1",
-		map[string]uint64{},
-	},
-
-	// float32
-	{
-		"float32_max: 3.40282346638528859811704183484516925440e+38",
-		map[string]float32{"float32_max": math.MaxFloat32},
-	},
-	{
-		"float32_nonzero: 1.401298464324817070923729583289916131280e-45",
-		map[string]float32{"float32_nonzero": math.SmallestNonzeroFloat32},
-	},
-	{
-		"float32_maxuint64: 18446744073709551615",
-		map[string]float32{"float32_maxuint64": float32(math.MaxUint64)},
-	},
-	{
-		"float32_maxuint64+1: 18446744073709551616",
-		map[string]float32{"float32_maxuint64+1": float32(math.MaxUint64 + 1)},
-	},
-
-	// float64
-	{
-		"float64_max: 1.797693134862315708145274237317043567981e+308",
-		map[string]float64{"float64_max": math.MaxFloat64},
-	},
-	{
-		"float64_nonzero: 4.940656458412465441765687928682213723651e-324",
-		map[string]float64{"float64_nonzero": math.SmallestNonzeroFloat64},
-	},
-	{
-		"float64_maxuint64: 18446744073709551615",
-		map[string]float64{"float64_maxuint64": float64(math.MaxUint64)},
-	},
-	{
-		"float64_maxuint64+1: 18446744073709551616",
-		map[string]float64{"float64_maxuint64+1": float64(math.MaxUint64 + 1)},
-	},
-
-	// Overflow cases.
-	{
-		"v: 4294967297",
-		map[string]int32{},
-	},
-	{
-		"v: 128",
-		map[string]int8{},
-	},
-
-	// Quoted values.
-	{
-		"'1': '\"2\"'",
-		map[any]any{"1": "\"2\""},
-	},
-	{
-		"v:\n- A\n- 'B\n\n  C'\n",
-		map[string][]string{"v": {"A", "B\nC"}},
-	},
-
-	// Explicit tags.
-	{
-		"v: !!float '1.1'",
-		map[string]any{"v": 1.1},
-	},
-	{
-		"v: !!float 0",
-		map[string]any{"v": float64(0)},
-	},
-	{
-		"v: !!float -1",
-		map[string]any{"v": float64(-1)},
-	},
-	{
-		"v: !!null ''",
-		map[string]any{"v": nil},
-	},
-	{
-		"%TAG !y! tag:yaml.org,2002:\n---\nv: !y!int '1'",
-		map[string]any{"v": 1},
-	},
-
-	// Non-specific tag (Issue #75)
-	{
-		"v: ! test",
-		map[string]any{"v": "test"},
 	},
 
 	// Anchors and aliases.
@@ -617,18 +264,6 @@ var unmarshalTests = []struct {
 	},
 
 	// Bug https://github.com/yaml/go-yaml/issues/109
-	{
-		// alias must be followed by a space in mapping node
-		"foo: &bar bar\n*bar : quz\n",
-		map[string]any{"foo": "bar", "bar": "quz"},
-	},
-
-	{
-		// alias can contain various characters specified by the YAML specification
-		"foo: &b./ar bar\n*b./ar : quz\n",
-		map[string]any{"foo": "bar", "bar": "quz"},
-	},
-
 	// Bug #1133337
 	{
 		"foo: ''",
@@ -638,27 +273,11 @@ var unmarshalTests = []struct {
 		"foo: null",
 		map[string]*string{"foo": nil},
 	},
-	{
-		"foo: null",
-		map[string]string{"foo": ""},
-	},
-	{
-		"foo: null",
-		map[string]any{"foo": nil},
-	},
 
 	// Support for ~
 	{
 		"foo: ~",
 		map[string]*string{"foo": nil},
-	},
-	{
-		"foo: ~",
-		map[string]string{"foo": ""},
-	},
-	{
-		"foo: ~",
-		map[string]any{"foo": nil},
 	},
 
 	// Ignored field
@@ -685,89 +304,10 @@ var unmarshalTests = []struct {
 			"Line separator\u2028Paragraph separator\u2029",
 	},
 
-	// Struct inlining
-	{
-		"a: 1\nb: 2\nc: 3\n",
-		&struct {
-			A int
-			C inlineB `yaml:",inline"`
-		}{1, inlineB{2, inlineC{3}}},
-	},
-
-	// Struct inlining as a pointer.
-	{
-		"a: 1\nb: 2\nc: 3\n",
-		&struct {
-			A int
-			C *inlineB `yaml:",inline"`
-		}{1, &inlineB{2, inlineC{3}}},
-	},
-	{
-		"a: 1\n",
-		&struct {
-			A int
-			C *inlineB `yaml:",inline"`
-		}{1, nil},
-	},
-	{
-		"a: 1\nc: 3\nd: 4\n",
-		&struct {
-			A int
-			C *inlineD `yaml:",inline"`
-		}{1, &inlineD{&inlineC{3}, 4}},
-	},
-
-	// Map inlining
-	{
-		"a: 1\nb: 2\nc: 3\n",
-		&struct {
-			A int
-			C map[string]int `yaml:",inline"`
-		}{1, map[string]int{"b": 2, "c": 3}},
-	},
-
-	// bug 1243827
-	{
-		"a: -b_c",
-		map[string]any{"a": "-b_c"},
-	},
-	{
-		"a: +b_c",
-		map[string]any{"a": "+b_c"},
-	},
-	{
-		"a: 50cent_of_dollar",
-		map[string]any{"a": "50cent_of_dollar"},
-	},
-
-	// issue #295 (allow scalars with colons in flow mappings and sequences)
-	{
-		"a: {b: https://github.com/go-yaml/yaml}",
-		map[string]any{"a": map[string]any{
-			"b": "https://github.com/go-yaml/yaml",
-		}},
-	},
-	{
-		"a: [https://github.com/go-yaml/yaml]",
-		map[string]any{"a": []any{"https://github.com/go-yaml/yaml"}},
-	},
-
 	// Duration
 	{
 		"a: 3s",
 		map[string]time.Duration{"a": 3 * time.Second},
-	},
-
-	// Issue #24.
-	{
-		"a: <foo>",
-		map[string]string{"a": "<foo>"},
-	},
-
-	// Base 60 floats are obsolete and unsupported.
-	{
-		"a: 1:1\n",
-		map[string]string{"a": "1:1"},
 	},
 
 	// Binary data.
@@ -860,11 +400,6 @@ var unmarshalTests = []struct {
 		map[string]time.Time{"a": time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC)},
 	},
 	{
-		// quoted string that's a valid timestamp
-		"a: \"2015-01-01\"",
-		map[string]any{"a": "2015-01-01"},
-	},
-	{
 		// explicit timestamp tag into interface.
 		"a: !!timestamp \"2015-01-01\"",
 		map[string]any{"a": time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC)},
@@ -873,12 +408,6 @@ var unmarshalTests = []struct {
 		// implicit timestamp tag into interface.
 		"a: 2015-01-01",
 		map[string]any{"a": time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC)},
-	},
-
-	// Encode empty lists as zero-length slices.
-	{
-		"a: []",
-		&struct{ A []int }{[]int{}},
 	},
 
 	// UTF-16-LE
@@ -903,31 +432,6 @@ var unmarshalTests = []struct {
 		M{"ñoño": "very yes 🟔"},
 	},
 
-	// This *is* in fact a float number, per the spec. #171 was a mistake.
-	{
-		"a: 123456e1\n",
-		M{"a": 123456e1},
-	},
-	{
-		"a: 123456E1\n",
-		M{"a": 123456e1},
-	},
-	// yaml-test-suite 3GZX: Spec Example 7.1. Alias Nodes
-	{
-		"First occurrence: &anchor Foo\nSecond occurrence: *anchor\nOverride anchor: &anchor Bar\nReuse anchor: *anchor\n",
-		map[string]any{
-			"First occurrence":  "Foo",
-			"Second occurrence": "Foo",
-			"Override anchor":   "Bar",
-			"Reuse anchor":      "Bar",
-		},
-	},
-	// Single document with garbage following it.
-	{
-		"---\nhello\n...\n}not yaml",
-		"hello",
-	},
-
 	// Comment scan exhausting the input buffer (issue #469).
 	{
 		"true\n#" + strings.Repeat(" ", 512*3),
@@ -936,49 +440,6 @@ var unmarshalTests = []struct {
 	{
 		"true #" + strings.Repeat(" ", 512*3),
 		"true",
-	},
-	// C1 Control characters
-	{
-		"\u0080",
-		"\u0080",
-	},
-	{
-		"\u009F",
-		"\u009F",
-	},
-
-	// CRLF
-	{
-		"a: b\r\nc:\r\n- d\r\n- e\r\n",
-		map[string]any{
-			"a": "b",
-			"c": []any{"d", "e"},
-		},
-	},
-	// bug: question mark in value
-	{
-		"foo: {ba?r: a?bc}",
-		map[string]any{
-			"foo": map[string]any{"ba?r": "a?bc"},
-		},
-	},
-	{
-		"foo: {?bar: ?abc}",
-		map[string]any{
-			"foo": map[string]any{"?bar": "?abc"},
-		},
-	},
-	{
-		"foo: {bar?: abc?}",
-		map[string]any{
-			"foo": map[string]any{"bar?": "abc?"},
-		},
-	},
-	{
-		"foo: {? key: value}",
-		map[string]any{
-			"foo": map[string]any{"key": "value"},
-		},
 	},
 	{
 		`---
@@ -1034,6 +495,74 @@ func TestUnmarshal(t *testing.T) {
 			}
 			assert.DeepEqualf(t, item.value, value.Elem().Interface(), "error: %v", err)
 		})
+	}
+}
+
+func TestDecodeFromYAML(t *testing.T) {
+	datatest.RunTestCases(t, func() ([]map[string]any, error) {
+		return datatest.LoadTestCasesFromFile("testdata/decode.yaml", libyaml.LoadYAML)
+	}, map[string]datatest.TestHandler{
+		"decode": runDecodeTest,
+	})
+}
+
+func runDecodeTest(t *testing.T, tc map[string]any) {
+	t.Helper()
+
+	// Get test inputs
+	yamlData, ok := tc["yaml"].(string)
+	if !ok {
+		t.Fatal("yaml field must be string")
+	}
+
+	// Note: "type" field in YAML is renamed to "output_type" during normalization
+	// to avoid conflict with the test type ("decode")
+	typeName, ok := tc["output_type"].(string)
+	if !ok {
+		t.Fatal("output_type field must be string")
+	}
+
+	want := tc["want"]
+
+	// Create target from type registry
+	target, err := decodeTypes.NewPointerInstance(typeName)
+	if err != nil {
+		t.Fatalf("failed to create instance of type %s: %v", typeName, err)
+	}
+
+	// Unmarshal
+	err = yaml.Unmarshal([]byte(yamlData), target)
+
+	// Get the actual value (dereference pointer)
+	actual := reflect.ValueOf(target).Elem().Interface()
+
+	// Resolve constants in want
+	wantResolved := decodeValues.Resolve(want)
+
+	// Handle unmarshal errors - if error occurred, check if want is empty/nil
+	if err != nil {
+		// For TypeError, values that can't be converted are skipped
+		if _, ok := err.(*yaml.TypeError); !ok {
+			t.Fatalf("unmarshal failed with unexpected error: %v", err)
+		}
+		// TypeError is expected for invalid conversions - compare with want
+	}
+
+	// Compare by marshaling both to YAML and comparing the output
+	// This handles type differences (e.g., int vs float with same value)
+	actualYAML, err := yaml.Marshal(actual)
+	if err != nil {
+		t.Fatalf("failed to marshal actual: %v", err)
+	}
+
+	wantYAML, err := yaml.Marshal(wantResolved)
+	if err != nil {
+		t.Fatalf("failed to marshal want: %v", err)
+	}
+
+	// Compare the YAML representations
+	if string(actualYAML) != string(wantYAML) {
+		t.Fatalf("YAML mismatch:\nGot:\n%s\nWant:\n%s", actualYAML, wantYAML)
 	}
 }
 
@@ -1137,66 +666,45 @@ func TestUnmarshalDurationInt(t *testing.T) {
 	assert.ErrorMatches(t, "line 1: cannot unmarshal !!int `123` into time.Duration", err)
 }
 
-var unmarshalErrorTests = []struct {
-	data, error string
-}{
-	{"v: !!float 'error'", "yaml: cannot decode !!str `error` as a !!float"},
-	{"v: [A,", "yaml: while parsing a flow node at line 1: did not find expected node content"},
-	{"v:\n- [A,", "yaml: while parsing a flow node at line 2: did not find expected node content"},
-	{"a:\n- b: *,", "yaml: while scanning an alias at line 2, column 5: line 2, column 6: did not find expected alphabetic or numeric character"},
-	{"a: *b\n", "yaml: line 1, column 4: unknown anchor 'b' referenced"},
-	{"a: &a\n  b: *a\n", "yaml: anchor 'a' value contains itself"},
-	{"value: -", "yaml: line 1, column 7: block sequence entries are not allowed in this context"},
-	{"a: !!binary ==", "yaml: !!binary value contains invalid base64 data"},
-	{"{[.]}", `yaml: cannot use '[]interface {}{"."}' as a map key; try decoding into yaml.Node`},
-	{"{{.}}", `yaml: cannot use 'map[string]interface {}{".":interface {}(nil)}' as a map key; try decoding into yaml.Node`},
-	{"b: *a\na: &a {c: 1}", `yaml: line 1, column 4: unknown anchor 'a' referenced`},
-	{"%TAG !%79! tag:yaml.org,2002:\n---\nv: !%79!int '1'", "yaml: while scanning a %TAG directive at line 1: line 1, column 6: did not find expected whitespace"},
-	{"a:\n  1:\nb\n  2:", "yaml: while scanning a simple key at line 3: line 4, column 3: could not find expected ':'"},
-	{"a: 1\nb: 2\nc 2\nd: 3\n", "yaml: while scanning a simple key at line 3: line 4: could not find expected ':'"},
-	{"#\n-\n{", "yaml: while scanning a simple key at line 3: line 4: could not find expected ':'"}, // Issue #665
-	{"0: [:!00 \xef", "yaml: offset 9: incomplete UTF-8 octet sequence"},                            // Issue #666
-	// anchor cannot contain a colon
-	// https://github.com/yaml/go-yaml/issues/109
-	{"foo: &bar: bar\n*bar: : quz\n", "yaml: line 1, column 9: mapping values are not allowed in this context"},
-	{
-		"a: &a [00,00,00,00,00,00,00,00,00]\n" +
-			"b: &b [*a,*a,*a,*a,*a,*a,*a,*a,*a]\n" +
-			"c: &c [*b,*b,*b,*b,*b,*b,*b,*b,*b]\n" +
-			"d: &d [*c,*c,*c,*c,*c,*c,*c,*c,*c]\n" +
-			"e: &e [*d,*d,*d,*d,*d,*d,*d,*d,*d]\n" +
-			"f: &f [*e,*e,*e,*e,*e,*e,*e,*e,*e]\n" +
-			"g: &g [*f,*f,*f,*f,*f,*f,*f,*f,*f]\n" +
-			"h: &h [*g,*g,*g,*g,*g,*g,*g,*g,*g]\n" +
-			"i: &i [*h,*h,*h,*h,*h,*h,*h,*h,*h]\n",
-		"yaml: document contains excessive aliasing",
-	},
+func TestUnmarshalErrorsFromYAML(t *testing.T) {
+	datatest.RunTestCases(t, func() ([]map[string]interface{}, error) {
+		return datatest.LoadTestCasesFromFile("testdata/unmarshal_errors.yaml", libyaml.LoadYAML)
+	}, map[string]datatest.TestHandler{
+		"unmarshal-error": runUnmarshalErrorTest,
+	})
 }
 
-func TestUnmarshalErrors(t *testing.T) {
-	for i, item := range unmarshalErrorTests {
-		t.Run(fmt.Sprintf("test %d: %q", i, item.data), func(t *testing.T) {
-			var value any
-			err := yaml.Unmarshal([]byte(item.data), &value)
-			if err == nil {
-				t.Fatalf("got nil; want error %q - Partial unmarshal: %#v", item.error, value)
-			}
-			assert.Equalf(t, item.error, err.Error(), "Partial unmarshal: %#v", value)
-		})
+func runUnmarshalErrorTest(t *testing.T, tc map[string]interface{}) {
+	t.Helper()
+
+	yamlInput := datatest.RequireString(t, tc, "yaml")
+	expectedError := datatest.RequireString(t, tc, "want")
+
+	var value any
+	err := yaml.Unmarshal([]byte(yamlInput), &value)
+	if err == nil {
+		t.Fatalf("got nil; want error %q - Partial unmarshal: %#v", expectedError, value)
 	}
+	assert.Equalf(t, expectedError, err.Error(), "Partial unmarshal: %#v", value)
 }
 
 func TestDecoderErrors(t *testing.T) {
-	for i, item := range unmarshalErrorTests {
-		t.Run(fmt.Sprintf("test %d: %q", i, item.data), func(t *testing.T) {
+	datatest.RunTestCases(t, func() ([]map[string]interface{}, error) {
+		return datatest.LoadTestCasesFromFile("testdata/unmarshal_errors.yaml", libyaml.LoadYAML)
+	}, map[string]datatest.TestHandler{
+		"unmarshal-error": func(t *testing.T, tc map[string]interface{}) {
+			t.Helper()
+			yamlInput := datatest.RequireString(t, tc, "yaml")
+			expectedError := datatest.RequireString(t, tc, "want")
+
 			var value any
-			err := yaml.NewDecoder(strings.NewReader(item.data)).Decode(&value)
+			err := yaml.NewDecoder(strings.NewReader(yamlInput)).Decode(&value)
 			if err == nil {
-				t.Fatalf("got nil; want error %q - Partial unmarshal: %#v", item.error, value)
+				t.Fatalf("got nil; want error %q - Partial decode: %#v", expectedError, value)
 			}
-			assert.Equalf(t, item.error, err.Error(), "Partial unmarshal: %#v", value)
-		})
-	}
+			assert.Equalf(t, expectedError, err.Error(), "Partial decode: %#v", value)
+		},
+	})
 }
 
 func TestParserErrorUnmarshal(t *testing.T) {
@@ -2116,33 +1624,22 @@ func (t *textUnmarshaler) UnmarshalText(s []byte) error {
 	return nil
 }
 
-func TestFuzzCrashers(t *testing.T) {
-	cases := []string{
-		// runtime error: index out of range
-		"\"\\0\\\r\n",
+func TestFuzzCrashersFromYAML(t *testing.T) {
+	datatest.RunTestCases(t, func() ([]map[string]interface{}, error) {
+		return datatest.LoadTestCasesFromFile("testdata/fuzz_crashers.yaml", libyaml.LoadYAML)
+	}, map[string]datatest.TestHandler{
+		"fuzz-crasher": runFuzzCrasherTest,
+	})
+}
 
-		// should not happen
-		"  0: [\n] 0",
-		"? ? \"\n\" 0",
-		"    - {\n000}0",
-		"0:\n  0: [0\n] 0",
-		"    - \"\n000\"0",
-		"    - \"\n000\"\"",
-		"0:\n    - {\n000}0",
-		"0:\n    - \"\n000\"0",
-		"0:\n    - \"\n000\"\"",
+func runFuzzCrasherTest(t *testing.T, tc map[string]interface{}) {
+	t.Helper()
 
-		// runtime error: index out of range
-		" \ufeff\n",
-		"? \ufeff\n",
-		"? \ufeff:\n",
-		"0: \ufeff\n",
-		"? \ufeff: \ufeff\n",
-	}
-	for _, data := range cases {
-		var v any
-		_ = yaml.Unmarshal([]byte(data), &v)
-	}
+	yamlInput := datatest.RequireString(t, tc, "yaml")
+
+	// Just unmarshal and ensure it doesn't crash
+	var v any
+	_ = yaml.Unmarshal([]byte(yamlInput), &v)
 }
 
 func TestIssue117(t *testing.T) {
@@ -2187,32 +1684,3 @@ func TestParserErrorUnknownAnchorPosition(t *testing.T) {
 		assert.DeepEqual(t, expected, asErr)
 	}
 }
-
-//var data []byte
-//func init() {
-//	var err error
-//	data, err = ioutil.ReadFile("/tmp/file.yaml")
-//	if err != nil {
-//		panic(err)
-//	}
-//}
-//
-//func (s *S) BenchmarkUnmarshal(c *C) {
-//	var err error
-//	for i := 0; i < c.N; i++ {
-//		var v map[string]any
-//		err = yaml.Unmarshal(data, &v)
-//	}
-//	if err != nil {
-//		panic(err)
-//	}
-//}
-//
-//func (s *S) BenchmarkMarshal(c *C) {
-//	var v map[string]any
-//	yaml.Unmarshal(data, &v)
-//	c.ResetTimer()
-//	for i := 0; i < c.N; i++ {
-//		yaml.Marshal(&v)
-//	}
-//}

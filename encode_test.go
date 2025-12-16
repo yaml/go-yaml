@@ -27,138 +27,60 @@ import (
 	"time"
 
 	"go.yaml.in/yaml/v4"
+	"go.yaml.in/yaml/v4/internal/libyaml"
 	"go.yaml.in/yaml/v4/internal/testutil/assert"
+	"go.yaml.in/yaml/v4/internal/testutil/datatest"
 )
 
 var marshalIntTest = 123
+
+var (
+	encodeTypeRegistry  = datatest.NewTypeRegistry()
+	encodeValueRegistry = datatest.NewValueRegistry()
+)
+
+func init() {
+	// Register basic types
+	encodeTypeRegistry.Register("string", "")
+
+	// Register map types
+	encodeTypeRegistry.Register("map[string]string", map[string]string{})
+	encodeTypeRegistry.Register("map[string]any", map[string]any{})
+	encodeTypeRegistry.Register("map[string]uint", map[string]uint{})
+	encodeTypeRegistry.Register("map[string]int64", map[string]int64{})
+	encodeTypeRegistry.Register("map[string]uint64", map[string]uint64{})
+	encodeTypeRegistry.Register("map[string][]string", map[string][]string{})
+	encodeTypeRegistry.Register("map[string][]any", map[string][]any{})
+
+	// Register struct types
+	encodeTypeRegistry.Register("testStructHello", testStructHello{})
+	encodeTypeRegistry.Register("testStructA_Int", testStructA_Int{})
+	encodeTypeRegistry.Register("testStructA_Float64", testStructA_Float64{})
+	encodeTypeRegistry.Register("testStructA_Bool", testStructA_Bool{})
+	encodeTypeRegistry.Register("testStructA_String", testStructA_String{})
+	encodeTypeRegistry.Register("testStructA_IntSlice", testStructA_IntSlice{})
+	encodeTypeRegistry.Register("testStructA_IntArray2", testStructA_IntArray2{})
+	encodeTypeRegistry.Register("testStructA_NestedB", testStructA_NestedB{})
+	encodeTypeRegistry.Register("testStructA_NestedBPtr", testStructA_NestedBPtr{})
+	encodeTypeRegistry.Register("testStructEmpty", testStructEmpty{})
+
+	// Register struct types with yaml tags
+	encodeTypeRegistry.Register("testStructB_Int_TagA", testStructB_Int_TagA{})
+
+	// Register value constants
+	encodeValueRegistry.Register("+Inf", math.Inf(+1))
+	encodeValueRegistry.Register("-Inf", math.Inf(-1))
+	encodeValueRegistry.Register("NaN", math.NaN())
+	encodeValueRegistry.Register("-0", negativeZero)
+}
 
 var marshalTests = []struct {
 	value any
 	data  string
 }{
 	{
-		nil,
-		"null\n",
-	},
-	{
 		(*marshalerType)(nil),
 		"null\n",
-	},
-	{
-		&struct{}{},
-		"{}\n",
-	},
-	{
-		map[string]string{"v": "hi"},
-		"v: hi\n",
-	},
-	{
-		map[string]any{"v": "hi"},
-		"v: hi\n",
-	},
-	{
-		map[string]string{"v": "true"},
-		"v: \"true\"\n",
-	},
-	{
-		map[string]string{"v": "false"},
-		"v: \"false\"\n",
-	},
-	{
-		map[string]any{"v": true},
-		"v: true\n",
-	},
-	{
-		map[string]any{"v": false},
-		"v: false\n",
-	},
-	{
-		map[string]any{"v": 10},
-		"v: 10\n",
-	},
-	{
-		map[string]any{"v": -10},
-		"v: -10\n",
-	},
-	{
-		map[string]uint{"v": 42},
-		"v: 42\n",
-	},
-	{
-		map[string]any{"v": int64(4294967296)},
-		"v: 4294967296\n",
-	},
-	{
-		map[string]int64{"v": int64(4294967296)},
-		"v: 4294967296\n",
-	},
-	{
-		map[string]uint64{"v": 4294967296},
-		"v: 4294967296\n",
-	},
-	{
-		map[string]any{"v": "10"},
-		"v: \"10\"\n",
-	},
-	{
-		map[string]any{"v": 0.1},
-		"v: 0.1\n",
-	},
-	{
-		map[string]any{"v": float64(0.1)},
-		"v: 0.1\n",
-	},
-	{
-		map[string]any{"v": float32(0.99)},
-		"v: 0.99\n",
-	},
-	{
-		map[string]any{"v": -0.1},
-		"v: -0.1\n",
-	},
-	{
-		map[string]any{"v": math.Inf(+1)},
-		"v: .inf\n",
-	},
-	{
-		map[string]any{"v": math.Inf(-1)},
-		"v: -.inf\n",
-	},
-	{
-		map[string]any{"v": math.NaN()},
-		"v: .nan\n",
-	},
-	{
-		map[string]any{"v": nil},
-		"v: null\n",
-	},
-	{
-		map[string]any{"v": ""},
-		"v: \"\"\n",
-	},
-	{
-		map[string][]string{"v": {"A", "B"}},
-		"v:\n    - A\n    - B\n",
-	},
-	{
-		map[string][]string{"v": {"A", "B\nC"}},
-		"v:\n    - A\n    - |-\n      B\n      C\n",
-	},
-	{
-		map[string][]any{"v": {"A", 1, map[string][]int{"B": {2, 3}}}},
-		"v:\n    - A\n    - 1\n    - B:\n        - 2\n        - 3\n",
-	},
-	{
-		map[string]any{"a": map[any]any{"b": "c"}},
-		"a:\n    b: c\n",
-	},
-	{
-		map[string]any{"a": "-"},
-		"a: '-'\n",
-	},
-	{
-		map[string]any{"v": negativeZero},
-		"v: -0\n",
 	},
 
 	// Simple values.
@@ -173,66 +95,6 @@ var marshalTests = []struct {
 	{
 		"\t\n",
 		"\"\\t\\n\"\n",
-	},
-
-	// Structures
-	{
-		&struct{ Hello string }{"world"},
-		"hello: world\n",
-	},
-	{
-		&struct {
-			A struct {
-				B string
-			}
-		}{struct{ B string }{"c"}},
-		"a:\n    b: c\n",
-	},
-	{
-		&struct {
-			A *struct {
-				B string
-			}
-		}{&struct{ B string }{"c"}},
-		"a:\n    b: c\n",
-	},
-	{
-		&struct {
-			A *struct {
-				B string
-			}
-		}{},
-		"a: null\n",
-	},
-	{
-		&struct{ A int }{1},
-		"a: 1\n",
-	},
-	{
-		&struct{ A []int }{[]int{1, 2}},
-		"a:\n    - 1\n    - 2\n",
-	},
-	{
-		&struct{ A [2]int }{[2]int{1, 2}},
-		"a:\n    - 1\n    - 2\n",
-	},
-	{
-		&struct {
-			B int `yaml:"a"`
-		}{1},
-		"a: 1\n",
-	},
-	{
-		&struct{ A bool }{true},
-		"a: true\n",
-	},
-	{
-		&struct{ A string }{"true"},
-		"a: \"true\"\n",
-	},
-	{
-		&struct{ A string }{"off"},
-		"a: \"off\"\n",
 	},
 
 	// Conditional flag
@@ -399,24 +261,7 @@ var marshalTests = []struct {
 		"a: 3s\n",
 	},
 
-	// Issue #24: bug in map merging logic.
-	{
-		map[string]string{"a": "<foo>"},
-		"a: <foo>\n",
-	},
-
-	// Issue #34: marshal unsupported base 60 floats quoted for compatibility
-	// with old YAML 1.1 parsers.
-	{
-		map[string]string{"a": "1:1"},
-		"a: \"1:1\"\n",
-	},
-
 	// Binary data.
-	{
-		map[string]string{"a": "\x00"},
-		"a: \"\\0\"\n",
-	},
 	{
 		map[string]string{"a": "\x80\x81\x82"},
 		"a: !!binary gIGC\n",
@@ -424,12 +269,6 @@ var marshalTests = []struct {
 	{
 		map[string]string{"a": strings.Repeat("\x90", 54)},
 		"a: !!binary |\n    " + strings.Repeat("kJCQ", 17) + "kJ\n    CQ\n",
-	},
-
-	// Encode unicode as utf-8 rather than in escaped form.
-	{
-		map[string]string{"a": "你好"},
-		"a: 你好\n",
 	},
 
 	// Support encoding.TextMarshaler.
@@ -451,27 +290,6 @@ var marshalTests = []struct {
 		map[string]time.Time{"a": time.Date(2015, 2, 24, 18, 19, 39, 123456789, time.FixedZone("FOO", -3*60*60))},
 		"a: 2015-02-24T18:19:39.123456789-03:00\n",
 	},
-	// Ensure timestamp-like strings are quoted.
-	{
-		map[string]string{"a": "2015-02-24T18:19:39Z"},
-		"a: \"2015-02-24T18:19:39Z\"\n",
-	},
-
-	// Ensure strings containing ": " are quoted (reported as PR #43, but not reproducible).
-	{
-		map[string]string{"a": "b: c"},
-		"a: 'b: c'\n",
-	},
-
-	// Containing hash mark ('#') in string should be quoted
-	{
-		map[string]string{"a": "Hello #comment"},
-		"a: 'Hello #comment'\n",
-	},
-	{
-		map[string]string{"a": "你好 #comment"},
-		"a: '你好 #comment'\n",
-	},
 
 	// Ensure MarshalYAML also gets called on the result of MarshalYAML itself.
 	{
@@ -481,36 +299,6 @@ var marshalTests = []struct {
 	{
 		&marshalerType{&marshalerType{true}},
 		"true\n",
-	},
-
-	// Check indentation of maps inside sequences inside maps.
-	{
-		map[string]any{"a": map[string]any{"b": []map[string]int{{"c": 1, "d": 2}}}},
-		"a:\n    b:\n        - c: 1\n          d: 2\n",
-	},
-
-	// Strings with tabs were disallowed as literals (issue #471).
-	{
-		map[string]string{"a": "\tB\n\tC\n"},
-		"a: |\n    \tB\n    \tC\n",
-	},
-	{
-		map[string]string{"a": "\t\n\t\n"},
-		"a: \"\\t\\n\\t\\n\"\n",
-	},
-	{
-		map[string]any{"<<": []string{}},
-		"\"<<\": []\n",
-	},
-	{
-		map[string]any{"foo": "<<"},
-		"foo: \"<<\"\n",
-	},
-
-	// Ensure that strings do not wrap
-	{
-		map[string]string{"a": "abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 "},
-		"a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '\n",
 	},
 
 	// yaml.Node
@@ -606,6 +394,54 @@ func TestMarshal(t *testing.T) {
 			assert.Equal(t, item.data, string(data))
 		})
 	}
+}
+
+func TestEncodeToYAML(t *testing.T) {
+	datatest.RunTestCases(t, func() ([]map[string]any, error) {
+		return datatest.LoadTestCasesFromFile("testdata/encode.yaml", libyaml.LoadYAML)
+	}, map[string]datatest.TestHandler{
+		"encode": runEncodeTest,
+	})
+}
+
+func runEncodeTest(t *testing.T, tc map[string]any) {
+	t.Helper()
+
+	// Get type and create instance
+	// Note: "type" field in YAML is renamed to "output_type" during normalization
+	// to avoid conflict with the test type ("encode")
+	typeName := tc["output_type"].(string)
+	data := tc["data"]
+
+	// Create pointer target of the specified type (for addressability)
+	targetPtr, err := encodeTypeRegistry.NewPointerInstance(typeName)
+	if err != nil {
+		t.Fatalf("Failed to create instance of type %s: %v", typeName, err)
+	}
+
+	// Resolve value constants (like +Inf, -Inf, NaN, -0)
+	resolvedData := encodeValueRegistry.Resolve(data)
+
+	// Unmarshal the data into the target to populate it
+	dataBytes, err := yaml.Marshal(resolvedData)
+	if err != nil {
+		t.Fatalf("Failed to marshal data: %v", err)
+	}
+
+	err = yaml.Unmarshal(dataBytes, targetPtr)
+	if err != nil {
+		t.Fatalf("Failed to unmarshal data into target: %v", err)
+	}
+
+	// Marshal the target back to YAML
+	output, err := yaml.Marshal(targetPtr)
+	if err != nil {
+		t.Fatalf("Marshal failed: %v", err)
+	}
+
+	// Compare with expected output
+	want := tc["want"].(string)
+	assert.Equal(t, want, string(output))
 }
 
 func TestEncoderSingleDocument(t *testing.T) {
@@ -981,8 +817,11 @@ func TestNewLinePreserved(t *testing.T) {
 	assert.Equal(t, "_: |4\n\n    a:\n            b:\n                    c: d\n", string(data))
 }
 
-func TestScalarStyleRules(t *testing.T) {
-	// Test cases for the new scalar style rules
+// Scalar style tests for complex whitespace (tabs and Unicode)
+// These tests are kept in Go because they involve whitespace characters
+// that are difficult to represent accurately in YAML test data files.
+
+func TestScalarStyleWithTabs(t *testing.T) {
 	testCases := []struct {
 		input    string
 		expected string
@@ -991,208 +830,42 @@ func TestScalarStyleRules(t *testing.T) {
 		{
 			"\t\n",
 			"\"\\t\\n\"\n",
-			"Tab + newline - should be double quoted (short, starts with whitespace)",
-		},
-		{
-			"\n",
-			"\"\\n\"\n",
-			"Just newline - should be double quoted (no non-ws chars)",
+			"Tab + newline",
 		},
 		{
 			"\t",
 			"\"\\t\"\n",
-			"Just tab - should be double quoted (control char)",
-		},
-		{
-			"hello\nworld",
-			"|-\n    hello\n    world\n",
-			"Text with newline - should be literal (>= 2 chars, doesn't start with whitespace)",
+			"Just tab",
 		},
 		{
 			"hello\tworld",
 			"\"hello\\tworld\"\n",
-			"Text with tab - should be double quoted (control char)",
-		},
-		{
-			"hello",
-			"hello\n",
-			"Simple text - should be plain",
-		},
-		{
-			"123",
-			"\"123\"\n",
-			"Number-like - should be quoted (looks like number)",
-		},
-		{
-			"true",
-			"\"true\"\n",
-			"Boolean-like - should be quoted (looks like boolean)",
-		},
-		{
-			"This is a longer string\nwith multiple lines\nthat should use literal style",
-			"|-\n    This is a longer string\n    with multiple lines\n    that should use literal style\n",
-			"Long multi-line - should be literal",
-		},
-		{
-			" This starts with space\nand is long enough\nfor literal style",
-			"|4-\n     This starts with space\n    and is long enough\n    for literal style\n",
-			"Long multi-line starting with space - should be literal (>= 6 chars)",
+			"Text with tab",
 		},
 		{
 			"\tThis starts with tab\nand is long enough\nfor literal style",
 			"|-\n    \tThis starts with tab\n    and is long enough\n    for literal style\n",
-			"Long multi-line starting with tab - should be literal (>= 6 chars)",
+			"Multiline starting with tab",
 		},
 		{
 			"\tB\n\tC\n",
 			"|\n    \tB\n    \tC\n",
-			"Tab + B + newline + tab + C + newline - should be literal (6 chars)",
-		},
-		{
-			"a\n",
-			"|\n    a\n",
-			"Single char + newline - should be literal (2 chars, has content)",
-		},
-		{
-			"a\nb",
-			"|-\n    a\n    b\n",
-			"Two chars with newline - should be literal (3 chars, has content)",
-		},
-		{
-			" a\n",
-			"|4\n     a\n",
-			"Space + char + newline - should be literal (3 chars, has content)",
+			"Tab B newline tab C newline",
 		},
 		{
 			"\ta\n",
 			"|\n    \ta\n",
-			"Tab + char + newline - should be literal (3 chars, has content)",
-		},
-	}
-
-	for i, testCase := range testCases {
-		t.Run(fmt.Sprintf("test_%d_%s", i, testCase.desc), func(t *testing.T) {
-			data, err := yaml.Marshal(testCase.input)
-			assert.NoError(t, err)
-			assert.Equal(t, testCase.expected, string(data))
-		})
-	}
-}
-
-func TestWhitespaceOnlyStrings(t *testing.T) {
-	// Test cases for whitespace-only strings that should not use literal style
-	testCases := []struct {
-		input    string
-		expected string
-		desc     string
-	}{
-		{
-			"\n",
-			"\"\\n\"\n",
-			"Just newline - should be double quoted (no non-ws chars)",
-		},
-		{
-			"\n\n",
-			"\"\\n\\n\"\n",
-			"Two newlines - should be double quoted (no non-ws chars)",
-		},
-		{
-			" \n",
-			"\" \\n\"\n",
-			"Space + newline - should be double quoted (no non-ws chars)",
-		},
-		{
-			"\t\n",
-			"\"\\t\\n\"\n",
-			"Tab + newline - should be double quoted (no non-ws chars)",
-		},
-		{
-			" \n ",
-			"\" \\n \"\n",
-			"Space + newline + space - should be double quoted (no non-ws chars)",
-		},
-		{
-			"\n \n",
-			"\"\\n \\n\"\n",
-			"Newline + space + newline - should be double quoted (no non-ws chars)",
-		},
-		{
-			"\t \n\t",
-			"\"\\t \\n\\t\"\n",
-			"Tab + space + newline + tab - should be double quoted (no non-ws chars)",
-		},
-		{
-			"   \n   ",
-			"\"   \\n   \"\n",
-			"Multiple spaces + newline + multiple spaces - should be double quoted (no non-ws chars)",
-		},
-		{
-			"\n\n\n",
-			"\"\\n\\n\\n\"\n",
-			"Three newlines - should be double quoted (no non-ws chars)",
-		},
-		{
-			" \t\n \t",
-			"\" \\t\\n \\t\"\n",
-			"Space + tab + newline + space + tab - should be double quoted (no non-ws chars)",
-		},
-	}
-
-	for i, testCase := range testCases {
-		t.Run(fmt.Sprintf("test_%d_%s", i, testCase.desc), func(t *testing.T) {
-			data, err := yaml.Marshal(testCase.input)
-			assert.NoError(t, err)
-			assert.Equal(t, testCase.expected, string(data))
-		})
-	}
-}
-
-func TestWhitespaceWithContent(t *testing.T) {
-	// Test cases for strings with whitespace AND content that should use literal style
-	testCases := []struct {
-		input    string
-		expected string
-		desc     string
-	}{
-		{
-			"hello\n",
-			"|\n    hello\n",
-			"Text + newline - should be literal (has non-ws chars)",
-		},
-		{
-			" hello\n",
-			"|4\n     hello\n",
-			"Space + text + newline - should be literal (has non-ws chars)",
-		},
-		{
-			" \nhello",
-			"\" \\nhello\"\n",
-			"Space + newline + text - should be double quoted (short, starts with whitespace)",
+			"Tab + char + newline",
 		},
 		{
 			"\thello\n",
 			"|\n    \thello\n",
-			"Tab + text + newline - should be literal (has non-ws chars)",
+			"Tab + text + newline",
 		},
 		{
 			"\t\nhello",
 			"|-\n    \t\n    hello\n",
-			"Tab + newline + text - should be literal (has non-ws chars)",
-		},
-		{
-			"  hello  \n",
-			"\"  hello  \\n\"\n",
-			"Multiple spaces + text + spaces + newline - should be double quoted (ends with spaces)",
-		},
-		{
-			"hello  \n",
-			"\"hello  \\n\"\n",
-			"Text + spaces + newline - should be double quoted (ends with spaces)",
-		},
-		{
-			"hello\n  ",
-			"\"hello\\n  \"\n",
-			"Text + newline + spaces - should be double quoted (ends with spaces)",
+			"Tab + newline + text",
 		},
 	}
 
@@ -1217,185 +890,185 @@ func TestUnicodeWhitespaceHandling(t *testing.T) {
 		{
 			"hello\u00A0\n", // non-breaking space
 			"|\n    hello\u00A0\n",
-			"Non-breaking space with content - should use literal style",
+			"Non-breaking space with content",
 		},
 		{
 			"\u00A0\n", // non-breaking space
 			"\"\u00A0\\n\"\n",
-			"Non-breaking space only - should not use literal style",
+			"Non-breaking space only",
 		},
 		{
 			"hello\u2000\n", // en quad
 			"|\n    hello\u2000\n",
-			"En quad with content - should use literal style",
+			"En quad with content",
 		},
 		{
 			"\u2000\n", // en quad
 			"\"\u2000\\n\"\n",
-			"En quad only - should not use literal style",
+			"En quad only",
 		},
 		{
 			"hello\u2001\n", // em quad
 			"|\n    hello\u2001\n",
-			"Em quad with content - should use literal style",
+			"Em quad with content",
 		},
 		{
 			"\u2001\n", // em quad
 			"\"\u2001\\n\"\n",
-			"Em quad only - should not use literal style",
+			"Em quad only",
 		},
 		{
 			"hello\u2002\n", // en space
 			"|\n    hello\u2002\n",
-			"En space with content - should use literal style",
+			"En space with content",
 		},
 		{
 			"\u2002\n", // en space
 			"\"\u2002\\n\"\n",
-			"En space only - should not use literal style",
+			"En space only",
 		},
 		{
 			"hello\u2003\n", // em space
 			"|\n    hello\u2003\n",
-			"Em space with content - should use literal style",
+			"Em space with content",
 		},
 		{
 			"\u2003\n", // em space
 			"\"\u2003\\n\"\n",
-			"Em space only - should not use literal style",
+			"Em space only",
 		},
 		{
 			"hello\u2004\n", // three-per-em space
 			"|\n    hello\u2004\n",
-			"Three-per-em space with content - should use literal style",
+			"Three-per-em space with content",
 		},
 		{
 			"\u2004\n", // three-per-em space
 			"\"\u2004\\n\"\n",
-			"Three-per-em space only - should not use literal style",
+			"Three-per-em space only",
 		},
 		{
 			"hello\u2005\n", // four-per-em space
 			"|\n    hello\u2005\n",
-			"Four-per-em space with content - should use literal style",
+			"Four-per-em space with content",
 		},
 		{
 			"\u2005\n", // four-per-em space
 			"\"\u2005\\n\"\n",
-			"Four-per-em space only - should not use literal style",
+			"Four-per-em space only",
 		},
 		{
 			"hello\u2006\n", // six-per-em space
 			"|\n    hello\u2006\n",
-			"Six-per-em space with content - should use literal style",
+			"Six-per-em space with content",
 		},
 		{
 			"\u2006\n", // six-per-em space
 			"\"\u2006\\n\"\n",
-			"Six-per-em space only - should not use literal style",
+			"Six-per-em space only",
 		},
 		{
 			"hello\u2007\n", // figure space
 			"|\n    hello\u2007\n",
-			"Figure space with content - should use literal style",
+			"Figure space with content",
 		},
 		{
 			"\u2007\n", // figure space
 			"\"\u2007\\n\"\n",
-			"Figure space only - should not use literal style",
+			"Figure space only",
 		},
 		{
 			"hello\u2008\n", // punctuation space
 			"|\n    hello\u2008\n",
-			"Punctuation space with content - should use literal style",
+			"Punctuation space with content",
 		},
 		{
 			"\u2008\n", // punctuation space
 			"\"\u2008\\n\"\n",
-			"Punctuation space only - should not use literal style",
+			"Punctuation space only",
 		},
 		{
 			"hello\u2009\n", // thin space
 			"|\n    hello\u2009\n",
-			"Thin space with content - should use literal style",
+			"Thin space with content",
 		},
 		{
 			"\u2009\n", // thin space
 			"\"\u2009\\n\"\n",
-			"Thin space only - should not use literal style",
+			"Thin space only",
 		},
 		{
 			"hello\u200A\n", // hair space
 			"|\n    hello\u200A\n",
-			"Hair space with content - should use literal style",
+			"Hair space with content",
 		},
 		{
 			"\u200A\n", // hair space
 			"\"\u200A\\n\"\n",
-			"Hair space only - should not use literal style",
+			"Hair space only",
 		},
 		// Other Unicode whitespace
 		{
 			"hello\u2028\n", // line separator
 			"|+\n    hello\u2028\n",
-			"Line separator with content - should use literal style",
+			"Line separator with content",
 		},
 		{
 			"\u2028\n", // line separator
 			"\"\\L\\n\"\n",
-			"Line separator only - should not use literal style",
+			"Line separator only",
 		},
 		{
 			"hello\u2029\n", // paragraph separator
 			"|+\n    hello\u2029\n",
-			"Paragraph separator with content - should use literal style",
+			"Paragraph separator with content",
 		},
 		{
 			"\u2029\n", // paragraph separator
 			"\"\\P\\n\"\n",
-			"Paragraph separator only - should not use literal style",
+			"Paragraph separator only",
 		},
 		{
 			"hello\u205F\n", // medium mathematical space
 			"|\n    hello\u205F\n",
-			"Medium mathematical space with content - should use literal style",
+			"Medium mathematical space with content",
 		},
 		{
 			"\u205F\n", // medium mathematical space
 			"\"\u205F\\n\"\n",
-			"Medium mathematical space only - should not use literal style",
+			"Medium mathematical space only",
 		},
 		{
 			"hello\u3000\n", // ideographic space
 			"|\n    hello\u3000\n",
-			"Ideographic space with content - should use literal style",
+			"Ideographic space with content",
 		},
 		{
 			"\u3000\n", // ideographic space
 			"\"\u3000\\n\"\n",
-			"Ideographic space only - should not use literal style",
+			"Ideographic space only",
 		},
 		// Mixed Unicode whitespace
 		{
 			"hello\u00A0\u2000\u2001\n", // mixed Unicode spaces
 			"|\n    hello\u00A0\u2000\u2001\n",
-			"Mixed Unicode spaces with content - should use literal style",
+			"Mixed Unicode spaces with content",
 		},
 		{
 			"\u00A0\u2000\u2001\n", // mixed Unicode spaces
 			"\"\u00A0\u2000\u2001\\n\"\n",
-			"Mixed Unicode spaces only - should not use literal style",
+			"Mixed Unicode spaces only",
 		},
 		// Unicode whitespace with ASCII whitespace
 		{
 			"hello \u00A0\t\n", // ASCII + Unicode spaces
 			"|\n    hello \u00A0\t\n",
-			"ASCII + Unicode spaces with content - should use literal style",
+			"ASCII + Unicode spaces with content",
 		},
 		{
 			" \u00A0\t\n", // ASCII + Unicode spaces
 			"\" \u00A0\\t\\n\"\n",
-			"ASCII + Unicode spaces only - should not use literal style",
+			"ASCII + Unicode spaces only",
 		},
 	}
 

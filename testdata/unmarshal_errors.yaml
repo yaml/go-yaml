@@ -1,0 +1,160 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Unmarshal error test cases for go-yaml
+#
+# Purpose: Tests that the YAML unmarshaler correctly detects and reports errors
+# for invalid YAML input, malformed syntax, and type conversion failures.
+#
+# Format: Test cases use type-as-key format:
+#   - test-type:
+#       name: Test case name
+#       ...
+#
+# Test Types:
+#   unmarshal-error - Verifies that unmarshaling produces the expected error message
+#
+# Common Keys:
+#   name - Test case name (string)
+#   yaml - Invalid or malformed YAML input (string)
+#   want - Expected error message (string)
+#
+# Note:
+#   All tests in this file expect unmarshaling to fail. The 'want' field contains
+#   the exact error message that should be produced.
+
+- unmarshal-error:
+    name: Invalid float value
+    yaml: 'v: !!float ''error'''
+    want: 'yaml: cannot decode !!str `error` as a !!float'
+
+- unmarshal-error:
+    name: Incomplete flow sequence
+    yaml: 'v: [A,'
+    want: 'yaml: while parsing a flow node at line 1:
+            did not find expected node content'
+
+- unmarshal-error:
+    name: Incomplete flow sequence in list
+    yaml: |
+      v:
+      - [A,
+    want: 'yaml: while parsing a flow node at line 2:
+            did not find expected node content'
+
+- unmarshal-error:
+    name: Invalid alias syntax
+    yaml: |
+      a:
+      - b: *,
+    want: 'yaml: while scanning an alias at line 2, column 5:
+            line 2, column 6:
+            did not find expected alphabetic or numeric character'
+
+- unmarshal-error:
+    name: Unknown anchor referenced
+    yaml: "a: *b\n"
+    want: "yaml: line 1, column 4: unknown anchor 'b' referenced"
+
+- unmarshal-error:
+    name: Anchor contains itself
+    yaml: |
+      a: &a
+        b: *a
+    want: "yaml: anchor 'a' value contains itself"
+
+- unmarshal-error:
+    name: Block sequence in invalid context
+    yaml: 'value: -'
+    want: 'yaml: line 1, column 7:
+            block sequence entries are not allowed in this context'
+
+- unmarshal-error:
+    name: Invalid base64 in binary
+    yaml: 'a: !!binary =='
+    want: 'yaml: !!binary value contains invalid base64 data'
+
+- unmarshal-error:
+    name: Slice as map key
+    yaml: '{[.]}'
+    want: 'yaml: cannot use ''[]interface {}{"."}'' as a map key;
+            try decoding into yaml.Node'
+
+- unmarshal-error:
+    name: Map as map key
+    yaml: '{{.}}'
+    want: 'yaml: cannot use
+            ''map[string]interface {}{".":interface {}(nil)}''
+            as a map key; try decoding into yaml.Node'
+
+- unmarshal-error:
+    name: Forward reference to anchor
+    yaml: |
+      b: *a
+      a: &a {c: 1}
+    want: "yaml: line 1, column 4: unknown anchor 'a' referenced"
+
+- unmarshal-error:
+    name: Invalid TAG directive
+    yaml: |
+      %TAG !%79! tag:yaml.org,2002:
+      ---
+      v: !%79!int '1'
+    want: 'yaml: while scanning a %TAG directive at line 1: line 1, column 6:
+            did not find expected whitespace'
+
+- unmarshal-error:
+    name: Missing colon in mapping (multiline)
+    yaml: |
+      a:
+        1:
+      b
+        2:
+    want: "yaml: while scanning a simple key at line 3: line 4, column 3:
+            could not find expected ':'"
+
+- unmarshal-error:
+    name: Missing colon in mapping (inline)
+    yaml: |
+      a: 1
+      b: 2
+      c 2
+      d: 3
+    want: "yaml: while scanning a simple key at line 3: line 4:
+            could not find expected ':'"
+
+- unmarshal-error:
+    name: Missing colon after comment and list (Issue 665)
+    yaml: |
+      #
+      -
+      {
+    want: "yaml: while scanning a simple key at line 3: line 4:
+            could not find expected ':'"
+
+- unmarshal-error:
+    name: Incomplete UTF-8 sequence (Issue 666)
+    yaml: "0: [:!00 \xEF"
+    want: "yaml: while parsing a flow sequence at <unknown position>:
+            line 1: did not find expected ',' or ']'"
+
+- unmarshal-error:
+    name: Anchor with colon (Issue 109)
+    yaml: |
+      foo: &bar: bar
+      *bar: : quz
+    want: 'yaml: line 1, column 9:
+            mapping values are not allowed in this context'
+
+- unmarshal-error:
+    name: Excessive aliasing
+    yaml: |
+      a: &a [00,00,00,00,00,00,00,00,00]
+      b: &b [*a,*a,*a,*a,*a,*a,*a,*a,*a]
+      c: &c [*b,*b,*b,*b,*b,*b,*b,*b,*b]
+      d: &d [*c,*c,*c,*c,*c,*c,*c,*c,*c]
+      e: &e [*d,*d,*d,*d,*d,*d,*d,*d,*d]
+      f: &f [*e,*e,*e,*e,*e,*e,*e,*e,*e]
+      g: &g [*f,*f,*f,*f,*f,*f,*f,*f,*f]
+      h: &h [*g,*g,*g,*g,*g,*g,*g,*g,*g]
+      i: &i [*h,*h,*h,*h,*h,*h,*h,*h,*h]
+    want: 'yaml: document contains excessive aliasing'

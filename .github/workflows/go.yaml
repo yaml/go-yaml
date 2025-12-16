@@ -34,6 +34,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+
     - name: Get latest patch for each minor version
       # yamllint disable-line rule:line-length
       uses: arnested/go-version-action@90b2bf6e8cbbba34a5e514cfe9d3f7541d91ffa7  # v1.2.0
