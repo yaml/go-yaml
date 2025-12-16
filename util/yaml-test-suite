@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+main() (
+  type=$1
+
+  if [[ $type == all ]]; then
+    export RUNALL=1
+  elif [[ $type == fail ]]; then
+    export RUNFAILING=1
+  else
+    exit 1
+  fi
+
+  results=$(
+    go test ./yts -count=1 -v |
+      awk '/     --- (PASS|FAIL): / {print $2, $3}'
+  ) || true
+
+  known_count=$(grep -c '' yts/known-failing-tests)
+  pass_count=$(grep -c '^PASS:' <<<"$results")
+  fail_count=$(grep -c '^FAIL:' <<<"$results")
+
+  echo "PASS: $pass_count"
+  echo "FAIL: $fail_count (known: $known_count)"
+
+  if [[ $type == fail ]] && [[ $pass_count -gt 0 ]]; then
+    echo "ERROR: Found passing tests among expected failures:"
+    grep '^PASS:' "$results"
+    exit 1
+  fi
+
+  if [[ $fail_count != "$known_count" ]]; then
+    echo "ERROR: FAIL count ($fail_count) differs from expected $known_count"
+    exit 1
+  fi
+)
+
+main "$@"

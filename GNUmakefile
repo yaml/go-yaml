@@ -1,20 +1,24 @@
 # Auto-install https://github.com/makeplus/makes at specific commit:
 MAKES := .cache/makes
 MAKES-LOCAL := .cache/local
-MAKES-COMMIT ?= 654f7c57ca30a2b08cb4aab8bb0c0d509510ad81
+MAKES-COMMIT ?= 40dee58a023162aa71ed9dc8c93973c7d73d32d5
 $(shell [ -d $(MAKES) ] || ( \
   git clone -q https://github.com/makeplus/makes $(MAKES) && \
   git -C $(MAKES) reset -q --hard $(MAKES-COMMIT)))
 ifneq ($(shell git -C $(MAKES) rev-parse HEAD), \
        $(shell git -C $(MAKES) rev-parse $(MAKES-COMMIT)))
-$(error $(MAKES) is not at the correct commit: $(MAKES-COMMIT))
+$(error $(MAKES) is not at the correct commit: $(MAKES-COMMIT). \
+	Remove $(MAKES) and try again.)
 endif
-include $(MAKES)/init.mk
-include $(MAKES)/clean.mk
 
-# Only auto-install go if no go exists or GO-VERSION specified:
-ifeq (,$(shell command -v go))
-GO-VERSION ?= 1.24.0
+include $(MAKES)/init.mk
+include $(MAKES)/shellcheck.mk
+
+# Auto-install go unless GO_YAML_PATH is set:
+ifdef GO_YAML_PATH
+override export PATH := $(GO_YAML_PATH):$(PATH)
+else
+GO-VERSION ?= 1.25.5
 endif
 GO-VERSION-NEEDED := $(GO-VERSION)
 
@@ -25,17 +29,16 @@ YTS-DIR := yts/testdata/$(YTS-TAG)
 
 CLI-BINARY := go-yaml
 
-MAKES-NO-CLEAN := true
-MAKES-CLEAN := $(CLI-BINARY)
-MAKES-REALCLEAN := $(dir $(YTS-DIR))
-
 # Setup and include go.mk and shell.mk:
-GO-FILES := $(shell find -not \( -path ./.cache -prune \) -name '*.go' | sort)
-GO-CMDS-SKIP := test fmt vet
+GO-FILES := \
+  $(shell \
+    find . \
+    -not \( -path ./.cache -prune \) \
+    -name '*.go' | \
+    sort)
 ifndef GO-VERSION-NEEDED
 GO-NO-DEP-GO := true
 endif
-GO-CMDS-RULES := true
 
 include $(MAKES)/go.mk
 
@@ -58,30 +61,50 @@ SHELL-NAME := makes go-yaml
 include $(MAKES)/clean.mk
 include $(MAKES)/shell.mk
 
-MAKES-CLEAN += $(dir $(YTS-DIR)) $(GOLANGCI-LINT)
+MAKES-CLEAN := $(CLI-BINARY) $(GOLANGCI-LINT)
+MAKES-REALCLEAN := $(dir $(YTS-DIR))
 
+SHELL-SCRIPTS := \
+  util/common.bash \
+  $(shell grep -rl '^.!/usr/bin/env bash' . | \
+          grep -Ev '(\.sw|\.cache/)')
+
+# v=1 for verbose
 v ?=
+# o='--cover' for options
+o ?=
 count ?= 1
 
 
 # Test rules:
-test: $(GO-DEPS)
-	go test$(if $v, -v) -vet=off --cover . ./internal/...
+test: test-cover test-yts-all test-shell
+	@echo 'ALL TESTS PASS'
 
-test-data: $(YTS-DIR)
+test-unit: $(GO-DEPS)
+	go test$(if $v, -v) .$(if $o, $o)
 
-test-all: test test-yts-all
+test-internal: $(GO-DEPS)
+	go test$(if $v, -v) ./internal/...$(if $o, $o)
+
+test-cover: $(GO-DEPS)
+	go test$(if $v, -v) . ./internal/... -vet=off --cover$(if $o, $o)
 
 test-yts: $(GO-DEPS) $(YTS-DIR)
-	go test$(if $v, -v) ./yts -count=$(count)
+	go test$(if $v, -v) ./yts$(if $o, $o)
 
 test-yts-all: $(GO-DEPS) $(YTS-DIR)
 	@echo 'Testing yaml-test-suite'
-	@RUNALL=1 bash -c "$$yts_pass_fail"
+	util/yaml-test-suite all
 
 test-yts-fail: $(GO-DEPS) $(YTS-DIR)
 	@echo 'Testing yaml-test-suite failures'
-	@RUNFAILING=1 bash -c "$$yts_pass_fail"
+	util/yaml-test-suite fail
+
+test-shell: $(SHELLCHECK)
+	shellcheck $(SHELL-SCRIPTS)
+	@echo 'ALL SHELL FILES PASS'
+
+yts-dir: $(YTS-DIR)
 
 # Install golangci-lint for GitHub Actions:
 golangci-lint-install: $(GOLANGCI-LINT)
@@ -91,6 +114,9 @@ fmt: $(GOLANGCI-LINT-VERSIONED)
 
 lint: $(GOLANGCI-LINT-VERSIONED)
 	$< run ./...
+
+tidy: $(GO-DEPS)
+	go mod tidy
 
 cli: $(CLI-BINARY)
 
@@ -112,25 +138,3 @@ $(GOLANGCI-LINT-VERSIONED): $(GO-DEPS)
 # Moves golangci-lint-<version> to golangci-lint for CI requirement
 $(GOLANGCI-LINT): $(GOLANGCI-LINT-VERSIONED)
 	cp $< $@
-
-define yts_pass_fail
-( result=.cache/local/tmp/yts-test-results
-  go test ./yts -count=1 -v |
-    awk '/     --- (PASS|FAIL): / {print $$2, $$3}' > $$result
-  known_count=$$(grep -c '' yts/known-failing-tests)
-  pass_count=$$(grep -c '^PASS:' $$result)
-  fail_count=$$(grep -c '^FAIL:' $$result)
-  echo "PASS: $$pass_count"
-  echo "FAIL: $$fail_count (known: $$known_count)"
-  if [[ $$RUNFAILING ]] && [[ $$pass_count -gt 0 ]]; then
-    echo "ERROR: Found passing tests among expected failures:"
-    grep '^PASS:' $$result
-    exit 1
-  fi
-  if [[ $$fail_count != "$$known_count" ]]; then
-    echo "ERROR: FAIL count differs from expected value of $$known_count"
-    exit 1
-  fi
-)
-endef
-export yts_pass_fail

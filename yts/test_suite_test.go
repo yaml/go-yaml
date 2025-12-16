@@ -52,7 +52,7 @@ func TestYAMLSuite(t *testing.T) {
 	if _, err := os.Stat(testDir + "/229Q"); os.IsNotExist(err) {
 		t.Fatalf(`YTS tests require data files to be present at '%s'.
 Run 'make test-data' to download them first,
-or just run the tests with 'make test-all'.`, testDir)
+or just run the tests with 'make test'.`, testDir)
 	}
 	runTestsInDir(t, testDir)
 }
