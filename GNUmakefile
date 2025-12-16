@@ -1,7 +1,7 @@
 # Auto-install https://github.com/makeplus/makes at specific commit:
 MAKES := .cache/makes
 MAKES-LOCAL := .cache/local
-MAKES-COMMIT ?= 654f7c57ca30a2b08cb4aab8bb0c0d509510ad81
+MAKES-COMMIT ?= 40dee58a023162aa71ed9dc8c93973c7d73d32d5
 $(shell [ -d $(MAKES) ] || ( \
   git clone -q https://github.com/makeplus/makes $(MAKES) && \
   git -C $(MAKES) reset -q --hard $(MAKES-COMMIT)))
@@ -11,6 +11,8 @@ $(error $(MAKES) is not at the correct commit: $(MAKES-COMMIT))
 endif
 include $(MAKES)/init.mk
 include $(MAKES)/clean.mk
+AGENTS-NAMES := claude
+include $(MAKES)/agents.mk
 
 # Only auto-install go if no go exists or GO-VERSION specified:
 ifeq (,$(shell command -v go))
@@ -26,8 +28,8 @@ YTS-DIR := yts/testdata/$(YTS-TAG)
 CLI-BINARY := go-yaml
 
 MAKES-NO-CLEAN := true
-MAKES-CLEAN := $(CLI-BINARY)
-MAKES-REALCLEAN := $(dir $(YTS-DIR))
+MAKES-CLEAN += $(CLI-BINARY)
+MAKES-REALCLEAN += $(dir $(YTS-DIR))
 
 # Setup and include go.mk and shell.mk:
 GO-FILES := $(shell find -not \( -path ./.cache -prune \) -name '*.go' | sort)
