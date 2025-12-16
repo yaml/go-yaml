@@ -4,16 +4,15 @@ package libyaml
 
 import (
 	"bytes"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"testing"
 
 	"go.yaml.in/yaml/v4/internal/testutil/assert"
+	"go.yaml.in/yaml/v4/internal/testutil/datatest"
 )
 
 // TestCase represents a single test case loaded from YAML
@@ -76,8 +75,10 @@ type TestCase struct {
 	Setup  interface{}   `yaml:"init"` // Can be []interface{} (api tests) or map[string]interface{} (reader tests)
 }
 
-// IntOrStr can be converted from either an int or a string constant name
-// constantMap maps constant names to their integer values
+// constantRegistry holds libyaml-specific constants
+var constantRegistry = datatest.NewConstantRegistry()
+
+// constantMap maps constant names to their integer values (for backward compatibility)
 var constantMap = map[string]int{
 	// ScalarStyle (bit-shifted starting at iota=1)
 	"ANY_SCALAR_STYLE":           0,
@@ -180,6 +181,13 @@ var constantMap = map[string]int{
 	"EMITTER_ERROR":  7,
 }
 
+func init() {
+	// Populate constantRegistry with all constants from constantMap
+	for name, value := range constantMap {
+		constantRegistry.Register(name, value)
+	}
+}
+
 // resolveConstant converts a constant name string to its integer value
 func resolveConstant(t *testing.T, name string) int {
 	t.Helper()
@@ -190,87 +198,21 @@ func resolveConstant(t *testing.T, name string) int {
 	return val
 }
 
-// IntOrStr can be converted from either an int or a string constant name
+// IntOrStr wraps the shared datatest.IntOrStr with libyaml's constant registry
 type IntOrStr struct {
-	Value int
+	datatest.IntOrStr
 }
 
 func (ios *IntOrStr) FromValue(v interface{}) error {
-	// Try int first
-	if intVal, ok := v.(int); ok {
-		ios.Value = intVal
-		return nil
-	}
-
-	// Otherwise, it should be a string constant name
-	strVal, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("IntOrStr value must be int or string, got %T", v)
-	}
-
-	val, ok := constantMap[strVal]
-	if !ok {
-		return fmt.Errorf("unknown constant name: %s", strVal)
-	}
-	ios.Value = val
-	return nil
+	ios.Registry = constantRegistry
+	return ios.IntOrStr.FromValue(v)
 }
 
-// ByteInput can be converted from either a string or a sequence of hex bytes
-type ByteInput []byte
+// ByteInput is an alias to the shared datatest.ByteInput
+type ByteInput = datatest.ByteInput
 
-func (bi *ByteInput) FromValue(v interface{}) error {
-	// Try string first
-	if strVal, ok := v.(string); ok {
-		*bi = []byte(strVal)
-		return nil
-	}
-
-	// Try single int (convert to single-byte array)
-	if intVal, ok := v.(int); ok {
-		if intVal < 0 || intVal > 255 {
-			return fmt.Errorf("byte value out of range [0-255]: %d", intVal)
-		}
-		*bi = []byte{byte(intVal)}
-		return nil
-	}
-
-	// Otherwise, it should be a sequence of integer bytes
-	intSlice, ok := v.([]interface{})
-	if !ok {
-		return fmt.Errorf("input must be a string, int, or sequence of integers, got %T", v)
-	}
-
-	// Convert integers to bytes
-	bytes := make([]byte, len(intSlice))
-	for i, val := range intSlice {
-		intVal, ok := val.(int)
-		if !ok {
-			return fmt.Errorf("byte array element must be int, got %T", val)
-		}
-		if intVal < 0 || intVal > 255 {
-			return fmt.Errorf("byte value out of range [0-255]: %d", intVal)
-		}
-		bytes[i] = byte(intVal)
-	}
-	*bi = bytes
-	return nil
-}
-
-// Args can be converted from either a single value or an array of values
-type Args []interface{}
-
-func (a *Args) FromValue(v interface{}) error {
-	// Try array first
-	if arrVal, ok := v.([]interface{}); ok {
-		*a = arrVal
-		return nil
-	}
-
-	// Otherwise, it's a single scalar value - wrap it in a slice
-	*a = []interface{}{v}
-	return nil
-}
+// Args is an alias to the shared datatest.Args
+type Args = datatest.Args
 
 // EventSpec specifies an event in YAML format
 type EventSpec struct {
@@ -369,10 +311,10 @@ func unmarshalTestCases(data interface{}) ([]TestCase, error) {
 		}
 
 		// Normalize type-as-key format for top-level test cases
-		caseMap = normalizeTypeAsKey(caseMap)
+		caseMap = datatest.NormalizeTypeAsKey(caseMap)
 
 		var tc TestCase
-		if err := UnmarshalStruct(&tc, caseMap); err != nil {
+		if err := datatest.UnmarshalStruct(&tc, caseMap); err != nil {
 			return nil, fmt.Errorf("test case %d: %w", i, err)
 		}
 		testCases = append(testCases, tc)
@@ -392,7 +334,7 @@ func LoadTestCases(filename string) ([]TestCase, error) {
 		return nil, fmt.Errorf("failed to read %s: %w", filename, err)
 	}
 
-	// Load YAML using LoadYAML from testloader.go
+	// Load YAML using local LoadYAML from yamldatatest_loader.go
 	rawData, err := LoadYAML(data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse %s: %w", filename, err)
@@ -428,9 +370,9 @@ func LoadTestCases(filename string) ([]TestCase, error) {
 							return nil, fmt.Errorf("test %s: want[%d] should be a map or string, got %T", cases[i].Name, j, item)
 						}
 						// Normalize type-as-key format
-						itemMap = normalizeTypeAsKey(itemMap)
+						itemMap = datatest.NormalizeTypeAsKey(itemMap)
 					}
-					if err := UnmarshalStruct(&cases[i].WantSpecs[j], itemMap); err != nil {
+					if err := datatest.UnmarshalStruct(&cases[i].WantSpecs[j], itemMap); err != nil {
 						return nil, fmt.Errorf("test %s: want[%d]: %w", cases[i].Name, j, err)
 					}
 				}
@@ -455,9 +397,9 @@ func LoadTestCases(filename string) ([]TestCase, error) {
 							return nil, fmt.Errorf("test %s: want[%d] should be a map or string, got %T", cases[i].Name, j, item)
 						}
 						// Normalize type-as-key format
-						itemMap = normalizeTypeAsKey(itemMap)
+						itemMap = datatest.NormalizeTypeAsKey(itemMap)
 					}
-					if err := UnmarshalStruct(&cases[i].WantTokens[j], itemMap); err != nil {
+					if err := datatest.UnmarshalStruct(&cases[i].WantTokens[j], itemMap); err != nil {
 						return nil, fmt.Errorf("test %s: want[%d]: %w", cases[i].Name, j, err)
 					}
 				}
@@ -735,28 +677,11 @@ func CreateEventFromSpec(t *testing.T, spec EventSpec) Event {
 }
 
 // HexToBytes converts a hex string to bytes
-func HexToBytes(t *testing.T, s string) []byte {
-	t.Helper()
-	b, err := hex.DecodeString(s)
-	if err != nil {
-		t.Fatalf("invalid hex string: %s: %v", s, err)
-	}
-	return b
-}
+// HexToBytes is now provided by the shared datatest package
+var HexToBytes = datatest.HexToBytes
 
-// GetField uses reflection to get a field value from a struct
-func GetField(t *testing.T, obj interface{}, fieldName string) interface{} {
-	t.Helper()
-	v := reflect.ValueOf(obj)
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
-	field := v.FieldByName(fieldName)
-	if !field.IsValid() {
-		t.Fatalf("field %s not found", fieldName)
-	}
-	return field.Interface()
-}
+// GetField is now provided by the shared datatest package
+var GetField = datatest.GetField
 
 // CreateArgValue creates a value from an ArgSpec
 func CreateArgValue(t *testing.T, spec ArgSpec) interface{} {
@@ -786,22 +711,8 @@ func CreateArgValue(t *testing.T, spec ArgSpec) interface{} {
 	return nil
 }
 
-// CallMethod calls a method on an object using reflection
-func CallMethod(t *testing.T, obj interface{}, methodName string, args []interface{}) []reflect.Value {
-	t.Helper()
-	v := reflect.ValueOf(obj)
-	method := v.MethodByName(methodName)
-	if !method.IsValid() {
-		t.Fatalf("method %s not found on %T", methodName, obj)
-	}
-
-	var argValues []reflect.Value
-	for _, arg := range args {
-		argValues = append(argValues, reflect.ValueOf(arg))
-	}
-
-	return method.Call(argValues)
-}
+// CallMethod is now provided by the shared datatest package
+var CallMethod = datatest.CallMethod
 
 // CreateObject creates an object using a constructor function
 func CreateObject(t *testing.T, constructorName string) interface{} {
@@ -1058,14 +969,5 @@ func RunTestCases(t *testing.T, filename string, handlers map[string]TestHandler
 }
 
 // WantBool extracts a bool from tc.Want, returning defaultVal if Want is nil
-func WantBool(t *testing.T, want interface{}, defaultVal bool) bool {
-	t.Helper()
-	if want == nil {
-		return defaultVal
-	}
-	boolVal, ok := want.(bool)
-	if !ok {
-		t.Fatalf("Want should be bool, got %T", want)
-	}
-	return boolVal
-}
+// WantBool is now provided by the shared datatest package
+var WantBool = datatest.WantBool

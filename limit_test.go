@@ -5,9 +5,60 @@ import (
 	"testing"
 
 	"go.yaml.in/yaml/v4"
+	"go.yaml.in/yaml/v4/internal/libyaml"
 	"go.yaml.in/yaml/v4/internal/testutil/assert"
+	"go.yaml.in/yaml/v4/internal/testutil/datatest"
 )
 
+func TestLimits(t *testing.T) {
+	datatest.RunTestCases(t, func() ([]map[string]interface{}, error) {
+		return datatest.LoadTestCasesFromFile("testdata/limit.yaml", libyaml.LoadYAML)
+	}, map[string]datatest.TestHandler{
+		"limit":       runLimitTest,
+		"limit-error": runLimitTest,
+		"limit-pass":  runLimitTest,
+	})
+}
+
+func runLimitTest(t *testing.T, tc map[string]interface{}) {
+	t.Helper()
+
+	// Generate data from spec
+	dataSpec := tc["data"]
+	data, err := datatest.GenerateData(dataSpec)
+	if err != nil {
+		t.Fatalf("Failed to generate data: %v", err)
+	}
+
+	// Get expected error if any (for limit-error tests)
+	// For limit-pass tests, want might be a map describing expected structure
+	expectedError := ""
+	if wantVal, hasWant := tc["want"]; hasWant {
+		switch v := wantVal.(type) {
+		case string:
+			expectedError = v
+		case map[string]interface{}:
+			// Future: could validate structure here
+			// For now, just ignore (treated as success case)
+		default:
+			t.Fatalf("want field must be a string or map, got %T", wantVal)
+		}
+	}
+
+	// Run unmarshal
+	var v any
+	err = yaml.Unmarshal(data, &v)
+	if expectedError != "" {
+		if err == nil {
+			t.Fatalf("expected error %q, got nil", expectedError)
+		}
+		assert.Equal(t, expectedError, err.Error())
+		return
+	}
+	assert.NoError(t, err)
+}
+
+// Keep benchmark using hardcoded data for performance consistency
 var limitTests = []struct {
 	name  string
 	data  []byte
@@ -44,23 +95,6 @@ var limitTests = []struct {
 	{name: "1000kb slice nested at max-depth", data: []byte(strings.Repeat(`[`, 10000) + `1` + strings.Repeat(`,1`, 1000*1024/2-20000-1) + strings.Repeat(`]`, 10000))},
 	{name: "1000kb slice nested in maps at max-depth", data: []byte("{a,b:\n" + strings.Repeat(" {a,b:", 10000-2) + ` [1` + strings.Repeat(",1", 1000*1024/2-6*10000-1) + `]` + strings.Repeat(`}`, 10000-1))},
 	{name: "1000kb of 10000-nested lines", data: []byte(strings.Repeat(`- `+strings.Repeat(`[`, 10000)+strings.Repeat(`]`, 10000)+"\n", 1000*1024/20000))},
-}
-
-func TestLimits(t *testing.T) {
-	for _, tc := range limitTests {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			var v any
-			err := yaml.Unmarshal(tc.data, &v)
-			if tc.error != "" {
-				assert.Equal(t, tc.error, err.Error())
-				return
-			}
-			assert.NoError(t, err)
-		})
-	}
 }
 
 func BenchmarkLimits(b *testing.B) {

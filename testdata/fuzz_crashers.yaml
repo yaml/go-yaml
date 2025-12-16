@@ -1,0 +1,83 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Fuzz crasher test cases for go-yaml
+#
+# Purpose: Tests malformed YAML inputs discovered through fuzzing that previously
+# caused crashes or panics. Ensures the parser handles edge cases gracefully without
+# crashing, even for invalid or pathological input.
+#
+# Format: Test cases use type-as-key format:
+#   - test-type:
+#       name: Test case name
+#       ...
+#
+# Test Types:
+#   fuzz-crasher - Verifies that unmarshaling malformed input doesn't crash
+#
+# Common Keys:
+#   name - Test case name (string)
+#   yaml - Malformed YAML input to test (string)
+#
+# Note:
+#   These tests verify the parser doesn't crash or panic when processing
+#   malformed input. They may produce errors, but should handle them gracefully.
+
+- fuzz-crasher:
+    name: Runtime error index out of range (null escape)
+    yaml: "\"\\0\\\r\n"
+
+- fuzz-crasher:
+    name: Should not happen - flow sequence in mapping
+    yaml: "  0: [\n] 0"
+
+- fuzz-crasher:
+    name: Should not happen - double question marks
+    yaml: "? ? \"\n\" 0"
+
+- fuzz-crasher:
+    name: Should not happen - flow mapping in list
+    yaml: "    - {\n000}0"
+
+- fuzz-crasher:
+    name: Should not happen - nested flow sequence
+    yaml: "0:\n  0: [0\n] 0"
+
+- fuzz-crasher:
+    name: Should not happen - quoted value in list with trailing
+    yaml: "    - \"\n000\"0"
+
+- fuzz-crasher:
+    name: Should not happen - quoted value in list with trailing quotes
+    yaml: "    - \"\n000\"\""
+
+- fuzz-crasher:
+    name: Should not happen - nested flow mapping in list
+    yaml: "0:\n    - {\n000}0"
+
+- fuzz-crasher:
+    name: Should not happen - nested quoted value in list with trailing
+    yaml: "0:\n    - \"\n000\"0"
+
+- fuzz-crasher:
+    name: Should not happen - nested quoted value in list with trailing quotes
+    yaml: "0:\n    - \"\n000\"\""
+
+- fuzz-crasher:
+    name: Runtime error index out of range (BOM with space)
+    yaml: " \uFEFF\n"
+
+- fuzz-crasher:
+    name: Runtime error index out of range (BOM with question)
+    yaml: "? \uFEFF\n"
+
+- fuzz-crasher:
+    name: Runtime error index out of range (BOM in key)
+    yaml: "? \uFEFF:\n"
+
+- fuzz-crasher:
+    name: Runtime error index out of range (BOM in value)
+    yaml: "0: \uFEFF\n"
+
+- fuzz-crasher:
+    name: Runtime error index out of range (BOM in both)
+    yaml: "? \uFEFF: \uFEFF\n"

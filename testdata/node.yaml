@@ -1,0 +1,2474 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Node test cases for go-yaml
+#
+# Purpose: Tests YAML node structure, including Kind, Style, Tag, Value, and nested
+# Content. Validates comment preservation (HeadComment, LineComment, FootComment)
+# and node-level encoding/decoding.
+#
+# Format: Test cases use type-as-key format:
+#   - node-test:
+#       name: Test case name
+#       yaml: YAML input string
+#       node: Expected node structure (as NodeInfo)
+#       decode: false  # Optional: skip decode test
+#       encode: false  # Optional: skip encode test
+#
+# Test Types:
+#   node-test - Validates YAML node structure and round-trip encoding/decoding
+#
+# Common Keys:
+#   name   - Test case name (string)
+#   yaml   - Input YAML string to parse
+#   node   - Expected node structure in NodeInfo format
+#   decode - Set to false to skip decode test (default: true)
+#   encode - Set to false to skip encode test (default: true)
+#
+# NodeInfo Format:
+#   kind    - Node kind: Document, Sequence, Mapping, Scalar, Alias
+#   style   - Node style: Double, Single, Literal, Folded, Flow (optional)
+#   anchor  - Anchor name (optional)
+#   tag     - YAML tag like !!null, !!str, !!int (optional)
+#   head    - HeadComment text (optional)
+#   line    - LineComment text (optional)
+#   foot    - FootComment text (optional)
+#   text    - Scalar value (for Scalar nodes only)
+#   content - Array of child nodes (for Document, Sequence, Mapping)
+
+- node-test:
+    name: null value
+    yaml: 'null
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        tag: '!!null'
+        text: 'null'
+- node-test:
+    name: plain string
+    yaml: 'foo
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        text: foo
+- node-test:
+    name: double quoted string
+    yaml: '"foo"
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        style: Double
+        text: foo
+- node-test:
+    name: single quoted string
+    yaml: '''foo''
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        style: Single
+        text: foo
+- node-test:
+    name: boolean true
+    yaml: 'true
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        tag: '!!bool'
+        text: 'true'
+- node-test:
+    name: negative integer
+    yaml: '-10
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        tag: '!!int'
+        text: '-10'
+- node-test:
+    name: large integer
+    yaml: '4294967296
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        tag: '!!int'
+        text: '4294967296'
+- node-test:
+    name: float
+    yaml: '0.1000
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        tag: '!!float'
+        text: '0.1000'
+- node-test:
+    name: empty single quoted string
+    yaml: '''''
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        style: Single
+        text: ''
+- node-test:
+    name: double quoted with escapes
+    yaml: '"\t\n"
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        style: Double
+        text: "\t\n"
+- node-test:
+    name: literal style multiline
+    yaml: "|\n  foo\n  bar\n"
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        style: Literal
+        text: 'foo
+
+          bar
+
+          '
+- node-test:
+    name: explicit str tag
+    yaml: '!!str 123
+
+      '
+    decode: true
+    encode: false
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        tag: '!!str'
+        text: '123'
+- node-test:
+    name: negative zero
+    yaml: '-0
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        tag: '!!float'
+        text: '-0'
+- node-test:
+    name: mapping with sequence of mappings
+    yaml: "a:\n  - b: c\n    d: e\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          text: a
+        - kind: Sequence
+          content:
+          - kind: Mapping
+            content:
+            - kind: Scalar
+              text: b
+            - kind: Scalar
+              text: c
+            - kind: Scalar
+              text: d
+            - kind: Scalar
+              text: e
+- node-test:
+    name: flow mapping nested in mapping
+    yaml: 'foo: {b?r: a?bc}
+
+      '
+    decode: true
+    encode: false
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          text: foo
+        - kind: Mapping
+          style: Flow
+          content:
+          - kind: Scalar
+            text: b?r
+          - kind: Scalar
+            text: a?bc
+- node-test:
+    name: line comment on key
+    yaml: "a: # AI\n  - b\nc:\n  - d\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          text: a
+          line: '# AI'
+        - kind: Sequence
+          content:
+          - kind: Scalar
+            text: b
+        - kind: Scalar
+          text: c
+        - kind: Sequence
+          content:
+          - kind: Scalar
+            text: d
+- node-test:
+    name: simple anchor and alias
+    decode: true
+    encode: false
+    yaml: 'a: &x 1
+
+      b: *x
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          text: a
+        - kind: Scalar
+          anchor: x
+          tag: '!!int'
+          text: '1'
+        - kind: Scalar
+          text: b
+        - kind: Alias
+- node-test:
+    name: anchor on sequence
+    decode: true
+    encode: false
+    yaml: 'a: &anchor [1, 2]
+
+      b: *anchor
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          text: a
+        - kind: Sequence
+          style: Flow
+          anchor: anchor
+          content:
+          - kind: Scalar
+            tag: '!!int'
+            text: '1'
+          - kind: Scalar
+            tag: '!!int'
+            text: '2'
+        - kind: Scalar
+          text: b
+        - kind: Alias
+- node-test:
+    name: flow sequence with mixed types
+    yaml: '[1, true, foo]
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        style: Flow
+        content:
+        - kind: Scalar
+          tag: '!!int'
+          text: '1'
+        - kind: Scalar
+          tag: '!!bool'
+          text: 'true'
+        - kind: Scalar
+          text: foo
+- node-test:
+    name: folded multiline string
+    decode: true
+    encode: false
+    yaml: ">\n  foo\n  bar\n"
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        style: Folded
+        text: 'foo bar
+
+          '
+- node-test:
+    name: block sequence with scalars
+    yaml: '- one
+
+      - two
+
+      - three
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        content:
+        - kind: Scalar
+          text: one
+        - kind: Scalar
+          text: two
+        - kind: Scalar
+          text: three
+- node-test:
+    name: empty mapping value
+    yaml: 'a:
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          text: a
+        - kind: Scalar
+          tag: '!!null'
+          text: ''
+- node-test:
+    name: mapping with empty string value
+    yaml: 'a: ''''
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          text: a
+        - kind: Scalar
+          style: Single
+- node-test:
+    name: flow mapping with multiple entries
+    yaml: '{a: 1, b: 2}
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        style: Flow
+        content:
+        - kind: Scalar
+          text: a
+        - kind: Scalar
+          tag: '!!int'
+          text: '1'
+        - kind: Scalar
+          text: b
+        - kind: Scalar
+          tag: '!!int'
+          text: '2'
+- node-test:
+    name: head comment on mapping key
+    yaml: "a:\n  # HM\n  b: c\n"
+    decode: true
+    encode: false
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          text: a
+        - kind: Mapping
+          content:
+          - kind: Scalar
+            head: '# HM'
+            text: b
+          - kind: Scalar
+            text: c
+- node-test:
+    name: literal style preserves trailing newline
+    yaml: "|\n  foo\n"
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        style: Literal
+        text: 'foo
+
+          '
+- node-test:
+    name: literal style strips final newlines
+    yaml: "|-\n  foo\n"
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        style: Literal
+        text: foo
+- node-test:
+    name: double quoted with newline escape
+    yaml: '"foo\nbar"
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        style: Double
+        text: 'foo
+
+          bar'
+- node-test:
+    name: single quoted with doubled single quote
+    yaml: '''foo''''bar''
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        style: Single
+        text: foo'bar
+- node-test:
+    name: sequence of sequences
+    yaml: '- [a, b]
+
+      - [c, d]
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        content:
+        - kind: Sequence
+          style: Flow
+          content:
+          - kind: Scalar
+            text: a
+          - kind: Scalar
+            text: b
+        - kind: Sequence
+          style: Flow
+          content:
+          - kind: Scalar
+            text: c
+          - kind: Scalar
+            text: d
+- node-test:
+    name: mapping of mappings
+    yaml: 'a: {b: 1}
+
+      c: {d: 2}
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          text: a
+        - kind: Mapping
+          style: Flow
+          content:
+          - kind: Scalar
+            text: b
+          - kind: Scalar
+            tag: '!!int'
+            text: '1'
+        - kind: Scalar
+          text: c
+        - kind: Mapping
+          style: Flow
+          content:
+          - kind: Scalar
+            text: d
+          - kind: Scalar
+            tag: '!!int'
+            text: '2'
+- node-test:
+    name: all comment types on scalar
+    yaml: '# One
+
+      # Two
+
+      true # Three
+
+      # Four
+
+      # Five
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        tag: '!!bool'
+        text: 'true'
+        head: '# One
+
+          # Two'
+        line: '# Three'
+        foot: '# Four
+
+          # Five'
+- node-test:
+    name: unicode in comments
+    yaml: '# š
+
+      true # š
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        tag: '!!bool'
+        text: 'true'
+        head: '# š'
+        line: '# š'
+- node-test:
+    name: custom tag on scalar
+    yaml: '!tag:something 123
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        tag: '!tag:something'
+        text: '123'
+- node-test:
+    name: custom tag on empty mapping
+    yaml: '!tag:something {}
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        style: Flow
+        tag: '!tag:something'
+- node-test:
+    name: custom tag on empty sequence
+    yaml: '!tag:something []
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        style: Flow
+        tag: '!tag:something'
+- node-test:
+    name: merge key as quoted string with sequence
+    yaml: '"<<": []
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          style: Double
+          text: '<<'
+        - kind: Sequence
+          style: Flow
+- node-test:
+    name: merge key as value
+    yaml: 'foo: "<<"
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          text: foo
+        - kind: Scalar
+          style: Double
+          text: '<<'
+- node-test:
+    name: simple two element sequence
+    yaml: '- a
+
+      - b
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        content:
+        - kind: Scalar
+          text: a
+        - kind: Scalar
+          text: b
+- node-test:
+    name: nested block sequences
+    yaml: "- a\n- - b\n  - c\n"
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        content:
+        - kind: Scalar
+          text: a
+        - kind: Sequence
+          content:
+          - kind: Scalar
+            text: b
+          - kind: Scalar
+            text: c
+- node-test:
+    name: flow sequence with strings
+    yaml: '[a, b]
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        style: Flow
+        content:
+        - kind: Scalar
+          text: a
+        - kind: Scalar
+          text: b
+- node-test:
+    name: block sequence with nested flow sequence
+    yaml: '- a
+
+      - [b, c]
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        content:
+        - kind: Scalar
+          text: a
+        - kind: Sequence
+          style: Flow
+          content:
+          - kind: Scalar
+            text: b
+          - kind: Scalar
+            text: c
+- node-test:
+    name: positive infinity
+    yaml: '.inf
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        tag: '!!float'
+        text: '.inf'
+- node-test:
+    name: explicit null
+    yaml: '~
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        tag: '!!null'
+        text: '~'
+- node-test:
+    name: flow sequence with all comment types
+    yaml: '# H1
+
+      [la, lb] # I
+
+      # F1
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        style: Flow
+        head: '# H1'
+        line: '# I'
+        foot: '# F1'
+        content:
+        - kind: Scalar
+          text: la
+        - kind: Scalar
+          text: lb
+- node-test:
+    name: boolean false
+    yaml: 'false
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        tag: '!!bool'
+        text: 'false'
+- node-test:
+    name: uppercase NULL
+    yaml: 'NULL
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        tag: '!!null'
+        text: 'NULL'
+- node-test:
+    name: empty flow mapping
+    yaml: '{}
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        style: Flow
+- node-test:
+    name: empty flow sequence
+    yaml: '[]
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        style: Flow
+- node-test:
+    name: positive integer
+    yaml: '42
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        tag: '!!int'
+        text: '42'
+- node-test:
+    name: zero
+    yaml: '0
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        tag: '!!int'
+        text: '0'
+- node-test:
+    name: folded style keep chomping
+    yaml: ">+\n  foo\n"
+    decode: true
+    encode: false
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        style: Folded
+        text: 'foo
+
+          '
+- node-test:
+    name: simple key-value mapping
+    yaml: 'a: b
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          text: a
+        - kind: Scalar
+          text: b
+- node-test:
+    name: mapping with integer value
+    yaml: 'a: 1
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          text: a
+        - kind: Scalar
+          tag: '!!int'
+          text: '1'
+- node-test:
+    name: mapping with null value implicit
+    yaml: 'a:
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          text: a
+        - kind: Scalar
+          tag: '!!null'
+          text: ''
+- node-test:
+    name: double quoted with tab escape
+    yaml: '"\t"
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        style: Double
+        text: "\t"
+- node-test:
+    name: two-level nested mapping
+    yaml: "a:\n  b: c\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          text: a
+        - kind: Mapping
+          content:
+          - kind: Scalar
+            text: b
+          - kind: Scalar
+            text: c
+- node-test:
+    name: mapping with multiple keys
+    yaml: 'a: 1
+
+      b: 2
+
+      c: 3
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          text: a
+        - kind: Scalar
+          tag: '!!int'
+          text: '1'
+        - kind: Scalar
+          text: b
+        - kind: Scalar
+          tag: '!!int'
+          text: '2'
+        - kind: Scalar
+          text: c
+        - kind: Scalar
+          tag: '!!int'
+          text: '3'
+- node-test:
+    name: float with exponent
+    yaml: '1.23e+2
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        tag: '!!float'
+        text: '1.23e+2'
+- node-test:
+    name: negative float
+    yaml: '-3.14
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        tag: '!!float'
+        text: '-3.14'
+- node-test:
+    name: uppercase TRUE
+    yaml: 'TRUE
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        tag: '!!bool'
+        text: 'TRUE'
+- node-test:
+    name: uppercase FALSE
+    yaml: 'FALSE
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        tag: '!!bool'
+        text: 'FALSE'
+- node-test:
+    name: three-element sequence
+    yaml: '- a
+
+      - b
+
+      - c
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        content:
+        - kind: Scalar
+          text: a
+        - kind: Scalar
+          text: b
+        - kind: Scalar
+          text: c
+- node-test:
+    name: sequence with integers
+    yaml: '- 1
+
+      - 2
+
+      - 3
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        content:
+        - kind: Scalar
+          tag: '!!int'
+          text: '1'
+        - kind: Scalar
+          tag: '!!int'
+          text: '2'
+        - kind: Scalar
+          tag: '!!int'
+          text: '3'
+- node-test:
+    name: flow sequence with integers
+    yaml: '[1, 2, 3]
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        style: Flow
+        content:
+        - kind: Scalar
+          tag: '!!int'
+          text: '1'
+        - kind: Scalar
+          tag: '!!int'
+          text: '2'
+        - kind: Scalar
+          tag: '!!int'
+          text: '3'
+- node-test:
+    name: quoted key with spaces
+    yaml: '"key with spaces": value
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          style: Double
+          text: key with spaces
+        - kind: Scalar
+          text: value
+- node-test:
+    name: flow mapping with flow sequence value
+    yaml: '{a: [1, 2]}
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        style: Flow
+        content:
+        - kind: Scalar
+          text: a
+        - kind: Sequence
+          style: Flow
+          content:
+          - kind: Scalar
+            tag: '!!int'
+            text: '1'
+          - kind: Scalar
+            tag: '!!int'
+            text: '2'
+- node-test:
+    name: flow sequence with flow mapping
+    yaml: '[{a: 1}]
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        style: Flow
+        content:
+        - kind: Mapping
+          style: Flow
+          content:
+          - kind: Scalar
+            text: a
+          - kind: Scalar
+            tag: '!!int'
+            text: '1'
+- node-test:
+    name: block mapping with flow value
+    yaml: 'a: [1, 2]
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          text: a
+        - kind: Sequence
+          style: Flow
+          content:
+          - kind: Scalar
+            tag: '!!int'
+            text: '1'
+          - kind: Scalar
+            tag: '!!int'
+            text: '2'
+- node-test:
+    name: block mapping with flow mapping value
+    yaml: 'a: {b: c}
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          text: a
+        - kind: Mapping
+          style: Flow
+          content:
+          - kind: Scalar
+            text: b
+          - kind: Scalar
+            text: c
+- node-test:
+    name: three-level nested mapping
+    yaml: "a:\n  b:\n    c: d\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          text: a
+        - kind: Mapping
+          content:
+          - kind: Scalar
+            text: b
+          - kind: Mapping
+            content:
+            - kind: Scalar
+              text: c
+            - kind: Scalar
+              text: d
+- node-test:
+    name: empty double quoted string
+    yaml: '""
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        style: Double
+        text: ''
+- node-test:
+    name: mapping with empty key
+    yaml: '"": value
+
+      '
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          style: Double
+          text: ''
+        - kind: Scalar
+          text: value
+
+# Values with spaces
+- node-test:
+    name: mapping with multi-word value
+    yaml: "a: b c\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content: [{kind: Scalar, text: a}, {kind: Scalar, text: 'b c'}]
+
+# More nested structures
+- node-test:
+    name: sequence in sequence in mapping
+    decode: true
+    encode: false
+    yaml: "a:\n- - b\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: a}
+        - kind: Sequence
+          content:
+          - kind: Sequence
+            content: [{kind: Scalar, text: b}]
+
+# Strings that look like other types
+- node-test:
+    name: string that looks like number
+    yaml: "\"123\"\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Double, text: '123'}
+
+- node-test:
+    name: string that looks like boolean
+    yaml: "\"true\"\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Double, text: 'true'}
+
+# Hex and octal numbers
+- node-test:
+    name: hex integer
+    yaml: "0x1a\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, tag: '!!int', text: '0x1a'}
+
+- node-test:
+    name: octal integer  
+    yaml: "0o10\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, tag: '!!int', text: '0o10'}
+
+# More flow collections
+- node-test:
+    name: nested flow mappings
+    yaml: "{a: {b: c}}\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        style: Flow
+        content:
+        - {kind: Scalar, text: a}
+        - kind: Mapping
+          style: Flow
+          content: [{kind: Scalar, text: b}, {kind: Scalar, text: c}]
+
+- node-test:
+    name: nested flow sequences
+    yaml: "[[a, b]]\n"
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        style: Flow
+        content:
+        - kind: Sequence
+          style: Flow
+          content: [{kind: Scalar, text: a}, {kind: Scalar, text: b}]
+
+# Comments on flow collections
+- node-test:
+    name: flow mapping with comment
+    yaml: "{a: b} # comment\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        style: Flow
+        line: '# comment'
+        content: [{kind: Scalar, text: a}, {kind: Scalar, text: b}]
+
+# Multiple mappings in document
+- node-test:
+    name: two top-level mappings
+    yaml: "a: 1\nb: 2\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: a}
+        - {kind: Scalar, tag: '!!int', text: '1'}
+        - {kind: Scalar, text: b}
+        - {kind: Scalar, tag: '!!int', text: '2'}
+
+# Colon in values
+- node-test:
+    name: colon in quoted value
+    yaml: "url: \"http://example.com\"\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: url}
+        - {kind: Scalar, style: Double, text: 'http://example.com'}
+
+# Leading/trailing spaces
+- node-test:
+    name: value with leading space
+    yaml: "a: \" b\"\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: a}
+        - {kind: Scalar, style: Double, text: ' b'}
+
+- node-test:
+    name: value with trailing space
+    yaml: "a: \"b \"\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: a}
+        - {kind: Scalar, style: Double, text: 'b '}
+
+# Sequences of mappings
+- node-test:
+    name: sequence of simple mappings
+    yaml: "- a: 1\n- b: 2\n"
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        content:
+        - kind: Mapping
+          content: [{kind: Scalar, text: a}, {kind: Scalar, tag: '!!int', text: '1'}]
+        - kind: Mapping
+          content: [{kind: Scalar, text: b}, {kind: Scalar, tag: '!!int', text: '2'}]
+
+# Mappings with flow sequence values
+- node-test:
+    name: two mappings with flow sequence values
+    yaml: "a: [1]\nb: [2]\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: a}
+        - kind: Sequence
+          style: Flow
+          content: [{kind: Scalar, tag: '!!int', text: '1'}]
+        - {kind: Scalar, text: b}
+        - kind: Sequence
+          style: Flow
+          content: [{kind: Scalar, tag: '!!int', text: '2'}]
+
+# Empty sequence in mapping
+- node-test:
+    name: mapping with empty flow sequence
+    yaml: "a: []\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: a}
+        - kind: Sequence
+          style: Flow
+
+# Empty mapping in sequence
+- node-test:
+    name: sequence with empty flow mapping
+    yaml: "[{}]\n"
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        style: Flow
+        content:
+        - kind: Mapping
+          style: Flow
+
+# Single element sequences
+- node-test:
+    name: single element block sequence
+    yaml: "- a\n"
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        content: [{kind: Scalar, text: a}]
+
+- node-test:
+    name: single element flow sequence
+    yaml: "[a]\n"
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        style: Flow
+        content: [{kind: Scalar, text: a}]
+
+# Single element mappings
+- node-test:
+    name: single element flow mapping
+    yaml: "{a: 1}\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        style: Flow
+        content: [{kind: Scalar, text: a}, {kind: Scalar, tag: '!!int', text: '1'}]
+
+# Different null representations
+- node-test:
+    name: tilde null
+    yaml: "~\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, tag: '!!null', text: '~'}
+
+- node-test:
+    name: lowercase null
+    yaml: "null\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, tag: '!!null', text: 'null'}
+
+- node-test:
+    name: uppercase Null
+    yaml: "Null\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, tag: '!!null', text: 'Null'}
+
+# Mixed types in sequences
+- node-test:
+    name: sequence with mixed types
+    yaml: "- 1\n- foo\n- true\n"
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        content:
+        - {kind: Scalar, tag: '!!int', text: '1'}
+        - {kind: Scalar, text: foo}
+        - {kind: Scalar, tag: '!!bool', text: 'true'}
+
+# Mixed types in mappings
+- node-test:
+    name: mapping with different value types
+    yaml: "int: 1\nstr: foo\nbool: true\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: int}
+        - {kind: Scalar, tag: '!!int', text: '1'}
+        - {kind: Scalar, text: str}
+        - {kind: Scalar, text: foo}
+        - {kind: Scalar, text: bool}
+        - {kind: Scalar, tag: '!!bool', text: 'true'}
+
+# Deeply nested flow
+- node-test:
+    name: deeply nested flow mapping
+    yaml: "{a: {b: {c: 1}}}\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        style: Flow
+        content:
+        - {kind: Scalar, text: a}
+        - kind: Mapping
+          style: Flow
+          content:
+          - {kind: Scalar, text: b}
+          - kind: Mapping
+            style: Flow
+            content: [{kind: Scalar, text: c}, {kind: Scalar, tag: '!!int', text: '1'}]
+
+# Four-level nested mapping
+- node-test:
+    name: four-level nested mapping
+    yaml: "a:\n  b:\n    c:\n      d: e\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: a}
+        - kind: Mapping
+          content:
+          - {kind: Scalar, text: b}
+          - kind: Mapping
+            content:
+            - {kind: Scalar, text: c}
+            - kind: Mapping
+              content: [{kind: Scalar, text: d}, {kind: Scalar, text: e}]
+
+# Literal style variations
+- node-test:
+    name: literal with single line
+    yaml: "|\n  single\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Literal, text: "single\n"}
+
+- node-test:
+    name: literal with empty lines
+    decode: true
+    encode: false
+    yaml: "|\n  line1\n  \n  line2\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Literal, text: "line1\n\nline2\n"}
+
+# Numbers edge cases
+- node-test:
+    name: leading zeros preserved in string
+    yaml: "\"007\"\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Double, text: '007'}
+
+- node-test:
+    name: plus sign integer
+    yaml: "+42\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, tag: '!!int', text: '+42'}
+
+# Scientific notation
+- node-test:
+    name: scientific notation lowercase e
+    yaml: "1.23e2\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, tag: '!!float', text: '1.23e2'}
+
+- node-test:
+    name: scientific notation uppercase E
+    yaml: "1.23E2\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, tag: '!!float', text: '1.23E2'}
+
+- node-test:
+    name: scientific notation negative exponent
+    yaml: "1.23e-2\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, tag: '!!float', text: '1.23e-2'}
+
+# Very large/small numbers
+- node-test:
+    name: very large integer
+    yaml: "9223372036854775807\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, tag: '!!int', text: '9223372036854775807'}
+
+# Boolean variations already covered TRUE/FALSE, add lowercase
+- node-test:
+    name: lowercase true
+    yaml: "true\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, tag: '!!bool', text: 'true'}
+
+- node-test:
+    name: lowercase false
+    yaml: "false\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, tag: '!!bool', text: 'false'}
+
+# Quoted numbers
+- node-test:
+    name: single quoted number
+    yaml: "'123'\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Single, text: '123'}
+
+# Flow collections with trailing comma (if valid)
+- node-test:
+    name: flow sequence multiple elements
+    yaml: "[a, b, c]\n"
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        style: Flow
+        content: [{kind: Scalar, text: a}, {kind: Scalar, text: b}, {kind: Scalar, text: c}]
+
+- node-test:
+    name: flow mapping multiple elements
+    yaml: "{a: 1, b: 2, c: 3}\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        style: Flow
+        content:
+        - {kind: Scalar, text: a}
+        - {kind: Scalar, tag: '!!int', text: '1'}
+        - {kind: Scalar, text: b}
+        - {kind: Scalar, tag: '!!int', text: '2'}
+        - {kind: Scalar, text: c}
+        - {kind: Scalar, tag: '!!int', text: '3'}
+
+# Indented block scalars
+- node-test:
+    name: literal with extra indentation
+    decode: true
+    encode: false
+    yaml: "|\n    indented\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Literal, text: "indented\n"}
+
+# Mapping key variations
+- node-test:
+    name: integer as key
+    yaml: "1: one\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content: [{kind: Scalar, tag: '!!int', text: '1'}, {kind: Scalar, text: one}]
+
+- node-test:
+    name: boolean as key
+    yaml: "true: yes\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content: [{kind: Scalar, tag: '!!bool', text: 'true'}, {kind: Scalar, text: yes}]
+
+# Sequences with mixed nesting
+- node-test:
+    name: sequence with mapping and scalars
+    yaml: "- a\n- b: c\n- d\n"
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        content:
+        - {kind: Scalar, text: a}
+        - kind: Mapping
+          content: [{kind: Scalar, text: b}, {kind: Scalar, text: c}]
+        - {kind: Scalar, text: d}
+
+# Mappings with mixed value types
+- node-test:
+    name: mapping with scalar and sequence values
+    yaml: "a: b\nc:\n  - d\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: a}
+        - {kind: Scalar, text: b}
+        - {kind: Scalar, text: c}
+        - kind: Sequence
+          content: [{kind: Scalar, text: d}]
+
+- node-test:
+    name: mapping with scalar and mapping values
+    yaml: "a: b\nc:\n  d: e\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: a}
+        - {kind: Scalar, text: b}
+        - {kind: Scalar, text: c}
+        - kind: Mapping
+          content: [{kind: Scalar, text: d}, {kind: Scalar, text: e}]
+
+# Special characters in plain scalars
+- node-test:
+    name: plain scalar with dash
+    yaml: "foo-bar\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, text: foo-bar}
+
+- node-test:
+    name: plain scalar with underscore
+    yaml: "foo_bar\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, text: foo_bar}
+
+- node-test:
+    name: plain scalar with dot
+    yaml: "foo.bar\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, text: foo.bar}
+
+# Numbers with underscores (if supported)
+- node-test:
+    name: number with underscores
+    yaml: "1_000_000\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, tag: '!!int', text: '1_000_000'}
+
+# Zero variants
+- node-test:
+    name: float zero
+    yaml: "0.0\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, tag: '!!float', text: '0.0'}
+
+# Whitespace-only differences
+- node-test:
+    name: mapping with extra blank line
+    decode: true
+    encode: false
+    yaml: "a: b\n\nc: d\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: a}
+        - {kind: Scalar, text: b}
+        - {kind: Scalar, text: c}
+        - {kind: Scalar, text: d}
+
+# Single quoted with escapes
+- node-test:
+    name: single quoted with literal single quote
+    yaml: "'don''t'\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Single, text: "don't"}
+
+# Double quoted with various escapes
+- node-test:
+    name: double quoted with backslash
+    yaml: "\"foo\\\\bar\"\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Double, text: 'foo\bar'}
+
+- node-test:
+    name: double quoted with quote
+    yaml: "\"foo\\\"bar\"\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Double, text: 'foo"bar'}
+
+# Complex flow structures
+- node-test:
+    name: flow mapping in flow sequence
+    yaml: "[{a: 1}, {b: 2}]\n"
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        style: Flow
+        content:
+        - kind: Mapping
+          style: Flow
+          content: [{kind: Scalar, text: a}, {kind: Scalar, tag: '!!int', text: '1'}]
+        - kind: Mapping
+          style: Flow
+          content: [{kind: Scalar, text: b}, {kind: Scalar, tag: '!!int', text: '2'}]
+
+- node-test:
+    name: flow sequence in flow mapping
+    yaml: "{a: [1, 2], b: [3, 4]}\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        style: Flow
+        content:
+        - {kind: Scalar, text: a}
+        - kind: Sequence
+          style: Flow
+          content: [{kind: Scalar, tag: '!!int', text: '1'}, {kind: Scalar, tag: '!!int', text: '2'}]
+        - {kind: Scalar, text: b}
+        - kind: Sequence
+          style: Flow
+          content: [{kind: Scalar, tag: '!!int', text: '3'}, {kind: Scalar, tag: '!!int', text: '4'}]
+
+# Edge case numbers
+- node-test:
+    name: negative zero float
+    yaml: "-0.0\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, tag: '!!float', text: '-0.0'}
+
+- node-test:
+    name: integer zero
+    yaml: "0\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, tag: '!!int', text: '0'}
+
+# More string edge cases
+- node-test:
+    name: empty plain scalar becomes null
+    decode: true
+    encode: false
+    yaml: "a:\nb: c\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: a}
+        - {kind: Scalar, tag: '!!null', text: ''}
+        - {kind: Scalar, text: b}
+        - {kind: Scalar, text: c}
+
+# Multiline plain scalars
+- node-test:
+    name: plain scalar on single line
+    yaml: "this is a long string\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, text: 'this is a long string'}
+
+# Keys with special values
+- node-test:
+    name: null as mapping key
+    yaml: "null: value\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content: [{kind: Scalar, tag: '!!null', text: 'null'}, {kind: Scalar, text: value}]
+
+- node-test:
+    name: empty string as key
+    yaml: "\"\": value\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content: [{kind: Scalar, style: Double, text: ''}, {kind: Scalar, text: value}]
+
+# Floats with trailing zeros
+- node-test:
+    name: float with trailing zero
+    yaml: "1.0\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, tag: '!!float', text: '1.0'}
+
+- node-test:
+    name: float with many decimals
+    yaml: "3.141592653589793\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, tag: '!!float', text: '3.141592653589793'}
+
+# Mixed sequences
+- node-test:
+    name: sequence of different collection types
+    yaml: "- [a]\n- {b: c}\n"
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        content:
+        - kind: Sequence
+          style: Flow
+          content: [{kind: Scalar, text: a}]
+        - kind: Mapping
+          style: Flow
+          content: [{kind: Scalar, text: b}, {kind: Scalar, text: c}]
+
+# More complex nested structures
+- node-test:
+    name: mapping with sequence containing mappings
+    yaml: "items:\n  - name: foo\n    value: 1\n  - name: bar\n    value: 2\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: items}
+        - kind: Sequence
+          content:
+          - kind: Mapping
+            content: [{kind: Scalar, text: name}, {kind: Scalar, text: foo}, {kind: Scalar, text: value}, {kind: Scalar, tag: '!!int', text: '1'}]
+          - kind: Mapping
+            content: [{kind: Scalar, text: name}, {kind: Scalar, text: bar}, {kind: Scalar, text: value}, {kind: Scalar, tag: '!!int', text: '2'}]
+
+# Different integer formats (hex, octal already covered)
+- node-test:
+    name: binary integer
+    yaml: "0b1010\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, tag: '!!int', text: '0b1010'}
+
+# More special float values
+- node-test:
+    name: positive infinity
+    yaml: ".inf\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, tag: '!!float', text: '.inf'}
+
+- node-test:
+    name: negative infinity
+    yaml: "-.inf\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, tag: '!!float', text: '-.inf'}
+
+- node-test:
+    name: not a number
+    yaml: ".nan\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, tag: '!!float', text: '.nan'}
+
+# Complex key-value patterns
+- node-test:
+    name: complex key simple value
+    yaml: "[a, b]: value\n"
+    decode: true
+    encode: false
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Sequence
+          style: Flow
+          content: [{kind: Scalar, text: a}, {kind: Scalar, text: b}]
+        - {kind: Scalar, text: value}
+
+# Plain scalars that could be ambiguous
+- node-test:
+    name: plain scalar starting with dash
+    yaml: "\"- foo\"\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Double, text: '- foo'}
+
+- node-test:
+    name: plain scalar starting with bracket
+    yaml: "\"[foo]\"\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Double, text: '[foo]'}
+
+- node-test:
+    name: plain scalar starting with brace
+    yaml: "\"{foo}\"\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Double, text: '{foo}'}
+
+# Sequences and mappings with comments on elements
+- node-test:
+    name: sequence with line comments
+    yaml: "- a # comment a\n- b # comment b\n"
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        content:
+        - {kind: Scalar, text: a, line: '# comment a'}
+        - {kind: Scalar, text: b, line: '# comment b'}
+
+- node-test:
+    name: mapping with line comments on values
+    yaml: "a: 1 # first\nb: 2 # second\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: a}
+        - {kind: Scalar, tag: '!!int', text: '1', line: '# first'}
+        - {kind: Scalar, text: b}
+        - {kind: Scalar, tag: '!!int', text: '2', line: '# second'}
+
+# More nested flow
+- node-test:
+    name: deeply nested flow sequence
+    yaml: "[[[a]]]\n"
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        style: Flow
+        content:
+        - kind: Sequence
+          style: Flow
+          content:
+          - kind: Sequence
+            style: Flow
+            content: [{kind: Scalar, text: a}]
+
+# More FootComment tests
+- node-test:
+    name: scalar with foot comment
+    yaml: "foo\n# foot\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, text: foo, foot: '# foot'}
+
+# Quoted special characters
+- node-test:
+    name: double quoted with carriage return
+    yaml: "\"foo\\rbar\"\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Double, text: "foo\rbar"}
+
+# Multiple levels of flow nesting
+- node-test:
+    name: flow mapping with nested sequences
+    yaml: "{a: [1, 2], b: [3, 4]}\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        style: Flow
+        content:
+        - {kind: Scalar, text: a}
+        - kind: Sequence
+          style: Flow
+          content: [{kind: Scalar, tag: '!!int', text: '1'}, {kind: Scalar, tag: '!!int', text: '2'}]
+        - {kind: Scalar, text: b}
+        - kind: Sequence
+          style: Flow
+          content: [{kind: Scalar, tag: '!!int', text: '3'}, {kind: Scalar, tag: '!!int', text: '4'}]
+
+# Literal and folded variations
+- node-test:
+    name: literal with chomping indicator keep
+    decode: true
+    encode: false
+    yaml: "|+\n  content\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Literal, text: "content\n"}
+
+- node-test:
+    name: literal with chomping indicator strip
+    yaml: "|-\n  content\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Literal, text: content}
+
+- node-test:
+    name: folded with chomping indicator strip
+    decode: true
+    encode: false
+    yaml: ">-\n  content\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Folded, text: content}
+
+# Collections as mapping keys
+- node-test:
+    name: mapping as mapping key
+    decode: true
+    encode: false
+    yaml: "{a: b}: value\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Mapping
+          style: Flow
+          content: [{kind: Scalar, text: a}, {kind: Scalar, text: b}]
+        - {kind: Scalar, text: value}
+
+# More empty value cases
+- node-test:
+    name: two keys with empty values
+    yaml: "a:\nb:\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: a}
+        - {kind: Scalar, tag: '!!null', text: ''}
+        - {kind: Scalar, text: b}
+        - {kind: Scalar, tag: '!!null', text: ''}
+
+# Numbers in scientific notation edge cases
+- node-test:
+    name: scientific notation with large exponent
+    yaml: "1e100\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, tag: '!!float', text: '1e100'}
+
+# Multiline strings in flow collections
+- node-test:
+    name: flow mapping with quoted multiline value
+    yaml: "{a: \"line1\\nline2\"}\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        style: Flow
+        content:
+        - {kind: Scalar, text: a}
+        - {kind: Scalar, style: Double, text: "line1\nline2"}
+
+# Sequences with null elements
+- node-test:
+    name: sequence with null elements
+    yaml: "- null\n- ~\n-\n"
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        content:
+        - {kind: Scalar, tag: '!!null', text: 'null'}
+        - {kind: Scalar, tag: '!!null', text: '~'}
+        - {kind: Scalar, tag: '!!null', text: ''}
+
+# Mix of inline and block in same document
+- node-test:
+    name: block mapping then flow mapping
+    yaml: "a: b\nc: {d: e}\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: a}
+        - {kind: Scalar, text: b}
+        - {kind: Scalar, text: c}
+        - kind: Mapping
+          style: Flow
+          content: [{kind: Scalar, text: d}, {kind: Scalar, text: e}]
+
+- node-test:
+    name: block sequence then flow sequence
+    yaml: "- a\n- [b, c]\n"
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        content:
+        - {kind: Scalar, text: a}
+        - kind: Sequence
+          style: Flow
+          content: [{kind: Scalar, text: b}, {kind: Scalar, text: c}]
+
+# Special mapping key cases
+- node-test:
+    name: quoted number as key
+    yaml: "\"123\": value\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, style: Double, text: '123'}
+        - {kind: Scalar, text: value}
+
+- node-test:
+    name: quoted boolean as key
+    yaml: "\"true\": value\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, style: Double, text: 'true'}
+        - {kind: Scalar, text: value}
+
+# Edge cases with whitespace
+- node-test:
+    name: value with only spaces quoted
+    yaml: "a: \"   \"\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: a}
+        - {kind: Scalar, style: Double, text: '   '}
+
+# More complex comments
+- node-test:
+    name: head comment on second mapping key
+    decode: true
+    encode: false
+    yaml: "a: 1\n# head\nb: 2\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: a}
+        - {kind: Scalar, tag: '!!int', text: '1'}
+        - {kind: Scalar, text: b, head: '# head'}
+        - {kind: Scalar, tag: '!!int', text: '2'}
+
+# Nested empty collections
+- node-test:
+    name: empty mapping in mapping
+    yaml: "a: {}\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: a}
+        - kind: Mapping
+          style: Flow
+
+- node-test:
+    name: empty sequence in sequence
+    yaml: "- []\n"
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        content:
+        - kind: Sequence
+          style: Flow
+
+# More integer edge cases
+- node-test:
+    name: negative integer
+    yaml: "-42\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, tag: '!!int', text: '-42'}
+
+- node-test:
+    name: large negative integer
+    yaml: "-9223372036854775808\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, tag: '!!int', text: '-9223372036854775808'}
+
+# String that looks like a tag
+- node-test:
+    name: quoted string resembling tag
+    yaml: "\"!!str\"\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Double, text: '!!str'}
+
+# More nesting combinations
+- node-test:
+    name: five-level nested mapping
+    yaml: "a:\n  b:\n    c:\n      d:\n        e: f\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: a}
+        - kind: Mapping
+          content:
+          - {kind: Scalar, text: b}
+          - kind: Mapping
+            content:
+            - {kind: Scalar, text: c}
+            - kind: Mapping
+              content:
+              - {kind: Scalar, text: d}
+              - kind: Mapping
+                content: [{kind: Scalar, text: e}, {kind: Scalar, text: f}]
+
+# Final edge cases to reach completion
+- node-test:
+    name: sequence of empty mappings
+    yaml: "- {}\n- {}\n"
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        content:
+        - kind: Mapping
+          style: Flow
+        - kind: Mapping
+          style: Flow
+
+- node-test:
+    name: mapping of empty sequences
+    yaml: "a: []\nb: []\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: a}
+        - kind: Sequence
+          style: Flow
+        - {kind: Scalar, text: b}
+        - kind: Sequence
+          style: Flow
+
+- node-test:
+    name: deeply nested sequences
+    yaml: "- - - a\n"
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        content:
+        - kind: Sequence
+          content:
+          - kind: Sequence
+            content: [{kind: Scalar, text: a}]
+
+- node-test:
+    name: mapping value as empty quoted string
+    yaml: "a: \"\"\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: a}
+        - {kind: Scalar, style: Double, text: ''}
+
+- node-test:
+    name: flow mapping with spaces around colon
+    decode: true
+    encode: false
+    yaml: "{a : b}\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        style: Flow
+        content: [{kind: Scalar, text: a}, {kind: Scalar, text: b}]
+
+- node-test:
+    name: flow sequence with extra spaces
+    decode: true
+    encode: false
+    yaml: "[ a , b ]\n"
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        style: Flow
+        content: [{kind: Scalar, text: a}, {kind: Scalar, text: b}]
+
+- node-test:
+    name: plain scalar with numbers and letters
+    yaml: "abc123\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, text: abc123}
+
+- node-test:
+    name: plain scalar with mixed case
+    yaml: "FooBar\n"
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, text: FooBar}
+
+- node-test:
+    name: mapping with numeric string keys and values
+    yaml: "\"1\": \"2\"\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, style: Double, text: '1'}
+        - {kind: Scalar, style: Double, text: '2'}
+
+- node-test:
+    name: three empty sequences
+    yaml: "- []\n- []\n- []\n"
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        content:
+        - kind: Sequence
+          style: Flow
+        - kind: Sequence
+          style: Flow
+        - kind: Sequence
+          style: Flow
+
+- node-test:
+    name: complex mixed nesting
+    yaml: "- a: 1\n  b:\n    - c\n"
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        content:
+        - kind: Mapping
+          content:
+          - {kind: Scalar, text: a}
+          - {kind: Scalar, tag: '!!int', text: '1'}
+          - {kind: Scalar, text: b}
+          - kind: Sequence
+            content: [{kind: Scalar, text: c}]
+
+- node-test:
+    name: alternating scalars and collections
+    yaml: "- foo\n- [bar]\n- baz\n- {qux: 1}\n"
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        content:
+        - {kind: Scalar, text: foo}
+        - kind: Sequence
+          style: Flow
+          content: [{kind: Scalar, text: bar}]
+        - {kind: Scalar, text: baz}
+        - kind: Mapping
+          style: Flow
+          content: [{kind: Scalar, text: qux}, {kind: Scalar, tag: '!!int', text: '1'}]

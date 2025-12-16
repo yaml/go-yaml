@@ -104,6 +104,9 @@ test-shell: $(SHELLCHECK)
 	shellcheck $(SHELL-SCRIPTS)
 	@echo 'ALL SHELL FILES PASS'
 
+test-count: $(GO-DEPS)
+	util/test-count
+
 yts-dir: $(YTS-DIR)
 
 # Install golangci-lint for GitHub Actions:

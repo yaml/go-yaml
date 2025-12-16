@@ -69,7 +69,7 @@
 
 - reader-determine-encoding:
     name: Determine encoding default UTF-8
-    data: "test: value"
+    data: 'test: value'
     test:
     - eq: [encoding, UTF8_ENCODING]
 

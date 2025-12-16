@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Parser events test cases for go-yaml parser
+#
+# Purpose: Tests the YAML parser's ability to generate correct event sequences
+# from YAML input. Events represent the structural elements of YAML documents
+# (document start/end, mappings, sequences, scalars, etc.).
+#
+# Format: Test cases use type-as-key format:
+#   - test-type:
+#       name: Test case name
+#       ...
+#
+# Test Types:
+#   parser-events - Verifies parser event output matches expected event sequence
+#
+# Common Keys:
+#   name - Test case name (string)
+#   yaml - Input YAML to parse (string)
+#   want - Expected event sequence (string with events on separate lines)
+#
+# Event Format:
+#   Events are represented as text with specific prefixes:
+#     +STR    - Stream start
+#     -STR    - Stream end
+#     +DOC    - Document start
+#     -DOC    - Document end
+#     +MAP    - Mapping start
+#     -MAP    - Mapping end
+#     +SEQ    - Sequence start
+#     -SEQ    - Sequence end
+#     =VAL    - Scalar value (followed by :value)
+#     =ALI    - Alias reference (followed by :*anchor)
+
+- parser-events:
+    name: ImplicitDocumentStart
+    yaml: |
+      a: b
+    want: |
+      +STR
+      +DOC
+      +MAP
+      =VAL :a
+      =VAL :b
+      -MAP
+      -DOC
+      -STR
+
+- parser-events:
+    name: ExplicitDocumentStart
+    yaml: |
+      ---
+      a: b
+    want: |
+      +STR
+      +DOC ---
+      +MAP
+      =VAL :a
+      =VAL :b
+      -MAP
+      -DOC
+      -STR

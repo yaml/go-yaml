@@ -19,3 +19,9 @@ extend-ignore-re = [
 # Here is a list of words we want to ignore in Go files
 typ = "typ"  # commonly used abbreviation for "type" in Go as "type" is a reserved identifier
 
+# setting for YAML files configuration
+[type.yaml]
+extend-ignore-re = [
+	'ba\?r',         # this one can be found in test files
+]
+

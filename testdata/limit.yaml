@@ -1,0 +1,152 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Limit test cases for go-yaml
+#
+# Purpose: Tests YAML parser limits for deeply nested structures, excessive aliasing,
+# and large documents. Validates that the parser properly enforces depth limits,
+# handles large documents efficiently, and detects excessive resource usage.
+#
+# Format: Test cases use type-as-key format:
+#   - test-type:
+#       name: Test case name
+#       ...
+#
+# Test Types:
+#   limit-error - Tests that should fail with an error at resource limits
+#   limit-pass  - Tests that should successfully parse at resource limits
+#
+# Common Keys:
+#   name  - Test case name (string)
+#   data  - YAML input specification (either direct string or generator spec)
+#   want  - Expected value:
+#           - For limit-error: error message string
+#           - For limit-pass: {type: sequence|mapping} to validate top-level structure
+#
+# Data Specification:
+#   Direct YAML string (rare for limit tests):
+#     data: "yaml content"
+#
+#   Generated data using 'join' (concatenate parts):
+#     data:
+#       join:
+#         - text: "string"         # Literal string to include
+#         - loop: ["string", N]    # Repeat string N times
+#       loop: M                    # Optional: repeat entire join M times
+#
+#   Generated data using 'loop' (simple repeat):
+#     data:
+#       loop: ["string", N]        # Repeat string N times
+#
+# Limits Tested:
+#   - Max depth: 10000 levels (flow, indent)
+#   - Aliasing: Excessive alias expansion detection
+#   - Document size: Various sizes (1kb, 10kb, 100kb, 1000kb)
+
+- limit-error:
+    name: 1000kb of maps with 100 aliases
+    data:
+      join:
+      - text: '{a: &a [{a}'
+      - loop: [',{a}', 262044]  # 1000*1024/4-100
+      - text: '], b: &b [*a'
+      - loop: [',*a', 99]
+      - text: ']}'
+    want: 'yaml: document contains excessive aliasing'
+
+- limit-error:
+    name: 1000kb of deeply nested slices
+    data:
+      loop: ['[', 1024000]  # 1000*1024
+    want: 'yaml: while increasing flow level at line 1, column 10000: exceeded max depth of 10000'
+
+- limit-error:
+    name: 1000kb of deeply nested maps
+    data:
+      join:
+      - text: 'x: '
+      - loop: ['{', 1024000]  # 1000*1024
+    want: 'yaml: while increasing flow level at line 1, column 10003: exceeded max depth of 10000'
+
+- limit-error:
+    name: 1000kb of deeply nested indents
+    data:
+      loop: ['- ', 1024000]  # 1000*1024
+    want: 'yaml: while increasing indent level at line 1: line 1, column 20000: exceeded max depth of 10000'
+
+- limit-pass:
+    name: 1000kb of 1000-indent lines
+    data:
+      join:
+      - loop: ['- ', 1000]
+      - text: "\n"
+      loop: 512  # 1024/2
+    want: {type: sequence}
+
+- limit-pass:
+    name: 1kb of maps
+    data:
+      join:
+      - text: 'a: &a [{a}'
+      - loop: [',{a}', 255]  # 1*1024/4-1
+      - text: ']'
+    want: {type: mapping}
+
+- limit-pass:
+    name: 10kb of maps
+    data:
+      join:
+      - text: 'a: &a [{a}'
+      - loop: [',{a}', 2559]  # 10*1024/4-1
+      - text: ']'
+    want: {type: mapping}
+
+- limit-pass:
+    name: 100kb of maps
+    data:
+      join:
+      - text: 'a: &a [{a}'
+      - loop: [',{a}', 25599]  # 100*1024/4-1
+      - text: ']'
+    want: {type: mapping}
+
+- limit-pass:
+    name: 1000kb of maps
+    data:
+      join:
+      - text: 'a: &a [{a}'
+      - loop: [',{a}', 255999]  # 1000*1024/4-1
+      - text: ']'
+    want: {type: mapping}
+
+- limit-pass:
+    name: 1000kb slice nested at max-depth
+    data:
+      join:
+      - loop: ['[', 10000]
+      - text: '1'
+      - loop: [',1', 491999]  # 1000*1024/2-20000-1
+      - loop: [']', 10000]
+    want: {type: sequence}
+
+- limit-pass:
+    name: 1000kb slice nested in maps at max-depth
+    data:
+      join:
+      - text: "{a,b:\n"
+      - loop: [' {a,b:', 9998]  # 10000-2
+      - text: ' [1'
+      - loop: [',1', 451999]  # 1000*1024/2-6*10000-1
+      - text: ']'
+      - loop: ['}', 9999]  # 10000-1
+    want: {type: mapping}
+
+- limit-pass:
+    name: 1000kb of 10000-nested lines
+    data:
+      join:
+      - text: '- '
+      - loop: ['[', 10000]
+      - loop: [']', 10000]
+      - text: "\n"
+      loop: 51  # 1000*1024/20000
+    want: {type: sequence}
