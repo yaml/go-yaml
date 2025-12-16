@@ -9,50 +9,35 @@ on:
 permissions: read-all
 
 jobs:
-  lint:
+  test:
     runs-on: ubuntu-latest
+    needs: go-versions
+    continue-on-error: true  # make sure to run all versions, even if one fails
+
+    strategy:
+      matrix:
+        go-version: ${{ fromJSON(needs.go-versions.outputs.versions) }}
+
     steps:
     - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
       with:
         persist-credentials: false
-    - name: Set up Go
-      uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
-      with:
-        go-version: stable
-    - name: Install golangci-lint
-      run: |
-        make golangci-lint-install
-        echo "${{ github.workspace }}/.cache/local/bin" >> "$GITHUB_PATH"
-    # yamllint disable-line rule:line-length
-    - uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20  # v9.2.0
-      with:
-        install-mode: none
+
+    - name: Run all unit tests w/ -cover, all YTS tests and go lint
+      run: make test lint v=1 GO-VERSION=${{ matrix.go-version }}
+
   go-versions:
     name: Lookup Go versions
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.versions.outputs.matrix }}
+      versions: ${{ steps.latest-patch-versions.outputs.matrix }}
+
     steps:
     - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
-    # yamllint disable-line rule:line-length
-    - uses: arnested/go-version-action@978371bd4d8cad0f54106c8be4273e2fcdd74f57  # v1.1.23
-      id: versions
-  build:
-    runs-on: ubuntu-latest
-    needs: go-versions
-    continue-on-error: true  # make sure to run all versions, even if one fails
-    strategy:
-      matrix:
-        go-versions: ${{ fromJSON(needs.go-versions.outputs.matrix) }}
-    steps:
-    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+    - name: Get latest patch for each minor version
+      # yamllint disable-line rule:line-length
+      uses: arnested/go-version-action@90b2bf6e8cbbba34a5e514cfe9d3f7541d91ffa7  # v1.2.0
+      id: latest-patch-versions
       with:
-        persist-credentials: false
-    - name: Set up Go
-      uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
-      with:
-        go-version: ${{ matrix.go-versions }}
-    - name: Run yaml-test-suit tests
-      run: make test-yts
-    - name: Run go test
-      run: go test -vet=off -v -race ./...
+        latest-patches-only: true
+        patch-level: true
