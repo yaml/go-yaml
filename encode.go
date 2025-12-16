@@ -30,30 +30,61 @@ import (
 	"go.yaml.in/yaml/v4/internal/libyaml"
 )
 
+// Sentinel values for newEncoder parameters.
+// These provide clarity at call sites, similar to http.NoBody.
+var (
+	noWriter           io.Writer                 = nil
+	noOptions          *options                  = nil
+	noVersionDirective *libyaml.VersionDirective = nil
+	noTagDirective     []libyaml.TagDirective    = nil
+)
+
 type encoder struct {
-	emitter  libyaml.Emitter
-	event    libyaml.Event
-	out      []byte
-	flow     bool
-	indent   int
-	doneInit bool
+	emitter               libyaml.Emitter
+	event                 libyaml.Event
+	out                   []byte
+	flow                  bool
+	indent                int
+	lineWidth             int
+	doneInit              bool
+	explicitStart         bool
+	explicitEnd           bool
+	flowSimpleCollections bool
 }
 
-func newEncoder() *encoder {
+// newEncoder creates a new YAML encoder with the given options.
+//
+// The writer parameter specifies the output destination for the encoder.
+// If writer is nil, the encoder will write to an internal buffer.
+func newEncoder(writer io.Writer, opts *options) *encoder {
 	e := &encoder{
 		emitter: libyaml.NewEmitter(),
 	}
-	e.emitter.SetOutputString(&e.out)
-	e.emitter.SetUnicode(true)
-	return e
-}
 
-func newEncoderWithWriter(w io.Writer) *encoder {
-	e := &encoder{
-		emitter: libyaml.NewEmitter(),
+	// Apply options if provided, otherwise use defaults
+	if opts != nil {
+		e.indent = opts.indent
+		e.lineWidth = opts.lineWidth
+		e.emitter.CompactSequenceIndent = opts.compactSeqIndent
+		e.emitter.SetWidth(opts.lineWidth)
+		e.emitter.SetUnicode(opts.unicode)
+		e.emitter.SetCanonical(opts.canonical)
+		e.emitter.SetLineBreak(opts.lineBreak)
+		e.explicitStart = opts.explicitStart
+		e.explicitEnd = opts.explicitEnd
+		e.flowSimpleCollections = opts.flowSimpleCollections
+	} else {
+		// Default values when no options provided
+		e.emitter.SetUnicode(true)
+		e.lineWidth = 80
 	}
-	e.emitter.SetOutputWriter(w)
-	e.emitter.SetUnicode(true)
+
+	if writer != nil {
+		e.emitter.SetOutputWriter(writer)
+	} else {
+		e.emitter.SetOutputString(&e.out)
+	}
+
 	return e
 }
 
@@ -104,12 +135,65 @@ func (e *encoder) marshalDoc(tag string, in reflect.Value) {
 	if node != nil && node.Kind == DocumentNode {
 		e.nodev(in)
 	} else {
-		e.event = libyaml.NewDocumentStartEvent(nil, nil, true)
+		// Use !explicitStart for implicit flag (true = implicit/no marker)
+		e.event = libyaml.NewDocumentStartEvent(noVersionDirective, noTagDirective, !e.explicitStart)
 		e.emit()
 		e.marshal(tag, in)
-		e.event = libyaml.NewDocumentEndEvent(true)
+		// Use !explicitEnd for implicit flag
+		e.event = libyaml.NewDocumentEndEvent(!e.explicitEnd)
 		e.emit()
 	}
+}
+
+// isSimpleCollection checks if a node contains only scalar values and would
+// fit within the line width when rendered in flow style.
+func (e *encoder) isSimpleCollection(node *Node) bool {
+	if !e.flowSimpleCollections {
+		return false
+	}
+	if node.Kind != SequenceNode && node.Kind != MappingNode {
+		return false
+	}
+	// Check all children are scalars
+	for _, child := range node.Content {
+		if child.Kind != ScalarNode {
+			return false
+		}
+	}
+	// Estimate flow style length
+	estimatedLen := e.estimateFlowLength(node)
+	width := e.lineWidth
+	if width <= 0 {
+		width = 80 // Default width if not set
+	}
+	return estimatedLen > 0 && estimatedLen <= width
+}
+
+// estimateFlowLength estimates the character length of a node in flow style.
+func (e *encoder) estimateFlowLength(node *Node) int {
+	if node.Kind == SequenceNode {
+		// [item1, item2, ...] = 2 + sum(len(items)) + 2*(len-1)
+		length := 2 // []
+		for i, child := range node.Content {
+			if i > 0 {
+				length += 2 // ", "
+			}
+			length += len(child.Value)
+		}
+		return length
+	}
+	if node.Kind == MappingNode {
+		// {key1: val1, key2: val2} = 2 + sum(key: val) + 2*(pairs-1)
+		length := 2 // {}
+		for i := 0; i < len(node.Content); i += 2 {
+			if i > 0 {
+				length += 2 // ", "
+			}
+			length += len(node.Content[i].Value) + 2 + len(node.Content[i+1].Value) // "key: val"
+		}
+		return length
+	}
+	return 0
 }
 
 func (e *encoder) marshal(tag string, in reflect.Value) {
@@ -485,7 +569,7 @@ func (e *encoder) node(node *Node, tail string) {
 
 	switch node.Kind {
 	case DocumentNode:
-		e.event = libyaml.NewDocumentStartEvent(nil, nil, true)
+		e.event = libyaml.NewDocumentStartEvent(noVersionDirective, noTagDirective, true)
 		e.event.HeadComment = []byte(node.HeadComment)
 		e.emit()
 		for _, node := range node.Content {
@@ -497,7 +581,10 @@ func (e *encoder) node(node *Node, tail string) {
 
 	case SequenceNode:
 		style := libyaml.BLOCK_SEQUENCE_STYLE
-		if node.Style&FlowStyle != 0 {
+		// Use flow style if explicitly requested or if it's a simple
+		// collection (scalar-only contents that fit within line width,
+		// enabled via WithFlowSimpleCollections)
+		if node.Style&FlowStyle != 0 || e.isSimpleCollection(node) {
 			style = libyaml.FLOW_SEQUENCE_STYLE
 		}
 		e.event = libyaml.NewSequenceStartEvent([]byte(node.Anchor), []byte(longTag(tag)), tag == "", style)
@@ -513,7 +600,10 @@ func (e *encoder) node(node *Node, tail string) {
 
 	case MappingNode:
 		style := libyaml.BLOCK_MAPPING_STYLE
-		if node.Style&FlowStyle != 0 {
+		// Use flow style if explicitly requested or if it's a simple
+		// collection (scalar-only contents that fit within line width,
+		// enabled via WithFlowSimpleCollections)
+		if node.Style&FlowStyle != 0 || e.isSimpleCollection(node) {
 			style = libyaml.FLOW_MAPPING_STYLE
 		}
 		e.event = libyaml.NewMappingStartEvent([]byte(node.Anchor), []byte(longTag(tag)), tag == "", style)

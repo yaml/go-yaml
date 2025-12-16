@@ -566,9 +566,11 @@ func assertNodeInfoEqual(t *testing.T, expected, actual *NodeInfo, context strin
 	}
 	if expected == nil {
 		t.Fatalf("%s: expected nil, got %+v", context, actual)
+		return
 	}
 	if actual == nil {
 		t.Fatalf("%s: expected %+v, got nil", context, expected)
+		return
 	}
 
 	assert.Equalf(t, expected.Kind, actual.Kind, "%s: Kind mismatch", context)
@@ -598,4 +600,195 @@ func TestNodeFromYAML(t *testing.T) {
 	}, map[string]datatest.TestHandler{
 		"node-test": runNodeTestCase,
 	})
+}
+
+func TestNodeLoad(t *testing.T) {
+	// Test basic Load functionality
+	node := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "name", Tag: "!!str"},
+			{Kind: yaml.ScalarNode, Value: "test", Tag: "!!str"},
+		},
+	}
+
+	var result map[string]string
+	err := node.Load(&result)
+	assert.NoError(t, err)
+	assert.Equal(t, "test", result["name"])
+}
+
+func TestNodeLoadWithKnownFields(t *testing.T) {
+	// Test that KnownFields option is respected
+	node := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "known", Tag: "!!str"},
+			{Kind: yaml.ScalarNode, Value: "value", Tag: "!!str"},
+			{Kind: yaml.ScalarNode, Value: "unknown", Tag: "!!str"},
+			{Kind: yaml.ScalarNode, Value: "other", Tag: "!!str"},
+		},
+	}
+
+	type Target struct {
+		Known string `yaml:"known"`
+	}
+
+	// Without KnownFields - should succeed
+	var result1 Target
+	err := node.Load(&result1)
+	assert.NoError(t, err)
+	assert.Equal(t, "value", result1.Known)
+
+	// With KnownFields - should fail
+	var result2 Target
+	err = node.Load(&result2, yaml.WithKnownFields())
+	assert.NotNil(t, err)
+	assert.ErrorMatches(t, ".*unknown not found.*", err)
+}
+
+func TestNodeLoadPreservesKnownFieldsInUnmarshaler(t *testing.T) {
+	// This test validates the fix for Issue #460
+	type strictConfig struct {
+		Name string `yaml:"name"`
+		Port int    `yaml:"port"`
+	}
+
+	// Custom unmarshaler using Load with KnownFields
+	type Config struct {
+		strictConfig
+	}
+
+	var unmarshalCalled bool
+	unmarshaler := struct {
+		Config
+	}{}
+
+	// Override UnmarshalYAML to use node.Load
+	oldUnmarshal := func(node *yaml.Node) error {
+		unmarshalCalled = true
+		type plain strictConfig
+		return node.Load((*plain)(&unmarshaler.strictConfig), yaml.WithKnownFields())
+	}
+
+	// Valid YAML - should succeed
+	validYAML := []byte(`
+name: test
+port: 8080
+`)
+
+	var validNode yaml.Node
+	err := yaml.Unmarshal(validYAML, &validNode)
+	assert.NoError(t, err)
+
+	err = oldUnmarshal(validNode.Content[0])
+	assert.NoError(t, err)
+	assert.True(t, unmarshalCalled)
+	assert.Equal(t, "test", unmarshaler.Name)
+	assert.Equal(t, 8080, unmarshaler.Port)
+
+	// Invalid YAML with unknown field - should fail
+	invalidYAML := []byte(`
+name: test
+port: 8080
+unknown: field
+`)
+
+	var invalidNode yaml.Node
+	err = yaml.Unmarshal(invalidYAML, &invalidNode)
+	assert.NoError(t, err)
+
+	unmarshalCalled = false
+	err = oldUnmarshal(invalidNode.Content[0])
+	assert.NotNil(t, err)
+	assert.True(t, unmarshalCalled)
+	assert.ErrorMatches(t, ".*unknown not found.*", err)
+}
+
+func TestNodeDump(t *testing.T) {
+	// Test basic Dump functionality
+	value := map[string]string{"name": "test"}
+
+	var node yaml.Node
+	err := node.Dump(value)
+	assert.NoError(t, err)
+	assert.Equal(t, yaml.MappingNode, node.Kind)
+	assert.Equal(t, "!!map", node.Tag)
+	assert.Equal(t, 2, len(node.Content))
+}
+
+func TestNodeDumpWithOptions(t *testing.T) {
+	// Test Dump with encoder options
+	type Config struct {
+		Name string `yaml:"name"`
+		Port int    `yaml:"port"`
+	}
+	value := Config{Name: "myapp", Port: 8080}
+
+	// Dump with V4 (default)
+	var node1 yaml.Node
+	err := node1.Dump(value, yaml.V4)
+	assert.NoError(t, err)
+	assert.Equal(t, yaml.MappingNode, node1.Kind)
+
+	// Dump with V3
+	var node2 yaml.Node
+	err = node2.Dump(value, yaml.V3)
+	assert.NoError(t, err)
+	assert.Equal(t, yaml.MappingNode, node2.Kind)
+
+	// Both should produce valid nodes with same content structure
+	assert.Equal(t, len(node1.Content), len(node2.Content))
+}
+
+func TestNodeLoadWithUniqueKeys(t *testing.T) {
+	// Test that UniqueKeys option is respected
+	node := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "key", Tag: "!!str"},
+			{Kind: yaml.ScalarNode, Value: "value1", Tag: "!!str"},
+			{Kind: yaml.ScalarNode, Value: "key", Tag: "!!str"},
+			{Kind: yaml.ScalarNode, Value: "value2", Tag: "!!str"},
+		},
+	}
+
+	// With UniqueKeys (default) - should fail on duplicate
+	var result1 map[string]string
+	err := node.Load(&result1, yaml.WithUniqueKeys())
+	assert.NotNil(t, err)
+	assert.ErrorMatches(t, ".*already defined.*", err)
+
+	// Without UniqueKeys - should succeed (last value wins)
+	var result2 map[string]string
+	err = node.Load(&result2, yaml.WithUniqueKeys(false))
+	assert.NoError(t, err)
+	assert.Equal(t, "value2", result2["key"])
+}
+
+func TestNodeLoadInvalidOptions(t *testing.T) {
+	node := &yaml.Node{
+		Kind:  yaml.ScalarNode,
+		Value: "test",
+		Tag:   "!!str",
+	}
+
+	// Test with invalid indent option (should fail during applyOptions)
+	var result string
+	err := node.Load(&result, yaml.WithIndent(100))
+	assert.NotNil(t, err)
+	assert.ErrorMatches(t, ".*indent must be.*", err)
+}
+
+func TestNodeDumpInvalidOptions(t *testing.T) {
+	value := "test"
+
+	// Test with invalid indent option
+	var node yaml.Node
+	err := node.Dump(value, yaml.WithIndent(100))
+	assert.NotNil(t, err)
+	assert.ErrorMatches(t, ".*indent must be.*", err)
 }

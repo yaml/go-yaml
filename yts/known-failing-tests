@@ -210,7 +210,6 @@ TestYAMLSuite/010/UnmarshalTest
 TestYAMLSuite/010/EventComparisonTest
 TestYAMLSuite/YJV2/UnmarshalTest
 TestYAMLSuite/YJV2/EventComparisonTest
-TestYAMLSuite/229Q/JSONComparisonTest
 TestYAMLSuite/2AUY/JSONComparisonTest
 TestYAMLSuite/33X3/JSONComparisonTest
 TestYAMLSuite/4RWC/JSONComparisonTest

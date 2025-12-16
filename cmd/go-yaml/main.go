@@ -159,14 +159,17 @@ func main() {
 				log.Fatal("Failed to process YAML node:", err)
 			}
 		} else {
-			// Use Decode mode (original behavior)
+			// Use Loader mode (original behavior)
 			reader := io.Reader(os.Stdin)
-			dec := yaml.NewDecoder(reader)
+			loader, err := yaml.NewLoader(reader)
+			if err != nil {
+				log.Fatal("Failed to create loader:", err)
+			}
 			firstDoc := true
 
 			for {
 				var node yaml.Node
-				err := dec.Decode(&node)
+				err := loader.Load(&node)
 				if errors.Is(err, io.EOF) {
 					break
 				}
@@ -182,12 +185,13 @@ func main() {
 
 				info := FormatNode(node)
 
-				// Use encoder with 2-space indentation
 				var buf bytes.Buffer
-				enc := yaml.NewEncoder(&buf)
-				enc.SetIndent(2)
-				if err := enc.Encode(info); err != nil {
-					log.Fatal("Failed to marshal node info:", err)
+				enc, err := yaml.NewDumper(&buf)
+				if err != nil {
+					log.Fatal("Failed to create dumper:", err)
+				}
+				if err := enc.Dump(info); err != nil {
+					log.Fatal("Failed to dump node info:", err)
 				}
 				enc.Close()
 				fmt.Print(buf.String())
@@ -220,27 +224,28 @@ func ProcessNodeUnmarshal() error {
 		}
 		firstDoc = false
 
-		// For unmarshal mode, use interface{} first to avoid preserving comments
+		// For unmarshal mode, use `any` first to avoid preserving comments
 		var data any
-		if err := yaml.Unmarshal(doc, &data); err != nil {
-			return fmt.Errorf("failed to unmarshal YAML: %w", err)
+		if err := yaml.Load(doc, &data); err != nil {
+			return fmt.Errorf("failed to load YAML: %w", err)
 		}
 
 		// Convert to yaml.Node for node processing
 		var node yaml.Node
-		if err := yaml.Unmarshal(doc, &node); err != nil {
-			return fmt.Errorf("failed to unmarshal YAML to node: %w", err)
+		if err := yaml.Load(doc, &node); err != nil {
+			return fmt.Errorf("failed to load YAML to node: %w", err)
 		}
 
 		info := FormatNode(node)
 
-		// Use encoder with 2-space indentation
 		var buf bytes.Buffer
-		enc := yaml.NewEncoder(&buf)
-		enc.SetIndent(2)
-		if err := enc.Encode(info); err != nil {
+		enc, err := yaml.NewDumper(&buf)
+		if err != nil {
+			return fmt.Errorf("failed to create dumper: %w", err)
+		}
+		if err := enc.Dump(info); err != nil {
 			enc.Close()
-			return fmt.Errorf("failed to marshal node info: %w", err)
+			return fmt.Errorf("failed to dump node info: %w", err)
 		}
 		enc.Close()
 		fmt.Print(buf.String())

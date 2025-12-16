@@ -316,13 +316,21 @@ var (
 	ifaceType      = generalMapType.Elem()
 )
 
-func newDecoder() *decoder {
+func newDecoder(opts *options) *decoder {
 	d := &decoder{
 		stringMapType:  stringMapType,
 		generalMapType: generalMapType,
-		uniqueKeys:     true,
+		uniqueKeys:     true, // default for legacy Decoder API (when opts == nil)
 	}
 	d.aliases = make(map[*Node]bool)
+
+	if opts != nil {
+		// For Loader API, opts comes from applyOptions() which initializes
+		// uniqueKeys to true by default, so this preserves the same behavior
+		d.knownFields = opts.knownFields
+		d.uniqueKeys = opts.uniqueKeys
+	}
+
 	return d
 }
 
