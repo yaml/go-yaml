@@ -19,16 +19,19 @@ func ProcessYAML(preserve, unmarshal, marshal bool) error {
 	return processYAMLDecode(preserve, marshal)
 }
 
-// processYAMLDecode uses Decoder.Decode for YAML processing
+// processYAMLDecode uses Loader.Load for YAML processing
 func processYAMLDecode(preserve, marshal bool) error {
 	if preserve {
 		// Preserve comments and styles by using yaml.Node
-		decoder := yaml.NewDecoder(os.Stdin)
+		loader, err := yaml.NewLoader(os.Stdin)
+		if err != nil {
+			return fmt.Errorf("failed to create loader: %w", err)
+		}
 		firstDoc := true
 
 		for {
 			var node yaml.Node
-			err := decoder.Decode(&node)
+			err := loader.Load(&node)
 			if err != nil {
 				if err == io.EOF {
 					break
@@ -54,31 +57,36 @@ func processYAMLDecode(preserve, marshal bool) error {
 			}
 
 			if marshal {
-				// Use Marshal for output
-				output, err := yaml.Marshal(outNode)
+				// Use Dump for output
+				output, err := yaml.Dump(outNode)
 				if err != nil {
-					return fmt.Errorf("failed to marshal YAML: %w", err)
+					return fmt.Errorf("failed to dump YAML: %w", err)
 				}
 				fmt.Print(string(output))
 			} else {
-				// Use Encoder for output
-				encoder := yaml.NewEncoder(os.Stdout)
-				encoder.SetIndent(2)
-				if err := encoder.Encode(outNode); err != nil {
-					encoder.Close()
-					return fmt.Errorf("failed to encode YAML: %w", err)
+				// Use Dumper for output
+				dumper, err := yaml.NewDumper(os.Stdout)
+				if err != nil {
+					return fmt.Errorf("failed to create dumper: %w", err)
 				}
-				encoder.Close()
+				if err := dumper.Dump(outNode); err != nil {
+					dumper.Close()
+					return fmt.Errorf("failed to dump YAML: %w", err)
+				}
+				dumper.Close()
 			}
 		}
 	} else {
-		// Don't preserve comments and styles - use interface{} for clean output
-		decoder := yaml.NewDecoder(os.Stdin)
+		// Don't preserve comments and styles - use `any` for clean output
+		loader, err := yaml.NewLoader(os.Stdin)
+		if err != nil {
+			return fmt.Errorf("failed to create loader: %w", err)
+		}
 		firstDoc := true
 
 		for {
 			var data any
-			err := decoder.Decode(&data)
+			err := loader.Load(&data)
 			if err != nil {
 				if err == io.EOF || err.Error() == "EOF" {
 					break
@@ -93,21 +101,23 @@ func processYAMLDecode(preserve, marshal bool) error {
 			firstDoc = false
 
 			if marshal {
-				// Use Marshal for output
-				output, err := yaml.Marshal(data)
+				// Use Dump for output
+				output, err := yaml.Dump(data)
 				if err != nil {
-					return fmt.Errorf("failed to marshal YAML: %w", err)
+					return fmt.Errorf("failed to dump YAML: %w", err)
 				}
 				fmt.Print(string(output))
 			} else {
-				// Use Encoder for output
-				encoder := yaml.NewEncoder(os.Stdout)
-				encoder.SetIndent(2)
-				if err := encoder.Encode(data); err != nil {
-					encoder.Close()
-					return fmt.Errorf("failed to encode YAML: %w", err)
+				// Use Dumper for output
+				dumper, err := yaml.NewDumper(os.Stdout)
+				if err != nil {
+					return fmt.Errorf("failed to create dumper: %w", err)
 				}
-				encoder.Close()
+				if err := dumper.Dump(data); err != nil {
+					dumper.Close()
+					return fmt.Errorf("failed to dump YAML: %w", err)
+				}
+				dumper.Close()
 			}
 		}
 	}
@@ -142,8 +152,8 @@ func processYAMLUnmarshal(preserve, marshal bool) error {
 		if preserve {
 			// Preserve comments and styles by using yaml.Node
 			var node yaml.Node
-			if err := yaml.Unmarshal(doc, &node); err != nil {
-				return fmt.Errorf("failed to unmarshal YAML: %w", err)
+			if err := yaml.Load(doc, &node); err != nil {
+				return fmt.Errorf("failed to load YAML: %w", err)
 			}
 
 			// If the node is not a DocumentNode, wrap it in one
@@ -158,45 +168,49 @@ func processYAMLUnmarshal(preserve, marshal bool) error {
 			}
 
 			if marshal {
-				// Use Marshal for output
-				output, err := yaml.Marshal(outNode)
+				// Use Dump for output
+				output, err := yaml.Dump(outNode)
 				if err != nil {
-					return fmt.Errorf("failed to marshal YAML: %w", err)
+					return fmt.Errorf("failed to dump YAML: %w", err)
 				}
 				fmt.Print(string(output))
 			} else {
-				// Use Encoder for output
-				encoder := yaml.NewEncoder(os.Stdout)
-				encoder.SetIndent(2)
-				if err := encoder.Encode(outNode); err != nil {
-					encoder.Close()
-					return fmt.Errorf("failed to encode YAML: %w", err)
+				// Use Dumper for output
+				dumper, err := yaml.NewDumper(os.Stdout)
+				if err != nil {
+					return fmt.Errorf("failed to create dumper: %w", err)
 				}
-				encoder.Close()
+				if err := dumper.Dump(outNode); err != nil {
+					dumper.Close()
+					return fmt.Errorf("failed to dump YAML: %w", err)
+				}
+				dumper.Close()
 			}
 		} else {
-			// For unmarshal mode with -y (not -Y), always use interface{} to avoid preserving comments
+			// For unmarshal mode with -y (not -Y), always use `any` to avoid preserving comments
 			var data any
-			if err := yaml.Unmarshal(doc, &data); err != nil {
-				return fmt.Errorf("failed to unmarshal YAML: %w", err)
+			if err := yaml.Load(doc, &data); err != nil {
+				return fmt.Errorf("failed to load YAML: %w", err)
 			}
 
 			if marshal {
-				// Use Marshal for output
-				output, err := yaml.Marshal(data)
+				// Use Dump for output
+				output, err := yaml.Dump(data)
 				if err != nil {
-					return fmt.Errorf("failed to marshal YAML: %w", err)
+					return fmt.Errorf("failed to dump YAML: %w", err)
 				}
 				fmt.Print(string(output))
 			} else {
-				// Use Encoder for output
-				encoder := yaml.NewEncoder(os.Stdout)
-				encoder.SetIndent(2)
-				if err := encoder.Encode(data); err != nil {
-					encoder.Close()
-					return fmt.Errorf("failed to encode YAML: %w", err)
+				// Use Dumper for output
+				dumper, err := yaml.NewDumper(os.Stdout)
+				if err != nil {
+					return fmt.Errorf("failed to create dumper: %w", err)
 				}
-				encoder.Close()
+				if err := dumper.Dump(data); err != nil {
+					dumper.Close()
+					return fmt.Errorf("failed to dump YAML: %w", err)
+				}
+				dumper.Close()
 			}
 		}
 	}

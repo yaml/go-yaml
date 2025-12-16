@@ -119,7 +119,7 @@ func runTest(t *testing.T, testPath string) {
 
 	t.Run("UnmarshalTest", func(t *testing.T) {
 		shouldSkipTest(t)
-		unmarshalErr = yaml.Unmarshal(inYAML, &unmarshaledValue)
+		unmarshalErr = yaml.Load(inYAML, &unmarshaledValue)
 
 		if expectError {
 			if unmarshalErr == nil {
@@ -169,12 +169,12 @@ func runTest(t *testing.T, testPath string) {
 		shouldSkipTest(t)
 		var currentUnmarshaledValue any
 
-		currentUnmarshalErr := yaml.Unmarshal(inYAML, &currentUnmarshaledValue)
+		currentUnmarshalErr := yaml.Load(inYAML, &currentUnmarshaledValue)
 
 		if !(currentUnmarshalErr == nil || expectError) {
 			return
 		}
-		marshaledYAML, marshalErr := yaml.Marshal(currentUnmarshaledValue)
+		marshaledYAML, marshalErr := yaml.Dump(currentUnmarshaledValue)
 		if marshalErr != nil {
 			t.Errorf("Test: %s\nDescription: %s\nError: Failed to marshal value: %v", testPath, testDescription, marshalErr)
 			return
@@ -189,13 +189,13 @@ func runTest(t *testing.T, testPath string) {
 			return
 		}
 		var expectedUnmarshaledValue any
-		err = yaml.Unmarshal(expectedOutYAML, &expectedUnmarshaledValue)
+		err = yaml.Load(expectedOutYAML, &expectedUnmarshaledValue)
 		if err != nil {
 			t.Errorf("Test: %s\nDescription: %s\nError: Failed to unmarshal out.yaml: %v", testPath, testDescription, err)
 			return
 		}
 		var reUnmarshaledValue any
-		err = yaml.Unmarshal(marshaledYAML, &reUnmarshaledValue)
+		err = yaml.Load(marshaledYAML, &reUnmarshaledValue)
 		if err != nil {
 			t.Errorf("Test: %s\nDescription: %s\nError: Failed to re-unmarshal marshaled YAML: %v", testPath, testDescription, err)
 		} else if !reflect.DeepEqual(reUnmarshaledValue, expectedUnmarshaledValue) {
@@ -207,7 +207,7 @@ func runTest(t *testing.T, testPath string) {
 		shouldSkipTest(t)
 		var currentUnmarshaledValue any
 
-		currentUnmarshalErr := yaml.Unmarshal(inYAML, &currentUnmarshaledValue)
+		currentUnmarshalErr := yaml.Load(inYAML, &currentUnmarshaledValue)
 
 		if !(currentUnmarshalErr == nil || expectError) {
 			return

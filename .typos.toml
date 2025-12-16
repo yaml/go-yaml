@@ -25,3 +25,5 @@ extend-ignore-re = [
 	'ba\?r',         # this one can be found in test files
 ]
 
+[default.extend-words]
+caf = "caf"  # part of "café" shown as "caf\u00e9" in Unicode escape examples

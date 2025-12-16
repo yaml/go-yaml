@@ -20,14 +20,17 @@ func ProcessJSON(pretty, unmarshal bool) error {
 	return processJSONDecode(pretty)
 }
 
-// processJSONDecode uses Decoder.Decode for YAML processing
+// processJSONDecode uses Loader.Load for YAML processing
 func processJSONDecode(pretty bool) error {
-	decoder := yaml.NewDecoder(os.Stdin)
+	loader, err := yaml.NewLoader(os.Stdin)
+	if err != nil {
+		return fmt.Errorf("failed to create loader: %w", err)
+	}
 
 	for {
 		// Read each document
 		var data any
-		err := decoder.Decode(&data)
+		err := loader.Load(&data)
 		if err != nil {
 			if err.Error() == "EOF" {
 				break
@@ -65,11 +68,11 @@ func processJSONUnmarshal(pretty bool) error {
 			continue
 		}
 
-		// For unmarshal mode, always use interface{} to avoid preserving comments
+		// For unmarshal mode, always use `any` to avoid preserving comments
 		var data any
-		err := yaml.Unmarshal(doc, &data)
+		err := yaml.Load(doc, &data)
 		if err != nil {
-			return fmt.Errorf("failed to unmarshal YAML: %w", err)
+			return fmt.Errorf("failed to load YAML: %w", err)
 		}
 
 		// Encode as JSON
