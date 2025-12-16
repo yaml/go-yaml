@@ -29,6 +29,9 @@ YTS-DIR := yts/testdata/$(YTS-TAG)
 
 CLI-BINARY := go-yaml
 
+# Pager for viewing documentation:
+PAGER ?= less -FRX
+
 # Setup and include go.mk and shell.mk:
 
 # We need to limit `find` to avoid dirs like `.cache/` and any git worktrees,
@@ -125,6 +128,20 @@ cli: $(CLI-BINARY)
 
 $(CLI-BINARY): $(GO)
 	go build -o $@ ./cmd/$@
+
+run-examples: $(GO)
+	@for dir in example/*/; do \
+	  (set -x; go run "$${dir}main.go") || \
+	  { echo "$$dir failed"; break; }; \
+	done
+
+# CLI documentation (go doc) - view in terminal:
+doc: $(GO-DEPS)
+	@go doc -all . | $(PAGER)
+
+# HTTP documentation server - opens browser:
+doc-http: $(GO-DEPS)
+	go doc -http -all
 
 # Setup rules:
 $(YTS-DIR):
