@@ -133,6 +133,15 @@ func (p *parser) parse() *Node {
 		return p.document()
 	case libyaml.STREAM_END_EVENT:
 		// Happens when attempting to decode an empty buffer.
+		if len(p.event.HeadComment) > 0 {
+			// The buffer is empty, but there is a comment.
+			// Create a document node which contains this comment.
+			// Without this, the comment would get lost since
+			// Node.Decode() would simply return io.EOF.
+			n := p.node(DocumentNode, "", "", "")
+			p.event.HeadComment = nil
+			return n
+		}
 		return nil
 	case libyaml.TAIL_COMMENT_EVENT:
 		panic("internal error: unexpected tail comment event (please report)")

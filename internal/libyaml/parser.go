@@ -339,6 +339,8 @@ func (parser *Parser) parseDocumentStart(event *Event, implicit bool) bool {
 			tag_directives:    tag_directives,
 			Implicit:          false,
 		}
+		// Without the next line, comments before `---` would be attributed wrongly.
+		parser.setEventComments(event)
 		parser.skipToken()
 
 	} else {
@@ -349,6 +351,9 @@ func (parser *Parser) parseDocumentStart(event *Event, implicit bool) bool {
 			StartMark: token.StartMark,
 			EndMark:   token.EndMark,
 		}
+		// Without this, a document only consisting out of comments would result
+		// in no node since the comment would not be added to any event.
+		parser.setEventComments(event)
 		parser.skipToken()
 	}
 

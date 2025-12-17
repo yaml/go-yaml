@@ -1112,6 +1112,244 @@ func TestDecoder(t *testing.T) {
 	}
 }
 
+var decoderNodeTests = []struct {
+	data  string
+	nodes []*yaml.Node
+}{
+	{
+		"# foo\nkey: value\n",
+		[]*yaml.Node{
+			{
+				Kind:   yaml.DocumentNode,
+				Line:   2,
+				Column: 1,
+				Content: []*yaml.Node{{
+					Kind:   yaml.MappingNode,
+					Tag:    "!!map",
+					Line:   2,
+					Column: 1,
+					Content: []*yaml.Node{{
+						Kind:        yaml.ScalarNode,
+						Value:       "key",
+						Tag:         "!!str",
+						Line:        2,
+						Column:      1,
+						HeadComment: "# foo",
+					}, {
+						Kind:   yaml.ScalarNode,
+						Value:  "value",
+						Tag:    "!!str",
+						Line:   2,
+						Column: 6,
+					}},
+				}},
+			},
+		},
+	},
+	{
+		"# foo\n---\n# bar\n---\nkey: value\n",
+		[]*yaml.Node{
+			{
+				Kind:        yaml.DocumentNode,
+				Line:        2,
+				Column:      1,
+				HeadComment: "# foo",
+				FootComment: "# bar",
+				Content: []*yaml.Node{{
+					Kind:   yaml.ScalarNode,
+					Value:  "",
+					Tag:    "!!null",
+					Line:   4,
+					Column: 1,
+				}},
+			}, {
+				Kind:   yaml.DocumentNode,
+				Line:   4,
+				Column: 1,
+				Content: []*yaml.Node{{
+					Kind:   yaml.MappingNode,
+					Tag:    "!!map",
+					Line:   5,
+					Column: 1,
+					Content: []*yaml.Node{{
+						Kind:   yaml.ScalarNode,
+						Value:  "key",
+						Tag:    "!!str",
+						Line:   5,
+						Column: 1,
+					}, {
+						Kind:   yaml.ScalarNode,
+						Value:  "value",
+						Tag:    "!!str",
+						Line:   5,
+						Column: 6,
+					}},
+				}},
+			},
+		},
+	},
+	{
+		"# foo\n",
+		[]*yaml.Node{
+			{
+				Kind:        yaml.DocumentNode,
+				Line:        2,
+				Column:      1,
+				HeadComment: "# foo",
+			},
+		},
+	},
+	{
+		"# foo\n---\n",
+		[]*yaml.Node{
+			{
+				Kind:        yaml.DocumentNode,
+				Line:        2,
+				Column:      1,
+				HeadComment: "# foo",
+				Content: []*yaml.Node{{
+					Kind:   yaml.ScalarNode,
+					Tag:    "!!null",
+					Value:  "",
+					Line:   3,
+					Column: 1,
+				}},
+			},
+		},
+	},
+	{
+		"# foo\n---\nkey: value\n",
+		[]*yaml.Node{
+			{
+				Kind:        yaml.DocumentNode,
+				Line:        2,
+				Column:      1,
+				HeadComment: "# foo",
+				Content: []*yaml.Node{{
+					Kind:   yaml.MappingNode,
+					Tag:    "!!map",
+					Line:   3,
+					Column: 1,
+					Content: []*yaml.Node{{
+						Kind:   yaml.ScalarNode,
+						Value:  "key",
+						Tag:    "!!str",
+						Line:   3,
+						Column: 1,
+					}, {
+						Kind:   yaml.ScalarNode,
+						Value:  "value",
+						Tag:    "!!str",
+						Line:   3,
+						Column: 6,
+					}},
+				}},
+			},
+		},
+	},
+	{
+		"# foo\n---\n# bar\nkey: value\n",
+		[]*yaml.Node{
+			{
+				Kind:        yaml.DocumentNode,
+				Line:        2,
+				Column:      1,
+				HeadComment: "# foo",
+				Content: []*yaml.Node{{
+					Kind:   yaml.MappingNode,
+					Tag:    "!!map",
+					Line:   4,
+					Column: 1,
+					Content: []*yaml.Node{{
+						Kind:        yaml.ScalarNode,
+						Value:       "key",
+						Tag:         "!!str",
+						Line:        4,
+						Column:      1,
+						HeadComment: "# bar",
+					}, {
+						Kind:   yaml.ScalarNode,
+						Value:  "value",
+						Tag:    "!!str",
+						Line:   4,
+						Column: 6,
+					}},
+				}},
+			},
+		},
+	},
+	{
+		"key: value\n\n# foo\n---\nkey: value\n",
+		[]*yaml.Node{
+			{
+				Kind:        yaml.DocumentNode,
+				Line:        1,
+				Column:      1,
+				FootComment: "# foo",
+				Content: []*yaml.Node{{
+					Kind:   yaml.MappingNode,
+					Tag:    "!!map",
+					Line:   1,
+					Column: 1,
+					Content: []*yaml.Node{{
+						Kind:   yaml.ScalarNode,
+						Value:  "key",
+						Tag:    "!!str",
+						Line:   1,
+						Column: 1,
+					}, {
+						Kind:   yaml.ScalarNode,
+						Value:  "value",
+						Tag:    "!!str",
+						Line:   1,
+						Column: 6,
+					}},
+				}},
+			}, {
+				Kind:   yaml.DocumentNode,
+				Line:   4,
+				Column: 1,
+				Content: []*yaml.Node{{
+					Kind:   yaml.MappingNode,
+					Tag:    "!!map",
+					Line:   5,
+					Column: 1,
+					Content: []*yaml.Node{{
+						Kind:   yaml.ScalarNode,
+						Value:  "key",
+						Tag:    "!!str",
+						Line:   5,
+						Column: 1,
+					}, {
+						Kind:   yaml.ScalarNode,
+						Value:  "value",
+						Tag:    "!!str",
+						Line:   5,
+						Column: 6,
+					}},
+				}},
+			},
+		},
+	},
+}
+
+func TestDecoderNodes(t *testing.T) {
+	for i, item := range decoderNodeTests {
+		var nodes []*yaml.Node
+		d := yaml.NewDecoder(bytes.NewReader([]byte(item.data)))
+		for {
+			node := &yaml.Node{}
+			err := d.Decode(node)
+			if err == io.EOF {
+				break
+			}
+			assert.NoError(t, err)
+			nodes = append(nodes, node)
+		}
+		assert.DeepEqualf(t, nodes, item.nodes, "test %d failed: %q", i, item.data)
+	}
+}
+
 type errReader struct{}
 
 func (errReader) Read([]byte) (int, error) {

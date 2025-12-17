@@ -366,6 +366,7 @@ func (emitter *Emitter) emitStreamStart(event *Event) error {
 // Expect DOCUMENT-START or STREAM-END.
 func (emitter *Emitter) emitDocumentStart(event *Event, first bool) error {
 	if event.Type == DOCUMENT_START_EVENT {
+		isEmpty := emitter.events_head+1 < len(emitter.events) && emitter.events[emitter.events_head+1].Type == DOCUMENT_END_EVENT
 
 		if event.version_directive != nil {
 			if err := emitter.analyzeVersionDirective(event.version_directive); err != nil {
@@ -457,12 +458,19 @@ func (emitter *Emitter) emitDocumentStart(event *Event, first bool) error {
 			if err := emitter.processHeadComment(); err != nil {
 				return err
 			}
-			if err := emitter.putLineBreak(); err != nil {
-				return err
+			if !isEmpty {
+				if err := emitter.putLineBreak(); err != nil {
+					return err
+				}
 			}
 		}
 
 		emitter.state = EMIT_DOCUMENT_CONTENT_STATE
+		if isEmpty {
+			// Prevent serialization error if there is a DocumentNode with
+			// HeadComment but no content.
+			emitter.state = EMIT_DOCUMENT_END_STATE
+		}
 		return nil
 	}
 
