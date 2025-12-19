@@ -1,7 +1,7 @@
 # Auto-install https://github.com/makeplus/makes at specific commit:
 MAKES := .cache/makes
 MAKES-LOCAL := .cache/local
-MAKES-COMMIT ?= 40dee58a023162aa71ed9dc8c93973c7d73d32d5
+MAKES-COMMIT ?= 4962658786cf52734b3e416e49cba2abf08402a6
 $(shell [ -d $(MAKES) ] || ( \
   git clone -q https://github.com/makeplus/makes $(MAKES) && \
   git -C $(MAKES) reset -q --hard $(MAKES-COMMIT)))
@@ -30,12 +30,13 @@ YTS-DIR := yts/testdata/$(YTS-TAG)
 CLI-BINARY := go-yaml
 
 # Setup and include go.mk and shell.mk:
-GO-FILES := \
-  $(shell \
-    find . \
-    -not \( -path ./.cache -prune \) \
-    -name '*.go' | \
-    sort)
+
+# We need to limit `find` to avoid dirs like `.cache/` and any git worktrees,
+# as this makes `make` operations very slow:
+REPO-DIRS := $(shell find * -maxdepth 0 -type d \
+	       ! -exec test -f {}/.git \; -print)
+GO-FILES := $(shell find $(REPO-DIRS) -name '*.go')
+
 ifndef GO-VERSION-NEEDED
 GO-NO-DEP-GO := true
 endif
@@ -64,10 +65,9 @@ include $(MAKES)/shell.mk
 MAKES-CLEAN := $(CLI-BINARY) $(GOLANGCI-LINT)
 MAKES-REALCLEAN := $(dir $(YTS-DIR))
 
-SHELL-SCRIPTS := \
+SHELL-SCRIPTS = \
   util/common.bash \
-  $(shell grep -rl '^.!/usr/bin/env bash' . | \
-          grep -Ev '(\.sw|\.cache/)')
+  $(shell grep -rl '^.!/usr/bin/env bash' util)
 
 # v=1 for verbose
 v ?=
