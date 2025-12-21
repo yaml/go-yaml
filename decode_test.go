@@ -41,13 +41,14 @@ var negativeZero = math.Copysign(0.0, -1.0)
 
 var unmarshalIntTest = 123
 
-// archSafeInt returns an int64 representation of v that is safe for the current architecture.
+// archSafeInt returns v as int if it fits in the architecture's int type,
+// otherwise returns int64.
 func archSafeInt(v int64) any {
 	if strconv.IntSize == 64 || math.MinInt32 <= v && v <= math.MaxInt32 {
 		return int(v) // int is safe
 	}
 
-	// on 32-bit systems, and v is overflows int, we need to return an int64
+	// on 32-bit systems, and v overflows int, we need to return an int64
 	return int64(v)
 }
 
@@ -249,9 +250,11 @@ var unmarshalTests = []struct {
 	// Cross-architecture numeric tests
 	{
 		"bin: -0b1000000000000000000000000000000000000000000000000000000000000000",
-		map[string]any{"bin": archSafeInt(-9223372036854775808)},
+		map[string]any{"bin": archSafeInt(math.MinInt64)},
 	},
 	{
+		// When unmarshaling into map[string]int64, values that overflow int64
+		// cannot be decoded and result in an empty map.
 		"int_overflow: 9223372036854775808", // math.MaxInt64 + 1
 		map[string]int64{},
 	},
