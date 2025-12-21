@@ -33,9 +33,14 @@ func coerceScalar(value string) interface{} {
 		}
 	}
 
-	// Try decimal int
-	if _, err := fmt.Sscanf(value, "%d", &intVal); err == nil {
-		return intVal
+	// Try decimal int - use int64 to handle large values on 32-bit systems
+	var int64Val int64
+	if _, err := fmt.Sscanf(value, "%d", &int64Val); err == nil {
+		// Return as int if it fits, otherwise int64
+		if int64Val == int64(int(int64Val)) {
+			return int(int64Val)
+		}
+		return int64Val
 	}
 
 	// Default to string
