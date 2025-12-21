@@ -208,11 +208,11 @@ func init() {
 	decodeValues.Register("-0", negativeZero)
 
 	// Register math limit constants
-	decodeValues.Register("MaxInt32", math.MaxInt32)
-	decodeValues.Register("MinInt32", math.MinInt32)
-	decodeValues.Register("MaxInt64", math.MaxInt64)
-	decodeValues.Register("MinInt64", math.MinInt64)
-	decodeValues.Register("MaxUint32", math.MaxUint32)
+	decodeValues.Register("MaxInt32", int(math.MaxInt32))
+	decodeValues.Register("MinInt32", int(math.MinInt32))
+	decodeValues.Register("MaxInt64", int64(math.MaxInt64))
+	decodeValues.Register("MinInt64", int64(math.MinInt64))
+	decodeValues.Register("MaxUint32", uint(math.MaxUint32))
 	decodeValues.Register("MaxUint64", uint64(math.MaxUint64))
 	decodeValues.Register("MaxFloat32", math.MaxFloat32)
 	decodeValues.Register("MaxFloat64", math.MaxFloat64)
