@@ -138,6 +138,20 @@ func (l *Loader) Load(v any) (err error) {
 	}
 	l.docCount++
 
+	// Process through load plugins
+	for _, p := range l.opts.plugins {
+		if lp, ok := p.(LoadPlugin); ok {
+			node, err = lp.ProcessLoadNode(node)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	if node == nil {
+		return nil // No data to unmarshal
+	}
+
 	out := reflect.ValueOf(v)
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
 		out = out.Elem()
@@ -433,7 +447,34 @@ func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
 // values to YAML.
 func (d *Dumper) Dump(v any) (err error) {
 	defer handleErr(&err)
-	d.encoder.marshalDoc("", reflect.ValueOf(v))
+
+	// If there are dump plugins, convert to Node first and process
+	if len(d.opts.plugins) > 0 {
+		var node Node
+		if err := node.Encode(v); err != nil {
+			return err
+		}
+
+		// Process through dump plugins
+		for _, p := range d.opts.plugins {
+			if dp, ok := p.(DumpPlugin); ok {
+				processedNode, err := dp.ProcessDumpNode(&node)
+				if err != nil {
+					return err
+				}
+				if processedNode == nil {
+					continue // Skip nil results
+				}
+				node = *processedNode
+			}
+		}
+
+		// Marshal the processed node
+		d.encoder.marshalDoc("", reflect.ValueOf(&node))
+	} else {
+		// No plugins, use direct marshaling
+		d.encoder.marshalDoc("", reflect.ValueOf(v))
+	}
 	return nil
 }
 

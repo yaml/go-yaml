@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"go.yaml.in/yaml/v4"
+	"go.yaml.in/yaml/v4/plugin/comment/v3"
 )
 
 type Config struct {
@@ -16,7 +17,7 @@ type Config struct {
 
 func main() {
 	fmt.Println("Example 9: Loader with Multiple Options")
-	fmt.Println("(WithSingleDocument + WithKnownFields)")
+	fmt.Println("(WithSingleDocument + WithKnownFields + WithPlugin)")
 
 	// First test: unknown field should fail
 	multiDocWithUnknown := `---
@@ -28,10 +29,12 @@ name: app2
 version: 2.0.0
 `
 
+	commentsPlugin := v3.New()
 	loader1, err := yaml.NewLoader(
 		strings.NewReader(multiDocWithUnknown),
 		yaml.WithSingleDocument(),
 		yaml.WithKnownFields(),
+		yaml.WithPlugins(commentsPlugin),
 	)
 	if err != nil {
 		panic(err)

@@ -99,6 +99,25 @@
 // See the [go.yaml.in/yaml/v4/options] package and its version-specific
 // subpackages (v2, v3, v4) for details.
 //
+// # Plugin System
+//
+// Extend YAML processing with plugins that can transform nodes during
+// loading or dumping:
+//
+//	import "go.yaml.in/yaml/v4/plugin/comment/none"
+//
+//	// Strip comments for faster processing
+//	loader, err := yaml.NewLoader(r, yaml.WithPlugins(none.New()))
+//
+// Plugins process [Node] values after parsing (LoadPlugin) or before
+// encoding (DumpPlugin). Multiple plugins can be added and they execute
+// in the order specified:
+//
+//	yaml.NewLoader(r, yaml.WithPlugins(plugin1, plugin2))
+//
+// See the [go.yaml.in/yaml/v4/plugin] package for details on creating
+// custom plugins.
+//
 // # YAML Compatibility
 //
 // This package supports most of YAML 1.2, but preserves some YAML 1.1

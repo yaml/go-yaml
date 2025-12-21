@@ -59,7 +59,7 @@ go run basic_loader.go
 
 **`with_v4_option.go`** - Using v4 option presets
 - Demonstrates v4.Opts()
-- Shows v4 defaults (2-space indent)
+- Shows v4 defaults (2-space indent + comments plugin)
 - Compares with default (v3) output
 
 **`with_v4_override.go`** - Overriding option presets
@@ -68,9 +68,25 @@ go run basic_loader.go
 - Shows how later options override earlier ones
 
 **`multiple_options_loader.go`** - Combining multiple options
-- Uses WithSingleDocument and WithKnownFields together
+- Uses WithSingleDocument, WithKnownFields, and WithPlugin together
 - Demonstrates strict field checking
 - Shows error handling for unknown fields
+
+## Plugin System Examples
+
+**`comments_plugin_loader.go`** - Using comment plugins
+- Loads YAML with comment preservation
+- Demonstrates basic plugin usage
+- Shows accessing HeadComment fields
+
+**`roundtrip_comments.go`** - Load and dump with comments
+- Demonstrates comment preservation through round-trip
+- Uses plugin for both loading and dumping
+
+**`comment_plugins_comparison.go`** - Compare comment plugin variants
+- Tests v3, v4, and none comment plugins
+- Shows differences in comment handling
+- Demonstrates performance plugin (none)
 
 ## Node-Level API Examples
 
@@ -97,7 +113,7 @@ go run basic_loader.go
 ## Complete Demo
 
 **`loader_dumper_demo.go`** - Comprehensive feature demonstration
-- Covers Loader, Dumper, and options
+- Covers Loader, Dumper, options, and plugins
 - Multiple examples in one file
 - Good overview of library capabilities
 
@@ -141,6 +157,17 @@ import "go.yaml.in/yaml/v4/options/v4"
 
 dumper, _ := yaml.NewDumper(writer,
     v4.Opts(),
+)
+```
+
+### Using Plugins
+
+```go
+import "go.yaml.in/yaml/v4/plugin/comment/none"
+
+// Strip comments for performance
+loader, _ := yaml.NewLoader(reader,
+    yaml.WithPlugins(none.New()),
 )
 ```
 

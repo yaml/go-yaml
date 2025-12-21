@@ -391,6 +391,7 @@ go-yaml v2, v3, or v4 behavior.
 | Line Width            | 80  | 80  | 80  |
 | Unicode               | Yes | Yes | Yes |
 | Unique Keys           | Yes | Yes | Yes |
+| Comments Plugin       | None | None | Enabled |
 
 **Note:** v4 uses compact sequences (modern YAML standard) while v2/v3 preserve
 the historical non-compact behavior for backward compatibility.
@@ -650,6 +651,7 @@ format.
 
 ## See Also
 
+- [Plugin System Guide](plugins.md) - Extend YAML processing with plugins
 - [API Documentation](https://pkg.go.dev/go.yaml.in/yaml/v4) - Full API
   reference
 - [Examples](../example/README.md) - Runnable code examples

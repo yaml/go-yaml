@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"go.yaml.in/yaml/v4"
+	"go.yaml.in/yaml/v4/plugin/comment/v3"
 )
 
 type Config struct {
@@ -148,6 +149,117 @@ version: 3.0.0
 		panic(err)
 	}
 	fmt.Printf("   Output (4-space indent):\n%s\n", buf.String())
+
+	// Example 7: With Comments Plugin
+	fmt.Println("7. Loader with Comments Plugin:")
+	yamlWithComments := `# This is the app configuration
+name: myapp  # Application name
+version: 1.0.0
+
+# List of tags
+tags:
+  - web
+  - api
+`
+	commentsPlugin := v3.New()
+	loader4, err := yaml.NewLoader(
+		strings.NewReader(yamlWithComments),
+		yaml.WithPlugins(commentsPlugin),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	var node yaml.Node
+	if err := loader4.Load(&node); err != nil {
+		panic(err)
+	}
+
+	fmt.Println("   Node with comments loaded successfully")
+	fmt.Printf("   Document has %d top-level items\n", len(node.Content[0].Content))
+	if len(node.Content[0].Content) > 0 && node.Content[0].Content[0].HeadComment != "" {
+		fmt.Printf("   First field head comment: %q\n", node.Content[0].Content[0].HeadComment)
+	}
+	fmt.Println()
+
+	// Example 8: Round-trip with comments
+	fmt.Println("8. Round-trip with Comments (Load + Dump):")
+	buf.Reset()
+	dumper4, err := yaml.NewDumper(&buf, yaml.WithPlugins(commentsPlugin))
+	if err != nil {
+		panic(err)
+	}
+
+	if err := dumper4.Dump(&node); err != nil {
+		panic(err)
+	}
+	if err := dumper4.Close(); err != nil {
+		panic(err)
+	}
+	fmt.Printf("   Comments preserved in output:\n%s", buf.String())
+
+	// Example 9: Combining multiple options
+	fmt.Println("9. Loader with Multiple Options:")
+	fmt.Println("   (WithSingleDocument + WithKnownFields + WithPlugin)")
+
+	multiDocWithUnknown := `---
+name: app1
+version: 1.0.0
+unknownField: this-will-be-rejected
+---
+name: app2
+version: 2.0.0
+`
+	loader5, err := yaml.NewLoader(
+		strings.NewReader(multiDocWithUnknown),
+		yaml.WithSingleDocument(),
+		yaml.WithKnownFields(),
+		yaml.WithPlugins(commentsPlugin),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	var strictCfg Config
+	err = loader5.Load(&strictCfg)
+	if err != nil {
+		fmt.Printf("   ✓ Got expected error (unknown field): %v\n", err)
+	} else {
+		fmt.Printf("   Unexpected: no error for unknown field\n")
+	}
+
+	// Try with known fields only
+	validDoc := `---
+name: validapp
+version: 1.0.0
+tags:
+  - valid
+---
+name: app2
+version: 2.0.0
+`
+	loader6, err := yaml.NewLoader(
+		strings.NewReader(validDoc),
+		yaml.WithSingleDocument(),
+		yaml.WithKnownFields(),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	var validCfg Config
+	if err := loader6.Load(&validCfg); err != nil {
+		panic(err)
+	}
+	fmt.Printf("   ✓ First doc loaded: %+v\n", validCfg)
+
+	// Second call should return EOF due to WithSingleDocument
+	var secondCfg Config
+	err = loader6.Load(&secondCfg)
+	if err == io.EOF {
+		fmt.Println("   ✓ Second Load() returned io.EOF (WithSingleDocument enforced)")
+	}
+	fmt.Println()
 
 	fmt.Println("=== Demo Complete ===")
 }

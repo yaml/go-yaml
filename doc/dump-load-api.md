@@ -640,5 +640,6 @@ func MergeConfigs(files []string) ([]byte, error) {
 ## See Also
 
 - [Options Guide](options.md) - Complete option reference
+- [Plugin System](plugins.md) - Extend YAML processing
 - [API Documentation](https://pkg.go.dev/go.yaml.in/yaml/v4) - Full API
   reference

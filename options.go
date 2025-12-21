@@ -38,6 +38,9 @@ type options struct {
 	explicitStart         bool
 	explicitEnd           bool
 	flowSimpleCollections bool
+
+	// Plugin options
+	plugins []Plugin
 }
 
 // Option allows configuring YAML loading and dumping operations.
@@ -349,6 +352,23 @@ func OptsYAML(yamlStr string) (Option, error) {
 	return Options(optList...), nil
 }
 
+// WithPlugins adds multiple plugins at once.
+//
+// Example:
+//
+//	yaml.Dump(&data, yaml.V4, yaml.WithPlugins(comments.V4()))
+func WithPlugins(plugins ...Plugin) Option {
+	return func(o *options) error {
+		for _, p := range plugins {
+			if p == nil {
+				return errors.New("yaml: plugin cannot be nil")
+			}
+			o.plugins = append(o.plugins, p)
+		}
+		return nil
+	}
+}
+
 // V2 provides go-yaml v2 formatting defaults:
 //   - 2-space indentation
 //   - Non-compact sequence indentation
@@ -397,6 +417,7 @@ var V3 = Options(
 // Usage:
 //
 //	yaml.Dump(&data, yaml.V4)
+//	yaml.Dump(&data, yaml.V4, yaml.WithPlugins(comments.V4()))
 var V4 = Options(
 	WithIndent(2),
 	WithCompactSeqIndent(true),
