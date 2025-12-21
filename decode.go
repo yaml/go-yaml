@@ -18,6 +18,8 @@ package yaml
 import (
 	"encoding"
 	"encoding/base64"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -299,11 +301,12 @@ type decoder struct {
 	stringMapType  reflect.Type
 	generalMapType reflect.Type
 
-	knownFields bool
-	uniqueKeys  bool
-	decodeCount int
-	aliasCount  int
-	aliasDepth  int
+	knownFields    bool
+	uniqueKeys     bool
+	decodeCount    int
+	aliasCount     int
+	aliasDepth     int
+	fallbackToJSON bool
 
 	mergedFields map[any]bool
 }
@@ -360,6 +363,114 @@ func (d *decoder) callUnmarshaler(n *Node, u Unmarshaler) (good bool) {
 			Column: n.Column,
 		})
 		return false
+	}
+}
+
+func (d *decoder) callJSONUnmarshaler(n *Node, u json.Unmarshaler) bool {
+	// First decode the node into an interface{} using the normal decoding rules.
+	var v any
+	if err := n.Decode(&v); err != nil {
+		var te *TypeError
+		if errors.As(err, &te) {
+			d.terrors = append(d.terrors, te.Errors...)
+		} else {
+			d.terrors = append(d.terrors, &UnmarshalError{
+				Err:    err,
+				Line:   n.Line,
+				Column: n.Column,
+			})
+		}
+		return false
+	}
+
+	// Second, marshal that intermediate representation into JSON
+	// and unmarshal it using the JSON unmarshaler.
+	if err := unmarshalJSON(v, u); err != nil {
+		d.terrors = append(d.terrors, &UnmarshalError{
+			Err:    err,
+			Line:   n.Line,
+			Column: n.Column,
+		})
+		return false
+	}
+	return true
+}
+
+// unmarshalJSON marshals the value into JSON and unmarshals it using the JSON unmarshaler.
+// NOTE: This double conversion (YAML -> interface{} -> JSON -> target type) adds overhead,
+// but is necessary to support types that implement json.Unmarshaler. There is no
+// more direct way to invoke UnmarshalJSON with YAML input, so this trade-off is
+// required for compatibility.
+// Additionally, it normalizes the intermediate representation to ensure
+// that map keys are strings, as required by JSON.
+func unmarshalJSON(input any, unmarshaler json.Unmarshaler) error {
+	normalizedInput, err := normalizeJSON(input)
+	if err != nil {
+		return err
+	}
+	data, err := json.Marshal(normalizedInput)
+	if err != nil {
+		return err
+	}
+	return unmarshaler.UnmarshalJSON(data)
+}
+
+// normalizeJSON converts a YAML-parsed structure into a form suitable for JSON marshaling.
+// The JSON specification requires that object keys be strings, so this function
+// converts map[any]any to map[string]any by marshaling non-string keys to JSON strings.
+func normalizeJSON(input any) (any, error) {
+	x := reflect.ValueOf(input)
+	switch x.Kind() {
+	case reflect.Map:
+		m := make(map[string]any, x.Len())
+
+		iter := x.MapRange()
+		for iter.Next() {
+			k := iter.Key().Interface()
+			v := iter.Value().Interface()
+			jv, err := normalizeJSON(v)
+			if err != nil {
+				return nil, err
+			}
+			if s, ok := k.(string); ok {
+				if _, ok := m[s]; ok {
+					return nil, fmt.Errorf("duplicate key %q found when converting to JSON object", s)
+				}
+				m[s] = jv
+				continue
+			}
+
+			// Convert non-string keys to JSON and then to strings.
+			jk, err := normalizeJSON(k)
+			if err != nil {
+				return nil, err
+			}
+			raw, err := json.Marshal(jk)
+			if err != nil {
+				return nil, err
+			}
+			sk := string(raw)
+			if _, ok := m[sk]; ok {
+				return nil, fmt.Errorf("duplicate key %q found when converting to JSON object", sk)
+			}
+			m[sk] = jv
+		}
+		return m, nil
+
+	case reflect.Slice, reflect.Array:
+		a := make([]any, x.Len())
+		for i := 0; i < x.Len(); i++ {
+			v := x.Index(i).Interface()
+			jv, err := normalizeJSON(v)
+			if err != nil {
+				return nil, err
+			}
+			a[i] = jv
+		}
+		return a, nil
+
+	default:
+		return input, nil
 	}
 }
 
@@ -421,6 +532,13 @@ func (d *decoder) prepare(n *Node, out reflect.Value) (newout reflect.Value, unm
 			if u, ok := outi.(obsoleteUnmarshaler); ok {
 				good = d.callObsoleteUnmarshaler(n, u)
 				return out, true, good
+			}
+			if d.fallbackToJSON {
+				// Try JSON unmarshaler as a fallback.
+				if u, ok := outi.(json.Unmarshaler); ok {
+					good = d.callJSONUnmarshaler(n, u)
+					return out, true, good
+				}
 			}
 		}
 	}
@@ -875,7 +993,7 @@ func isStringMap(n *Node) bool {
 }
 
 func (d *decoder) mappingStruct(n *Node, out reflect.Value) (good bool) {
-	sinfo, err := getStructInfo(out.Type())
+	sinfo, err := getStructInfo(out.Type(), d.fallbackToJSON)
 	if err != nil {
 		panic(err)
 	}
