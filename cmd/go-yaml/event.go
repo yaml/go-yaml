@@ -200,7 +200,7 @@ func processEventsUnmarshal(profuse, compact bool) error {
 		firstDoc = false
 
 		// For unmarshal mode, use interface{} first to avoid preserving comments
-		var data interface{}
+		var data any
 		if err := yaml.Unmarshal(doc, &data); err != nil {
 			return fmt.Errorf("failed to unmarshal YAML: %w", err)
 		}

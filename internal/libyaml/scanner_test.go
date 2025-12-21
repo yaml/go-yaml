@@ -22,7 +22,7 @@ func runScanTokensTest(t *testing.T, tc TestCase) {
 	assert.Truef(t, ok, "scanTokens() failed")
 
 	// Convert Want from interface{} to []string
-	wantSlice, ok := tc.Want.([]interface{})
+	wantSlice, ok := tc.Want.([]any)
 	assert.Truef(t, ok, "Want should be []interface{}")
 
 	var expected []TokenType
@@ -79,7 +79,7 @@ func runScanErrorTest(t *testing.T, tc TestCase) {
 		switch v := tc.Want.(type) {
 		case bool:
 			wantError = v
-		case []interface{}:
+		case []any:
 			if len(v) > 0 {
 				if boolVal, ok := v[0].(bool); ok {
 					wantError = boolVal

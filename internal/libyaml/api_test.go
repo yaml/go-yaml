@@ -36,7 +36,7 @@ func runAPIMethodTest(t *testing.T, tc TestCase) {
 
 	// Run setup if any
 	if tc.Setup != nil {
-		if setupList, ok := tc.Setup.([]interface{}); ok && len(setupList) > 0 {
+		if setupList, ok := tc.Setup.([]any); ok && len(setupList) > 0 {
 			callMethodFromList(t, obj, setupList, tc.Bytes)
 		}
 	}
@@ -55,7 +55,7 @@ func runAPIPanicTest(t *testing.T, tc TestCase) {
 
 	// Run setup if any
 	if tc.Setup != nil {
-		if setupList, ok := tc.Setup.([]interface{}); ok && len(setupList) > 0 {
+		if setupList, ok := tc.Setup.([]any); ok && len(setupList) > 0 {
 			callMethodFromList(t, obj, setupList, tc.Bytes)
 		}
 	}
@@ -66,7 +66,7 @@ func runAPIPanicTest(t *testing.T, tc TestCase) {
 	switch v := tc.Want.(type) {
 	case string:
 		wantMsg = v
-	case []interface{}:
+	case []any:
 		if len(v) > 0 {
 			msg, ok := v[0].(string)
 			assert.Truef(t, ok, "Want[0] should be string, got %T", v[0])
@@ -89,13 +89,13 @@ func runAPIDeleteTest(t *testing.T, tc TestCase) {
 
 	// Run setup if any
 	if tc.Setup != nil {
-		if setupList, ok := tc.Setup.([]interface{}); ok && len(setupList) > 0 {
+		if setupList, ok := tc.Setup.([]any); ok && len(setupList) > 0 {
 			callMethodFromList(t, obj, setupList, tc.Bytes)
 		}
 	}
 
 	// Call Delete method
-	callMethodFromList(t, obj, []interface{}{"Delete"}, false)
+	callMethodFromList(t, obj, []any{"Delete"}, false)
 
 	// Run checks after delete
 	runFieldChecks(t, obj, tc.Checks)
@@ -109,7 +109,7 @@ func runAPINewEventTest(t *testing.T, tc TestCase) {
 }
 
 // createObject creates a Parser or Emitter based on constructor name
-func createObject(t *testing.T, constructor string) interface{} {
+func createObject(t *testing.T, constructor string) any {
 	t.Helper()
 	switch constructor {
 	case "NewParser":
@@ -125,7 +125,7 @@ func createObject(t *testing.T, constructor string) interface{} {
 }
 
 // createEventFromList creates an Event from a method list [constructor, args...]
-func createEventFromList(t *testing.T, methodList []interface{}, useBytes bool) Event {
+func createEventFromList(t *testing.T, methodList []any, useBytes bool) Event {
 	t.Helper()
 	if len(methodList) == 0 {
 		t.Fatalf("empty method list")
@@ -178,7 +178,7 @@ func createEventFromList(t *testing.T, methodList []interface{}, useBytes bool) 
 }
 
 // callMethodFromList calls a method from a list [methodName, args...]
-func callMethodFromList(t *testing.T, obj interface{}, methodList []interface{}, useBytes bool) {
+func callMethodFromList(t *testing.T, obj any, methodList []any, useBytes bool) {
 	t.Helper()
 	if len(methodList) == 0 {
 		t.Fatalf("empty method list")
@@ -234,7 +234,7 @@ func callMethodFromList(t *testing.T, obj interface{}, methodList []interface{},
 }
 
 // parseArg parses an argument which could be int, bool, or string constant
-func parseArg(t *testing.T, arg interface{}) int {
+func parseArg(t *testing.T, arg any) int {
 	t.Helper()
 	switch v := arg.(type) {
 	case int:
@@ -255,7 +255,7 @@ func parseArg(t *testing.T, arg interface{}) int {
 }
 
 // parseBoolArg parses a boolean argument
-func parseBoolArg(t *testing.T, arg interface{}) bool {
+func parseBoolArg(t *testing.T, arg any) bool {
 	t.Helper()
 	switch v := arg.(type) {
 	case bool:
@@ -276,7 +276,7 @@ func parseBoolArg(t *testing.T, arg interface{}) bool {
 }
 
 // parseStringArg parses a string argument
-func parseStringArg(t *testing.T, arg interface{}, useBytes bool) string {
+func parseStringArg(t *testing.T, arg any, useBytes bool) string {
 	t.Helper()
 	switch v := arg.(type) {
 	case string:
@@ -328,7 +328,7 @@ func parseConstant(t *testing.T, name string) int {
 
 // hasLength checks if a slice has exactly the expected length
 // Returns true if length matches, false if empty, and fails fatally otherwise
-func hasLength(t *testing.T, slice []interface{}, expected int) bool {
+func hasLength(t *testing.T, slice []any, expected int) bool {
 	t.Helper()
 	if len(slice) == 0 {
 		return false
@@ -340,7 +340,7 @@ func hasLength(t *testing.T, slice []interface{}, expected int) bool {
 }
 
 // runFieldChecks runs field checks on an object
-func runFieldChecks(t *testing.T, obj interface{}, checks []FieldCheck) {
+func runFieldChecks(t *testing.T, obj any, checks []FieldCheck) {
 	t.Helper()
 
 	v := reflect.ValueOf(obj)
@@ -501,7 +501,7 @@ func getIntValue(t *testing.T, field reflect.Value, fieldName string) int {
 }
 
 // checkEqual performs an equality check on a field
-func checkEqual(t *testing.T, v reflect.Value, fieldName string, expectedValue interface{}) {
+func checkEqual(t *testing.T, v reflect.Value, fieldName string, expectedValue any) {
 	t.Helper()
 
 	// Handle buffer-N special case
@@ -565,7 +565,7 @@ func checkEqual(t *testing.T, v reflect.Value, fieldName string, expectedValue i
 	}
 
 	// Get value based on type (handle unexported fields)
-	var got interface{}
+	var got any
 
 	if field.CanInterface() {
 		// For exported fields, convert expected to field's type

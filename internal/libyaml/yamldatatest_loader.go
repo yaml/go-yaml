@@ -8,7 +8,7 @@ import (
 )
 
 // coerceScalar converts a YAML scalar string to an appropriate Go type
-func coerceScalar(value string) interface{} {
+func coerceScalar(value string) any {
 	// Try bool and null
 	switch value {
 	case "true":
@@ -60,18 +60,18 @@ func coerceScalar(value string) interface{} {
 //   - All other values are returned as string.
 //
 // This scalar resolution behavior matches the implementation in coerceScalar.
-func LoadYAML(data []byte) (interface{}, error) {
+func LoadYAML(data []byte) (any, error) {
 	parser := NewParser()
 	parser.SetInputString(data)
 	defer parser.Delete()
 
 	type stackEntry struct {
-		container interface{} // map[string]interface{} or []interface{}
-		key       string      // for maps: current key waiting for value
+		container any    // map[string]interface{} or []interface{}
+		key       string // for maps: current key waiting for value
 	}
 
 	var stack []stackEntry
-	var root interface{}
+	var root any
 
 	for {
 		var event Event
@@ -91,7 +91,7 @@ func LoadYAML(data []byte) (interface{}, error) {
 			// Structural markers, no action needed
 
 		case MAPPING_START_EVENT:
-			newMap := make(map[string]interface{})
+			newMap := make(map[string]any)
 			stack = append(stack, stackEntry{container: newMap})
 
 		case MAPPING_END_EVENT:
@@ -104,17 +104,17 @@ func LoadYAML(data []byte) (interface{}, error) {
 					root = popped.container
 				} else {
 					parent := &stack[len(stack)-1]
-					if m, ok := parent.container.(map[string]interface{}); ok {
+					if m, ok := parent.container.(map[string]any); ok {
 						m[parent.key] = popped.container
 						parent.key = "" // Reset key after use
-					} else if s, ok := parent.container.([]interface{}); ok {
+					} else if s, ok := parent.container.([]any); ok {
 						parent.container = append(s, popped.container)
 					}
 				}
 			}
 
 		case SEQUENCE_START_EVENT:
-			newSlice := make([]interface{}, 0)
+			newSlice := make([]any, 0)
 			stack = append(stack, stackEntry{container: newSlice})
 
 		case SEQUENCE_END_EVENT:
@@ -127,10 +127,10 @@ func LoadYAML(data []byte) (interface{}, error) {
 					root = popped.container
 				} else {
 					parent := &stack[len(stack)-1]
-					if m, ok := parent.container.(map[string]interface{}); ok {
+					if m, ok := parent.container.(map[string]any); ok {
 						m[parent.key] = popped.container
 						parent.key = "" // Reset key after use
-					} else if s, ok := parent.container.([]interface{}); ok {
+					} else if s, ok := parent.container.([]any); ok {
 						parent.container = append(s, popped.container)
 					}
 				}
@@ -150,7 +150,7 @@ func LoadYAML(data []byte) (interface{}, error) {
 				}
 			} else {
 				parent := &stack[len(stack)-1]
-				if m, ok := parent.container.(map[string]interface{}); ok {
+				if m, ok := parent.container.(map[string]any); ok {
 					if parent.key == "" {
 						// This scalar is a key - keep as string, don't coerce
 						parent.key = value
@@ -163,7 +163,7 @@ func LoadYAML(data []byte) (interface{}, error) {
 						}
 						parent.key = ""
 					}
-				} else if s, ok := parent.container.([]interface{}); ok {
+				} else if s, ok := parent.container.([]any); ok {
 					// Add to sequence
 					if isQuoted {
 						parent.container = append(s, value)

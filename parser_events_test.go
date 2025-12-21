@@ -10,14 +10,14 @@ import (
 )
 
 func TestParserGetEvents(t *testing.T) {
-	datatest.RunTestCases(t, func() ([]map[string]interface{}, error) {
+	datatest.RunTestCases(t, func() ([]map[string]any, error) {
 		return datatest.LoadTestCasesFromFile("testdata/parser_events.yaml", libyaml.LoadYAML)
 	}, map[string]datatest.TestHandler{
 		"parser-events": runParserEventsTest,
 	})
 }
 
-func runParserEventsTest(t *testing.T, tc map[string]interface{}) {
+func runParserEventsTest(t *testing.T, tc map[string]any) {
 	t.Helper()
 
 	// Extract test data
