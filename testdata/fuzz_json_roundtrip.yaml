@@ -1,0 +1,80 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# JSON roundtrip fuzz test seed corpus for go-yaml
+#
+# Purpose: Seed inputs for FuzzEncodeFromJSON. These are valid JSON values that
+# are tested for YAML roundtrip consistency: Marshal → Unmarshal → Marshal
+# should produce identical YAML output.
+#
+# Format: Test cases use type-as-key format:
+#   - test-type:
+#       name: Test case name
+#       ...
+#
+# Test Type:
+#   json-roundtrip - Valid JSON input for roundtrip testing
+#
+# Keys:
+#   name - Test case name (string)
+#   json - JSON input to test (string)
+#
+# Note:
+#   These test cases are loaded as the seed corpus for Go's native fuzzing.
+#   When run without -fuzz, only these seeds are tested. With -fuzz, the fuzzer
+#   generates additional test cases based on these seeds.
+
+- json-roundtrip:
+    name: null value
+    json: "null"
+
+- json-roundtrip:
+    name: empty string
+    json: '""'
+
+- json-roundtrip:
+    name: zero
+    json: "0"
+
+- json-roundtrip:
+    name: boolean true
+    json: "true"
+
+- json-roundtrip:
+    name: boolean false
+    json: "false"
+
+- json-roundtrip:
+    name: empty object
+    json: "{}"
+
+- json-roundtrip:
+    name: empty array
+    json: "[]"
+
+- json-roundtrip:
+    name: nested empty array
+    json: "[[]]"
+
+- json-roundtrip:
+    name: object with empty array value
+    json: '{"a":[]}'
+
+- json-roundtrip:
+    name: object with empty object value
+    json: '{"a":{}}'
+
+- json-roundtrip:
+    name: negative zero
+    json: "-0"
+
+- json-roundtrip:
+    name: negative zero with decimals
+    json: "-0.000"
+
+- json-roundtrip:
+    name: newline string
+    json: '"\n"'
+
+- json-roundtrip:
+    name: tab string
+    json: '"\t"'

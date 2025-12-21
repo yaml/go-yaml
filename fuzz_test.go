@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 package yaml_test
 
 import (
@@ -6,27 +8,26 @@ import (
 	"testing"
 
 	"go.yaml.in/yaml/v4"
+	"go.yaml.in/yaml/v4/internal/libyaml"
+	"go.yaml.in/yaml/v4/internal/testutil/datatest"
 )
 
 // FuzzEncodeFromJSON checks that any JSON encoded value can also be encoded as YAML... and decoded.
 func FuzzEncodeFromJSON(f *testing.F) {
-	f.Add(`null`)
-	f.Add(`""`)
-	f.Add(`0`)
-	f.Add(`true`)
-	f.Add(`false`)
-	f.Add(`{}`)
-	f.Add(`[]`)
-	f.Add(`[[]]`)
-	f.Add(`{"a":[]}`)
-	f.Add(`{"a":{}}`)
-	f.Add(`-0`)
-	f.Add(`-0.000`)
-	f.Add(`"\n"`)
-	f.Add(`"\t"`)
+	// Load seed corpus from testdata YAML file
+	cases, err := datatest.LoadTestCasesFromFile("testdata/fuzz_json_roundtrip.yaml", libyaml.LoadYAML)
+	if err != nil {
+		f.Fatalf("Failed to load seed corpus: %v", err)
+	}
+
+	// Add each seed to the fuzz corpus
+	for _, tc := range cases {
+		if jsonInput, ok := datatest.GetString(tc, "json"); ok {
+			f.Add(jsonInput)
+		}
+	}
 
 	f.Fuzz(func(t *testing.T, s string) {
-
 		var v interface{}
 		if err := json.Unmarshal([]byte(s), &v); err != nil {
 			t.Skipf("not valid JSON %q", s)
@@ -59,6 +60,5 @@ func FuzzEncodeFromJSON(f *testing.F) {
 		if !bytes.Equal(b, b2) {
 			t.Errorf("Marshal->Unmarshal->Marshal mismatch:\n- expected: %q\n- got:      %q", b, b2)
 		}
-
 	})
 }
