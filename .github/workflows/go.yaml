@@ -24,7 +24,7 @@ jobs:
       with: {persist-credentials: false}
 
     - name: Run all unit tests w/ -cover, all YTS tests and go lint
-      run: make test lint v=1 GO-VERSION=${{ matrix.go-version }}
+      run: make test lint v=1 cover=1 GO-VERSION=${{ matrix.go-version }}
 
   test-cross-platform:
     name: Test on ${{ matrix.GOOS }}/${{ matrix.GOARCH }}
@@ -64,10 +64,10 @@ jobs:
     - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
       with: {persist-credentials: false}
 
-    - name: Run unit tests
+    - name: Run tests
       run: |
         bash -c 'echo + $OSTYPE + $MACHTYPE +'
-        make test-unit test-internal v=1 o=${{ matrix.test-args }}
+        make test-main test-internal v=1 o=${{ matrix.test-args }}
 
   go-versions:
     name: Lookup Go versions
