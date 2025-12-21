@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 # Auto-install https://github.com/makeplus/makes at specific commit:
 MAKES := .cache/makes
 MAKES-LOCAL := .cache/local
@@ -67,30 +69,34 @@ MAKES-REALCLEAN := $(dir $(YTS-DIR))
 
 SHELL-SCRIPTS = \
   util/common.bash \
-  $(shell grep -rl '^.!/usr/bin/env bash' util)
+  $(shell grep -rl '^.!/usr/bin/env bash' util | \
+          grep -v '\.sw')
 
 # v=1 for verbose
 v ?=
-# o='--cover' for options
-o ?=
-count ?= 1
+cover ?=
+fuzz ?=
+time ?= 60s
+opts ?=
 
+TEST-OPTS := \
+$(if $v, -v)\
+$(if $(cover), --cover)\
+$(if $(fuzz), --fuzz=FuzzEncodeFromJSON --fuzztime=$(time))\
+$(if $(opts), $(opts))\
 
 # Test rules:
-test: test-cover test-yts-all test-shell
+test: test-main test-internal test-yts-all test-shell
 	@echo 'ALL TESTS PASS'
 
-test-unit: $(GO-DEPS)
-	go test$(if $v, -v) .$(if $o, $o)
+test-main: $(GO-DEPS)
+	go test .$(TEST-OPTS)
 
 test-internal: $(GO-DEPS)
-	go test$(if $v, -v) ./internal/...$(if $o, $o)
-
-test-cover: $(GO-DEPS)
-	go test$(if $v, -v) . ./internal/... -vet=off --cover$(if $o, $o)
+	go test ./internal/...$(TEST-OPTS)
 
 test-yts: $(GO-DEPS) $(YTS-DIR)
-	go test$(if $v, -v) ./yts$(if $o, $o)
+	go test ./yts$(TEST-OPTS)
 
 test-yts-all: $(GO-DEPS) $(YTS-DIR)
 	@echo 'Testing yaml-test-suite'
