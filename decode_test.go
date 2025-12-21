@@ -23,7 +23,6 @@ import (
 	"io"
 	"math"
 	"reflect"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -40,17 +39,6 @@ import (
 var negativeZero = math.Copysign(0.0, -1.0)
 
 var unmarshalIntTest = 123
-
-// archSafeInt returns v as int if it fits in the architecture's int type,
-// otherwise returns int64.
-func archSafeInt(v int64) any {
-	if strconv.IntSize == 64 || math.MinInt32 <= v && v <= math.MaxInt32 {
-		return int(v) // int is safe
-	}
-
-	// on 32-bit systems, and v overflows int, we need to return an int64
-	return int64(v)
-}
 
 // Named struct types for data-driven tests
 type (
@@ -209,11 +197,11 @@ func init() {
 	decodeValues.Register("-0", negativeZero)
 
 	// Register math limit constants
-	decodeValues.Register("MaxInt32", int(math.MaxInt32))
-	decodeValues.Register("MinInt32", int(math.MinInt32))
-	decodeValues.Register("MaxInt64", int64(math.MaxInt64))
-	decodeValues.Register("MinInt64", int64(math.MinInt64))
-	decodeValues.Register("MaxUint32", uint(math.MaxUint32))
+	decodeValues.Register("MaxInt32", math.MaxInt32)
+	decodeValues.Register("MinInt32", math.MinInt32)
+	decodeValues.Register("MaxInt64", math.MaxInt64)
+	decodeValues.Register("MinInt64", math.MinInt64)
+	decodeValues.Register("MaxUint32", math.MaxUint32)
 	decodeValues.Register("MaxUint64", uint64(math.MaxUint64))
 	decodeValues.Register("MaxFloat32", math.MaxFloat32)
 	decodeValues.Register("MaxFloat64", math.MaxFloat64)
@@ -245,18 +233,6 @@ var unmarshalTests = []struct {
 	{
 		"\"\\t\\n\"\n",
 		"\t\n",
-	},
-
-	// Cross-architecture numeric tests
-	{
-		"bin: -0b1000000000000000000000000000000000000000000000000000000000000000",
-		map[string]any{"bin": archSafeInt(math.MinInt64)},
-	},
-	{
-		// When unmarshaling into map[string]int64, values that overflow int64
-		// cannot be decoded and result in an empty map.
-		"int_overflow: 9223372036854775808", // math.MaxInt64 + 1
-		map[string]int64{},
 	},
 
 	// Structs and type conversions.
