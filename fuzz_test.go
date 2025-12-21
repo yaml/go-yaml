@@ -28,7 +28,7 @@ func FuzzEncodeFromJSON(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, s string) {
-		var v interface{}
+		var v any
 		if err := json.Unmarshal([]byte(s), &v); err != nil {
 			t.Skipf("not valid JSON %q", s)
 		}
@@ -44,7 +44,7 @@ func FuzzEncodeFromJSON(f *testing.F) {
 		t.Logf("YAML %q <%[1]x>", b)
 
 		// Decode as YAML
-		var v2 interface{}
+		var v2 any
 		if err := yaml.Unmarshal(b, &v2); err != nil {
 			t.Error(err)
 		}

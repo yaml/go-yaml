@@ -56,7 +56,7 @@ func runEnumStringTest(t *testing.T, tc TestCase) {
 	switch v := tc.Want.(type) {
 	case string:
 		want = v
-	case []interface{}:
+	case []any:
 		if len(v) > 0 {
 			var ok bool
 			want, ok = v[0].(string)

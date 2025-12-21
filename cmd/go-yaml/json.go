@@ -26,7 +26,7 @@ func processJSONDecode(pretty bool) error {
 
 	for {
 		// Read each document
-		var data interface{}
+		var data any
 		err := decoder.Decode(&data)
 		if err != nil {
 			if err.Error() == "EOF" {
@@ -66,7 +66,7 @@ func processJSONUnmarshal(pretty bool) error {
 		}
 
 		// For unmarshal mode, always use interface{} to avoid preserving comments
-		var data interface{}
+		var data any
 		err := yaml.Unmarshal(doc, &data)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal YAML: %w", err)

@@ -701,14 +701,14 @@ func TestUnmarshalDurationInt(t *testing.T) {
 }
 
 func TestUnmarshalErrorsFromYAML(t *testing.T) {
-	datatest.RunTestCases(t, func() ([]map[string]interface{}, error) {
+	datatest.RunTestCases(t, func() ([]map[string]any, error) {
 		return datatest.LoadTestCasesFromFile("testdata/unmarshal_errors.yaml", libyaml.LoadYAML)
 	}, map[string]datatest.TestHandler{
 		"unmarshal-error": runUnmarshalErrorTest,
 	})
 }
 
-func runUnmarshalErrorTest(t *testing.T, tc map[string]interface{}) {
+func runUnmarshalErrorTest(t *testing.T, tc map[string]any) {
 	t.Helper()
 
 	yamlInput := datatest.RequireString(t, tc, "yaml")
@@ -723,10 +723,10 @@ func runUnmarshalErrorTest(t *testing.T, tc map[string]interface{}) {
 }
 
 func TestDecoderErrors(t *testing.T) {
-	datatest.RunTestCases(t, func() ([]map[string]interface{}, error) {
+	datatest.RunTestCases(t, func() ([]map[string]any, error) {
 		return datatest.LoadTestCasesFromFile("testdata/unmarshal_errors.yaml", libyaml.LoadYAML)
 	}, map[string]datatest.TestHandler{
-		"unmarshal-error": func(t *testing.T, tc map[string]interface{}) {
+		"unmarshal-error": func(t *testing.T, tc map[string]any) {
 			t.Helper()
 			yamlInput := datatest.RequireString(t, tc, "yaml")
 			expectedError := datatest.RequireString(t, tc, "want")
@@ -1659,14 +1659,14 @@ func (t *textUnmarshaler) UnmarshalText(s []byte) error {
 }
 
 func TestFuzzCrashersFromYAML(t *testing.T) {
-	datatest.RunTestCases(t, func() ([]map[string]interface{}, error) {
+	datatest.RunTestCases(t, func() ([]map[string]any, error) {
 		return datatest.LoadTestCasesFromFile("testdata/fuzz_crashers.yaml", libyaml.LoadYAML)
 	}, map[string]datatest.TestHandler{
 		"fuzz-crasher": runFuzzCrasherTest,
 	})
 }
 
-func runFuzzCrasherTest(t *testing.T, tc map[string]interface{}) {
+func runFuzzCrasherTest(t *testing.T, tc map[string]any) {
 	t.Helper()
 
 	yamlInput := datatest.RequireString(t, tc, "yaml")

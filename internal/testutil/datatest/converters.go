@@ -12,7 +12,7 @@ type IntOrStr struct {
 }
 
 // FromValue implements the custom converter interface used by UnmarshalStruct.
-func (ios *IntOrStr) FromValue(v interface{}) error {
+func (ios *IntOrStr) FromValue(v any) error {
 	switch val := v.(type) {
 	case int:
 		ios.Value = val
@@ -37,7 +37,7 @@ func (ios *IntOrStr) FromValue(v interface{}) error {
 type ByteInput []byte
 
 // FromValue implements the custom converter interface used by UnmarshalStruct.
-func (bi *ByteInput) FromValue(v interface{}) error {
+func (bi *ByteInput) FromValue(v any) error {
 	// Try string first
 	if strVal, ok := v.(string); ok {
 		*bi = []byte(strVal)
@@ -54,7 +54,7 @@ func (bi *ByteInput) FromValue(v interface{}) error {
 	}
 
 	// Otherwise, it should be a sequence of integer bytes
-	intSlice, ok := v.([]interface{})
+	intSlice, ok := v.([]any)
 	if !ok {
 		return fmt.Errorf("input must be a string, int, or sequence of integers, got %T", v)
 	}
@@ -77,18 +77,18 @@ func (bi *ByteInput) FromValue(v interface{}) error {
 
 // Args can be converted from either a single value or an array of values.
 // This is useful for method arguments that can be either scalar or array.
-type Args []interface{}
+type Args []any
 
 // FromValue implements the custom converter interface used by UnmarshalStruct.
-func (a *Args) FromValue(v interface{}) error {
+func (a *Args) FromValue(v any) error {
 	// Try array first
-	if arrVal, ok := v.([]interface{}); ok {
+	if arrVal, ok := v.([]any); ok {
 		*a = arrVal
 		return nil
 	}
 
 	// Otherwise, it's a single scalar value - wrap it in a slice
-	*a = []interface{}{v}
+	*a = []any{v}
 	return nil
 }
 
@@ -96,7 +96,7 @@ func (a *Args) FromValue(v interface{}) error {
 type StringSlice []string
 
 // FromValue implements the custom converter interface used by UnmarshalStruct.
-func (ss *StringSlice) FromValue(v interface{}) error {
+func (ss *StringSlice) FromValue(v any) error {
 	// Try string first
 	if strVal, ok := v.(string); ok {
 		*ss = []string{strVal}
@@ -104,7 +104,7 @@ func (ss *StringSlice) FromValue(v interface{}) error {
 	}
 
 	// Try slice of interface{}
-	if slice, ok := v.([]interface{}); ok {
+	if slice, ok := v.([]any); ok {
 		strs := make([]string, len(slice))
 		for i, item := range slice {
 			str, ok := item.(string)
@@ -124,7 +124,7 @@ func (ss *StringSlice) FromValue(v interface{}) error {
 type IntSlice []int
 
 // FromValue implements the custom converter interface used by UnmarshalStruct.
-func (is *IntSlice) FromValue(v interface{}) error {
+func (is *IntSlice) FromValue(v any) error {
 	// Try int first
 	if intVal, ok := v.(int); ok {
 		*is = []int{intVal}
@@ -132,7 +132,7 @@ func (is *IntSlice) FromValue(v interface{}) error {
 	}
 
 	// Try slice of interface{}
-	if slice, ok := v.([]interface{}); ok {
+	if slice, ok := v.([]any); ok {
 		ints := make([]int, len(slice))
 		for i, item := range slice {
 			intVal, ok := item.(int)

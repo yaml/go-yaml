@@ -77,7 +77,7 @@ func processYAMLDecode(preserve, marshal bool) error {
 		firstDoc := true
 
 		for {
-			var data interface{}
+			var data any
 			err := decoder.Decode(&data)
 			if err != nil {
 				if err == io.EOF || err.Error() == "EOF" {
@@ -176,7 +176,7 @@ func processYAMLUnmarshal(preserve, marshal bool) error {
 			}
 		} else {
 			// For unmarshal mode with -y (not -Y), always use interface{} to avoid preserving comments
-			var data interface{}
+			var data any
 			if err := yaml.Unmarshal(doc, &data); err != nil {
 				return fmt.Errorf("failed to unmarshal YAML: %w", err)
 			}

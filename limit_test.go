@@ -11,7 +11,7 @@ import (
 )
 
 func TestLimits(t *testing.T) {
-	datatest.RunTestCases(t, func() ([]map[string]interface{}, error) {
+	datatest.RunTestCases(t, func() ([]map[string]any, error) {
 		return datatest.LoadTestCasesFromFile("testdata/limit.yaml", libyaml.LoadYAML)
 	}, map[string]datatest.TestHandler{
 		"limit":       runLimitTest,
@@ -20,7 +20,7 @@ func TestLimits(t *testing.T) {
 	})
 }
 
-func runLimitTest(t *testing.T, tc map[string]interface{}) {
+func runLimitTest(t *testing.T, tc map[string]any) {
 	t.Helper()
 
 	// Generate data from spec
@@ -37,7 +37,7 @@ func runLimitTest(t *testing.T, tc map[string]interface{}) {
 		switch v := wantVal.(type) {
 		case string:
 			expectedError = v
-		case map[string]interface{}:
+		case map[string]any:
 			// Future: could validate structure here
 			// For now, just ignore (treated as success case)
 		default:

@@ -9,7 +9,7 @@ import (
 
 // TestHandler is a function that runs a single test case.
 // The test case is passed as a map[string]interface{}.
-type TestHandler func(t *testing.T, tc map[string]interface{})
+type TestHandler func(t *testing.T, tc map[string]any)
 
 // TestRunner manages test execution with handlers for different test types.
 type TestRunner struct {
@@ -29,7 +29,7 @@ func (r *TestRunner) RegisterHandler(testType string, handler TestHandler) {
 }
 
 // RunWithCases executes test cases loaded from a slice of maps.
-func (r *TestRunner) RunWithCases(t *testing.T, cases []map[string]interface{}) {
+func (r *TestRunner) RunWithCases(t *testing.T, cases []map[string]any) {
 	t.Helper()
 
 	for _, tc := range cases {
@@ -58,7 +58,7 @@ func (r *TestRunner) RunWithCases(t *testing.T, cases []map[string]interface{}) 
 
 // RunTestCases is a convenience function that creates a runner and executes test cases.
 // The loadFunc should be provided by the calling package to load test data using its preferred YAML parser.
-func RunTestCases(t *testing.T, loadFunc func() ([]map[string]interface{}, error), handlers map[string]TestHandler) {
+func RunTestCases(t *testing.T, loadFunc func() ([]map[string]any, error), handlers map[string]TestHandler) {
 	t.Helper()
 
 	cases, err := loadFunc()
@@ -74,7 +74,7 @@ func RunTestCases(t *testing.T, loadFunc func() ([]map[string]interface{}, error
 }
 
 // GetString extracts a string field from a test case map.
-func GetString(tc map[string]interface{}, key string) (string, bool) {
+func GetString(tc map[string]any, key string) (string, bool) {
 	val, ok := tc[key]
 	if !ok {
 		return "", false
@@ -84,7 +84,7 @@ func GetString(tc map[string]interface{}, key string) (string, bool) {
 }
 
 // GetInt extracts an int field from a test case map.
-func GetInt(tc map[string]interface{}, key string) (int, bool) {
+func GetInt(tc map[string]any, key string) (int, bool) {
 	val, ok := tc[key]
 	if !ok {
 		return 0, false
@@ -94,7 +94,7 @@ func GetInt(tc map[string]interface{}, key string) (int, bool) {
 }
 
 // GetBool extracts a bool field from a test case map.
-func GetBool(tc map[string]interface{}, key string) (bool, bool) {
+func GetBool(tc map[string]any, key string) (bool, bool) {
 	val, ok := tc[key]
 	if !ok {
 		return false, false
@@ -104,27 +104,27 @@ func GetBool(tc map[string]interface{}, key string) (bool, bool) {
 }
 
 // GetSlice extracts a slice field from a test case map.
-func GetSlice(tc map[string]interface{}, key string) ([]interface{}, bool) {
+func GetSlice(tc map[string]any, key string) ([]any, bool) {
 	val, ok := tc[key]
 	if !ok {
 		return nil, false
 	}
-	slice, ok := val.([]interface{})
+	slice, ok := val.([]any)
 	return slice, ok
 }
 
 // GetMap extracts a map field from a test case map.
-func GetMap(tc map[string]interface{}, key string) (map[string]interface{}, bool) {
+func GetMap(tc map[string]any, key string) (map[string]any, bool) {
 	val, ok := tc[key]
 	if !ok {
 		return nil, false
 	}
-	m, ok := val.(map[string]interface{})
+	m, ok := val.(map[string]any)
 	return m, ok
 }
 
 // RequireString extracts a string field, failing the test if not present.
-func RequireString(t *testing.T, tc map[string]interface{}, key string) string {
+func RequireString(t *testing.T, tc map[string]any, key string) string {
 	t.Helper()
 	val, ok := GetString(tc, key)
 	if !ok {
@@ -134,7 +134,7 @@ func RequireString(t *testing.T, tc map[string]interface{}, key string) string {
 }
 
 // RequireInt extracts an int field, failing the test if not present.
-func RequireInt(t *testing.T, tc map[string]interface{}, key string) int {
+func RequireInt(t *testing.T, tc map[string]any, key string) int {
 	t.Helper()
 	val, ok := GetInt(tc, key)
 	if !ok {
@@ -144,7 +144,7 @@ func RequireInt(t *testing.T, tc map[string]interface{}, key string) int {
 }
 
 // RequireSlice extracts a slice field, failing the test if not present.
-func RequireSlice(t *testing.T, tc map[string]interface{}, key string) []interface{} {
+func RequireSlice(t *testing.T, tc map[string]any, key string) []any {
 	t.Helper()
 	val, ok := GetSlice(tc, key)
 	if !ok {
@@ -154,12 +154,12 @@ func RequireSlice(t *testing.T, tc map[string]interface{}, key string) []interfa
 }
 
 // UnmarshalTestCase unmarshals a test case map into a struct.
-func UnmarshalTestCase(tc map[string]interface{}, target interface{}) error {
+func UnmarshalTestCase(tc map[string]any, target any) error {
 	return UnmarshalStruct(target, tc)
 }
 
 // AssertEqual is a helper for comparing expected and actual values in test handlers.
-func AssertEqual(t *testing.T, expected, actual interface{}) {
+func AssertEqual(t *testing.T, expected, actual any) {
 	t.Helper()
 	if fmt.Sprintf("%v", expected) != fmt.Sprintf("%v", actual) {
 		t.Errorf("Expected:\n%v\nGot:\n%v", expected, actual)

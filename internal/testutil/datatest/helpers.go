@@ -23,7 +23,7 @@ func HexToBytes(t *testing.T, s string) []byte {
 
 // GetField uses reflection to get a field value from a struct or pointer to struct.
 // This is useful for test assertions that need to check internal field values.
-func GetField(t *testing.T, obj interface{}, fieldName string) interface{} {
+func GetField(t *testing.T, obj any, fieldName string) any {
 	t.Helper()
 	v := reflect.ValueOf(obj)
 	if v.Kind() == reflect.Ptr {
@@ -40,7 +40,7 @@ func GetField(t *testing.T, obj interface{}, fieldName string) interface{} {
 // This is useful for test cases that need to call methods dynamically.
 // Returns the slice of return values from the method call as reflect.Value wrappers.
 // Callers must extract the actual values using methods like .Interface(), .Int(), .String(), etc.
-func CallMethod(t *testing.T, obj interface{}, methodName string, args []interface{}) []reflect.Value {
+func CallMethod(t *testing.T, obj any, methodName string, args []any) []reflect.Value {
 	t.Helper()
 	v := reflect.ValueOf(obj)
 	method := v.MethodByName(methodName)
@@ -59,7 +59,7 @@ func CallMethod(t *testing.T, obj interface{}, methodName string, args []interfa
 // WantBool extracts a bool value from a test case's Want field.
 // If Want is nil, returns the defaultVal.
 // This is useful for test cases where the expected result is a boolean.
-func WantBool(t *testing.T, want interface{}, defaultVal bool) bool {
+func WantBool(t *testing.T, want any, defaultVal bool) bool {
 	t.Helper()
 	if want == nil {
 		return defaultVal
@@ -73,7 +73,7 @@ func WantBool(t *testing.T, want interface{}, defaultVal bool) bool {
 
 // WantString extracts a string value from a test case's Want field.
 // If Want is nil, returns the defaultVal.
-func WantString(t *testing.T, want interface{}, defaultVal string) string {
+func WantString(t *testing.T, want any, defaultVal string) string {
 	t.Helper()
 	if want == nil {
 		return defaultVal
@@ -87,7 +87,7 @@ func WantString(t *testing.T, want interface{}, defaultVal string) string {
 
 // WantInt extracts an int value from a test case's Want field.
 // If Want is nil, returns the defaultVal.
-func WantInt(t *testing.T, want interface{}, defaultVal int) int {
+func WantInt(t *testing.T, want any, defaultVal int) int {
 	t.Helper()
 	if want == nil {
 		return defaultVal
@@ -101,12 +101,12 @@ func WantInt(t *testing.T, want interface{}, defaultVal int) int {
 
 // WantSlice extracts a slice value from a test case's Want field.
 // If Want is nil, returns nil.
-func WantSlice(t *testing.T, want interface{}) []interface{} {
+func WantSlice(t *testing.T, want any) []any {
 	t.Helper()
 	if want == nil {
 		return nil
 	}
-	sliceVal, ok := want.([]interface{})
+	sliceVal, ok := want.([]any)
 	if !ok {
 		t.Fatalf("Want should be []interface{}, got %T", want)
 	}
@@ -115,7 +115,7 @@ func WantSlice(t *testing.T, want interface{}) []interface{} {
 
 // SetFieldValue sets a field value on a struct using reflection.
 // This is useful for test setup that needs to configure objects dynamically.
-func SetFieldValue(t *testing.T, obj interface{}, fieldName string, value interface{}) {
+func SetFieldValue(t *testing.T, obj any, fieldName string, value any) {
 	t.Helper()
 	v := reflect.ValueOf(obj)
 	if v.Kind() == reflect.Ptr {
@@ -148,8 +148,8 @@ func TrimTrailingNewline(s string) string {
 //	Simple loop: {loop: ["value", count]}
 //	Join parts: {join: [{text: "..."}, {loop: ["...", count]}]}
 //	Nested: {join: [...], loop: count}
-func GenerateData(spec interface{}) ([]byte, error) {
-	specMap, ok := spec.(map[string]interface{})
+func GenerateData(spec any) ([]byte, error) {
+	specMap, ok := spec.(map[string]any)
 	if !ok {
 		// If it's just a string, return it as-is
 		if str, ok := spec.(string); ok {
@@ -187,8 +187,8 @@ func GenerateData(spec interface{}) ([]byte, error) {
 	return nil, fmt.Errorf("data spec must have 'loop' or 'join' field")
 }
 
-func generateSimpleLoop(loopVal interface{}) ([]byte, error) {
-	loopArr, ok := loopVal.([]interface{})
+func generateSimpleLoop(loopVal any) ([]byte, error) {
+	loopArr, ok := loopVal.([]any)
 	if !ok {
 		return nil, fmt.Errorf("loop must be array [value, count], got %T", loopVal)
 	}
@@ -210,15 +210,15 @@ func generateSimpleLoop(loopVal interface{}) ([]byte, error) {
 	return []byte(strings.Repeat(value, count)), nil
 }
 
-func generateJoin(joinVal interface{}) ([]byte, error) {
-	joinList, ok := joinVal.([]interface{})
+func generateJoin(joinVal any) ([]byte, error) {
+	joinList, ok := joinVal.([]any)
 	if !ok {
 		return nil, fmt.Errorf("join must be array, got %T", joinVal)
 	}
 
 	var result strings.Builder
 	for i, item := range joinList {
-		itemMap, ok := item.(map[string]interface{})
+		itemMap, ok := item.(map[string]any)
 		if !ok {
 			return nil, fmt.Errorf("join item %d must be map, got %T", i, item)
 		}

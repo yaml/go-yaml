@@ -98,7 +98,7 @@ func ErrorIs(tb miniTB, got, want error) {
 }
 
 // errorAsNoPanic calls [errors.As], but catch possible panic and returns it as an error
-func errorAsNoPanic(tb miniTB, err error, target interface{}) (ok bool, panic error) {
+func errorAsNoPanic(tb miniTB, err error, target any) (ok bool, panic error) {
 	defer func() {
 		if r := recover(); r != nil {
 			ok = false
@@ -111,7 +111,7 @@ func errorAsNoPanic(tb miniTB, err error, target interface{}) (ok bool, panic er
 }
 
 // ErrorAs asserts that an error can be assigned to a target variable by using [errors.As].
-func ErrorAs(tb miniTB, err error, target interface{}) {
+func ErrorAs(tb miniTB, err error, target any) {
 	tb.Helper()
 
 	ok, panicErr := errorAsNoPanic(tb, err, target)

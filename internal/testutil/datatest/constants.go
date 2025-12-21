@@ -71,7 +71,7 @@ func (r *ConstantRegistry) ListConstants() []string {
 // 1. An integer constant name (returns the resolved value)
 // 2. A direct integer value
 // Returns an error if neither works.
-func (r *ConstantRegistry) ResolveIntOrString(value interface{}) (int, error) {
+func (r *ConstantRegistry) ResolveIntOrString(value any) (int, error) {
 	switch v := value.(type) {
 	case int:
 		return v, nil

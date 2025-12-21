@@ -11,14 +11,14 @@ import (
 // This allows test data in YAML to reference types by name.
 type TypeRegistry struct {
 	types     map[string]reflect.Type
-	factories map[string]func() interface{}
+	factories map[string]func() any
 }
 
 // NewTypeRegistry creates a new type registry.
 func NewTypeRegistry() *TypeRegistry {
 	return &TypeRegistry{
 		types:     make(map[string]reflect.Type),
-		factories: make(map[string]func() interface{}),
+		factories: make(map[string]func() any),
 	}
 }
 
@@ -30,7 +30,7 @@ func NewTypeRegistry() *TypeRegistry {
 //	registry.Register("string", "")
 //	registry.Register("int", 0)
 //	registry.Register("yaml.Node", yaml.Node{})
-func (r *TypeRegistry) Register(name string, exemplar interface{}) {
+func (r *TypeRegistry) Register(name string, exemplar any) {
 	r.types[name] = reflect.TypeOf(exemplar)
 }
 
@@ -42,7 +42,7 @@ func (r *TypeRegistry) Register(name string, exemplar interface{}) {
 //	registry.RegisterFactory("map[string]any", func() interface{} {
 //	    return make(map[string]interface{})
 //	})
-func (r *TypeRegistry) RegisterFactory(name string, factory func() interface{}) {
+func (r *TypeRegistry) RegisterFactory(name string, factory func() any) {
 	r.factories[name] = factory
 	// Also register the type by calling the factory once
 	if instance := factory(); instance != nil {
@@ -52,7 +52,7 @@ func (r *TypeRegistry) RegisterFactory(name string, factory func() interface{}) 
 
 // NewInstance creates a new zero-value instance of the registered type.
 // Returns an error if the type is not registered.
-func (r *TypeRegistry) NewInstance(name string) (interface{}, error) {
+func (r *TypeRegistry) NewInstance(name string) (any, error) {
 	// Check if there's a factory first
 	if factory, ok := r.factories[name]; ok {
 		return factory(), nil
@@ -70,7 +70,7 @@ func (r *TypeRegistry) NewInstance(name string) (interface{}, error) {
 
 // NewPointerInstance creates a new pointer to a zero-value instance of the registered type.
 // This is useful for unmarshaling into struct pointers.
-func (r *TypeRegistry) NewPointerInstance(name string) (interface{}, error) {
+func (r *TypeRegistry) NewPointerInstance(name string) (any, error) {
 	// Check if there's a factory first
 	if factory, ok := r.factories[name]; ok {
 		instance := factory()

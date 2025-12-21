@@ -127,14 +127,14 @@ func runReaderPanicTest(t *testing.T, tc TestCase) {
 	}, "Expected panic: %s", wantMsg)
 }
 
-func applySetup(t *testing.T, parser *Parser, setup interface{}) {
+func applySetup(t *testing.T, parser *Parser, setup any) {
 	t.Helper()
 
 	if setup == nil {
 		return
 	}
 
-	setupMap, ok := setup.(map[string]interface{})
+	setupMap, ok := setup.(map[string]any)
 	if !ok {
 		t.Fatalf("setup must be a map, got %T", setup)
 	}

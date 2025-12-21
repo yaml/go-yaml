@@ -13,12 +13,12 @@ import (
 
 // LoadYAMLFunc is a function type for loading YAML data.
 // Different packages can provide their own YAML loading implementation.
-type LoadYAMLFunc func([]byte) (interface{}, error)
+type LoadYAMLFunc func([]byte) (any, error)
 
 // LoadTestCasesFromFile loads and normalizes test cases from a YAML file.
 // It reads the file, parses it with the provided loadYAML function, and normalizes
 // the type-as-key format to standard format.
-func LoadTestCasesFromFile(filename string, loadYAML LoadYAMLFunc) ([]map[string]interface{}, error) {
+func LoadTestCasesFromFile(filename string, loadYAML LoadYAMLFunc) ([]map[string]any, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -29,14 +29,14 @@ func LoadTestCasesFromFile(filename string, loadYAML LoadYAMLFunc) ([]map[string
 		return nil, err
 	}
 
-	rawCases, ok := rawData.([]interface{})
+	rawCases, ok := rawData.([]any)
 	if !ok {
 		return nil, fmt.Errorf("expected []interface{}, got %T", rawData)
 	}
 
-	result := make([]map[string]interface{}, 0, len(rawCases))
+	result := make([]map[string]any, 0, len(rawCases))
 	for _, item := range rawCases {
-		rawCase, ok := item.(map[string]interface{})
+		rawCase, ok := item.(map[string]any)
 		if !ok {
 			continue
 		}
@@ -63,7 +63,7 @@ func LoadTestCasesFromFile(filename string, loadYAML LoadYAMLFunc) ([]map[string
 //	    "name": "test1",
 //	    "data": "hello",
 //	})
-func UnmarshalStruct(target interface{}, data map[string]interface{}) error {
+func UnmarshalStruct(target any, data map[string]any) error {
 	v := reflect.ValueOf(target)
 	if v.Kind() != reflect.Ptr || v.Elem().Kind() != reflect.Struct {
 		return fmt.Errorf("target must be pointer to struct, got %T", target)
@@ -121,7 +121,7 @@ func UnmarshalStruct(target interface{}, data map[string]interface{}) error {
 }
 
 // setField sets a reflect.Value from an interface{} value
-func setField(field reflect.Value, value interface{}) error {
+func setField(field reflect.Value, value any) error {
 	if !field.CanSet() {
 		return fmt.Errorf("field cannot be set")
 	}
@@ -137,7 +137,7 @@ func setField(field reflect.Value, value interface{}) error {
 	// Handle custom types with FromValue method (IntOrStr, ByteInput, Args)
 	if field.CanAddr() {
 		addr := field.Addr()
-		if converter, ok := addr.Interface().(interface{ FromValue(interface{}) error }); ok {
+		if converter, ok := addr.Interface().(interface{ FromValue(any) error }); ok {
 			if err := converter.FromValue(value); err != nil {
 				return err
 			}
@@ -229,7 +229,7 @@ func setField(field reflect.Value, value interface{}) error {
 		return setMapField(field, value)
 	case reflect.Struct:
 		// Recursively unmarshal nested structs
-		if m, ok := value.(map[string]interface{}); ok {
+		if m, ok := value.(map[string]any); ok {
 			if !field.CanAddr() {
 				return fmt.Errorf("cannot take address of field for nested struct unmarshaling")
 			}
@@ -242,7 +242,7 @@ func setField(field reflect.Value, value interface{}) error {
 	case reflect.Ptr:
 		// Handle pointer types
 		if fieldType.Elem().Kind() == reflect.Struct {
-			m, ok := value.(map[string]interface{})
+			m, ok := value.(map[string]any)
 			if !ok {
 				return fmt.Errorf("expected map for struct pointer, got %T", value)
 			}
@@ -270,7 +270,7 @@ func setField(field reflect.Value, value interface{}) error {
 // Example: {"SCALAR_TOKEN": {"value": "x"}} -> {"type": "SCALAR_TOKEN", "value": "x"}
 // This function is exported so it can be used by test code that needs to normalize
 // YAML test data with type-as-key format.
-func NormalizeTypeAsKey(itemMap map[string]interface{}) map[string]interface{} {
+func NormalizeTypeAsKey(itemMap map[string]any) map[string]any {
 	// Check if map has exactly one key and no "type" field
 	if len(itemMap) == 1 {
 		_, hasType := itemMap["type"]
@@ -280,9 +280,9 @@ func NormalizeTypeAsKey(itemMap map[string]interface{}) map[string]interface{} {
 				// Check if key looks like a type constant (all uppercase with underscores)
 				if IsTypeConstant(key) {
 					// Check if value is a map
-					if subMap, ok := value.(map[string]interface{}); ok {
+					if subMap, ok := value.(map[string]any); ok {
 						// Create new map with "type" field for test type
-						newMap := map[string]interface{}{"type": key}
+						newMap := map[string]any{"type": key}
 						// Merge in the sub-map fields, but preserve sub-map's "type" as "output_type" if it exists
 						for k, v := range subMap {
 							if k == "type" {
@@ -324,8 +324,8 @@ func IsTypeConstant(s string) bool {
 }
 
 // setSliceField sets a slice field from a value
-func setSliceField(field reflect.Value, value interface{}) error {
-	sliceVal, ok := value.([]interface{})
+func setSliceField(field reflect.Value, value any) error {
+	sliceVal, ok := value.([]any)
 	if !ok {
 		return fmt.Errorf("expected []interface{} for slice, got %T", value)
 	}
@@ -338,14 +338,14 @@ func setSliceField(field reflect.Value, value interface{}) error {
 
 		// Handle struct elements
 		if elemType.Kind() == reflect.Struct {
-			var m map[string]interface{}
+			var m map[string]any
 
 			// Check if item is a scalar string (simplified format)
 			if strVal, ok := item.(string); ok {
 				// Convert scalar to map with type field
-				m = map[string]interface{}{"type": strVal}
+				m = map[string]any{"type": strVal}
 			} else {
-				m, ok = item.(map[string]interface{})
+				m, ok = item.(map[string]any)
 				if !ok {
 					return fmt.Errorf("slice element %d: expected map for struct, got %T", i, item)
 				}
@@ -373,8 +373,8 @@ func setSliceField(field reflect.Value, value interface{}) error {
 }
 
 // setMapField sets a map field from a value
-func setMapField(field reflect.Value, value interface{}) error {
-	mapVal, ok := value.(map[string]interface{})
+func setMapField(field reflect.Value, value any) error {
+	mapVal, ok := value.(map[string]any)
 	if !ok {
 		return fmt.Errorf("expected map[string]interface{}, got %T", value)
 	}
@@ -393,7 +393,7 @@ func setMapField(field reflect.Value, value interface{}) error {
 
 		// Handle struct values
 		if valueType.Kind() == reflect.Struct {
-			m, ok := v.(map[string]interface{})
+			m, ok := v.(map[string]any)
 			if !ok {
 				return fmt.Errorf("map value for key %s: expected map for struct, got %T", k, v)
 			}
@@ -418,4 +418,4 @@ func setMapField(field reflect.Value, value interface{}) error {
 
 // LoadTestCasesFunc is a function type for loading test cases from a file.
 // Each package can provide its own implementation that uses its preferred YAML loader.
-type LoadTestCasesFunc func(filename string) ([]map[string]interface{}, error)
+type LoadTestCasesFunc func(filename string) ([]map[string]any, error)

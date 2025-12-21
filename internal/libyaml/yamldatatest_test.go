@@ -24,7 +24,7 @@ type TestCase struct {
 	Yaml       string      `yaml:"yaml"`
 	InputHex   string      `yaml:"input_hex"`
 	InputBytes string      `yaml:"input_bytes"`
-	Want       interface{} `yaml:"want"`
+	Want       any         `yaml:"want"`
 	WantSpecs  []EventSpec // Populated from Want for detailed tests
 
 	// scan_tokens_detailed
@@ -36,7 +36,7 @@ type TestCase struct {
 	Config       EmitterConfig `yaml:"conf"`
 
 	// style_accessor tests (must come before Checks due to shared yaml:"test" tag)
-	StyleTest []interface{} `yaml:"test"` // [Method, STYLE] where Method is string and STYLE is int or string constant
+	StyleTest []any `yaml:"test"` // [Method, STYLE] where Method is string and STYLE is int or string constant
 
 	// api_new tests
 	Constructor string       `yaml:"with"`
@@ -67,12 +67,12 @@ type TestCase struct {
 	WantEOF  bool   `yaml:"want_eof"`
 
 	// enum_string tests
-	Enum []interface{} `yaml:"enum"` // [Type, Value] where Type is string and Value is int or string
+	Enum []any `yaml:"enum"` // [Type, Value] where Type is string and Value is int or string
 
 	// api_method, api_panic, api_delete tests, and reader tests
-	Bytes  bool          `yaml:"byte"`
-	Method []interface{} `yaml:"call"`
-	Setup  interface{}   `yaml:"init"` // Can be []interface{} (api tests) or map[string]interface{} (reader tests)
+	Bytes  bool  `yaml:"byte"`
+	Method []any `yaml:"call"`
+	Setup  any   `yaml:"init"` // Can be []interface{} (api tests) or map[string]interface{} (reader tests)
 }
 
 // constantRegistry holds libyaml-specific constants
@@ -203,7 +203,7 @@ type IntOrStr struct {
 	datatest.IntOrStr
 }
 
-func (ios *IntOrStr) FromValue(v interface{}) error {
+func (ios *IntOrStr) FromValue(v any) error {
 	ios.Registry = constantRegistry
 	return ios.IntOrStr.FromValue(v)
 }
@@ -281,31 +281,31 @@ type ArgSpec struct {
 
 // FieldCheck specifies a field check
 type FieldCheck struct {
-	Nil   []interface{} `yaml:"nil"`
-	Cap   []interface{} `yaml:"cap"`
-	Len   []interface{} `yaml:"len"`
-	LenGt []interface{} `yaml:"len-gt"` // Length greater than
-	Eq    []interface{} `yaml:"eq"`
-	Gte   []interface{} `yaml:"gte"` // Greater than or equal
+	Nil   []any `yaml:"nil"`
+	Cap   []any `yaml:"cap"`
+	Len   []any `yaml:"len"`
+	LenGt []any `yaml:"len-gt"` // Length greater than
+	Eq    []any `yaml:"eq"`
+	Gte   []any `yaml:"gte"` // Greater than or equal
 }
 
 // CharTestCase represents a character classification test case
 type CharTestCase struct {
-	InputHex string      `yaml:"input_hex"`
-	Pos      int         `yaml:"pos"`
-	Want     interface{} `yaml:"want"` // Can be bool or int
+	InputHex string `yaml:"input_hex"`
+	Pos      int    `yaml:"pos"`
+	Want     any    `yaml:"want"` // Can be bool or int
 }
 
 // unmarshalTestCases converts raw YAML data to TestCase structs using yamltest
-func unmarshalTestCases(data interface{}) ([]TestCase, error) {
-	casesSlice, ok := data.([]interface{})
+func unmarshalTestCases(data any) ([]TestCase, error) {
+	casesSlice, ok := data.([]any)
 	if !ok {
 		return nil, fmt.Errorf("expected []interface{}, got %T", data)
 	}
 
 	var testCases []TestCase
 	for i, item := range casesSlice {
-		caseMap, ok := item.(map[string]interface{})
+		caseMap, ok := item.(map[string]any)
 		if !ok {
 			return nil, fmt.Errorf("test case %d: expected map[string]interface{}, got %T", i, item)
 		}
@@ -353,19 +353,19 @@ func LoadTestCases(filename string) ([]TestCase, error) {
 		case "parse-events-detailed":
 			if cases[i].Want != nil {
 				// Want should be []interface{} of maps, convert to []EventSpec
-				wantSlice, ok := cases[i].Want.([]interface{})
+				wantSlice, ok := cases[i].Want.([]any)
 				if !ok {
 					return nil, fmt.Errorf("test %s: want should be a sequence, got %T", cases[i].Name, cases[i].Want)
 				}
 				cases[i].WantSpecs = make([]EventSpec, len(wantSlice))
 				for j, item := range wantSlice {
-					var itemMap map[string]interface{}
+					var itemMap map[string]any
 					// Check if item is a scalar string (simplified format)
 					if strVal, ok := item.(string); ok {
 						// Convert scalar to map with type field
-						itemMap = map[string]interface{}{"type": strVal}
+						itemMap = map[string]any{"type": strVal}
 					} else {
-						itemMap, ok = item.(map[string]interface{})
+						itemMap, ok = item.(map[string]any)
 						if !ok {
 							return nil, fmt.Errorf("test %s: want[%d] should be a map or string, got %T", cases[i].Name, j, item)
 						}
@@ -380,19 +380,19 @@ func LoadTestCases(filename string) ([]TestCase, error) {
 		case "scan-tokens-detailed":
 			if cases[i].Want != nil {
 				// Want should be []interface{} of maps, convert to []TokenSpec
-				wantSlice, ok := cases[i].Want.([]interface{})
+				wantSlice, ok := cases[i].Want.([]any)
 				if !ok {
 					return nil, fmt.Errorf("test %s: want should be a sequence, got %T", cases[i].Name, cases[i].Want)
 				}
 				cases[i].WantTokens = make([]TokenSpec, len(wantSlice))
 				for j, item := range wantSlice {
-					var itemMap map[string]interface{}
+					var itemMap map[string]any
 					// Check if item is a scalar string (simplified format)
 					if strVal, ok := item.(string); ok {
 						// Convert scalar to map with type field
-						itemMap = map[string]interface{}{"type": strVal}
+						itemMap = map[string]any{"type": strVal}
 					} else {
-						itemMap, ok = item.(map[string]interface{})
+						itemMap, ok = item.(map[string]any)
 						if !ok {
 							return nil, fmt.Errorf("test %s: want[%d] should be a map or string, got %T", cases[i].Name, j, item)
 						}
@@ -414,7 +414,7 @@ func LoadTestCases(filename string) ([]TestCase, error) {
 				case string:
 					// Scalar want value
 					cases[i].WantContains = []string{v}
-				case []interface{}:
+				case []any:
 					// Sequence want values
 					for _, item := range v {
 						if str, ok := item.(string); ok {
@@ -684,7 +684,7 @@ var HexToBytes = datatest.HexToBytes
 var GetField = datatest.GetField
 
 // CreateArgValue creates a value from an ArgSpec
-func CreateArgValue(t *testing.T, spec ArgSpec) interface{} {
+func CreateArgValue(t *testing.T, spec ArgSpec) any {
 	t.Helper()
 	if spec.Bytes != "" {
 		return []byte(spec.Bytes)
@@ -715,7 +715,7 @@ func CreateArgValue(t *testing.T, spec ArgSpec) interface{} {
 var CallMethod = datatest.CallMethod
 
 // CreateObject creates an object using a constructor function
-func CreateObject(t *testing.T, constructorName string) interface{} {
+func CreateObject(t *testing.T, constructorName string) any {
 	t.Helper()
 	switch constructorName {
 	case "NewParser":
@@ -928,7 +928,7 @@ func RunRoundTripTest(t *testing.T, tc TestCase) {
 }
 
 // GetWriter extracts an io.Writer from an interface value
-func GetWriter(t *testing.T, v interface{}) io.Writer {
+func GetWriter(t *testing.T, v any) io.Writer {
 	t.Helper()
 	if w, ok := v.(io.Writer); ok {
 		return w
@@ -938,7 +938,7 @@ func GetWriter(t *testing.T, v interface{}) io.Writer {
 }
 
 // GetReader extracts an io.Reader from an interface value
-func GetReader(t *testing.T, v interface{}) io.Reader {
+func GetReader(t *testing.T, v any) io.Reader {
 	t.Helper()
 	if r, ok := v.(io.Reader); ok {
 		return r
