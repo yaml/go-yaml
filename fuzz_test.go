@@ -1,6 +1,3 @@
-//go:build go1.18
-// +build go1.18
-
 package yaml_test
 
 import (
@@ -8,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"go.yaml.in/yaml/v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // FuzzEncodeFromJSON checks that any JSON encoded value can also be encoded as YAML... and decoded.
@@ -22,6 +19,7 @@ func FuzzEncodeFromJSON(f *testing.F) {
 	f.Add(`[]`)
 	f.Add(`[[]]`)
 	f.Add(`{"a":[]}`)
+	f.Add(`{"a":{}}`)
 	f.Add(`-0`)
 	f.Add(`-0.000`)
 	f.Add(`"\n"`)
@@ -31,7 +29,7 @@ func FuzzEncodeFromJSON(f *testing.F) {
 
 		var v interface{}
 		if err := json.Unmarshal([]byte(s), &v); err != nil {
-			t.Skip("not valid JSON")
+			t.Skipf("not valid JSON %q", s)
 		}
 
 		t.Logf("JSON %q", s)
@@ -51,13 +49,6 @@ func FuzzEncodeFromJSON(f *testing.F) {
 		}
 
 		t.Logf("Go   %q <%[1]x>", v2)
-
-		/*
-			// Handling of number is different, so we can't have universal exact matching
-			if !reflect.DeepEqual(v2, v) {
-				t.Errorf("mismatch:\n-      got: %#v\n- expected: %#v", v2, v)
-			}
-		*/
 
 		b2, err := yaml.Marshal(v2)
 		if err != nil {
