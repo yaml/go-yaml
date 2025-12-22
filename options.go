@@ -64,11 +64,12 @@ func WithIndent(indent int) Option {
 // If compact is false, '- ' is not treated as part of the indentation.
 // When called without arguments, defaults to true.
 func WithCompactSeqIndent(compact ...bool) Option {
+	if len(compact) > 1 {
+		panic("yaml: WithCompactSeqIndent accepts at most one argument")
+	}
+	val := len(compact) == 0 || compact[0]
 	return func(o *options) error {
-		if len(compact) > 1 {
-			return errors.New("yaml: WithCompactSeqIndent accepts at most one argument")
-		}
-		o.compactSeqIndent = len(compact) == 0 || compact[0]
+		o.compactSeqIndent = val
 		return nil
 	}
 }
@@ -79,11 +80,12 @@ func WithCompactSeqIndent(compact ...bool) Option {
 // that do not correspond to any fields in the target struct.
 // When called without arguments, defaults to true.
 func WithKnownFields(knownFields ...bool) Option {
+	if len(knownFields) > 1 {
+		panic("yaml: WithKnownFields accepts at most one argument")
+	}
+	val := len(knownFields) == 0 || knownFields[0]
 	return func(o *options) error {
-		if len(knownFields) > 1 {
-			return errors.New("yaml: WithKnownFields accepts at most one argument")
-		}
-		o.knownFields = len(knownFields) == 0 || knownFields[0]
+		o.knownFields = val
 		return nil
 	}
 }
@@ -97,11 +99,12 @@ func WithKnownFields(knownFields ...bool) Option {
 // This is useful when you expect exactly one document and want behavior
 // similar to [Unmarshal].
 func WithSingleDocument(singleDocument ...bool) Option {
+	if len(singleDocument) > 1 {
+		panic("yaml: WithSingleDocument accepts at most one argument")
+	}
+	val := len(singleDocument) == 0 || singleDocument[0]
 	return func(o *options) error {
-		if len(singleDocument) > 1 {
-			return errors.New("yaml: WithSingleDocument accepts at most one argument")
-		}
-		o.singleDocument = len(singleDocument) == 0 || singleDocument[0]
+		o.singleDocument = val
 		return nil
 	}
 }
@@ -130,11 +133,12 @@ func WithLineWidth(width int) Option {
 //
 // The default is true.
 func WithUnicode(unicode ...bool) Option {
+	if len(unicode) > 1 {
+		panic("yaml: WithUnicode accepts at most one argument")
+	}
+	val := len(unicode) == 0 || unicode[0]
 	return func(o *options) error {
-		if len(unicode) > 1 {
-			return errors.New("yaml: WithUnicode accepts at most one argument")
-		}
-		o.unicode = len(unicode) == 0 || unicode[0]
+		o.unicode = val
 		return nil
 	}
 }
@@ -148,11 +152,12 @@ func WithUnicode(unicode ...bool) Option {
 //
 // The default is true.
 func WithUniqueKeys(uniqueKeys ...bool) Option {
+	if len(uniqueKeys) > 1 {
+		panic("yaml: WithUniqueKeys accepts at most one argument")
+	}
+	val := len(uniqueKeys) == 0 || uniqueKeys[0]
 	return func(o *options) error {
-		if len(uniqueKeys) > 1 {
-			return errors.New("yaml: WithUniqueKeys accepts at most one argument")
-		}
-		o.uniqueKeys = len(uniqueKeys) == 0 || uniqueKeys[0]
+		o.uniqueKeys = val
 		return nil
 	}
 }
@@ -166,11 +171,12 @@ func WithUniqueKeys(uniqueKeys ...bool) Option {
 //
 // The default is false.
 func WithCanonical(canonical ...bool) Option {
+	if len(canonical) > 1 {
+		panic("yaml: WithCanonical accepts at most one argument")
+	}
+	val := len(canonical) == 0 || canonical[0]
 	return func(o *options) error {
-		if len(canonical) > 1 {
-			return errors.New("yaml: WithCanonical accepts at most one argument")
-		}
-		o.canonical = len(canonical) == 0 || canonical[0]
+		o.canonical = val
 		return nil
 	}
 }
@@ -196,11 +202,12 @@ func WithLineBreak(lineBreak LineBreak) Option {
 // When false (default), the marker is omitted for the first document.
 // When called without arguments, defaults to true.
 func WithExplicitStart(explicit ...bool) Option {
+	if len(explicit) > 1 {
+		panic("yaml: WithExplicitStart accepts at most one argument")
+	}
+	val := len(explicit) == 0 || explicit[0]
 	return func(o *options) error {
-		if len(explicit) > 1 {
-			return errors.New("yaml: WithExplicitStart accepts at most one argument")
-		}
-		o.explicitStart = len(explicit) == 0 || explicit[0]
+		o.explicitStart = val
 		return nil
 	}
 }
@@ -211,11 +218,12 @@ func WithExplicitStart(explicit ...bool) Option {
 // When false (default), the marker is omitted.
 // When called without arguments, defaults to true.
 func WithExplicitEnd(explicit ...bool) Option {
+	if len(explicit) > 1 {
+		panic("yaml: WithExplicitEnd accepts at most one argument")
+	}
+	val := len(explicit) == 0 || explicit[0]
 	return func(o *options) error {
-		if len(explicit) > 1 {
-			return errors.New("yaml: WithExplicitEnd accepts at most one argument")
-		}
-		o.explicitEnd = len(explicit) == 0 || explicit[0]
+		o.explicitEnd = val
 		return nil
 	}
 }
@@ -229,11 +237,12 @@ func WithExplicitEnd(explicit ...bool) Option {
 //
 // When false (default), all collections use block style.
 func WithFlowSimpleCollections(flow ...bool) Option {
+	if len(flow) > 1 {
+		panic("yaml: WithFlowSimpleCollections accepts at most one argument")
+	}
+	val := len(flow) == 0 || flow[0]
 	return func(o *options) error {
-		if len(flow) > 1 {
-			return errors.New("yaml: WithFlowSimpleCollections accepts at most one argument")
-		}
-		o.flowSimpleCollections = len(flow) == 0 || flow[0]
+		o.flowSimpleCollections = val
 		return nil
 	}
 }
