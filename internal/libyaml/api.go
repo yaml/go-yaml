@@ -87,6 +87,16 @@ func (parser *Parser) SetEncoding(encoding Encoding) {
 	parser.encoding = encoding
 }
 
+// GetPendingComments returns the parser's comment queue for CLI access.
+func (parser *Parser) GetPendingComments() []Comment {
+	return parser.comments
+}
+
+// GetCommentsHead returns the current position in the comment queue.
+func (parser *Parser) GetCommentsHead() int {
+	return parser.comments_head
+}
+
 // NewEmitter creates a new emitter object.
 func NewEmitter() Emitter {
 	return Emitter{
