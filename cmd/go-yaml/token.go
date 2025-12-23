@@ -20,6 +20,7 @@ type Token struct {
 	Type        string
 	Value       string
 	Style       string
+	CommentType string // For COMMENT tokens: "head", "line", or "foot"
 	StartLine   int
 	StartColumn int
 	EndLine     int
@@ -31,13 +32,13 @@ type Token struct {
 
 // TokenInfo represents the information about a YAML token for YAML encoding
 type TokenInfo struct {
-	Token string `yaml:"Token"`
-	Value string `yaml:"Value,omitempty"`
-	Style string `yaml:"Style,omitempty"`
-	Head  string `yaml:"Head,omitempty"`
-	Line  string `yaml:"Line,omitempty"`
-	Foot  string `yaml:"Foot,omitempty"`
-	Pos   string `yaml:"Pos,omitempty"`
+	Token string `yaml:"token"`
+	Value string `yaml:"value,omitempty"`
+	Style string `yaml:"style,omitempty"`
+	Head  string `yaml:"head,omitempty"`
+	Line  string `yaml:"line,omitempty"`
+	Foot  string `yaml:"foot,omitempty"`
+	Pos   string `yaml:"pos,omitempty"`
 }
 
 // ProcessTokens reads YAML from stdin and outputs token information using the internal scanner
@@ -87,38 +88,38 @@ func processTokensDecode(profuse, compact bool) error {
 
 				// Add the Token field
 				compactNode.Content = append(compactNode.Content,
-					&yaml.Node{Kind: yaml.ScalarNode, Value: "Token"},
+					&yaml.Node{Kind: yaml.ScalarNode, Value: "token"},
 					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Token})
 
 				// Add other fields if they exist
 				if info.Value != "" {
 					compactNode.Content = append(compactNode.Content,
-						&yaml.Node{Kind: yaml.ScalarNode, Value: "Value"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "value"},
 						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Value})
 				}
 				if info.Style != "" {
 					compactNode.Content = append(compactNode.Content,
-						&yaml.Node{Kind: yaml.ScalarNode, Value: "Style"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "style"},
 						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Style})
 				}
 				if info.Head != "" {
 					compactNode.Content = append(compactNode.Content,
-						&yaml.Node{Kind: yaml.ScalarNode, Value: "Head"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "head"},
 						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Head})
 				}
 				if info.Line != "" {
 					compactNode.Content = append(compactNode.Content,
-						&yaml.Node{Kind: yaml.ScalarNode, Value: "Line"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "line"},
 						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Line})
 				}
 				if info.Foot != "" {
 					compactNode.Content = append(compactNode.Content,
-						&yaml.Node{Kind: yaml.ScalarNode, Value: "Foot"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "foot"},
 						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Foot})
 				}
 				if info.Pos != "" {
 					compactNode.Content = append(compactNode.Content,
-						&yaml.Node{Kind: yaml.ScalarNode, Value: "Pos"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "pos"},
 						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Pos})
 				}
 
@@ -185,38 +186,38 @@ func processTokensWithParser(profuse, compact bool) error {
 
 			// Add the Token field
 			compactNode.Content = append(compactNode.Content,
-				&yaml.Node{Kind: yaml.ScalarNode, Value: "Token"},
+				&yaml.Node{Kind: yaml.ScalarNode, Value: "token"},
 				&yaml.Node{Kind: yaml.ScalarNode, Value: info.Token})
 
 			// Add other fields if they exist
 			if info.Value != "" {
 				compactNode.Content = append(compactNode.Content,
-					&yaml.Node{Kind: yaml.ScalarNode, Value: "Value"},
+					&yaml.Node{Kind: yaml.ScalarNode, Value: "value"},
 					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Value})
 			}
 			if info.Style != "" {
 				compactNode.Content = append(compactNode.Content,
-					&yaml.Node{Kind: yaml.ScalarNode, Value: "Style"},
+					&yaml.Node{Kind: yaml.ScalarNode, Value: "style"},
 					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Style})
 			}
 			if info.Head != "" {
 				compactNode.Content = append(compactNode.Content,
-					&yaml.Node{Kind: yaml.ScalarNode, Value: "Head"},
+					&yaml.Node{Kind: yaml.ScalarNode, Value: "head"},
 					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Head})
 			}
 			if info.Line != "" {
 				compactNode.Content = append(compactNode.Content,
-					&yaml.Node{Kind: yaml.ScalarNode, Value: "Line"},
+					&yaml.Node{Kind: yaml.ScalarNode, Value: "line"},
 					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Line})
 			}
 			if info.Foot != "" {
 				compactNode.Content = append(compactNode.Content,
-					&yaml.Node{Kind: yaml.ScalarNode, Value: "Foot"},
+					&yaml.Node{Kind: yaml.ScalarNode, Value: "foot"},
 					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Foot})
 			}
 			if info.Pos != "" {
 				compactNode.Content = append(compactNode.Content,
-					&yaml.Node{Kind: yaml.ScalarNode, Value: "Pos"},
+					&yaml.Node{Kind: yaml.ScalarNode, Value: "pos"},
 					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Pos})
 			}
 
@@ -301,38 +302,38 @@ func processTokensUnmarshal(profuse, compact bool) error {
 
 				// Add the Token field
 				compactNode.Content = append(compactNode.Content,
-					&yaml.Node{Kind: yaml.ScalarNode, Value: "Token"},
+					&yaml.Node{Kind: yaml.ScalarNode, Value: "token"},
 					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Token})
 
 				// Add other fields if they exist
 				if info.Value != "" {
 					compactNode.Content = append(compactNode.Content,
-						&yaml.Node{Kind: yaml.ScalarNode, Value: "Value"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "value"},
 						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Value})
 				}
 				if info.Style != "" {
 					compactNode.Content = append(compactNode.Content,
-						&yaml.Node{Kind: yaml.ScalarNode, Value: "Style"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "style"},
 						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Style})
 				}
 				if info.Head != "" {
 					compactNode.Content = append(compactNode.Content,
-						&yaml.Node{Kind: yaml.ScalarNode, Value: "Head"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "head"},
 						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Head})
 				}
 				if info.Line != "" {
 					compactNode.Content = append(compactNode.Content,
-						&yaml.Node{Kind: yaml.ScalarNode, Value: "Line"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "line"},
 						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Line})
 				}
 				if info.Foot != "" {
 					compactNode.Content = append(compactNode.Content,
-						&yaml.Node{Kind: yaml.ScalarNode, Value: "Foot"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "foot"},
 						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Foot})
 				}
 				if info.Pos != "" {
 					compactNode.Content = append(compactNode.Content,
-						&yaml.Node{Kind: yaml.ScalarNode, Value: "Pos"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "pos"},
 						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Pos})
 				}
 
@@ -377,26 +378,47 @@ func formatTokenInfo(token *Token, profuse bool) *TokenInfo {
 		Token: token.Type,
 	}
 
-	if token.Value != "" {
-		info.Value = token.Value
+	// For COMMENT tokens, use the CommentType to determine which field to populate
+	if token.Type == "COMMENT" && token.CommentType != "" && token.Value != "" {
+		switch token.CommentType {
+		case "head":
+			info.Head = token.Value
+		case "line":
+			info.Line = token.Value
+		case "foot":
+			info.Foot = token.Value
+		}
+	} else {
+		// For non-COMMENT tokens
+		if token.Value != "" {
+			info.Value = token.Value
+		}
+
+		if token.Style != "" && token.Style != "Plain" {
+			info.Style = token.Style
+		}
+
+		if token.HeadComment != "" {
+			info.Head = token.HeadComment
+		}
+		if token.LineComment != "" {
+			info.Line = token.LineComment
+		}
+		if token.FootComment != "" {
+			info.Foot = token.FootComment
+		}
 	}
-	if token.Style != "" && token.Style != "Plain" {
-		info.Style = token.Style
-	}
-	if token.HeadComment != "" {
-		info.Head = token.HeadComment
-	}
-	if token.LineComment != "" {
-		info.Line = token.LineComment
-	}
-	if token.FootComment != "" {
-		info.Foot = token.FootComment
-	}
+
 	if profuse {
 		if token.StartLine == token.EndLine && token.StartColumn == token.EndColumn {
-			info.Pos = fmt.Sprintf("%d;%d", token.StartLine, token.StartColumn)
+			// Single position
+			info.Pos = fmt.Sprintf("%d/%d", token.StartLine, token.StartColumn)
+		} else if token.StartLine == token.EndLine {
+			// Range on same line
+			info.Pos = fmt.Sprintf("%d/%d-%d", token.StartLine, token.StartColumn, token.EndColumn)
 		} else {
-			info.Pos = fmt.Sprintf("%d;%d-%d;%d", token.StartLine, token.StartColumn, token.EndLine, token.EndColumn)
+			// Range across different lines
+			info.Pos = fmt.Sprintf("%d/%d-%d/%d", token.StartLine, token.StartColumn, token.EndLine, token.EndColumn)
 		}
 	}
 
@@ -564,7 +586,7 @@ func processNodeToTokensRecursive(node *yaml.Node, profuse bool) []*Token {
 			StartColumn: node.Column,
 			EndLine:     endLine,
 			EndColumn:   endColumn,
-			Style:       formatStyle(node.Style),
+			Style:       formatStyle(node.Style, false),
 			HeadComment: node.HeadComment,
 			LineComment: node.LineComment,
 			FootComment: node.FootComment,

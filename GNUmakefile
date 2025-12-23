@@ -76,7 +76,14 @@ SHELL-SCRIPTS = \
   $(shell grep -rl '^.!/usr/bin/env bash' util | \
           grep -v '\.sw')
 
+COVER-TESTS := \
+ . \
+ ./cmd/... \
+ ./internal/... \
+
 # v=1 for verbose
+MAKE := $(MAKE) --no-print-directory
+
 v ?=
 cover ?=
 fuzz ?=
@@ -90,14 +97,29 @@ $(if $(fuzz), --fuzz=FuzzEncodeFromJSON --fuzztime=$(time))\
 $(if $(opts), $(opts))\
 
 # Test rules:
-test: test-main test-internal test-yts-all test-shell
+test: test-main test-internal test-cmd test-yts-all test-shell
 	@echo 'ALL TESTS PASS'
+
+check:
+	$(MAKE) fmt
+	$(MAKE) tidy
+	$(MAKE) lint
+	$(MAKE) test
 
 test-main: $(GO-DEPS)
 	go test .$(TEST-OPTS)
+	@echo 'ALL MAIN FILES PASS'
+
+test-cmd: $(GO-DEPS)
+	go test ./cmd/...$(TEST-OPTS)
+	@echo 'ALL CMD FILES PASS'
 
 test-internal: $(GO-DEPS)
 	go test ./internal/...$(TEST-OPTS)
+	@echo 'ALL INTERNAL FILES PASS'
+
+test-cover: $(GO-DEPS)
+	go test . $(COVER-TESTS) -vet=off --cover$(TEST-OPTS)
 
 test-yts: $(GO-DEPS) $(YTS-DIR)
 	go test ./yts$(TEST-OPTS)
@@ -118,6 +140,8 @@ test-count: $(GO-DEPS)
 	util/test-count
 
 yts-dir: $(YTS-DIR)
+
+get-test-data: $(YTS-DIR)
 
 # Install golangci-lint for GitHub Actions:
 golangci-lint-install: $(GOLANGCI-LINT)

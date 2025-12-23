@@ -70,29 +70,29 @@ func (parser *Parser) peekToken(out **Token) error {
 // comments behind the position of the provided token into the respective
 // top-level comment slices in the parser.
 func (parser *Parser) UnfoldComments(token *Token) {
-	for parser.comments_head < len(parser.comments) && token.StartMark.Index >= parser.comments[parser.comments_head].token_mark.Index {
+	for parser.comments_head < len(parser.comments) && token.StartMark.Index >= parser.comments[parser.comments_head].TokenMark.Index {
 		comment := &parser.comments[parser.comments_head]
-		if len(comment.head) > 0 {
+		if len(comment.Head) > 0 {
 			if token.Type == BLOCK_END_TOKEN {
-				// No heads on ends, so keep comment.head for a follow up token.
+				// No heads on ends, so keep comment.Head for a follow up token.
 				break
 			}
 			if len(parser.HeadComment) > 0 {
 				parser.HeadComment = append(parser.HeadComment, '\n')
 			}
-			parser.HeadComment = append(parser.HeadComment, comment.head...)
+			parser.HeadComment = append(parser.HeadComment, comment.Head...)
 		}
-		if len(comment.foot) > 0 {
+		if len(comment.Foot) > 0 {
 			if len(parser.FootComment) > 0 {
 				parser.FootComment = append(parser.FootComment, '\n')
 			}
-			parser.FootComment = append(parser.FootComment, comment.foot...)
+			parser.FootComment = append(parser.FootComment, comment.Foot...)
 		}
-		if len(comment.line) > 0 {
+		if len(comment.Line) > 0 {
 			if len(parser.LineComment) > 0 {
 				parser.LineComment = append(parser.LineComment, '\n')
 			}
-			parser.LineComment = append(parser.LineComment, comment.line...)
+			parser.LineComment = append(parser.LineComment, comment.Line...)
 		}
 		*comment = Comment{}
 		parser.comments_head++
