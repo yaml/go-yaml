@@ -1218,6 +1218,25 @@ func TestUnmarshalError_Unwrapping(t *testing.T) {
 	assert.ErrorIs(t, errUnmarshal, errSentinel)
 }
 
+func TestTextUnmarshalerNonScalar(t *testing.T) {
+	dst := struct {
+		A textUnmarshaler
+	}{}
+	inputs := []string{
+		`a: {}`,
+		`a: []`,
+	}
+
+	for _, input := range inputs {
+		err := yaml.Unmarshal([]byte(input), &dst)
+		t.Logf("%s -> err=%v", input, err)
+		var target *yaml.TypeError
+		if !errors.As(err, &target) {
+			t.Errorf("expected yaml.TypeError, got %v", err)
+		}
+	}
+}
+
 type sliceUnmarshaler []int
 
 func (su *sliceUnmarshaler) UnmarshalYAML(node *yaml.Node) error {
