@@ -542,7 +542,7 @@ func (parser *Parser) read(s []byte) []byte {
 		panic("invalid character sequence")
 	}
 	if len(s) == 0 {
-		s = make([]byte, 0, 32)
+		s = make([]byte, 0, 4)
 	}
 	if w == 1 && len(s)+w <= cap(s) {
 		s = s[:len(s)+1]
