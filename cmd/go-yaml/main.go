@@ -40,8 +40,9 @@ func main() {
 	eventMode := flag.Bool("e", false, "Event output")
 	eventProfuseMode := flag.Bool("E", false, "Event with line info")
 
-	// Node mode
+	// Node modes
 	nodeMode := flag.Bool("n", false, "Node representation output")
+	nodeProfuseMode := flag.Bool("N", false, "Node with tag and style for all scalars")
 
 	// Shared flags
 	longMode := flag.Bool("l", false, "Long (block) formatted output")
@@ -59,6 +60,7 @@ func main() {
 	flag.BoolVar(eventMode, "event", false, "Event output")
 	flag.BoolVar(eventProfuseMode, "EVENT", false, "Event with line info")
 	flag.BoolVar(nodeMode, "node", false, "Node representation output")
+	flag.BoolVar(nodeProfuseMode, "NODE", false, "Node with tag and style for all scalars")
 	flag.BoolVar(longMode, "long", false, "Long (block) formatted output")
 	flag.BoolVar(unmarshalMode, "unmarshal", false, "Use Unmarshal instead of Decode for YAML input")
 	flag.BoolVar(marshalMode, "marshal", false, "Use Marshal instead of Encode for YAML output")
@@ -95,14 +97,14 @@ func main() {
 	}
 
 	// If no stdin and no flags, show help
-	if (stat.Mode()&os.ModeCharDevice) != 0 && !*nodeMode && !*eventMode && !*eventProfuseMode && !*tokenMode && !*tokenProfuseMode && !*jsonMode && !*jsonPrettyMode && !*yamlMode && !*yamlPreserveMode && !*longMode {
+	if (stat.Mode()&os.ModeCharDevice) != 0 && !*nodeMode && !*nodeProfuseMode && !*eventMode && !*eventProfuseMode && !*tokenMode && !*tokenProfuseMode && !*jsonMode && !*jsonPrettyMode && !*yamlMode && !*yamlPreserveMode && !*longMode {
 		printHelp()
 		return
 	}
 
 	// Error if stdin has data but no mode flags are provided
-	if (stat.Mode()&os.ModeCharDevice) == 0 && !*nodeMode && !*eventMode && !*eventProfuseMode && !*tokenMode && !*tokenProfuseMode && !*jsonMode && !*jsonPrettyMode && !*yamlMode && !*yamlPreserveMode && !*longMode {
-		fmt.Fprintf(os.Stderr, "Error: stdin has data but no mode specified. Use -n/--node, -e/--event, -E/--EVENT, -t/--token, -T/--TOKEN, -j/--json, -J/--JSON, -y/--yaml, -Y/--YAML flag.\n")
+	if (stat.Mode()&os.ModeCharDevice) == 0 && !*nodeMode && !*nodeProfuseMode && !*eventMode && !*eventProfuseMode && !*tokenMode && !*tokenProfuseMode && !*jsonMode && !*jsonPrettyMode && !*yamlMode && !*yamlPreserveMode && !*longMode {
+		fmt.Fprintf(os.Stderr, "Error: stdin has data but no mode specified. Use -n/--node, -N/--NODE, -e/--event, -E/--EVENT, -t/--token, -T/--TOKEN, -j/--json, -J/--JSON, -y/--yaml, -Y/--YAML flag.\n")
 		os.Exit(1)
 	}
 
@@ -153,9 +155,10 @@ func main() {
 		}
 	} else {
 		// Use node formatting mode (default)
+		profuse := *nodeProfuseMode
 		if *unmarshalMode {
 			// Use Unmarshal mode
-			if err := ProcessNodeUnmarshal(); err != nil {
+			if err := ProcessNodeUnmarshal(profuse); err != nil {
 				log.Fatal("Failed to process YAML node:", err)
 			}
 		} else {
@@ -165,7 +168,9 @@ func main() {
 			if err != nil {
 				log.Fatal("Failed to create loader:", err)
 			}
-			firstDoc := true
+
+			// Collect all documents
+			var docs []any
 
 			for {
 				var node yaml.Node
@@ -177,31 +182,40 @@ func main() {
 					log.Fatal("Failed to load YAML node:", err)
 				}
 
-				// Add document separator for all documents except the first
-				if !firstDoc {
-					fmt.Println("---")
+				var info any
+				if profuse {
+					info = FormatNode(node, profuse)
+				} else {
+					info = FormatNodeCompact(node)
 				}
-				firstDoc = false
-
-				info := FormatNode(node)
-
-				var buf bytes.Buffer
-				enc, err := yaml.NewDumper(&buf)
-				if err != nil {
-					log.Fatal("Failed to create dumper:", err)
-				}
-				if err := enc.Dump(info); err != nil {
-					log.Fatal("Failed to dump node info:", err)
-				}
-				enc.Close()
-				fmt.Print(buf.String())
+				docs = append(docs, info)
 			}
+
+			// Output as sequence if multiple documents, otherwise output single document
+			var output any
+			if len(docs) == 1 {
+				output = docs[0]
+			} else {
+				output = docs
+			}
+
+			// Use dumper for output
+			var buf bytes.Buffer
+			enc, err := yaml.NewDumper(&buf)
+			if err != nil {
+				log.Fatal("Failed to create dumper:", err)
+			}
+			if err := enc.Dump(output); err != nil {
+				log.Fatal("Failed to dump node info:", err)
+			}
+			enc.Close()
+			fmt.Print(buf.String())
 		}
 	}
 }
 
 // ProcessNodeUnmarshal reads YAML from stdin using Unmarshal and outputs node structure
-func ProcessNodeUnmarshal() error {
+func ProcessNodeUnmarshal(profuse bool) error {
 	// Read all input from stdin
 	input, err := io.ReadAll(os.Stdin)
 	if err != nil {
@@ -210,7 +224,9 @@ func ProcessNodeUnmarshal() error {
 
 	// Split input into documents
 	documents := bytes.Split(input, []byte("---"))
-	firstDoc := true
+
+	// Collect all documents
+	var docs []any
 
 	for _, doc := range documents {
 		// Skip empty documents
@@ -218,13 +234,7 @@ func ProcessNodeUnmarshal() error {
 			continue
 		}
 
-		// Add document separator for all documents except the first
-		if !firstDoc {
-			fmt.Println("---")
-		}
-		firstDoc = false
-
-		// For unmarshal mode, use `any` first to avoid preserving comments
+		// For unmarshal mode, use any first to avoid preserving comments
 		var data any
 		if err := yaml.Load(doc, &data); err != nil {
 			return fmt.Errorf("failed to load YAML: %w", err)
@@ -236,20 +246,35 @@ func ProcessNodeUnmarshal() error {
 			return fmt.Errorf("failed to load YAML to node: %w", err)
 		}
 
-		info := FormatNode(node)
-
-		var buf bytes.Buffer
-		enc, err := yaml.NewDumper(&buf)
-		if err != nil {
-			return fmt.Errorf("failed to create dumper: %w", err)
+		var info any
+		if profuse {
+			info = FormatNode(node, profuse)
+		} else {
+			info = FormatNodeCompact(node)
 		}
-		if err := enc.Dump(info); err != nil {
-			enc.Close()
-			return fmt.Errorf("failed to dump node info: %w", err)
-		}
-		enc.Close()
-		fmt.Print(buf.String())
+		docs = append(docs, info)
 	}
+
+	// Output as sequence if multiple documents, otherwise output single document
+	var output any
+	if len(docs) == 1 {
+		output = docs[0]
+	} else {
+		output = docs
+	}
+
+	// Use dumper for output
+	var buf bytes.Buffer
+	enc, err := yaml.NewDumper(&buf)
+	if err != nil {
+		return fmt.Errorf("failed to create dumper: %w", err)
+	}
+	if err := enc.Dump(output); err != nil {
+		enc.Close()
+		return fmt.Errorf("failed to dump node info: %w", err)
+	}
+	enc.Close()
+	fmt.Print(buf.String())
 
 	return nil
 }
@@ -286,6 +311,7 @@ Options:
   -E, --EVENT      Event with line info
 
   -n, --node       Node representation output
+  -N, --NODE       Node with tag and style for all scalars
 
   -l, --long       Long (block) formatted output
 
