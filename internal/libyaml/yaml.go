@@ -84,7 +84,7 @@ const (
 type Mark struct {
 	Index  int // The position index.
 	Line   int // The position line (1-indexed).
-	Column int // The position column (0-indexed).
+	Column int // The position column (0-indexed internally, displayed as 1-indexed).
 }
 
 func (m Mark) String() string {
@@ -95,7 +95,7 @@ func (m Mark) String() string {
 
 	fmt.Fprintf(&builder, "line %d", m.Line)
 	if m.Column != 0 {
-		fmt.Fprintf(&builder, ", column %d", m.Column)
+		fmt.Fprintf(&builder, ", column %d", m.Column+1)
 	}
 
 	return builder.String()
