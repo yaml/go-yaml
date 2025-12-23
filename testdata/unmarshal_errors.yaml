@@ -46,14 +46,14 @@
     yaml: |
       a:
       - b: *,
-    want: 'yaml: while scanning an alias at line 2, column 5:
-            line 2, column 6:
+    want: 'yaml: while scanning an alias at line 2, column 6:
+            line 2, column 7:
             did not find expected alphabetic or numeric character'
 
 - unmarshal-error:
     name: Unknown anchor referenced
     yaml: "a: *b\n"
-    want: "yaml: line 1, column 4: unknown anchor 'b' referenced"
+    want: "yaml: line 1, column 5: unknown anchor 'b' referenced"
 
 - unmarshal-error:
     name: Anchor contains itself
@@ -65,7 +65,7 @@
 - unmarshal-error:
     name: Block sequence in invalid context
     yaml: 'value: -'
-    want: 'yaml: line 1, column 7:
+    want: 'yaml: line 1, column 8:
             block sequence entries are not allowed in this context'
 
 - unmarshal-error:
@@ -91,7 +91,7 @@
     yaml: |
       b: *a
       a: &a {c: 1}
-    want: "yaml: line 1, column 4: unknown anchor 'a' referenced"
+    want: "yaml: line 1, column 5: unknown anchor 'a' referenced"
 
 - unmarshal-error:
     name: Invalid TAG directive
@@ -99,7 +99,7 @@
       %TAG !%79! tag:yaml.org,2002:
       ---
       v: !%79!int '1'
-    want: 'yaml: while scanning a %TAG directive at line 1: line 1, column 6:
+    want: 'yaml: while scanning a %TAG directive at line 1: line 1, column 7:
             did not find expected whitespace'
 
 - unmarshal-error:
@@ -109,7 +109,7 @@
         1:
       b
         2:
-    want: "yaml: while scanning a simple key at line 3: line 4, column 3:
+    want: "yaml: while scanning a simple key at line 3: line 4, column 4:
             could not find expected ':'"
 
 - unmarshal-error:
@@ -142,7 +142,7 @@
     yaml: |
       foo: &bar: bar
       *bar: : quz
-    want: 'yaml: line 1, column 9:
+    want: 'yaml: line 1, column 10:
             mapping values are not allowed in this context'
 
 - unmarshal-error:
