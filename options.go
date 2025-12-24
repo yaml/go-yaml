@@ -440,3 +440,12 @@ func applyOptions(opts ...Option) (*options, error) {
 	}
 	return o, nil
 }
+
+// legacyOptions holds the default options for legacy APIs like
+// Marshal/Unmarshal.
+var legacyOptions = &options{
+	indent:     4,
+	lineWidth:  -1,
+	unicode:    true,
+	uniqueKeys: true,
+}
