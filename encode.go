@@ -34,7 +34,6 @@ import (
 // These provide clarity at call sites, similar to http.NoBody.
 var (
 	noWriter           io.Writer                 = nil
-	noOptions          *options                  = nil
 	noVersionDirective *libyaml.VersionDirective = nil
 	noTagDirective     []libyaml.TagDirective    = nil
 )
@@ -56,26 +55,20 @@ type encoder struct {
 // The writer parameter specifies the output destination for the encoder.
 // If writer is nil, the encoder will write to an internal buffer.
 func newEncoder(writer io.Writer, opts *options) *encoder {
-	e := &encoder{
-		emitter: libyaml.NewEmitter(),
-	}
+	emitter := libyaml.NewEmitter()
+	emitter.CompactSequenceIndent = opts.compactSeqIndent
+	emitter.SetWidth(opts.lineWidth)
+	emitter.SetUnicode(opts.unicode)
+	emitter.SetCanonical(opts.canonical)
+	emitter.SetLineBreak(opts.lineBreak)
 
-	// Apply options if provided, otherwise use defaults
-	if opts != nil {
-		e.indent = opts.indent
-		e.lineWidth = opts.lineWidth
-		e.emitter.CompactSequenceIndent = opts.compactSeqIndent
-		e.emitter.SetWidth(opts.lineWidth)
-		e.emitter.SetUnicode(opts.unicode)
-		e.emitter.SetCanonical(opts.canonical)
-		e.emitter.SetLineBreak(opts.lineBreak)
-		e.explicitStart = opts.explicitStart
-		e.explicitEnd = opts.explicitEnd
-		e.flowSimpleCollections = opts.flowSimpleCollections
-	} else {
-		// Default values when no options provided
-		e.emitter.SetUnicode(true)
-		e.lineWidth = 80
+	e := &encoder{
+		emitter:               emitter,
+		indent:                opts.indent,
+		lineWidth:             opts.lineWidth,
+		explicitStart:         opts.explicitStart,
+		explicitEnd:           opts.explicitEnd,
+		flowSimpleCollections: opts.flowSimpleCollections,
 	}
 
 	if writer != nil {
@@ -501,7 +494,9 @@ func (e *encoder) nilv() {
 	e.emitScalar("null", "", "", libyaml.PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
-func (e *encoder) emitScalar(value, anchor, tag string, style libyaml.ScalarStyle, head, line, foot, tail []byte) {
+func (e *encoder) emitScalar(
+	value, anchor, tag string, style libyaml.ScalarStyle, head, line, foot, tail []byte,
+) {
 	// TODO Kill this function. Replace all initialize calls by their underlining Go literals.
 	implicit := tag == ""
 	if !implicit {
