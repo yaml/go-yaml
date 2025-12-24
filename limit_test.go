@@ -72,12 +72,12 @@ var limitTests = []struct {
 	{
 		name:  "1000kb of deeply nested slices",
 		data:  []byte(strings.Repeat(`[`, 1000*1024)),
-		error: "yaml: while increasing flow level at line 1, column 10001: exceeded max depth of 10000",
+		error: "yaml: while increasing flow level at line 1: line 1, column 10001: exceeded max depth of 10000",
 	},
 	{
 		name:  "1000kb of deeply nested maps",
 		data:  []byte("x: " + strings.Repeat(`{`, 1000*1024)),
-		error: "yaml: while increasing flow level at line 1, column 10004: exceeded max depth of 10000",
+		error: "yaml: while increasing flow level at line 1: line 1, column 10004: exceeded max depth of 10000",
 	},
 	{
 		name:  "1000kb of deeply nested indents",
