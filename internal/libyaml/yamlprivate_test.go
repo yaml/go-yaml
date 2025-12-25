@@ -35,6 +35,15 @@ func runCharPredicateTest(t *testing.T, tc TestCase) {
 		got = isAnchorChar(input, index)
 	case "isColon":
 		got = isColon(input, index)
+	case "isTagURIChar":
+		// Default verbatim to false if not specified
+		verbatim := false
+		if len(tc.Args) >= 1 {
+			v, ok := tc.Args[0].(bool)
+			assert.Truef(t, ok, "Args[0] should be bool, got %T", tc.Args[0])
+			verbatim = v
+		}
+		got = isTagURIChar(input, index, verbatim)
 	case "isDigit":
 		got = isDigit(input, index)
 	case "isHex":

@@ -71,6 +71,31 @@ func isColon(b []byte, i int) bool {
 	return b[i] == ':'
 }
 
+// Check if the character at the specified position is valid in a tag URI.
+//
+// The set of valid characters is:
+//
+//	'0'-'9', 'A'-'Z', 'a'-'z', '_', '-', ';', '/', '?', ':', '@', '&',
+//	'=', '+', '$', '.', '!', '~', '*', '\'', '(', ')', '%'.
+//
+// If verbatim is true, flow indicators (',', '[', ']', '{', '}') are also
+// allowed.
+func isTagURIChar(b []byte, i int, verbatim bool) bool {
+	c := b[i]
+	// isAlpha covers: 0-9, A-Z, a-z, _, -
+	if isAlpha(b, i) {
+		return true
+	}
+	// Check special URI characters
+	switch c {
+	case ';', '/', '?', ':', '@', '&', '=', '+', '$', '.', '!', '~', '*', '\'', '(', ')', '%':
+		return true
+	case ',', '[', ']', '{', '}':
+		return verbatim
+	}
+	return false
+}
+
 // Check if the character at the specified position is a digit.
 func isDigit(b []byte, i int) bool {
 	return b[i] >= '0' && b[i] <= '9'

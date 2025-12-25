@@ -305,3 +305,54 @@
 - scan-error:
     name: Invalid character
     yaml: "\x01"
+
+# Flow indicator error tests
+- scan-error:
+    name: Comma in tag
+    yaml: "!foo,bar value"
+    like: found character ',' that is not allowed in a YAML tag
+
+- scan-error:
+    name: Left bracket in tag
+    yaml: "!foo[bar value"
+    like: found character '\[' that is not allowed in a YAML tag
+
+- scan-error:
+    name: Right bracket in tag
+    yaml: "!foo]bar value"
+    like: found character '\]' that is not allowed in a YAML tag
+
+- scan-error:
+    name: Left brace in tag
+    yaml: "!foo{bar value"
+    like: found character '\{' that is not allowed in a YAML tag
+
+- scan-error:
+    name: Right brace in tag
+    yaml: "!foo}bar value"
+    like: found character '\}' that is not allowed in a YAML tag
+
+- scan-error:
+    name: Hash in tag
+    yaml: "!foo#bar value"
+    like: found character '#' that is not allowed in a YAML tag
+
+- scan-error:
+    name: Double quote in tag
+    yaml: '!foo"bar value'
+    like: found character '"' that is not allowed in a YAML tag
+
+- scan-error:
+    name: Less than in tag
+    yaml: "!foo<bar value"
+    like: found character '<' that is not allowed in a YAML tag
+
+- scan-error:
+    name: Greater than in tag
+    yaml: "!foo>bar value"
+    like: found character '>' that is not allowed in a YAML tag
+
+- scan-error:
+    name: Backslash in tag
+    yaml: '!foo\bar value'
+    like: found character '\\' that is not allowed in a YAML tag
