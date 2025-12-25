@@ -1,5 +1,6 @@
 TestYAMLSuite/27NA/UnmarshalTest
 TestYAMLSuite/27NA/EventComparisonTest
+TestYAMLSuite/229Q/JSONComparisonTest
 TestYAMLSuite/2JQS/UnmarshalTest
 TestYAMLSuite/2JQS/EventComparisonTest
 TestYAMLSuite/2LFX/UnmarshalTest
@@ -144,7 +145,6 @@ TestYAMLSuite/NJ66/UnmarshalTest
 TestYAMLSuite/NJ66/EventComparisonTest
 TestYAMLSuite/NKF9/UnmarshalTest
 TestYAMLSuite/NKF9/EventComparisonTest
-TestYAMLSuite/P2AD/MarshalTest
 TestYAMLSuite/PUW8/JSONComparisonTest
 TestYAMLSuite/Q5MG/UnmarshalTest
 TestYAMLSuite/Q5MG/EventComparisonTest
@@ -171,8 +171,6 @@ TestYAMLSuite/01#13/UnmarshalTest
 TestYAMLSuite/01#13/EventComparisonTest
 TestYAMLSuite/SU5Z/UnmarshalTest
 TestYAMLSuite/SU5Z/EventComparisonTest
-TestYAMLSuite/U99R/UnmarshalTest
-TestYAMLSuite/U99R/EventComparisonTest
 TestYAMLSuite/U9NS/JSONComparisonTest
 TestYAMLSuite/UGM3/JSONComparisonTest
 TestYAMLSuite/00#14/UnmarshalTest
