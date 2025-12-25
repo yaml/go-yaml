@@ -1900,8 +1900,8 @@ func (parser *Parser) scanTagDirectiveValue(start_mark Mark, handle, prefix *[]b
 		}
 	}
 
-	// Scan a prefix.
-	if err := parser.scanTagURI(true, nil, start_mark, &prefix_value); err != nil {
+	// Scan a prefix (TAG directive URI - flow indicators allowed).
+	if err := parser.scanTagURI(true, true, nil, start_mark, &prefix_value); err != nil {
 		return err
 	}
 
@@ -2001,8 +2001,8 @@ func (parser *Parser) scanTag(token *Token) error {
 		parser.skip()
 		parser.skip()
 
-		// Consume the tag value.
-		if err := parser.scanTagURI(false, nil, start_mark, &suffix); err != nil {
+		// Consume the tag value (verbatim tag - flow indicators allowed).
+		if err := parser.scanTagURI(false, true, nil, start_mark, &suffix); err != nil {
 			return err
 		}
 
@@ -2023,13 +2023,13 @@ func (parser *Parser) scanTag(token *Token) error {
 
 		// Check if it is, indeed, handle.
 		if handle[0] == '!' && len(handle) > 1 && handle[len(handle)-1] == '!' {
-			// Scan the suffix now.
-			if err := parser.scanTagURI(false, nil, start_mark, &suffix); err != nil {
+			// Scan the suffix now (short form - flow indicators not allowed).
+			if err := parser.scanTagURI(false, false, nil, start_mark, &suffix); err != nil {
 				return err
 			}
 		} else {
-			// It wasn't a handle after all.  Scan the rest of the tag.
-			if err := parser.scanTagURI(false, handle, start_mark, &suffix); err != nil {
+			// It wasn't a handle after all.  Scan the rest of the tag (short form).
+			if err := parser.scanTagURI(false, false, handle, start_mark, &suffix); err != nil {
 				return err
 			}
 
@@ -2117,8 +2117,10 @@ func (parser *Parser) scanTagHandle(directive bool, start_mark Mark, handle *[]b
 	return nil
 }
 
-// Scan a tag.
-func (parser *Parser) scanTagURI(directive bool, head []byte, start_mark Mark, uri *[]byte) error {
+// Scan a tag URI.
+// directive: true if scanning a %TAG directive URI
+// verbatim: true if scanning a verbatim tag !<...> or TAG directive (flow indicators allowed)
+func (parser *Parser) scanTagURI(directive bool, verbatim bool, head []byte, start_mark Mark, uri *[]byte) error {
 	// size_t length = head ? strlen((char *)head) : 0
 	var s []byte
 	hasTag := len(head) > 0
@@ -2140,20 +2142,10 @@ func (parser *Parser) scanTagURI(directive bool, head []byte, start_mark Mark, u
 	// The set of characters that may appear in URI is as follows:
 	//
 	//      '0'-'9', 'A'-'Z', 'a'-'z', '_', '-', ';', '/', '?', ':', '@', '&',
-	//      '=', '+', '$', ',', '.', '!', '~', '*', '\'', '(', ')', '[', ']',
-	//      '%'.
-	// [Go] TODO Convert this into more reasonable logic.
-	for isAlpha(parser.buffer, parser.buffer_pos) || parser.buffer[parser.buffer_pos] == ';' ||
-		parser.buffer[parser.buffer_pos] == '/' || parser.buffer[parser.buffer_pos] == '?' ||
-		parser.buffer[parser.buffer_pos] == ':' || parser.buffer[parser.buffer_pos] == '@' ||
-		parser.buffer[parser.buffer_pos] == '&' || parser.buffer[parser.buffer_pos] == '=' ||
-		parser.buffer[parser.buffer_pos] == '+' || parser.buffer[parser.buffer_pos] == '$' ||
-		parser.buffer[parser.buffer_pos] == ',' || parser.buffer[parser.buffer_pos] == '.' ||
-		parser.buffer[parser.buffer_pos] == '!' || parser.buffer[parser.buffer_pos] == '~' ||
-		parser.buffer[parser.buffer_pos] == '*' || parser.buffer[parser.buffer_pos] == '\'' ||
-		parser.buffer[parser.buffer_pos] == '(' || parser.buffer[parser.buffer_pos] == ')' ||
-		parser.buffer[parser.buffer_pos] == '[' || parser.buffer[parser.buffer_pos] == ']' ||
-		parser.buffer[parser.buffer_pos] == '%' {
+	//      '=', '+', '$', '.', '!', '~', '*', '\'', '(', ')', '%'.
+	//
+	// Note: Flow indicators (',', '[', ']', '{', '}') are only allowed in verbatim tags.
+	for isTagURIChar(parser.buffer, parser.buffer_pos, verbatim) {
 		// Check if it is a URI-escape sequence.
 		if parser.buffer[parser.buffer_pos] == '%' {
 			if err := parser.scanURIEscapes(directive, start_mark, &s); err != nil {
@@ -2168,6 +2160,19 @@ func (parser *Parser) scanTagURI(directive bool, head []byte, start_mark Mark, u
 			}
 		}
 		hasTag = true
+	}
+
+	// Check for characters which are not allowed in tags.
+	// For non-verbatim tags, if we stopped at a printable character that isn't whitespace,
+	// it's an invalid tag character - give a specific error.
+	// For verbatim tags, the caller will check for the expected '>' delimiter.
+	if !verbatim {
+		c := parser.buffer[parser.buffer_pos]
+		if !isBlankOrZero(parser.buffer, parser.buffer_pos) &&
+			c >= 0x20 && c <= 0x7E {
+			return parser.setScannerTagError(directive, start_mark,
+				fmt.Sprintf("found character '%c' that is not allowed in a YAML tag", c))
+		}
 	}
 
 	if !hasTag {

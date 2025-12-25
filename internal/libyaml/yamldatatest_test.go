@@ -27,6 +27,7 @@ type TestCase struct {
 	InputHex   string      `yaml:"input_hex"`
 	InputBytes string      `yaml:"input_bytes"`
 	Want       any         `yaml:"want"`
+	Like       string      `yaml:"like"` // Regex pattern to match error message
 	WantSpecs  []EventSpec // Populated from Want for detailed tests
 
 	// scan_tokens_detailed

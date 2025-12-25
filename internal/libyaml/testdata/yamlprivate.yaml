@@ -615,3 +615,210 @@
     func: width
     data: [0xF8]
     want: 0
+
+# isTagURIChar tests
+- char-predicate:
+    name: Is tag URI char - alphanumeric (non-verbatim)
+    func: isTagURIChar
+    data: abc123
+    args: [false]
+
+- char-predicate:
+    name: Is tag URI char - underscore (non-verbatim)
+    func: isTagURIChar
+    data: _
+    args: [false]
+
+- char-predicate:
+    name: Is tag URI char - dash (non-verbatim)
+    func: isTagURIChar
+    data: '-'
+    args: [false]
+
+- char-predicate:
+    name: Is tag URI char - semicolon (non-verbatim)
+    func: isTagURIChar
+    data: ;
+    args: [false]
+
+- char-predicate:
+    name: Is tag URI char - slash (non-verbatim)
+    func: isTagURIChar
+    data: /
+    args: [false]
+
+- char-predicate:
+    name: Is tag URI char - question mark (non-verbatim)
+    func: isTagURIChar
+    data: '?'
+    args: [false]
+
+- char-predicate:
+    name: Is tag URI char - colon (non-verbatim)
+    func: isTagURIChar
+    data: ':'
+    args: [false]
+
+- char-predicate:
+    name: Is tag URI char - at sign (non-verbatim)
+    func: isTagURIChar
+    data: '@'
+    args: [false]
+
+- char-predicate:
+    name: Is tag URI char - ampersand (non-verbatim)
+    func: isTagURIChar
+    data: '&'
+    args: [false]
+
+- char-predicate:
+    name: Is tag URI char - equals (non-verbatim)
+    func: isTagURIChar
+    data: =
+    args: [false]
+
+- char-predicate:
+    name: Is tag URI char - plus (non-verbatim)
+    func: isTagURIChar
+    data: +
+    args: [false]
+
+- char-predicate:
+    name: Is tag URI char - dollar (non-verbatim)
+    func: isTagURIChar
+    data: $
+    args: [false]
+
+- char-predicate:
+    name: Is tag URI char - dot (non-verbatim)
+    func: isTagURIChar
+    data: .
+    args: [false]
+
+- char-predicate:
+    name: Is tag URI char - exclamation (non-verbatim)
+    func: isTagURIChar
+    data: '!'
+    args: [false]
+
+- char-predicate:
+    name: Is tag URI char - tilde (non-verbatim)
+    func: isTagURIChar
+    data: '~'
+    args: [false]
+
+- char-predicate:
+    name: Is tag URI char - asterisk (non-verbatim)
+    func: isTagURIChar
+    data: '*'
+    args: [false]
+
+- char-predicate:
+    name: Is tag URI char - single quote (non-verbatim)
+    func: isTagURIChar
+    data: "'"
+    args: [false]
+
+- char-predicate:
+    name: Is tag URI char - left paren (non-verbatim)
+    func: isTagURIChar
+    data: (
+    args: [false]
+
+- char-predicate:
+    name: Is tag URI char - right paren (non-verbatim)
+    func: isTagURIChar
+    data: )
+    args: [false]
+
+- char-predicate:
+    name: Is tag URI char - percent (non-verbatim)
+    func: isTagURIChar
+    data: '%'
+    args: [false]
+
+- char-predicate:
+    name: Is tag URI char - comma (non-verbatim)
+    func: isTagURIChar
+    data: ','
+    args: [false]
+    want: false
+
+- char-predicate:
+    name: Is tag URI char - left bracket (non-verbatim)
+    func: isTagURIChar
+    data: '['
+    args: [false]
+    want: false
+
+- char-predicate:
+    name: Is tag URI char - right bracket (non-verbatim)
+    func: isTagURIChar
+    data: ']'
+    args: [false]
+    want: false
+
+- char-predicate:
+    name: Is tag URI char - left brace (non-verbatim)
+    func: isTagURIChar
+    data: '{'
+    args: [false]
+    want: false
+
+- char-predicate:
+    name: Is tag URI char - right brace (non-verbatim)
+    func: isTagURIChar
+    data: '}'
+    args: [false]
+    want: false
+
+- char-predicate:
+    name: Is tag URI char - comma (verbatim)
+    func: isTagURIChar
+    data: ','
+    args: [true]
+
+- char-predicate:
+    name: Is tag URI char - left bracket (verbatim)
+    func: isTagURIChar
+    data: '['
+    args: [true]
+
+- char-predicate:
+    name: Is tag URI char - right bracket (verbatim)
+    func: isTagURIChar
+    data: ']'
+    args: [true]
+
+- char-predicate:
+    name: Is tag URI char - left brace (verbatim)
+    func: isTagURIChar
+    data: '{'
+    args: [true]
+
+- char-predicate:
+    name: Is tag URI char - right brace (verbatim)
+    func: isTagURIChar
+    data: '}'
+    args: [true]
+
+- char-predicate:
+    name: Is tag URI char - space (non-verbatim)
+    func: isTagURIChar
+    data: ' '
+    args: [false]
+    want: false
+
+- char-predicate:
+    name: Is tag URI char - newline (non-verbatim)
+    func: isTagURIChar
+    data: [0x0A]
+    args: [false]
+    want: false
+
+- char-predicate:
+    name: Is tag URI char - hash (non-verbatim)
+    func: isTagURIChar
+    data: '#'
+    args: [false]
+    want: false
