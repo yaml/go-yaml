@@ -121,6 +121,9 @@ func init() {
 	decodeTypes.RegisterFactory("map[string]float64", func() any {
 		return make(map[string]float64)
 	})
+	decodeTypes.RegisterFactory("map[string][]byte", func() any {
+		return make(map[string][]byte)
+	})
 	decodeTypes.RegisterFactory("map[any]any", func() any {
 		return make(map[any]any)
 	})

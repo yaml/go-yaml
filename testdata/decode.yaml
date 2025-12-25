@@ -790,6 +790,28 @@
     want:
       v: test
 
+# !!binary tags
+- decode:
+    name: decoding !!binary into any
+    yaml: 'v: !!binary MTIzCg=='
+    type: map[string]any
+    want:
+      v: "123\n"
+
+- decode:
+    name: decoding !!binary into string
+    yaml: 'v: !!binary MTIzCg=='
+    type: map[string]string
+    want:
+      v: "123\n"
+
+- decode:
+    name: decoding !!binary into []byte
+    yaml: 'v: !!binary MTIzCg=='
+    type: map[string][]byte
+    want:
+      v: [0x31, 0x32, 0x33, 0x0A]
+
 # Anchors and aliases
 - decode:
     name: anchor as key with alias

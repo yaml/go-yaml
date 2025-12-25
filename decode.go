@@ -615,6 +615,14 @@ func (d *decoder) scalar(n *Node, out reflect.Value) bool {
 		}
 		out.SetString(n.Value)
 		return true
+	case reflect.Slice:
+		// allow decoding !!binary-tagged value into []byte specifically
+		if out.Type().Elem().Kind() == reflect.Uint8 {
+			if tag == binaryTag {
+				out.SetBytes([]byte(resolved.(string)))
+				return true
+			}
+		}
 	case reflect.Interface:
 		out.Set(reflect.ValueOf(resolved))
 		return true
