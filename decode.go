@@ -317,21 +317,13 @@ var (
 )
 
 func newDecoder(opts *options) *decoder {
-	d := &decoder{
+	return &decoder{
 		stringMapType:  stringMapType,
 		generalMapType: generalMapType,
-		uniqueKeys:     true, // default for legacy Decoder API (when opts == nil)
+		knownFields:    opts.knownFields,
+		uniqueKeys:     opts.uniqueKeys,
+		aliases:        make(map[*Node]bool),
 	}
-	d.aliases = make(map[*Node]bool)
-
-	if opts != nil {
-		// For Loader API, opts comes from applyOptions() which initializes
-		// uniqueKeys to true by default, so this preserves the same behavior
-		d.knownFields = opts.knownFields
-		d.uniqueKeys = opts.uniqueKeys
-	}
-
-	return d
 }
 
 func (d *decoder) terror(n *Node, tag string, out reflect.Value) {

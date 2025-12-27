@@ -199,7 +199,7 @@ func (dec *Decoder) KnownFields(enable bool) {
 //
 // Deprecated: Use Loader.Load instead. Will be removed in v5.
 func (dec *Decoder) Decode(v any) (err error) {
-	d := newDecoder(nil)
+	d := newDecoder(legacyOptions)
 	d.knownFields = dec.knownFields
 	defer handleErr(&err)
 	node := dec.parser.parse()
@@ -224,7 +224,7 @@ func (dec *Decoder) Decode(v any) (err error) {
 //
 // Deprecated: Use Node.Load instead. Will be removed in v5.
 func (n *Node) Decode(v any) (err error) {
-	d := newDecoder(nil)
+	d := newDecoder(legacyOptions)
 	defer handleErr(&err)
 	out := reflect.ValueOf(v)
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
@@ -338,7 +338,7 @@ func unmarshal(in []byte, out any, opts ...Option) (err error) {
 // Deprecated: Use Dump instead. Will be removed in v5.
 func Marshal(in any) (out []byte, err error) {
 	defer handleErr(&err)
-	e := newEncoder(noWriter, noOptions)
+	e := newEncoder(noWriter, legacyOptions)
 	defer e.destroy()
 	e.marshalDoc("", reflect.ValueOf(in))
 	e.finish()
@@ -502,7 +502,7 @@ type Encoder struct {
 // Deprecated: Use NewDumper instead. Will be removed in v5.
 func NewEncoder(w io.Writer) *Encoder {
 	return &Encoder{
-		encoder: newEncoder(w, noOptions),
+		encoder: newEncoder(w, legacyOptions),
 	}
 }
 
@@ -529,7 +529,7 @@ func (e *Encoder) Encode(v any) (err error) {
 // Deprecated: Use Node.Dump instead. Will be removed in v5.
 func (n *Node) Encode(v any) (err error) {
 	defer handleErr(&err)
-	e := newEncoder(noWriter, noOptions)
+	e := newEncoder(noWriter, legacyOptions)
 	defer e.destroy()
 	e.marshalDoc("", reflect.ValueOf(v))
 	e.finish()
