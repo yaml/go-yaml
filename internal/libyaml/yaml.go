@@ -713,9 +713,6 @@ type Emitter struct {
 	buffer     []byte // The working buffer.
 	buffer_pos int    // The current position of the buffer.
 
-	raw_buffer     []byte // The raw buffer.
-	raw_buffer_pos int    // The current position of the buffer.
-
 	encoding Encoding // The stream encoding.
 
 	// Emitter stuff
