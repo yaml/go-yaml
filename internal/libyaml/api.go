@@ -104,7 +104,6 @@ func (parser *Parser) SetEncoding(encoding Encoding) {
 func NewEmitter() Emitter {
 	return Emitter{
 		buffer:     make([]byte, output_buffer_size),
-		raw_buffer: make([]byte, 0, output_raw_buffer_size),
 		states:     make([]EmitterState, 0, initial_stack_size),
 		events:     make([]Event, 0, initial_queue_size),
 		best_width: -1,
