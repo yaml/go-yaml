@@ -39,7 +39,6 @@ type parser struct {
 	textless     bool
 	streamNodes  bool             // enable stream node emission
 	returnStream bool             // flag to return stream node next
-	streamNode   *Node            // pending stream node
 	atStreamEnd  bool             // at stream end
 	encoding     libyaml.Encoding // stream encoding from STREAM_START
 }
