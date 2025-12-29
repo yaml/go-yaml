@@ -27,6 +27,7 @@ type options struct {
 	singleDocument bool
 	knownFields    bool
 	uniqueKeys     bool
+	streamNodes    bool
 
 	// Dumper options
 	indent                int
@@ -158,6 +159,34 @@ func WithUniqueKeys(uniqueKeys ...bool) Option {
 	val := len(uniqueKeys) == 0 || uniqueKeys[0]
 	return func(o *options) error {
 		o.uniqueKeys = val
+		return nil
+	}
+}
+
+// WithStreamNodes enables returning stream boundary nodes when loading YAML.
+//
+// When enabled, Loader.Load returns an interleaved sequence of StreamNode and
+// DocumentNode values:
+//
+//	[StreamNode, DocNode, StreamNode, DocNode, ..., StreamNode]
+//
+// StreamNodes contain metadata about the stream including:
+//   - Encoding (UTF-8, UTF-16LE, UTF-16BE)
+//   - YAML version directive (%YAML)
+//   - Tag directives (%TAG)
+//   - Position information (Line, Column)
+//
+// An empty YAML stream returns a single StreamNode.
+// When called without arguments, defaults to true.
+//
+// The default is false.
+func WithStreamNodes(enable ...bool) Option {
+	if len(enable) > 1 {
+		panic("yaml: WithStreamNodes accepts at most one argument")
+	}
+	val := len(enable) == 0 || enable[0]
+	return func(o *options) error {
+		o.streamNodes = val
 		return nil
 	}
 }

@@ -111,8 +111,10 @@ func NewLoader(r io.Reader, opts ...Option) (*Loader, error) {
 	if err != nil {
 		return nil, err
 	}
+	p := newParserFromReader(r)
+	p.streamNodes = o.streamNodes
 	return &Loader{
-		parser:  newParserFromReader(r),
+		parser:  p,
 		decoder: newDecoder(o),
 		opts:    o,
 	}, nil
@@ -276,6 +278,7 @@ func unmarshal(in []byte, out any, opts ...Option) (err error) {
 	}
 	d := newDecoder(o)
 	p := newParser(in)
+	p.streamNodes = o.streamNodes
 	defer p.destroy()
 	node := p.parse()
 	if node != nil {
@@ -693,6 +696,7 @@ const (
 	MappingNode
 	ScalarNode
 	AliasNode
+	StreamNode
 )
 
 type Style uint32
@@ -704,6 +708,29 @@ const (
 	LiteralStyle
 	FoldedStyle
 	FlowStyle
+)
+
+// VersionDirective represents a YAML %YAML version directive.
+type VersionDirective struct {
+	Major int
+	Minor int
+}
+
+// TagDirective represents a YAML %TAG directive.
+type TagDirective struct {
+	Handle string
+	Prefix string
+}
+
+// Encoding represents the character encoding of a YAML stream.
+type Encoding = libyaml.Encoding
+
+// Encoding constants for different character encodings.
+const (
+	EncodingAny     = libyaml.ANY_ENCODING
+	EncodingUTF8    = libyaml.UTF8_ENCODING
+	EncodingUTF16LE = libyaml.UTF16LE_ENCODING
+	EncodingUTF16BE = libyaml.UTF16BE_ENCODING
 )
 
 // Node represents an element in the YAML document hierarchy. While documents
@@ -777,12 +804,27 @@ type Node struct {
 	// These fields are not respected when encoding the node.
 	Line   int
 	Column int
+
+	// StreamNode-specific fields (only valid when Kind == StreamNode)
+
+	// Encoding holds the stream encoding (UTF-8, UTF-16LE, UTF-16BE).
+	// Only valid for StreamNode.
+	Encoding libyaml.Encoding
+
+	// Version holds the YAML version directive (%YAML).
+	// Only valid for StreamNode.
+	Version *VersionDirective
+
+	// TagDirectives holds the %TAG directives.
+	// Only valid for StreamNode.
+	TagDirectives []TagDirective
 }
 
 // IsZero returns whether the node has all of its fields unset.
 func (n *Node) IsZero() bool {
 	return n.Kind == 0 && n.Style == 0 && n.Tag == "" && n.Value == "" && n.Anchor == "" && n.Alias == nil && n.Content == nil &&
-		n.HeadComment == "" && n.LineComment == "" && n.FootComment == "" && n.Line == 0 && n.Column == 0
+		n.HeadComment == "" && n.LineComment == "" && n.FootComment == "" && n.Line == 0 && n.Column == 0 &&
+		n.Encoding == 0 && n.Version == nil && n.TagDirectives == nil
 }
 
 // LongTag returns the long form of the tag that indicates the data type for
