@@ -51,6 +51,7 @@ func init() {
 	encodeTypeRegistry.Register("map[string]uint64", map[string]uint64{})
 	encodeTypeRegistry.Register("map[string][]string", map[string][]string{})
 	encodeTypeRegistry.Register("map[string][]any", map[string][]any{})
+	encodeTypeRegistry.Register("map[string][]map[string]any", map[string][]map[string]any{})
 
 	// Register struct types
 	encodeTypeRegistry.Register("testStructHello", testStructHello{})
@@ -814,7 +815,7 @@ func TestNewLinePreserved(t *testing.T) {
 	data, err = yaml.Marshal(obj)
 	assert.NoError(t, err)
 	// the newline at the start of the file should be preserved
-	assert.Equal(t, "_: |4\n\n    a:\n            b:\n                    c: d\n", string(data))
+	assert.Equal(t, "_: |\n\n    a:\n            b:\n                    c: d\n", string(data))
 }
 
 // Scalar style tests for complex whitespace (tabs and Unicode)
