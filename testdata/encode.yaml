@@ -256,6 +256,29 @@
               - 2
               - 3
 
+# Issue #65: Multiline strings starting with newline
+- encode:
+    name: string starting with newline in map
+    data:
+      v: "\nhi"
+    type: map[string]any
+    want: |
+      v: |-
+
+          hi
+
+- encode:
+    name: nested structure with leading newline
+    data:
+      v:
+        - v1: "\nhi"
+    type: map[string][]map[string]any
+    want: |
+      v:
+          - v1: |-
+
+              hi
+
 # Nested maps
 - encode:
     name: nested map
