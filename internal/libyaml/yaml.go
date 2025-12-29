@@ -34,11 +34,23 @@ type VersionDirective struct {
 	minor int8 // The minor version number.
 }
 
+// Major returns the major version number.
+func (v *VersionDirective) Major() int { return int(v.major) }
+
+// Minor returns the minor version number.
+func (v *VersionDirective) Minor() int { return int(v.minor) }
+
 // TagDirective holds the YAML tag directive data.
 type TagDirective struct {
 	handle []byte // The tag handle.
 	prefix []byte // The tag prefix.
 }
+
+// GetHandle returns the tag handle.
+func (t *TagDirective) GetHandle() string { return string(t.handle) }
+
+// GetPrefix returns the tag prefix.
+func (t *TagDirective) GetPrefix() string { return string(t.prefix) }
 
 type Encoding int
 
@@ -364,6 +376,15 @@ type Event struct {
 func (e *Event) ScalarStyle() ScalarStyle     { return ScalarStyle(e.Style) }
 func (e *Event) SequenceStyle() SequenceStyle { return SequenceStyle(e.Style) }
 func (e *Event) MappingStyle() MappingStyle   { return MappingStyle(e.Style) }
+
+// GetEncoding returns the stream encoding (for STREAM_START_EVENT).
+func (e *Event) GetEncoding() Encoding { return e.encoding }
+
+// GetVersionDirective returns the version directive (for DOCUMENT_START_EVENT).
+func (e *Event) GetVersionDirective() *VersionDirective { return e.version_directive }
+
+// GetTagDirectives returns the tag directives (for DOCUMENT_START_EVENT).
+func (e *Event) GetTagDirectives() []TagDirective { return e.tag_directives }
 
 // Nodes
 

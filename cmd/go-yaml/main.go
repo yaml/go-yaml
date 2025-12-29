@@ -18,6 +18,16 @@ import (
 
 const version = "4.0.0.1"
 
+// hasUsefulContent checks if a StreamNode has meaningful content to display.
+// For non-StreamNodes, always returns true.
+func hasUsefulContent(n *yaml.Node) bool {
+	if n.Kind != yaml.StreamNode {
+		return true
+	}
+	// For now, only directives count as useful (comments not yet on StreamNodes)
+	return n.Version != nil || len(n.TagDirectives) > 0
+}
+
 // main reads YAML from stdin, parses it, and outputs the node structure
 func main() {
 	// Parse command line flags
@@ -42,6 +52,7 @@ func main() {
 
 	// Node mode
 	nodeMode := flag.Bool("n", false, "Node representation output")
+	streamMode := flag.Bool("S", false, "Show all stream nodes (use with -n)")
 
 	// Shared flags
 	longMode := flag.Bool("l", false, "Long (block) formatted output")
@@ -59,6 +70,7 @@ func main() {
 	flag.BoolVar(eventMode, "event", false, "Event output")
 	flag.BoolVar(eventProfuseMode, "EVENT", false, "Event with line info")
 	flag.BoolVar(nodeMode, "node", false, "Node representation output")
+	flag.BoolVar(streamMode, "stream", false, "Show all stream nodes (use with -n)")
 	flag.BoolVar(longMode, "long", false, "Long (block) formatted output")
 	flag.BoolVar(unmarshalMode, "unmarshal", false, "Use Unmarshal instead of Decode for YAML input")
 	flag.BoolVar(marshalMode, "marshal", false, "Use Marshal instead of Encode for YAML output")
@@ -159,9 +171,9 @@ func main() {
 				log.Fatal("Failed to process YAML node:", err)
 			}
 		} else {
-			// Use Loader mode (original behavior)
+			// Use Loader mode - always get stream nodes internally
 			reader := io.Reader(os.Stdin)
-			loader, err := yaml.NewLoader(reader)
+			loader, err := yaml.NewLoader(reader, yaml.WithStreamNodes())
 			if err != nil {
 				log.Fatal("Failed to create loader:", err)
 			}
@@ -177,8 +189,15 @@ func main() {
 					log.Fatal("Failed to load YAML node:", err)
 				}
 
-				// Add document separator for all documents except the first
-				if !firstDoc {
+				// For -n flag: skip stream nodes without useful content
+				// For -S flag: show all nodes including empty stream nodes
+				if !*streamMode && !hasUsefulContent(&node) {
+					continue
+				}
+
+				// When -S is used, always add separator (even before first node)
+				// Otherwise, add separator for all nodes except the first
+				if *streamMode || !firstDoc {
 					fmt.Println("---")
 				}
 				firstDoc = false

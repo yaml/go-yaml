@@ -31,12 +31,17 @@ import (
 // Parser, produces a node tree out of a libyaml event stream.
 
 type parser struct {
-	parser   libyaml.Parser
-	event    libyaml.Event
-	doc      *Node
-	anchors  map[string]*Node
-	doneInit bool
-	textless bool
+	parser       libyaml.Parser
+	event        libyaml.Event
+	doc          *Node
+	anchors      map[string]*Node
+	doneInit     bool
+	textless     bool
+	streamNodes  bool             // enable stream node emission
+	returnStream bool             // flag to return stream node next
+	streamNode   *Node            // pending stream node
+	atStreamEnd  bool             // at stream end
+	encoding     libyaml.Encoding // stream encoding from STREAM_START
 }
 
 func newParser(b []byte) *parser {
@@ -63,8 +68,17 @@ func (p *parser) init() {
 		return
 	}
 	p.anchors = make(map[string]*Node)
+	// Peek to get the encoding from STREAM_START_EVENT
+	if p.peek() == libyaml.STREAM_START_EVENT {
+		p.encoding = p.event.GetEncoding()
+	}
 	p.expect(libyaml.STREAM_START_EVENT)
 	p.doneInit = true
+
+	// If stream nodes are enabled, prepare to return the first stream node
+	if p.streamNodes {
+		p.returnStream = true
+	}
 }
 
 func (p *parser) destroy() {
@@ -118,8 +132,66 @@ func (p *parser) anchor(n *Node, anchor []byte) {
 	}
 }
 
+// createStreamNode creates a stream node with encoding and position info.
+func (p *parser) createStreamNode() *Node {
+	n := &Node{
+		Kind:     StreamNode,
+		Encoding: p.encoding,
+	}
+	if !p.textless && p.event.Type != libyaml.NO_EVENT {
+		n.Line = p.event.StartMark.Line + 1
+		n.Column = p.event.StartMark.Column + 1
+	}
+	return n
+}
+
+// captureDirectives captures version and tag directives from upcoming DOCUMENT_START.
+func (p *parser) captureDirectives(n *Node) {
+	if p.peek() == libyaml.DOCUMENT_START_EVENT {
+		if vd := p.event.GetVersionDirective(); vd != nil {
+			n.Version = &VersionDirective{
+				Major: vd.Major(),
+				Minor: vd.Minor(),
+			}
+		}
+		if tds := p.event.GetTagDirectives(); len(tds) > 0 {
+			n.TagDirectives = make([]TagDirective, len(tds))
+			for i, td := range tds {
+				n.TagDirectives[i] = TagDirective{
+					Handle: td.GetHandle(),
+					Prefix: td.GetPrefix(),
+				}
+			}
+		}
+	}
+}
+
 func (p *parser) parse() *Node {
 	p.init()
+
+	// Handle stream nodes if enabled
+	if p.streamNodes {
+		// Check for stream end first
+		if p.peek() == libyaml.STREAM_END_EVENT {
+			// If we haven't returned the final stream node yet, return it now
+			if !p.atStreamEnd {
+				p.atStreamEnd = true
+				return p.createStreamNode()
+			}
+			// Already returned final stream node
+			return nil
+		}
+
+		// Check if we should return a stream node before the next document
+		if p.returnStream {
+			p.returnStream = false
+			n := p.createStreamNode()
+			// Capture directives from upcoming document
+			p.captureDirectives(n)
+			return n
+		}
+	}
+
 	switch p.peek() {
 	case libyaml.SCALAR_EVENT:
 		return p.scalar()
@@ -132,7 +204,7 @@ func (p *parser) parse() *Node {
 	case libyaml.DOCUMENT_START_EVENT:
 		return p.document()
 	case libyaml.STREAM_END_EVENT:
-		// Happens when attempting to decode an empty buffer.
+		// Happens when attempting to decode an empty buffer (when not using stream nodes).
 		return nil
 	case libyaml.TAIL_COMMENT_EVENT:
 		panic("internal error: unexpected tail comment event (please report)")
@@ -182,6 +254,12 @@ func (p *parser) document() *Node {
 		n.FootComment = string(p.event.FootComment)
 	}
 	p.expect(libyaml.DOCUMENT_END_EVENT)
+
+	// If stream nodes enabled, prepare to return a stream node next
+	if p.streamNodes {
+		p.returnStream = true
+	}
+
 	return n
 }
 

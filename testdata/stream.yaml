@@ -1,0 +1,121 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# StreamNode test cases for go-yaml
+#
+# Purpose: Tests YAML stream node functionality including stream boundaries,
+# directives, and encoding information. Validates that WithStreamNodes() option
+# correctly returns interleaved StreamNode and DocumentNode patterns.
+#
+# Format: Test cases use type-as-key format:
+#   - stream-test:
+#       name: Test case name
+#       yaml: YAML input string
+#       with:                      # Optional: loader options
+#         no-stream-nodes: true    # Disable stream nodes
+#       want: List of expected nodes with their properties
+#
+# Test Types:
+#   stream-test - Validates stream node patterns and metadata
+#
+# Common Keys:
+#   name - Test case name (string)
+#   yaml - Input YAML string to parse
+#   with - Optional loader options (map)
+#     no-stream-nodes - Disable stream nodes (default: false)
+#   want - List of expected nodes with kind and optional properties
+#
+# Node Format in 'want':
+#   kind     - Node kind: Stream or Document (required)
+#   encoding - Encoding name: UTF-8, UTF-16LE, UTF-16BE (for Stream nodes)
+#   version  - Version string like "1.1" (for Stream nodes)
+#   tag-directives - List of tag directive objects (for Stream nodes)
+
+# Empty stream returns single StreamNode
+- stream-test:
+    name: empty stream
+    yaml: ''
+    want:
+    - kind: Stream
+      encoding: UTF-8
+
+# Single document returns [Stream, Doc, Stream]
+- stream-test:
+    name: single document
+    yaml: 'key: value'
+    want:
+    - kind: Stream
+      encoding: UTF-8
+    - kind: Document
+    - kind: Stream
+      encoding: UTF-8
+
+# Multiple documents return interleaved pattern
+- stream-test:
+    name: multi document
+    yaml: |
+      ---
+      key1: value1
+      ---
+      key2: value2
+    want:
+    - kind: Stream
+      encoding: UTF-8
+    - kind: Document
+    - kind: Stream
+      encoding: UTF-8
+    - kind: Document
+    - kind: Stream
+      encoding: UTF-8
+
+# YAML version directive captured on first StreamNode
+- stream-test:
+    name: version directive
+    yaml: |
+      %YAML 1.1
+      %TAG ! tag:example.com,2000:app/
+      ---
+      key: value
+    want:
+    - kind: Stream
+      encoding: UTF-8
+      version: "1.1"
+      tag-directives:
+      - handle: "!"
+        prefix: "tag:example.com,2000:app/"
+    - kind: Document
+    - kind: Stream
+      encoding: UTF-8
+
+# Encoding is set on all StreamNodes
+- stream-test:
+    name: encoding check
+    yaml: 'key: value'
+    want:
+    - kind: Stream
+      encoding: UTF-8
+    - kind: Document
+    - kind: Stream
+      encoding: UTF-8
+
+# Backward compatibility - without stream nodes option
+- stream-test:
+    name: backward compat
+    yaml: |
+      ---
+      a: 1
+      ---
+      b: 2
+    with:
+      no-stream-nodes: true
+    want:
+    - kind: Document
+    - kind: Document
+
+# Explicitly disabled stream nodes
+- stream-test:
+    name: disabled
+    yaml: 'key: value'
+    with:
+      no-stream-nodes: true
+    want:
+    - kind: Document
