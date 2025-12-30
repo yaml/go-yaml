@@ -1,0 +1,18 @@
+name: Forbid Merge Commits
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions: read-all
+
+jobs:
+  forbid-merge-commits:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Run Forbid Merge Commits Action
+      # yamllint disable-line rule:line-length
+      uses: motlin/forbid-merge-commits-action@1b1f54566e417ffc7694b722f894560a179bdd12  # v1.0.6
+      with:
+        fail-on-merge-commits: true
