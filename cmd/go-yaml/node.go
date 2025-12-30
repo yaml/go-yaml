@@ -210,8 +210,10 @@ func formatStyleName(s yaml.Style) string {
 		return "folded"
 	case yaml.FlowStyle:
 		return "flow"
-	default:
+	case 0:
 		return "plain"
+	default:
+		return "unknown"
 	}
 }
 

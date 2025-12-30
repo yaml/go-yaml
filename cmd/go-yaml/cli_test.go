@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -55,26 +56,16 @@ func TestCLI(t *testing.T) {
 		t.Skip("No test files found in testdata/")
 	}
 
-	// Build the CLI binary if it doesn't exist
-	binaryPath := "../../go-yaml"
-	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
-		t.Logf("Building go-yaml binary...")
-		cmd := exec.Command("go", "build", "-o", binaryPath, ".")
-		if output, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("Failed to build go-yaml: %v\n%s", err, output)
-		}
-	}
-
 	// Process each test file
 	for _, testFile := range testFiles {
 		testFileName := filepath.Base(testFile)
 		t.Run(testFileName, func(t *testing.T) {
-			runTestFile(t, testFile, binaryPath)
+			runTestFile(t, testFile)
 		})
 	}
 }
 
-func runTestFile(t *testing.T, testFile, binaryPath string) {
+func runTestFile(t *testing.T, testFile string) {
 	// Read and parse the test file
 	data, err := os.ReadFile(testFile)
 	if err != nil {
@@ -89,12 +80,12 @@ func runTestFile(t *testing.T, testFile, binaryPath string) {
 	// Run each test case
 	for _, testCase := range suite {
 		t.Run(testCase.Name, func(t *testing.T) {
-			runTestCase(t, testCase, binaryPath)
+			runTestCase(t, testCase)
 		})
 	}
 }
 
-func runTestCase(t *testing.T, tc TestCase, binaryPath string) {
+func runTestCase(t *testing.T, tc TestCase) {
 	// Test each output format that has an expected value
 	tests := []struct {
 		field    string
@@ -120,7 +111,7 @@ func runTestCase(t *testing.T, tc TestCase, binaryPath string) {
 
 		t.Run(test.field, func(t *testing.T) {
 			// Run the CLI command
-			cmd := exec.Command(binaryPath, test.flag)
+			cmd := exec.Command("go", "run", ".", test.flag)
 			cmd.Stdin = strings.NewReader(tc.Text)
 
 			var stdout, stderr bytes.Buffer
@@ -173,9 +164,7 @@ func diff(expected, actual string) string {
 		}
 
 		if expLine != actLine {
-			result.WriteString("Line ")
-			result.WriteString(strings.Repeat(" ", len(strings.TrimSpace(expLine))+1))
-			result.WriteString("\n")
+			result.WriteString(fmt.Sprintf("Line %d:\n", i+1))
 			if expLine != "" {
 				result.WriteString("- ")
 				result.WriteString(expLine)
