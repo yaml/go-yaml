@@ -89,6 +89,8 @@ func FormatNode(n yaml.Node) *NodeInfo {
 // formatEncoding converts an encoding constant to its string representation.
 func formatEncoding(e yaml.Encoding) string {
 	switch e {
+	case yaml.EncodingAny:
+		return "Any"
 	case yaml.EncodingUTF8:
 		return "UTF-8"
 	case yaml.EncodingUTF16LE:
@@ -96,7 +98,7 @@ func formatEncoding(e yaml.Encoding) string {
 	case yaml.EncodingUTF16BE:
 		return "UTF-16BE"
 	default:
-		return "Any"
+		return "Unknown"
 	}
 }
 

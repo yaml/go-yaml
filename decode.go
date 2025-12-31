@@ -75,9 +75,7 @@ func (p *parser) init() {
 	p.doneInit = true
 
 	// If stream nodes are enabled, prepare to return the first stream node
-	if p.streamNodes {
-		p.returnStream = true
-	}
+	p.returnStream = p.streamNodes
 }
 
 func (p *parser) destroy() {
@@ -146,20 +144,21 @@ func (p *parser) createStreamNode() *Node {
 
 // captureDirectives captures version and tag directives from upcoming DOCUMENT_START.
 func (p *parser) captureDirectives(n *Node) {
-	if p.peek() == libyaml.DOCUMENT_START_EVENT {
-		if vd := p.event.GetVersionDirective(); vd != nil {
-			n.Version = &VersionDirective{
-				Major: vd.Major(),
-				Minor: vd.Minor(),
-			}
+	if p.peek() != libyaml.DOCUMENT_START_EVENT {
+		return
+	}
+	if vd := p.event.GetVersionDirective(); vd != nil {
+		n.Version = &VersionDirective{
+			Major: vd.Major(),
+			Minor: vd.Minor(),
 		}
-		if tds := p.event.GetTagDirectives(); len(tds) > 0 {
-			n.TagDirectives = make([]TagDirective, len(tds))
-			for i, td := range tds {
-				n.TagDirectives[i] = TagDirective{
-					Handle: td.GetHandle(),
-					Prefix: td.GetPrefix(),
-				}
+	}
+	if tds := p.event.GetTagDirectives(); len(tds) > 0 {
+		n.TagDirectives = make([]TagDirective, len(tds))
+		for i, td := range tds {
+			n.TagDirectives[i] = TagDirective{
+				Handle: td.GetHandle(),
+				Prefix: td.GetPrefix(),
 			}
 		}
 	}
@@ -255,9 +254,7 @@ func (p *parser) document() *Node {
 	p.expect(libyaml.DOCUMENT_END_EVENT)
 
 	// If stream nodes enabled, prepare to return a stream node next
-	if p.streamNodes {
-		p.returnStream = true
-	}
+	p.returnStream = p.streamNodes
 
 	return n
 }
