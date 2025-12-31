@@ -629,6 +629,7 @@ type UnmarshalError struct {
 	Err    error
 	Line   int
 	Column int
+	Index  int
 }
 
 func (e *UnmarshalError) Error() string {
@@ -773,16 +774,17 @@ type Node struct {
 	// FootComment holds any comments following the node and before empty lines.
 	FootComment string
 
-	// Line and Column hold the node position in the decoded YAML text.
+	// Line, Column and Index hold the node position in the decoded YAML text.
 	// These fields are not respected when encoding the node.
 	Line   int
 	Column int
+	Index  int
 }
 
 // IsZero returns whether the node has all of its fields unset.
 func (n *Node) IsZero() bool {
 	return n.Kind == 0 && n.Style == 0 && n.Tag == "" && n.Value == "" && n.Anchor == "" && n.Alias == nil && n.Content == nil &&
-		n.HeadComment == "" && n.LineComment == "" && n.FootComment == "" && n.Line == 0 && n.Column == 0
+		n.HeadComment == "" && n.LineComment == "" && n.FootComment == "" && n.Line == 0 && n.Column == 0 && n.Index == 0
 }
 
 // LongTag returns the long form of the tag that indicates the data type for

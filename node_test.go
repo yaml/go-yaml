@@ -315,10 +315,14 @@ type NodeInfo struct {
 	Anchor  string      `yaml:"anchor,omitempty"`
 	Tag     string      `yaml:"tag,omitempty"`
 	Head    string      `yaml:"head,omitempty"`
-	Line    string      `yaml:"line,omitempty"`
+	Line    string      `yaml:"line,omitempty"` // LineComment
 	Foot    string      `yaml:"foot,omitempty"`
 	Text    string      `yaml:"text,omitempty"`
 	Content []*NodeInfo `yaml:"content,omitempty"`
+	// Position fields (only used when with.full-details: true)
+	LineNum int `yaml:"linenum,omitempty"`
+	Col     int `yaml:"col,omitempty"`
+	Index   int `yaml:"index,omitempty"`
 }
 
 // isStandardTag checks if a tag is a standard YAML tag
@@ -381,6 +385,11 @@ func parseNodeInfo(info *NodeInfo) (*yaml.Node, error) {
 	node.LineComment = info.Line
 	node.FootComment = info.Foot
 
+	// Set position fields if provided
+	node.Line = info.LineNum
+	node.Column = info.Col
+	node.Index = info.Index
+
 	// Add TaggedStyle bit for custom tags (not standard YAML tags)
 	if info.Tag != "" && !isStandardTag(info.Tag) && node.Style != 0 {
 		node.Style |= yaml.TaggedStyle
@@ -429,6 +438,17 @@ func formatNodeInfo(n yaml.Node) *NodeInfo {
 	}
 	if n.FootComment != "" {
 		info.Foot = n.FootComment
+	}
+
+	// Include position fields if non-zero
+	if n.Line != 0 {
+		info.LineNum = n.Line
+	}
+	if n.Column != 0 {
+		info.Col = n.Column
+	}
+	if n.Index != 0 {
+		info.Index = n.Index
 	}
 
 	if info.Kind == "Scalar" {
@@ -533,6 +553,14 @@ func runNodeTestCase(t *testing.T, tc map[string]any) {
 		encodeTest = false
 	}
 
+	// Check for full-details flag
+	fullDetails := false
+	if withMap, ok := tc["with"].(map[string]any); ok {
+		if fd, ok := withMap["full-details"].(bool); ok {
+			fullDetails = fd
+		}
+	}
+
 	if decodeTest {
 		var actualNode yaml.Node
 		err := yaml.Unmarshal([]byte(yamlInput), &actualNode)
@@ -540,7 +568,7 @@ func runNodeTestCase(t *testing.T, tc map[string]any) {
 
 		// Compare using NodeInfo for better error messages
 		actualInfo := formatNodeInfo(actualNode)
-		assertNodeInfoEqual(t, &expectedInfo, actualInfo, name)
+		assertNodeInfoEqual(t, &expectedInfo, actualInfo, name, fullDetails)
 	}
 
 	if encodeTest {
@@ -558,7 +586,7 @@ func runNodeTestCase(t *testing.T, tc map[string]any) {
 }
 
 // assertNodeInfoEqual compares two NodeInfo structures and reports differences
-func assertNodeInfoEqual(t *testing.T, expected, actual *NodeInfo, context string) {
+func assertNodeInfoEqual(t *testing.T, expected, actual *NodeInfo, context string, fullDetails bool) {
 	t.Helper()
 
 	if expected == nil && actual == nil {
@@ -582,6 +610,13 @@ func assertNodeInfoEqual(t *testing.T, expected, actual *NodeInfo, context strin
 	assert.Equalf(t, expected.Foot, actual.Foot, "%s: Foot comment mismatch", context)
 	assert.Equalf(t, expected.Text, actual.Text, "%s: Text mismatch", context)
 
+	// Check position fields only when full-details is enabled
+	if fullDetails {
+		assert.Equalf(t, expected.LineNum, actual.LineNum, "%s: Line number mismatch", context)
+		assert.Equalf(t, expected.Col, actual.Col, "%s: Column mismatch", context)
+		assert.Equalf(t, expected.Index, actual.Index, "%s: Index mismatch", context)
+	}
+
 	if len(expected.Content) != len(actual.Content) {
 		t.Fatalf("%s: Content length mismatch: expected %d, got %d",
 			context, len(expected.Content), len(actual.Content))
@@ -589,7 +624,7 @@ func assertNodeInfoEqual(t *testing.T, expected, actual *NodeInfo, context strin
 
 	for i := range expected.Content {
 		assertNodeInfoEqual(t, expected.Content[i], actual.Content[i],
-			fmt.Sprintf("%s.content[%d]", context, i))
+			fmt.Sprintf("%s.content[%d]", context, i), fullDetails)
 	}
 }
 
