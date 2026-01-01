@@ -98,9 +98,9 @@ func (m Mark) String() string {
 
 // Node Styles
 
-type Style int8
+type styleInt int8
 
-type ScalarStyle Style
+type ScalarStyle styleInt
 
 // Scalar styles.
 const (
@@ -132,7 +132,7 @@ func (style ScalarStyle) String() string {
 	}
 }
 
-type SequenceStyle Style
+type SequenceStyle styleInt
 
 // Sequence styles.
 const (
@@ -143,7 +143,7 @@ const (
 	FLOW_SEQUENCE_STYLE  // The flow sequence style.
 )
 
-type MappingStyle Style
+type MappingStyle styleInt
 
 // Mapping styles.
 const (
