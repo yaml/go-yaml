@@ -40,6 +40,12 @@ type obsoleteUnmarshaler interface {
 	UnmarshalYAML(unmarshal func(any) error) error
 }
 
+// Marshaler interface may be implemented by types to customize their
+// behavior when being marshaled into a YAML document.
+type Marshaler interface {
+	MarshalYAML() (any, error)
+}
+
 // IsZeroer is used to check whether an object is zero to determine whether
 // it should be omitted when marshaling with the ,omitempty flag. One notable
 // implementation is time.Time.
@@ -79,11 +85,23 @@ func (e *TypeError) Error() string {
 	return b.String()
 }
 
-// options holds configuration for loading YAML.
+// options holds configuration for loading and dumping YAML.
 type options struct {
+	// Loader options
 	singleDocument bool
 	knownFields    bool
 	uniqueKeys     bool
+
+	// Dumper options
+	indent                int
+	compactSeqIndent      bool
+	lineWidth             int
+	unicode               bool
+	canonical             bool
+	lineBreak             LineBreak
+	explicitStart         bool
+	explicitEnd           bool
+	flowSimpleCollections bool
 }
 
 // handleErr recovers from panics caused by yaml errors
