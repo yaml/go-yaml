@@ -412,8 +412,8 @@ type NodePair struct {
 	value int // The value of the element.
 }
 
-// Node represents a single node in the YAML document tree.
-type Node struct {
+// parserNode represents a single node in the YAML document tree.
+type parserNode struct {
 	typ NodeType // The node type.
 	tag []byte   // The node tag.
 
@@ -448,7 +448,7 @@ type Node struct {
 // Document structure.
 type Document struct {
 	// The document nodes.
-	nodes []Node
+	nodes []parserNode
 
 	// The version directive.
 	version_directive *VersionDirective
