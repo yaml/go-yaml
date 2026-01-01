@@ -17,7 +17,6 @@ package libyaml
 
 import (
 	"encoding/base64"
-	"fmt"
 	"math"
 	"regexp"
 	"strconv"
@@ -238,8 +237,3 @@ func parseTimestamp(s string) (time.Time, bool) {
 	return time.Time{}, false
 }
 
-// failf is a helper that will be needed - this will come from the yaml package
-// For now we'll add a placeholder
-func failf(format string, args ...any) {
-	panic(fmt.Sprintf(format, args...))
-}
