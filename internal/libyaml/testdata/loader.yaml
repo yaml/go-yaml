@@ -1,4 +1,6 @@
+# Copyright 2025 The go-yaml Project Contributors
 # SPDX-License-Identifier: Apache-2.0
+
 # Data loader test cases for scalar type resolution
 #
 # Purpose: Tests the YAML data loader's ability to correctly parse and resolve

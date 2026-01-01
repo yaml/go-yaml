@@ -1,3 +1,6 @@
+// Copyright 2025 The go-yaml Project Contributors
+// SPDX-License-Identifier: Apache-2.0
+
 // Package main provides YAML to JSON conversion utilities for the go-yaml tool.
 
 package main

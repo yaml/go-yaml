@@ -1,3 +1,6 @@
+# Copyright 2025 The go-yaml Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
 # Use strict settings:
 set -euo pipefail
 

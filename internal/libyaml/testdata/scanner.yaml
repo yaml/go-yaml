@@ -1,4 +1,6 @@
+# Copyright 2025 The go-yaml Project Contributors
 # SPDX-License-Identifier: Apache-2.0
+
 # Scanner test cases for libyaml scanner
 #
 # Purpose: Tests the YAML scanner/tokenizer that converts YAML text into tokens.

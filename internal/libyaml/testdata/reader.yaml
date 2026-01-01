@@ -1,4 +1,6 @@
+# Copyright 2025 The go-yaml Project Contributors
 # SPDX-License-Identifier: Apache-2.0
+
 # Reader tests for Parser input handling
 #
 # Purpose: Tests Parser methods that handle reading and processing YAML input,

@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Copyright 2025 The go-yaml Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
 # Show test count statistics for go-yaml
 
 set -euo pipefail

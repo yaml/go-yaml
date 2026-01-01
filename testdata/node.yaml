@@ -1,5 +1,6 @@
+# Copyright 2025 The go-yaml Project Contributors
 # SPDX-License-Identifier: Apache-2.0
-#
+
 # Node test cases for go-yaml
 #
 # Purpose: Tests YAML node structure, including Kind, Style, Tag, Value, and nested

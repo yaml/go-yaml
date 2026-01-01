@@ -1,4 +1,6 @@
+# Copyright 2025 The go-yaml Project Contributors
 # SPDX-License-Identifier: Apache-2.0
+
 # Writer tests for Emitter output handling
 #
 # Purpose: Tests Emitter methods that handle writing and flushing output,

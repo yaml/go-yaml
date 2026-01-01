@@ -1,4 +1,6 @@
+# Copyright 2025 The go-yaml Project Contributors
 # SPDX-License-Identifier: Apache-2.0
+
 # Character classification and utility function tests
 #
 # Purpose: Tests internal character classification and conversion functions used
