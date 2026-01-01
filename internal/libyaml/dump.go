@@ -181,7 +181,7 @@ var (
 	noTagDirective     []TagDirective    = nil
 )
 
-type encoder struct {
+type Encoder struct {
 	emitter               Emitter
 	out                   []byte
 	flow                  bool
@@ -197,7 +197,7 @@ type encoder struct {
 //
 // The writer parameter specifies the output destination for the encoder.
 // If writer is nil, the encoder will write to an internal buffer.
-func newEncoder(writer io.Writer, opts *options) *encoder {
+func NewEncoder(writer io.Writer, opts *Options) *Encoder {
 	emitter := NewEmitter()
 	emitter.CompactSequenceIndent = opts.compactSeqIndent
 	emitter.SetWidth(opts.lineWidth)
@@ -205,7 +205,7 @@ func newEncoder(writer io.Writer, opts *options) *encoder {
 	emitter.SetCanonical(opts.canonical)
 	emitter.SetLineBreak(opts.lineBreak)
 
-	e := &encoder{
+	e := &Encoder{
 		emitter:               emitter,
 		indent:                opts.indent,
 		lineWidth:             opts.lineWidth,
@@ -223,7 +223,7 @@ func newEncoder(writer io.Writer, opts *options) *encoder {
 	return e
 }
 
-func (e *encoder) init() {
+func (e *Encoder) init() {
 	if e.doneInit {
 		return
 	}
@@ -235,21 +235,21 @@ func (e *encoder) init() {
 	e.doneInit = true
 }
 
-func (e *encoder) finish() {
+func (e *Encoder) finish() {
 	e.emitter.OpenEnded = false
 	e.emit(NewStreamEndEvent())
 }
 
-func (e *encoder) destroy() {
+func (e *Encoder) destroy() {
 	e.emitter.Delete()
 }
 
-func (e *encoder) emit(event Event) {
+func (e *Encoder) emit(event Event) {
 	// This will internally delete the event value.
 	e.must(e.emitter.Emit(&event))
 }
 
-func (e *encoder) must(err error) {
+func (e *Encoder) must(err error) {
 	if err != nil {
 		msg := err.Error()
 		if msg == "" {
@@ -259,7 +259,7 @@ func (e *encoder) must(err error) {
 	}
 }
 
-func (e *encoder) marshalDoc(tag string, in reflect.Value) {
+func (e *Encoder) marshalDoc(tag string, in reflect.Value) {
 	e.init()
 	var node *Node
 	if in.IsValid() {
@@ -278,7 +278,7 @@ func (e *encoder) marshalDoc(tag string, in reflect.Value) {
 
 // isSimpleCollection checks if a node contains only scalar values and would
 // fit within the line width when rendered in flow style.
-func (e *encoder) isSimpleCollection(node *Node) bool {
+func (e *Encoder) isSimpleCollection(node *Node) bool {
 	if !e.flowSimpleCollections {
 		return false
 	}
@@ -301,7 +301,7 @@ func (e *encoder) isSimpleCollection(node *Node) bool {
 }
 
 // estimateFlowLength estimates the character length of a node in flow style.
-func (e *encoder) estimateFlowLength(node *Node) int {
+func (e *Encoder) estimateFlowLength(node *Node) int {
 	if node.Kind == SequenceNode {
 		// [item1, item2, ...] = 2 + sum(len(items)) + 2*(len-1)
 		length := 2 // []
@@ -327,7 +327,7 @@ func (e *encoder) estimateFlowLength(node *Node) int {
 	return 0
 }
 
-func (e *encoder) marshal(tag string, in reflect.Value) {
+func (e *Encoder) marshal(tag string, in reflect.Value) {
 	tag = shortTag(tag)
 	if !in.IsValid() || in.Kind() == reflect.Pointer && in.IsNil() {
 		e.nilv()
@@ -402,7 +402,7 @@ func (e *encoder) marshal(tag string, in reflect.Value) {
 	}
 }
 
-func (e *encoder) mapv(tag string, in reflect.Value) {
+func (e *Encoder) mapv(tag string, in reflect.Value) {
 	e.mappingv(tag, func() {
 		keys := keyList(in.MapKeys())
 		sort.Sort(keys)
@@ -413,7 +413,7 @@ func (e *encoder) mapv(tag string, in reflect.Value) {
 	})
 }
 
-func (e *encoder) fieldByIndex(v reflect.Value, index []int) (field reflect.Value) {
+func (e *Encoder) fieldByIndex(v reflect.Value, index []int) (field reflect.Value) {
 	for _, num := range index {
 		for {
 			if v.Kind() == reflect.Pointer {
@@ -430,7 +430,7 @@ func (e *encoder) fieldByIndex(v reflect.Value, index []int) (field reflect.Valu
 	return v
 }
 
-func (e *encoder) structv(tag string, in reflect.Value) {
+func (e *Encoder) structv(tag string, in reflect.Value) {
 	sinfo, err := getStructInfo(in.Type())
 	if err != nil {
 		panic(err)
@@ -472,7 +472,7 @@ func (e *encoder) structv(tag string, in reflect.Value) {
 	})
 }
 
-func (e *encoder) mappingv(tag string, f func()) {
+func (e *Encoder) mappingv(tag string, f func()) {
 	implicit := tag == ""
 	style := BLOCK_MAPPING_STYLE
 	if e.flow {
@@ -484,7 +484,7 @@ func (e *encoder) mappingv(tag string, f func()) {
 	e.emit(NewMappingEndEvent())
 }
 
-func (e *encoder) slicev(tag string, in reflect.Value) {
+func (e *Encoder) slicev(tag string, in reflect.Value) {
 	implicit := tag == ""
 	style := BLOCK_SEQUENCE_STYLE
 	if e.flow {
@@ -544,7 +544,7 @@ func looksLikeMerge(s string) (result bool) {
 	return s == "<<"
 }
 
-func (e *encoder) stringv(tag string, in reflect.Value) {
+func (e *Encoder) stringv(tag string, in reflect.Value) {
 	var style ScalarStyle
 	s := in.String()
 	canUsePlain := true
@@ -588,7 +588,7 @@ func (e *encoder) stringv(tag string, in reflect.Value) {
 	e.emitScalar(s, "", tag, style, nil, nil, nil, nil)
 }
 
-func (e *encoder) boolv(tag string, in reflect.Value) {
+func (e *Encoder) boolv(tag string, in reflect.Value) {
 	var s string
 	if in.Bool() {
 		s = "true"
@@ -598,23 +598,23 @@ func (e *encoder) boolv(tag string, in reflect.Value) {
 	e.emitScalar(s, "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
-func (e *encoder) intv(tag string, in reflect.Value) {
+func (e *Encoder) intv(tag string, in reflect.Value) {
 	s := strconv.FormatInt(in.Int(), 10)
 	e.emitScalar(s, "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
-func (e *encoder) uintv(tag string, in reflect.Value) {
+func (e *Encoder) uintv(tag string, in reflect.Value) {
 	s := strconv.FormatUint(in.Uint(), 10)
 	e.emitScalar(s, "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
-func (e *encoder) timev(tag string, in reflect.Value) {
+func (e *Encoder) timev(tag string, in reflect.Value) {
 	t := in.Interface().(time.Time)
 	s := t.Format(time.RFC3339Nano)
 	e.emitScalar(s, "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
-func (e *encoder) floatv(tag string, in reflect.Value) {
+func (e *Encoder) floatv(tag string, in reflect.Value) {
 	// Issue #352: When formatting, use the precision of the underlying value
 	precision := 64
 	if in.Kind() == reflect.Float32 {
@@ -633,11 +633,11 @@ func (e *encoder) floatv(tag string, in reflect.Value) {
 	e.emitScalar(s, "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
-func (e *encoder) nilv() {
+func (e *Encoder) nilv() {
 	e.emitScalar("null", "", "", PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
-func (e *encoder) emitScalar(
+func (e *Encoder) emitScalar(
 	value, anchor, tag string, style ScalarStyle, head, line, foot, tail []byte,
 ) {
 	// TODO Kill this function. Replace all initialize calls by their underlining Go literals.
@@ -653,11 +653,11 @@ func (e *encoder) emitScalar(
 	e.emit(event)
 }
 
-func (e *encoder) nodev(in reflect.Value) {
+func (e *Encoder) nodev(in reflect.Value) {
 	e.node(in.Interface().(*Node), "")
 }
 
-func (e *encoder) node(node *Node, tail string) {
+func (e *Encoder) node(node *Node, tail string) {
 	// Zero nodes behave as nil.
 	if node.Kind == 0 && node.IsZero() {
 		e.nilv()

@@ -86,7 +86,7 @@ func (e *TypeError) Error() string {
 }
 
 // options holds configuration for loading and dumping YAML.
-type options struct {
+type Options struct {
 	// Loader options
 	singleDocument bool
 	knownFields    bool
@@ -323,7 +323,7 @@ func isZero(v reflect.Value) bool {
 	}
 	return false
 }
-type decoder struct {
+type Decoder struct {
 	doc     *Node
 	aliases map[*Node]bool
 	terrors []*UnmarshalError
@@ -348,8 +348,8 @@ var (
 	ifaceType      = generalMapType.Elem()
 )
 
-func newDecoder(opts *options) *decoder {
-	return &decoder{
+func NewDecoder(opts *Options) *Decoder {
+	return &Decoder{
 		stringMapType:  stringMapType,
 		generalMapType: generalMapType,
 		knownFields:    opts.knownFields,
@@ -358,7 +358,7 @@ func newDecoder(opts *options) *decoder {
 	}
 }
 
-func (d *decoder) terror(n *Node, tag string, out reflect.Value) {
+func (d *Decoder) terror(n *Node, tag string, out reflect.Value) {
 	if n.Tag != "" {
 		tag = n.Tag
 	}
@@ -377,7 +377,7 @@ func (d *decoder) terror(n *Node, tag string, out reflect.Value) {
 	})
 }
 
-func (d *decoder) callUnmarshaler(n *Node, u Unmarshaler) (good bool) {
+func (d *Decoder) callUnmarshaler(n *Node, u Unmarshaler) (good bool) {
 	err := u.UnmarshalYAML(n)
 	switch e := err.(type) {
 	case nil:
@@ -395,7 +395,7 @@ func (d *decoder) callUnmarshaler(n *Node, u Unmarshaler) (good bool) {
 	}
 }
 
-func (d *decoder) callObsoleteUnmarshaler(n *Node, u obsoleteUnmarshaler) (good bool) {
+func (d *Decoder) callObsoleteUnmarshaler(n *Node, u obsoleteUnmarshaler) (good bool) {
 	terrlen := len(d.terrors)
 	err := u.UnmarshalYAML(func(v any) (err error) {
 		defer handleErr(&err)
@@ -430,7 +430,7 @@ func (d *decoder) callObsoleteUnmarshaler(n *Node, u obsoleteUnmarshaler) (good 
 // its types unmarshalled appropriately.
 //
 // If n holds a null value, prepare returns before doing anything.
-func (d *decoder) prepare(n *Node, out reflect.Value) (newout reflect.Value, unmarshaled, good bool) {
+func (d *Decoder) prepare(n *Node, out reflect.Value) (newout reflect.Value, unmarshaled, good bool) {
 	if n.ShortTag() == nullTag {
 		return out, false, false
 	}
@@ -459,7 +459,7 @@ func (d *decoder) prepare(n *Node, out reflect.Value) (newout reflect.Value, unm
 	return out, false, false
 }
 
-func (d *decoder) fieldByIndex(n *Node, v reflect.Value, index []int) (field reflect.Value) {
+func (d *Decoder) fieldByIndex(n *Node, v reflect.Value, index []int) (field reflect.Value) {
 	if n.ShortTag() == nullTag {
 		return reflect.Value{}
 	}
@@ -508,7 +508,7 @@ func allowedAliasRatio(decodeCount int) float64 {
 	}
 }
 
-func (d *decoder) unmarshal(n *Node, out reflect.Value) (good bool) {
+func (d *Decoder) unmarshal(n *Node, out reflect.Value) (good bool) {
 	d.decodeCount++
 	if d.aliasDepth > 0 {
 		d.aliasCount++
@@ -548,7 +548,7 @@ func (d *decoder) unmarshal(n *Node, out reflect.Value) (good bool) {
 	return good
 }
 
-func (d *decoder) document(n *Node, out reflect.Value) (good bool) {
+func (d *Decoder) document(n *Node, out reflect.Value) (good bool) {
 	if len(n.Content) == 1 {
 		d.doc = n
 		d.unmarshal(n.Content[0], out)
@@ -557,7 +557,7 @@ func (d *decoder) document(n *Node, out reflect.Value) (good bool) {
 	return false
 }
 
-func (d *decoder) alias(n *Node, out reflect.Value) (good bool) {
+func (d *Decoder) alias(n *Node, out reflect.Value) (good bool) {
 	if d.aliases[n] {
 		// TODO this could actually be allowed in some circumstances.
 		failf("anchor '%s' value contains itself", n.Value)
@@ -570,7 +570,7 @@ func (d *decoder) alias(n *Node, out reflect.Value) (good bool) {
 	return good
 }
 
-func (d *decoder) null(out reflect.Value) bool {
+func (d *Decoder) null(out reflect.Value) bool {
 	if out.CanAddr() {
 		switch out.Kind() {
 		case reflect.Interface, reflect.Pointer, reflect.Map, reflect.Slice:
@@ -581,7 +581,7 @@ func (d *decoder) null(out reflect.Value) bool {
 	return false
 }
 
-func (d *decoder) scalar(n *Node, out reflect.Value) bool {
+func (d *Decoder) scalar(n *Node, out reflect.Value) bool {
 	var tag string
 	var resolved any
 	if n.indicatedString() {
@@ -761,7 +761,7 @@ func settableValueOf(i any) reflect.Value {
 	return sv
 }
 
-func (d *decoder) sequence(n *Node, out reflect.Value) (good bool) {
+func (d *Decoder) sequence(n *Node, out reflect.Value) (good bool) {
 	l := len(n.Content)
 
 	var iface reflect.Value
@@ -799,7 +799,7 @@ func (d *decoder) sequence(n *Node, out reflect.Value) (good bool) {
 	return true
 }
 
-func (d *decoder) mapping(n *Node, out reflect.Value) (good bool) {
+func (d *Decoder) mapping(n *Node, out reflect.Value) (good bool) {
 	l := len(n.Content)
 	if d.uniqueKeys {
 		nerrs := len(d.terrors)
@@ -914,7 +914,7 @@ func isStringMap(n *Node) bool {
 	return true
 }
 
-func (d *decoder) mappingStruct(n *Node, out reflect.Value) (good bool) {
+func (d *Decoder) mappingStruct(n *Node, out reflect.Value) (good bool) {
 	sinfo, err := getStructInfo(out.Type())
 	if err != nil {
 		panic(err)
@@ -1003,7 +1003,7 @@ func failWantMap() {
 	failf("map merge requires map or sequence of maps as the value")
 }
 
-func (d *decoder) setPossiblyUnhashableKey(m map[any]bool, key any, value bool) {
+func (d *Decoder) setPossiblyUnhashableKey(m map[any]bool, key any, value bool) {
 	defer func() {
 		if err := recover(); err != nil {
 			failf("%v", err)
@@ -1012,7 +1012,7 @@ func (d *decoder) setPossiblyUnhashableKey(m map[any]bool, key any, value bool) 
 	m[key] = value
 }
 
-func (d *decoder) getPossiblyUnhashableKey(m map[any]bool, key any) bool {
+func (d *Decoder) getPossiblyUnhashableKey(m map[any]bool, key any) bool {
 	defer func() {
 		if err := recover(); err != nil {
 			failf("%v", err)
@@ -1021,7 +1021,7 @@ func (d *decoder) getPossiblyUnhashableKey(m map[any]bool, key any) bool {
 	return m[key]
 }
 
-func (d *decoder) merge(parent *Node, merge *Node, out reflect.Value) {
+func (d *Decoder) merge(parent *Node, merge *Node, out reflect.Value) {
 	mergedFields := d.mergedFields
 	if mergedFields == nil {
 		d.mergedFields = make(map[any]bool)
