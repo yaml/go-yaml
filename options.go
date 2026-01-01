@@ -22,24 +22,7 @@ const (
 )
 
 // options holds configuration for both loading and dumping YAML.
-type options struct {
-	// Loader options
-	singleDocument bool
-	knownFields    bool
-	uniqueKeys     bool
-	streamNodes    bool
-
-	// Dumper options
-	indent                int
-	compactSeqIndent      bool
-	lineWidth             int
-	unicode               bool
-	canonical             bool
-	lineBreak             LineBreak
-	explicitStart         bool
-	explicitEnd           bool
-	flowSimpleCollections bool
-}
+type options = libyaml.Options
 
 // Option allows configuring YAML loading and dumping operations.
 type Option func(*options) error
@@ -53,7 +36,7 @@ func WithIndent(indent int) Option {
 		if indent < 2 || indent > 9 {
 			return errors.New("yaml: indent must be between 2 and 9 spaces")
 		}
-		o.indent = indent
+		o.Indent = indent
 		return nil
 	}
 }
@@ -65,11 +48,12 @@ func WithIndent(indent int) Option {
 // If compact is false, '- ' is not treated as part of the indentation.
 // When called without arguments, defaults to true.
 func WithCompactSeqIndent(compact ...bool) Option {
+	if len(compact) > 1 {
+		panic("yaml: WithCompactSeqIndent accepts at most one argument")
+	}
+	val := len(compact) == 0 || compact[0]
 	return func(o *options) error {
-		if len(compact) > 1 {
-			return errors.New("yaml: WithCompactSeqIndent accepts at most one argument")
-		}
-		o.compactSeqIndent = len(compact) == 0 || compact[0]
+		o.CompactSeqIndent = val
 		return nil
 	}
 }
@@ -80,11 +64,12 @@ func WithCompactSeqIndent(compact ...bool) Option {
 // that do not correspond to any fields in the target struct.
 // When called without arguments, defaults to true.
 func WithKnownFields(knownFields ...bool) Option {
+	if len(knownFields) > 1 {
+		panic("yaml: WithKnownFields accepts at most one argument")
+	}
+	val := len(knownFields) == 0 || knownFields[0]
 	return func(o *options) error {
-		if len(knownFields) > 1 {
-			return errors.New("yaml: WithKnownFields accepts at most one argument")
-		}
-		o.knownFields = len(knownFields) == 0 || knownFields[0]
+		o.KnownFields = val
 		return nil
 	}
 }
@@ -98,11 +83,12 @@ func WithKnownFields(knownFields ...bool) Option {
 // This is useful when you expect exactly one document and want behavior
 // similar to [Unmarshal].
 func WithSingleDocument(singleDocument ...bool) Option {
+	if len(singleDocument) > 1 {
+		panic("yaml: WithSingleDocument accepts at most one argument")
+	}
+	val := len(singleDocument) == 0 || singleDocument[0]
 	return func(o *options) error {
-		if len(singleDocument) > 1 {
-			return errors.New("yaml: WithSingleDocument accepts at most one argument")
-		}
-		o.singleDocument = len(singleDocument) == 0 || singleDocument[0]
+		o.SingleDocument = val
 		return nil
 	}
 }
@@ -118,7 +104,7 @@ func WithLineWidth(width int) Option {
 		if width < 0 {
 			width = -1
 		}
-		o.lineWidth = width
+		o.LineWidth = width
 		return nil
 	}
 }
@@ -131,11 +117,12 @@ func WithLineWidth(width int) Option {
 //
 // The default is true.
 func WithUnicode(unicode ...bool) Option {
+	if len(unicode) > 1 {
+		panic("yaml: WithUnicode accepts at most one argument")
+	}
+	val := len(unicode) == 0 || unicode[0]
 	return func(o *options) error {
-		if len(unicode) > 1 {
-			return errors.New("yaml: WithUnicode accepts at most one argument")
-		}
-		o.unicode = len(unicode) == 0 || unicode[0]
+		o.Unicode = val
 		return nil
 	}
 }
@@ -149,38 +136,12 @@ func WithUnicode(unicode ...bool) Option {
 //
 // The default is true.
 func WithUniqueKeys(uniqueKeys ...bool) Option {
-	return func(o *options) error {
-		if len(uniqueKeys) > 1 {
-			return errors.New("yaml: WithUniqueKeys accepts at most one argument")
-		}
-		o.uniqueKeys = len(uniqueKeys) == 0 || uniqueKeys[0]
-		return nil
+	if len(uniqueKeys) > 1 {
+		panic("yaml: WithUniqueKeys accepts at most one argument")
 	}
-}
-
-// WithStreamNodes enables returning stream boundary nodes when loading YAML.
-//
-// When enabled, Loader.Load returns an interleaved sequence of StreamNode and
-// DocumentNode values:
-//
-//	[StreamNode, DocNode, StreamNode, DocNode, ..., StreamNode]
-//
-// StreamNodes contain metadata about the stream including:
-//   - Encoding (UTF-8, UTF-16LE, UTF-16BE)
-//   - YAML version directive (%YAML)
-//   - Tag directives (%TAG)
-//   - Position information (Line, Column)
-//
-// An empty YAML stream returns a single StreamNode.
-// When called without arguments, defaults to true (enables stream nodes).
-//
-// When this option is not used, stream nodes are not returned.
-func WithStreamNodes(enable ...bool) Option {
+	val := len(uniqueKeys) == 0 || uniqueKeys[0]
 	return func(o *options) error {
-		if len(enable) > 1 {
-			return errors.New("yaml: WithStreamNodes accepts at most one argument")
-		}
-		o.streamNodes = len(enable) == 0 || enable[0]
+		o.UniqueKeys = val
 		return nil
 	}
 }
@@ -194,11 +155,12 @@ func WithStreamNodes(enable ...bool) Option {
 //
 // The default is false.
 func WithCanonical(canonical ...bool) Option {
+	if len(canonical) > 1 {
+		panic("yaml: WithCanonical accepts at most one argument")
+	}
+	val := len(canonical) == 0 || canonical[0]
 	return func(o *options) error {
-		if len(canonical) > 1 {
-			return errors.New("yaml: WithCanonical accepts at most one argument")
-		}
-		o.canonical = len(canonical) == 0 || canonical[0]
+		o.Canonical = val
 		return nil
 	}
 }
@@ -213,7 +175,7 @@ func WithCanonical(canonical ...bool) Option {
 // The default is LineBreakLN.
 func WithLineBreak(lineBreak LineBreak) Option {
 	return func(o *options) error {
-		o.lineBreak = lineBreak
+		o.LineBreak = lineBreak
 		return nil
 	}
 }
@@ -224,11 +186,12 @@ func WithLineBreak(lineBreak LineBreak) Option {
 // When false (default), the marker is omitted for the first document.
 // When called without arguments, defaults to true.
 func WithExplicitStart(explicit ...bool) Option {
+	if len(explicit) > 1 {
+		panic("yaml: WithExplicitStart accepts at most one argument")
+	}
+	val := len(explicit) == 0 || explicit[0]
 	return func(o *options) error {
-		if len(explicit) > 1 {
-			return errors.New("yaml: WithExplicitStart accepts at most one argument")
-		}
-		o.explicitStart = len(explicit) == 0 || explicit[0]
+		o.ExplicitStart = val
 		return nil
 	}
 }
@@ -239,11 +202,12 @@ func WithExplicitStart(explicit ...bool) Option {
 // When false (default), the marker is omitted.
 // When called without arguments, defaults to true.
 func WithExplicitEnd(explicit ...bool) Option {
+	if len(explicit) > 1 {
+		panic("yaml: WithExplicitEnd accepts at most one argument")
+	}
+	val := len(explicit) == 0 || explicit[0]
 	return func(o *options) error {
-		if len(explicit) > 1 {
-			return errors.New("yaml: WithExplicitEnd accepts at most one argument")
-		}
-		o.explicitEnd = len(explicit) == 0 || explicit[0]
+		o.ExplicitEnd = val
 		return nil
 	}
 }
@@ -257,11 +221,12 @@ func WithExplicitEnd(explicit ...bool) Option {
 //
 // When false (default), all collections use block style.
 func WithFlowSimpleCollections(flow ...bool) Option {
+	if len(flow) > 1 {
+		panic("yaml: WithFlowSimpleCollections accepts at most one argument")
+	}
+	val := len(flow) == 0 || flow[0]
 	return func(o *options) error {
-		if len(flow) > 1 {
-			return errors.New("yaml: WithFlowSimpleCollections accepts at most one argument")
-		}
-		o.flowSimpleCollections = len(flow) == 0 || flow[0]
+		o.FlowSimpleCollections = val
 		return nil
 	}
 }
@@ -442,15 +407,15 @@ var V4 = Options(
 // Starts with v4 defaults.
 func applyOptions(opts ...Option) (*options, error) {
 	o := &options{
-		canonical: false,
-		lineBreak: libyaml.LN_BREAK,
+		Canonical: false,
+		LineBreak: libyaml.LN_BREAK,
 
 		// v4 defaults
-		indent:           2,
-		compactSeqIndent: true,
-		lineWidth:        80,
-		unicode:          true,
-		uniqueKeys:       true,
+		Indent:           2,
+		CompactSeqIndent: true,
+		LineWidth:        80,
+		Unicode:          true,
+		UniqueKeys:       true,
 	}
 	for _, opt := range opts {
 		if err := opt(o); err != nil {
@@ -463,8 +428,8 @@ func applyOptions(opts ...Option) (*options, error) {
 // legacyOptions holds the default options for legacy APIs like
 // Marshal/Unmarshal.
 var legacyOptions = &options{
-	indent:     4,
-	lineWidth:  -1,
-	unicode:    true,
-	uniqueKeys: true,
+	Indent:     4,
+	LineWidth:  -1,
+	Unicode:    true,
+	UniqueKeys: true,
 }
