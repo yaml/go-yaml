@@ -23,25 +23,40 @@ import (
 	"go.yaml.in/yaml/v4/internal/libyaml"
 )
 
-// The Unmarshaler interface may be implemented by types to customize their
-// behavior when being unmarshaled from a YAML document.
-type Unmarshaler interface {
-	UnmarshalYAML(value *Node) error
-}
+// Re-export types from internal/libyaml
+type (
+	Unmarshaler = libyaml.Unmarshaler
+	Marshaler   = libyaml.Marshaler
+	IsZeroer    = libyaml.IsZeroer
+	Node        = libyaml.Node
+	Kind        = libyaml.Kind
+	Style       = libyaml.Style
+)
 
-type obsoleteUnmarshaler interface {
-	UnmarshalYAML(unmarshal func(any) error) error
-}
+// Re-export error types
+type (
+	UnmarshalError = libyaml.UnmarshalError
+	TypeError      = libyaml.TypeError
+)
 
-// The Marshaler interface may be implemented by types to customize their
-// behavior when being marshaled into a YAML document. The returned value
-// is marshaled in place of the original value implementing Marshaler.
-//
-// If an error is returned by MarshalYAML, the marshaling procedure stops
-// and returns with the provided error.
-type Marshaler interface {
-	MarshalYAML() (any, error)
-}
+// Re-export Kind constants
+const (
+	DocumentNode = libyaml.DocumentNode
+	SequenceNode = libyaml.SequenceNode
+	MappingNode  = libyaml.MappingNode
+	ScalarNode   = libyaml.ScalarNode
+	AliasNode    = libyaml.AliasNode
+)
+
+// Re-export Style constants
+const (
+	TaggedStyle       = libyaml.TaggedStyle
+	DoubleQuotedStyle = libyaml.DoubleQuotedStyle
+	SingleQuotedStyle = libyaml.SingleQuotedStyle
+	LiteralStyle      = libyaml.LiteralStyle
+	FoldedStyle       = libyaml.FoldedStyle
+	FlowStyle         = libyaml.FlowStyle
+)
 
 // Unmarshal decodes the first document found within the in byte slice
 // and assigns decoded values into the out value.
@@ -85,9 +100,9 @@ func Unmarshal(in []byte, out any) (err error) {
 // A Loader reads and decodes YAML values from an input stream with configurable
 // options.
 type Loader struct {
-	parser   *parser
-	decoder  *decoder
-	opts     *options
+	composer *libyaml.Composer
+	decoder  *libyaml.Decoder
+	opts     *libyaml.Options
 	docCount int
 }
 
