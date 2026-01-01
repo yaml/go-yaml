@@ -85,23 +85,23 @@ func (e *TypeError) Error() string {
 	return b.String()
 }
 
-// options holds configuration for loading and dumping YAML.
+// Options holds configuration for loading and dumping YAML.
 type Options struct {
 	// Loader options
-	singleDocument bool
-	knownFields    bool
-	uniqueKeys     bool
+	SingleDocument bool
+	KnownFields    bool
+	UniqueKeys     bool
 
 	// Dumper options
-	indent                int
-	compactSeqIndent      bool
-	lineWidth             int
-	unicode               bool
-	canonical             bool
-	lineBreak             LineBreak
-	explicitStart         bool
-	explicitEnd           bool
-	flowSimpleCollections bool
+	Indent                int
+	CompactSeqIndent      bool
+	LineWidth             int
+	Unicode               bool
+	Canonical             bool
+	LineBreak             LineBreak
+	ExplicitStart         bool
+	ExplicitEnd           bool
+	FlowSimpleCollections bool
 }
 
 // handleErr recovers from panics caused by yaml errors
@@ -326,13 +326,13 @@ func isZero(v reflect.Value) bool {
 type Decoder struct {
 	doc     *Node
 	aliases map[*Node]bool
-	terrors []*UnmarshalError
+	Terrors []*UnmarshalError
 
 	stringMapType  reflect.Type
 	generalMapType reflect.Type
 
-	knownFields bool
-	uniqueKeys  bool
+	KnownFields bool
+	UniqueKeys  bool
 	decodeCount int
 	aliasCount  int
 	aliasDepth  int
@@ -352,8 +352,8 @@ func NewDecoder(opts *Options) *Decoder {
 	return &Decoder{
 		stringMapType:  stringMapType,
 		generalMapType: generalMapType,
-		knownFields:    opts.knownFields,
-		uniqueKeys:     opts.uniqueKeys,
+		KnownFields:    opts.KnownFields,
+		UniqueKeys:     opts.UniqueKeys,
 		aliases:        make(map[*Node]bool),
 	}
 }
@@ -370,7 +370,7 @@ func (d *Decoder) terror(n *Node, tag string, out reflect.Value) {
 			value = " `" + value + "`"
 		}
 	}
-	d.terrors = append(d.terrors, &UnmarshalError{
+	d.Terrors = append(d.Terrors, &UnmarshalError{
 		Err:    fmt.Errorf("cannot unmarshal %s%s into %s", shortTag(tag), value, out.Type()),
 		Line:   n.Line,
 		Column: n.Column,
@@ -383,10 +383,10 @@ func (d *Decoder) callUnmarshaler(n *Node, u Unmarshaler) (good bool) {
 	case nil:
 		return true
 	case *TypeError:
-		d.terrors = append(d.terrors, e.Errors...)
+		d.Terrors = append(d.Terrors, e.Errors...)
 		return false
 	default:
-		d.terrors = append(d.terrors, &UnmarshalError{
+		d.Terrors = append(d.Terrors, &UnmarshalError{
 			Err:    err,
 			Line:   n.Line,
 			Column: n.Column,
@@ -396,13 +396,13 @@ func (d *Decoder) callUnmarshaler(n *Node, u Unmarshaler) (good bool) {
 }
 
 func (d *Decoder) callObsoleteUnmarshaler(n *Node, u obsoleteUnmarshaler) (good bool) {
-	terrlen := len(d.terrors)
+	terrlen := len(d.Terrors)
 	err := u.UnmarshalYAML(func(v any) (err error) {
 		defer handleErr(&err)
-		d.unmarshal(n, reflect.ValueOf(v))
-		if len(d.terrors) > terrlen {
-			issues := d.terrors[terrlen:]
-			d.terrors = d.terrors[:terrlen]
+		d.Unmarshal(n, reflect.ValueOf(v))
+		if len(d.Terrors) > terrlen {
+			issues := d.Terrors[terrlen:]
+			d.Terrors = d.Terrors[:terrlen]
 			return &TypeError{issues}
 		}
 		return nil
@@ -411,10 +411,10 @@ func (d *Decoder) callObsoleteUnmarshaler(n *Node, u obsoleteUnmarshaler) (good 
 	case nil:
 		return true
 	case *TypeError:
-		d.terrors = append(d.terrors, e.Errors...)
+		d.Terrors = append(d.Terrors, e.Errors...)
 		return false
 	default:
-		d.terrors = append(d.terrors, &UnmarshalError{
+		d.Terrors = append(d.Terrors, &UnmarshalError{
 			Err:    err,
 			Line:   n.Line,
 			Column: n.Column,
@@ -508,7 +508,7 @@ func allowedAliasRatio(decodeCount int) float64 {
 	}
 }
 
-func (d *Decoder) unmarshal(n *Node, out reflect.Value) (good bool) {
+func (d *Decoder) Unmarshal(n *Node, out reflect.Value) (good bool) {
 	d.decodeCount++
 	if d.aliasDepth > 0 {
 		d.aliasCount++
@@ -551,7 +551,7 @@ func (d *Decoder) unmarshal(n *Node, out reflect.Value) (good bool) {
 func (d *Decoder) document(n *Node, out reflect.Value) (good bool) {
 	if len(n.Content) == 1 {
 		d.doc = n
-		d.unmarshal(n.Content[0], out)
+		d.Unmarshal(n.Content[0], out)
 		return true
 	}
 	return false
@@ -564,7 +564,7 @@ func (d *Decoder) alias(n *Node, out reflect.Value) (good bool) {
 	}
 	d.aliases[n] = true
 	d.aliasDepth++
-	good = d.unmarshal(n.Alias, out)
+	good = d.Unmarshal(n.Alias, out)
 	d.aliasDepth--
 	delete(d.aliases, n)
 	return good
@@ -621,7 +621,7 @@ func (d *Decoder) scalar(n *Node, out reflect.Value) bool {
 			}
 			err := u.UnmarshalText(text)
 			if err != nil {
-				d.terrors = append(d.terrors, &UnmarshalError{
+				d.Terrors = append(d.Terrors, &UnmarshalError{
 					Err:    err,
 					Line:   n.Line,
 					Column: n.Column,
@@ -785,7 +785,7 @@ func (d *Decoder) sequence(n *Node, out reflect.Value) (good bool) {
 	j := 0
 	for i := 0; i < l; i++ {
 		e := reflect.New(et).Elem()
-		if ok := d.unmarshal(n.Content[i], e); ok {
+		if ok := d.Unmarshal(n.Content[i], e); ok {
 			out.Index(j).Set(e)
 			j++
 		}
@@ -801,14 +801,14 @@ func (d *Decoder) sequence(n *Node, out reflect.Value) (good bool) {
 
 func (d *Decoder) mapping(n *Node, out reflect.Value) (good bool) {
 	l := len(n.Content)
-	if d.uniqueKeys {
-		nerrs := len(d.terrors)
+	if d.UniqueKeys {
+		nerrs := len(d.Terrors)
 		for i := 0; i < l; i += 2 {
 			ni := n.Content[i]
 			for j := i + 2; j < l; j += 2 {
 				nj := n.Content[j]
 				if ni.Kind == nj.Kind && ni.Value == nj.Value {
-					d.terrors = append(d.terrors, &UnmarshalError{
+					d.Terrors = append(d.Terrors, &UnmarshalError{
 						Err:    fmt.Errorf("mapping key %#v already defined at line %d", nj.Value, ni.Line),
 						Line:   nj.Line,
 						Column: nj.Column,
@@ -816,7 +816,7 @@ func (d *Decoder) mapping(n *Node, out reflect.Value) (good bool) {
 				}
 			}
 		}
-		if len(d.terrors) > nerrs {
+		if len(d.Terrors) > nerrs {
 			return false
 		}
 	}
@@ -868,7 +868,7 @@ func (d *Decoder) mapping(n *Node, out reflect.Value) (good bool) {
 			continue
 		}
 		k := reflect.New(kt).Elem()
-		if d.unmarshal(n.Content[i], k) {
+		if d.Unmarshal(n.Content[i], k) {
 			if mergedFields != nil {
 				ki := k.Interface()
 				if d.getPossiblyUnhashableKey(mergedFields, ki) {
@@ -884,7 +884,7 @@ func (d *Decoder) mapping(n *Node, out reflect.Value) (good bool) {
 				failf("cannot use '%#v' as a map key; try decoding into yaml.Node", k.Interface())
 			}
 			e := reflect.New(et).Elem()
-			if d.unmarshal(n.Content[i+1], e) || n.Content[i+1].ShortTag() == nullTag && (mapIsNew || !out.MapIndex(k).IsValid()) {
+			if d.Unmarshal(n.Content[i+1], e) || n.Content[i+1].ShortTag() == nullTag && (mapIsNew || !out.MapIndex(k).IsValid()) {
 				out.SetMapIndex(k, e)
 			}
 		}
@@ -936,7 +936,7 @@ func (d *Decoder) mappingStruct(n *Node, out reflect.Value) (good bool) {
 	d.mergedFields = nil
 	var mergeNode *Node
 	var doneFields []bool
-	if d.uniqueKeys {
+	if d.UniqueKeys {
 		doneFields = make([]bool, len(sinfo.FieldsList))
 	}
 	name := settableValueOf("")
@@ -947,7 +947,7 @@ func (d *Decoder) mappingStruct(n *Node, out reflect.Value) (good bool) {
 			mergeNode = n.Content[i+1]
 			continue
 		}
-		if !d.unmarshal(ni, name) {
+		if !d.Unmarshal(ni, name) {
 			continue
 		}
 		sname := name.String()
@@ -958,9 +958,9 @@ func (d *Decoder) mappingStruct(n *Node, out reflect.Value) (good bool) {
 			mergedFields[sname] = true
 		}
 		if info, ok := sinfo.FieldsMap[sname]; ok {
-			if d.uniqueKeys {
+			if d.UniqueKeys {
 				if doneFields[info.Id] {
-					d.terrors = append(d.terrors, &UnmarshalError{
+					d.Terrors = append(d.Terrors, &UnmarshalError{
 						Err:    fmt.Errorf("field %s already set in type %s", name.String(), out.Type()),
 						Line:   ni.Line,
 						Column: ni.Column,
@@ -975,16 +975,16 @@ func (d *Decoder) mappingStruct(n *Node, out reflect.Value) (good bool) {
 			} else {
 				field = d.fieldByIndex(n, out, info.Inline)
 			}
-			d.unmarshal(n.Content[i+1], field)
+			d.Unmarshal(n.Content[i+1], field)
 		} else if sinfo.InlineMap != -1 {
 			if inlineMap.IsNil() {
 				inlineMap.Set(reflect.MakeMap(inlineMap.Type()))
 			}
 			value := reflect.New(elemType).Elem()
-			d.unmarshal(n.Content[i+1], value)
+			d.Unmarshal(n.Content[i+1], value)
 			inlineMap.SetMapIndex(name, value)
-		} else if d.knownFields {
-			d.terrors = append(d.terrors, &UnmarshalError{
+		} else if d.KnownFields {
+			d.Terrors = append(d.Terrors, &UnmarshalError{
 				Err:    fmt.Errorf("field %s not found in type %s", name.String(), out.Type()),
 				Line:   ni.Line,
 				Column: ni.Column,
@@ -1027,7 +1027,7 @@ func (d *Decoder) merge(parent *Node, merge *Node, out reflect.Value) {
 		d.mergedFields = make(map[any]bool)
 		for i := 0; i < len(parent.Content); i += 2 {
 			k := reflect.New(ifaceType).Elem()
-			if d.unmarshal(parent.Content[i], k) {
+			if d.Unmarshal(parent.Content[i], k) {
 				d.setPossiblyUnhashableKey(d.mergedFields, k.Interface(), true)
 			}
 		}
@@ -1035,12 +1035,12 @@ func (d *Decoder) merge(parent *Node, merge *Node, out reflect.Value) {
 
 	switch merge.Kind {
 	case MappingNode:
-		d.unmarshal(merge, out)
+		d.Unmarshal(merge, out)
 	case AliasNode:
 		if merge.Alias != nil && merge.Alias.Kind != MappingNode {
 			failWantMap()
 		}
-		d.unmarshal(merge, out)
+		d.Unmarshal(merge, out)
 	case SequenceNode:
 		for i := 0; i < len(merge.Content); i++ {
 			ni := merge.Content[i]
@@ -1051,7 +1051,7 @@ func (d *Decoder) merge(parent *Node, merge *Node, out reflect.Value) {
 			} else if ni.Kind != MappingNode {
 				failWantMap()
 			}
-			d.unmarshal(ni, out)
+			d.Unmarshal(ni, out)
 		}
 	default:
 		failWantMap()

@@ -182,10 +182,10 @@ var (
 )
 
 type Encoder struct {
-	emitter               Emitter
-	out                   []byte
+	Emitter               Emitter
+	Out                   []byte
 	flow                  bool
-	indent                int
+	Indent                int
 	lineWidth             int
 	doneInit              bool
 	explicitStart         bool
@@ -199,25 +199,25 @@ type Encoder struct {
 // If writer is nil, the encoder will write to an internal buffer.
 func NewEncoder(writer io.Writer, opts *Options) *Encoder {
 	emitter := NewEmitter()
-	emitter.CompactSequenceIndent = opts.compactSeqIndent
-	emitter.SetWidth(opts.lineWidth)
-	emitter.SetUnicode(opts.unicode)
-	emitter.SetCanonical(opts.canonical)
-	emitter.SetLineBreak(opts.lineBreak)
+	emitter.CompactSequenceIndent = opts.CompactSeqIndent
+	emitter.SetWidth(opts.LineWidth)
+	emitter.SetUnicode(opts.Unicode)
+	emitter.SetCanonical(opts.Canonical)
+	emitter.SetLineBreak(opts.LineBreak)
 
 	e := &Encoder{
-		emitter:               emitter,
-		indent:                opts.indent,
-		lineWidth:             opts.lineWidth,
-		explicitStart:         opts.explicitStart,
-		explicitEnd:           opts.explicitEnd,
-		flowSimpleCollections: opts.flowSimpleCollections,
+		Emitter:               emitter,
+		Indent:                opts.Indent,
+		lineWidth:             opts.LineWidth,
+		explicitStart:         opts.ExplicitStart,
+		explicitEnd:           opts.ExplicitEnd,
+		flowSimpleCollections: opts.FlowSimpleCollections,
 	}
 
 	if writer != nil {
-		e.emitter.SetOutputWriter(writer)
+		e.Emitter.SetOutputWriter(writer)
 	} else {
-		e.emitter.SetOutputString(&e.out)
+		e.Emitter.SetOutputString(&e.Out)
 	}
 
 	return e
@@ -227,26 +227,26 @@ func (e *Encoder) init() {
 	if e.doneInit {
 		return
 	}
-	if e.indent == 0 {
-		e.indent = 4
+	if e.Indent == 0 {
+		e.Indent = 4
 	}
-	e.emitter.BestIndent = e.indent
+	e.Emitter.BestIndent = e.Indent
 	e.emit(NewStreamStartEvent(UTF8_ENCODING))
 	e.doneInit = true
 }
 
-func (e *Encoder) finish() {
-	e.emitter.OpenEnded = false
+func (e *Encoder) Finish() {
+	e.Emitter.OpenEnded = false
 	e.emit(NewStreamEndEvent())
 }
 
-func (e *Encoder) destroy() {
-	e.emitter.Delete()
+func (e *Encoder) Destroy() {
+	e.Emitter.Delete()
 }
 
 func (e *Encoder) emit(event Event) {
 	// This will internally delete the event value.
-	e.must(e.emitter.Emit(&event))
+	e.must(e.Emitter.Emit(&event))
 }
 
 func (e *Encoder) must(err error) {
@@ -259,7 +259,7 @@ func (e *Encoder) must(err error) {
 	}
 }
 
-func (e *Encoder) marshalDoc(tag string, in reflect.Value) {
+func (e *Encoder) MarshalDoc(tag string, in reflect.Value) {
 	e.init()
 	var node *Node
 	if in.IsValid() {

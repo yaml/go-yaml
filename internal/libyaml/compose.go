@@ -22,32 +22,32 @@ import (
 
 // Composer produces a node tree out of a libyaml event stream.
 type Composer struct {
-	parser   Parser
+	Parser   Parser
 	event    Event
 	doc      *Node
 	anchors  map[string]*Node
 	doneInit bool
-	textless bool
+	Textless bool
 }
 
 // NewComposer creates a new composer from a byte slice.
 func NewComposer(b []byte) *Composer {
 	p := Composer{
-		parser: NewParser(),
+		Parser: NewParser(),
 	}
 	if len(b) == 0 {
 		b = []byte{'\n'}
 	}
-	p.parser.SetInputString(b)
+	p.Parser.SetInputString(b)
 	return &p
 }
 
 // NewComposerFromReader creates a new composer from an io.Reader.
 func NewComposerFromReader(r io.Reader) *Composer {
 	p := Composer{
-		parser: NewParser(),
+		Parser: NewParser(),
 	}
-	p.parser.SetInputReader(r)
+	p.Parser.SetInputReader(r)
 	return &p
 }
 
@@ -60,18 +60,18 @@ func (p *Composer) init() {
 	p.doneInit = true
 }
 
-func (p *Composer) destroy() {
+func (p *Composer) Destroy() {
 	if p.event.Type != NO_EVENT {
 		p.event.Delete()
 	}
-	p.parser.Delete()
+	p.Parser.Delete()
 }
 
 // expect consumes an event from the event stream and
 // checks that it's of the expected type.
 func (p *Composer) expect(e EventType) {
 	if p.event.Type == NO_EVENT {
-		if err := p.parser.Parse(&p.event); err != nil {
+		if err := p.Parser.Parse(&p.event); err != nil {
 			p.fail(err)
 		}
 	}
@@ -94,7 +94,7 @@ func (p *Composer) peek() EventType {
 	// It's curious choice from the underlying API to generally return a
 	// positive result on success, but on this case return true in an error
 	// scenario. This was the source of bugs in the past (issue #666).
-	if err := p.parser.Parse(&p.event); err != nil {
+	if err := p.Parser.Parse(&p.event); err != nil {
 		p.fail(err)
 	}
 	return p.event.Type
@@ -151,7 +151,7 @@ func (p *Composer) node(kind Kind, defaultTag, tag, value string) *Node {
 		Value: value,
 		Style: style,
 	}
-	if !p.textless {
+	if !p.Textless {
 		n.Line = p.event.StartMark.Line + 1
 		n.Column = p.event.StartMark.Column + 1
 		n.HeadComment = string(p.event.HeadComment)
