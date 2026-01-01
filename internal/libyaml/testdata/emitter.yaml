@@ -1,4 +1,6 @@
+# Copyright 2025 The go-yaml Project Contributors
 # SPDX-License-Identifier: Apache-2.0
+
 # Emitter test cases for libyaml emitter
 #
 # Purpose: Tests the YAML emitter that converts events into YAML text output.

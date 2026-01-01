@@ -1,5 +1,6 @@
+# Copyright 2025 The go-yaml Project Contributors
 # SPDX-License-Identifier: Apache-2.0
-#
+
 # Parser events test cases for go-yaml parser
 #
 # Purpose: Tests the YAML parser's ability to generate correct event sequences

@@ -1,4 +1,6 @@
+# Copyright 2025 The go-yaml Project Contributors
 # SPDX-License-Identifier: Apache-2.0
+
 # YAML helper function tests
 #
 # Purpose: Tests utility functions and type conversions (String() methods, style accessors).

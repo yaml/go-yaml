@@ -1,3 +1,6 @@
+// Copyright 2025 The go-yaml Project Contributors
+// SPDX-License-Identifier: Apache-2.0
+
 // This binary provides a YAML node inspection tool that reads YAML from stdin
 // and outputs a detailed analysis of its node structure, including comments
 // and content organization.

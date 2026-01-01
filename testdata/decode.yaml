@@ -1,5 +1,6 @@
+# Copyright 2025 The go-yaml Project Contributors
 # SPDX-License-Identifier: Apache-2.0
-#
+
 # Decode test cases for go-yaml
 #
 # Purpose: Tests YAML unmarshaling/decoding of various YAML constructs into Go values.

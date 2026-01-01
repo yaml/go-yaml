@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Copyright 2025 The go-yaml Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
 # https://www.shellcheck.net/wiki/SC1091
 # shellcheck disable=1091
 source "$(dirname "${BASH_SOURCE[0]}")"/common.bash || exit

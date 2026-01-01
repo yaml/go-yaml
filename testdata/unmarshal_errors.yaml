@@ -1,5 +1,6 @@
+# Copyright 2025 The go-yaml Project Contributors
 # SPDX-License-Identifier: Apache-2.0
-#
+
 # Unmarshal error test cases for go-yaml
 #
 # Purpose: Tests that the YAML unmarshaler correctly detects and reports errors

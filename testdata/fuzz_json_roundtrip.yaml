@@ -1,5 +1,6 @@
+# Copyright 2025 The go-yaml Project Contributors
 # SPDX-License-Identifier: Apache-2.0
-#
+
 # JSON roundtrip fuzz test seed corpus for go-yaml
 #
 # Purpose: Seed inputs for FuzzEncodeFromJSON. These are valid JSON values that

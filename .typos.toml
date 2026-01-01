@@ -1,4 +1,7 @@
-# this is the configuration file of typos (spell checker)
+# Copyright 2025 The go-yaml Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+# This is the configuration file of typos (spell checker)
 # https://github.com/crate-ci/typos
 
 [files]

@@ -1,3 +1,6 @@
+// Copyright 2025 The go-yaml Project Contributors
+// SPDX-License-Identifier: Apache-2.0
+
 // Package assert provides assertion functions for tests.
 // This is an internal package that was created to provide a simple way to write tests.
 //

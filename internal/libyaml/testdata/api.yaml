@@ -1,4 +1,6 @@
+# Copyright 2025 The go-yaml Project Contributors
 # SPDX-License-Identifier: Apache-2.0
+
 # API tests for constructors and methods
 #
 # Purpose: Tests the public API of Parser and Emitter types (constructors, methods, cleanup).
