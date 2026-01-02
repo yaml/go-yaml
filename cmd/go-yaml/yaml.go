@@ -56,7 +56,7 @@ func processYAMLDecode(preserve, marshal bool) error {
 			} else {
 				outNode = &yaml.Node{
 					Kind:    yaml.DocumentNode,
-					Content: []*libyaml.Node{toLibNode(&node)},
+					Content: []*libyaml.Node{&node},
 				}
 			}
 
@@ -167,7 +167,7 @@ func processYAMLUnmarshal(preserve, marshal bool) error {
 			} else {
 				outNode = &yaml.Node{
 					Kind:    yaml.DocumentNode,
-					Content: []*libyaml.Node{toLibNode(&node)},
+					Content: []*libyaml.Node{&node},
 				}
 			}
 
