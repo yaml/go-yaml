@@ -6,7 +6,6 @@ package yaml_test
 import (
 	"testing"
 
-	"go.yaml.in/yaml/v4"
 	"go.yaml.in/yaml/v4/internal/libyaml"
 	"go.yaml.in/yaml/v4/internal/testutil/assert"
 	"go.yaml.in/yaml/v4/internal/testutil/datatest"
@@ -28,7 +27,7 @@ func runParserEventsTest(t *testing.T, tc map[string]any) {
 	want := datatest.RequireString(t, tc, "want")
 
 	// Run test
-	events, err := yaml.ParserGetEvents([]byte(yamlInput))
+	events, err := libyaml.ParserGetEvents([]byte(yamlInput))
 	if err != nil {
 		t.Fatalf("ParserGetEvents error: %v", err)
 	}
