@@ -44,7 +44,6 @@ import (
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 type keyList []reflect.Value
 
 func (l keyList) Len() int      { return len(l) }
@@ -157,6 +156,7 @@ func numLess(a, b reflect.Value) bool {
 	}
 	panic("not a number")
 }
+
 //
 // Copyright (c) 2011-2019 Canonical Ltd
 //
@@ -172,11 +172,10 @@ func numLess(a, b reflect.Value) bool {
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 // Sentinel values for newEncoder parameters.
 // These provide clarity at call sites, similar to http.NoBody.
 var (
-	noWriter           io.Writer                 = nil
+	noWriter           io.Writer         = nil
 	noVersionDirective *VersionDirective = nil
 	noTagDirective     []TagDirective    = nil
 )
@@ -193,7 +192,7 @@ type Encoder struct {
 	flowSimpleCollections bool
 }
 
-// newEncoder creates a new YAML encoder with the given options.
+// NewEncoder creates a new YAML encoder with the given options.
 //
 // The writer parameter specifies the output destination for the encoder.
 // If writer is nil, the encoder will write to an internal buffer.

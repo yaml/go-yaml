@@ -957,8 +957,8 @@ func TestUnmarshalerWholeDocument(t *testing.T) {
 }
 
 func TestUnmarshalerTypeError(t *testing.T) {
-	unmarshalerResult[2] = &yaml.TypeError{[]*yaml.UnmarshalError{{Err: errors.New("foo"), Line: 1, Column: 1}}}
-	unmarshalerResult[4] = &yaml.TypeError{[]*yaml.UnmarshalError{{Err: errors.New("bar"), Line: 1, Column: 1}}}
+	unmarshalerResult[2] = &yaml.TypeError{Errors: []*yaml.UnmarshalError{{Err: errors.New("foo"), Line: 1, Column: 1}}}
+	unmarshalerResult[4] = &yaml.TypeError{Errors: []*yaml.UnmarshalError{{Err: errors.New("bar"), Line: 1, Column: 1}}}
 	defer func() {
 		delete(unmarshalerResult, 2)
 		delete(unmarshalerResult, 4)
@@ -989,8 +989,8 @@ func TestUnmarshalerTypeError(t *testing.T) {
 }
 
 func TestObsoleteUnmarshalerTypeError(t *testing.T) {
-	unmarshalerResult[2] = &yaml.TypeError{[]*yaml.UnmarshalError{{Err: errors.New("foo"), Line: 1, Column: 1}}}
-	unmarshalerResult[4] = &yaml.TypeError{[]*yaml.UnmarshalError{{Err: errors.New("bar"), Line: 1, Column: 1}}}
+	unmarshalerResult[2] = &yaml.TypeError{Errors: []*yaml.UnmarshalError{{Err: errors.New("foo"), Line: 1, Column: 1}}}
+	unmarshalerResult[4] = &yaml.TypeError{Errors: []*yaml.UnmarshalError{{Err: errors.New("bar"), Line: 1, Column: 1}}}
 	defer func() {
 		delete(unmarshalerResult, 2)
 		delete(unmarshalerResult, 4)

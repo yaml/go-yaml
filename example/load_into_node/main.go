@@ -6,8 +6,10 @@ package main
 import (
 	"fmt"
 	"strings"
+	"unsafe"
 
 	"go.yaml.in/yaml/v4"
+	"go.yaml.in/yaml/v4/internal/libyaml"
 )
 
 func main() {
@@ -93,6 +95,8 @@ features:
 	// Demonstrate modifying the node
 	fmt.Println("\n--- Modifying Node ---")
 	// Add a new field programmatically
+	// Note: yaml.Node and libyaml.Node are different types but have the same layout,
+	// so we can safely convert between them using unsafe pointers.
 	newKey := &yaml.Node{
 		Kind:  yaml.ScalarNode,
 		Value: "environment",
@@ -101,7 +105,9 @@ features:
 		Kind:  yaml.ScalarNode,
 		Value: "production",
 	}
-	doc.Content = append(doc.Content, newKey, newValue)
+	doc.Content = append(doc.Content,
+		(*libyaml.Node)(unsafe.Pointer(newKey)),
+		(*libyaml.Node)(unsafe.Pointer(newValue)))
 
 	// Re-dump to see the modified YAML
 	out, err := yaml.Dump(&node)

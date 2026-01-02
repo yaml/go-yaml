@@ -63,7 +63,7 @@ func FormatNode(n yaml.Node) *NodeInfo {
 	} else if n.Content != nil {
 		info.Content = make([]*NodeInfo, len(n.Content))
 		for i, node := range n.Content {
-			info.Content[i] = FormatNode(*node)
+			info.Content[i] = FormatNode(*fromLibNode(node))
 		}
 	}
 

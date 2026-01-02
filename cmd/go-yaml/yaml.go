@@ -12,6 +12,7 @@ import (
 	"os"
 
 	"go.yaml.in/yaml/v4"
+	"go.yaml.in/yaml/v4/internal/libyaml"
 )
 
 // ProcessYAML reads YAML from stdin and outputs formatted YAML
@@ -55,7 +56,7 @@ func processYAMLDecode(preserve, marshal bool) error {
 			} else {
 				outNode = &yaml.Node{
 					Kind:    yaml.DocumentNode,
-					Content: []*yaml.Node{&node},
+					Content: []*libyaml.Node{toLibNode(&node)},
 				}
 			}
 
@@ -166,7 +167,7 @@ func processYAMLUnmarshal(preserve, marshal bool) error {
 			} else {
 				outNode = &yaml.Node{
 					Kind:    yaml.DocumentNode,
-					Content: []*yaml.Node{&node},
+					Content: []*libyaml.Node{toLibNode(&node)},
 				}
 			}
 
