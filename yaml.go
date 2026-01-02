@@ -45,13 +45,18 @@ func fromLibyamlNode(n *libyaml.Node) *Node {
 
 // Re-export types from internal/libyaml
 type (
-	Unmarshaler = libyaml.Unmarshaler
-	Marshaler   = libyaml.Marshaler
-	IsZeroer    = libyaml.IsZeroer
-	Node        libyaml.Node // New type to allow methods
-	Kind        = libyaml.Kind
-	Style       = libyaml.Style
+	Marshaler = libyaml.Marshaler
+	IsZeroer  = libyaml.IsZeroer
+	Node      libyaml.Node // New type to allow methods
+	Kind      = libyaml.Kind
+	Style     = libyaml.Style
 )
+
+// Unmarshaler is the interface implemented by types
+// that can unmarshal a YAML description of themselves.
+type Unmarshaler interface {
+	UnmarshalYAML(node *Node) error
+}
 
 // Re-export error types
 type (
@@ -266,6 +271,21 @@ func (n *Node) IsZero() bool {
 	return toLibyamlNode(n).IsZero()
 }
 
+// MarshalYAML implements the Marshaler interface for Node.
+// This allows Node values to be properly marshaled when embedded in structs.
+func (n Node) MarshalYAML() (any, error) {
+	// Convert to libyaml.Node for marshaling
+	return *toLibyamlNode(&n), nil
+}
+
+// UnmarshalYAML implements the Unmarshaler interface for Node.
+// This allows Node values to be properly unmarshaled when embedded in structs.
+func (n *Node) UnmarshalYAML(node *Node) error {
+	// Copy the node data
+	*n = *node
+	return nil
+}
+
 // Decode decodes the node and stores its data into the value pointed to by v.
 //
 // See the documentation for Unmarshal for details about the
@@ -323,6 +343,18 @@ func unmarshal(in []byte, out any, opts ...Option) (err error) {
 	if err != nil {
 		return err
 	}
+
+	// Check if out implements yaml.Unmarshaler
+	if u, ok := out.(Unmarshaler); ok {
+		p := libyaml.NewComposer(in)
+		defer p.Destroy()
+		node := p.Parse()
+		if node != nil {
+			return u.UnmarshalYAML(fromLibyamlNode(node))
+		}
+		return nil
+	}
+
 	d := libyaml.NewDecoder(o)
 	p := libyaml.NewComposer(in)
 	defer p.Destroy()
@@ -387,6 +419,12 @@ func unmarshal(in []byte, out any, opts ...Option) (err error) {
 // Deprecated: Use Dump instead. Will be removed in v5.
 func Marshal(in any) (out []byte, err error) {
 	defer handleErr(&err)
+	// Convert yaml.Node to libyaml.Node for encoder
+	if n, ok := in.(*Node); ok {
+		in = toLibyamlNode(n)
+	} else if n, ok := in.(Node); ok {
+		in = *toLibyamlNode(&n)
+	}
 	e := libyaml.NewEncoder(noWriter, legacyOptions)
 	defer e.Destroy()
 	e.MarshalDoc("", reflect.ValueOf(in))
@@ -400,6 +438,12 @@ func Marshal(in any) (out []byte, err error) {
 // See [Marshal] for details about the conversion of Go values to YAML.
 func Dump(in any, opts ...Option) (out []byte, err error) {
 	defer handleErr(&err)
+	// Convert yaml.Node to libyaml.Node for encoder
+	if n, ok := in.(*Node); ok {
+		in = toLibyamlNode(n)
+	} else if n, ok := in.(Node); ok {
+		in = *toLibyamlNode(&n)
+	}
 	var buf bytes.Buffer
 	d, err := NewDumper(&buf, opts...)
 	if err != nil {
@@ -525,6 +569,12 @@ func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
 // values to YAML.
 func (d *Dumper) Dump(v any) (err error) {
 	defer handleErr(&err)
+	// Convert yaml.Node to libyaml.Node for encoder
+	if n, ok := v.(*Node); ok {
+		v = toLibyamlNode(n)
+	} else if n, ok := v.(Node); ok {
+		v = *toLibyamlNode(&n)
+	}
 	d.encoder.MarshalDoc("", reflect.ValueOf(v))
 	return nil
 }
@@ -566,6 +616,12 @@ func NewEncoder(w io.Writer) *Encoder {
 // Deprecated: Use Dumper.Dump instead. Will be removed in v5.
 func (e *Encoder) Encode(v any) (err error) {
 	defer handleErr(&err)
+	// Convert yaml.Node to libyaml.Node for encoder
+	if n, ok := v.(*Node); ok {
+		v = toLibyamlNode(n)
+	} else if n, ok := v.(Node); ok {
+		v = *toLibyamlNode(&n)
+	}
 	e.encoder.MarshalDoc("", reflect.ValueOf(v))
 	return nil
 }
