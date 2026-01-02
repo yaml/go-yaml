@@ -36,11 +36,11 @@ var noWriter io.Writer
 
 // Re-export types from internal/libyaml
 type (
-	Marshaler = libyaml.Marshaler
-	IsZeroer  = libyaml.IsZeroer
-	Node      = libyaml.Node // Type alias for compatibility
+	Node      = libyaml.Node
 	Kind      = libyaml.Kind
 	Style     = libyaml.Style
+	Marshaler = libyaml.Marshaler
+	IsZeroer  = libyaml.IsZeroer
 )
 
 // Unmarshaler is the interface implemented by types
@@ -84,27 +84,28 @@ const (
 	LineBreakCRLN = libyaml.CRLN_BREAK // Windows-style \r\n
 )
 
-// Unmarshal decodes the first document found within the in byte slice
-// and assigns decoded values into the out value.
+//-----------------------------------------------------------------------------
+// Load / Dump API
+//-----------------------------------------------------------------------------
+
+// Load decodes the first YAML document with the given options.
 //
 // Maps and pointers (to a struct, string, int, etc) are accepted as out
 // values. If an internal pointer within a struct is not initialized,
-// the yaml package will initialize it if necessary for unmarshalling
-// the provided data. The out parameter must not be nil.
+// the yaml package will initialize it if necessary. The out parameter
+// must not be nil.
 //
 // The type of the decoded values should be compatible with the respective
-// values in out. If one or more values cannot be decoded due to a type
+// values in out. If one or more values cannot be decoded due to type
 // mismatches, decoding continues partially until the end of the YAML
 // content, and a *yaml.TypeError is returned with details for all
 // missed values.
 //
-// Struct fields are only unmarshalled if they are exported (have an
-// upper case first letter), and are unmarshalled using the field name
-// lowercased as the default key. Custom keys may be defined via the
-// "yaml" name in the field tag: the content preceding the first comma
-// is used as the key, and the following comma-separated options are
-// used to tweak the marshaling process (see Marshal).
-// Conflicting names result in a runtime error.
+// Struct fields are only loaded if they are exported (have an upper case
+// first letter), and are loaded using the field name lowercased as the
+// default key. Custom keys may be defined via the "yaml" name in the field
+// tag: the content preceding the first comma is used as the key, and the
+// following comma-separated options control the loading and dumping behavior.
 //
 // For example:
 //
@@ -113,14 +114,38 @@ const (
 //	    B int
 //	}
 //	var t T
-//	yaml.Unmarshal([]byte("a: 1\nb: 2"), &t)
+//	yaml.Load([]byte("a: 1\nb: 2"), &t)
 //
-// See the documentation of Marshal for the format of tags and a list of
+// See the documentation of Dump for the format of tags and a list of
 // supported tag options.
+func Load(in []byte, out any, opts ...Option) error {
+	return unmarshal(in, out, opts...)
+}
+
+// LoadAll decodes all YAML documents from the input.
 //
-// Deprecated: Use Load instead. Will be removed in v5.
-func Unmarshal(in []byte, out any) (err error) {
-	return unmarshal(in, out, V3)
+// Returns a slice containing all decoded documents. Each document is
+// decoded into an any value (typically map[string]any or []any).
+//
+// See [Unmarshal] for details about the conversion of YAML into Go values.
+func LoadAll(in []byte, opts ...Option) ([]any, error) {
+	l, err := NewLoader(bytes.NewReader(in), opts...)
+	if err != nil {
+		return nil, err
+	}
+	var docs []any
+	for {
+		var doc any
+		err := l.Load(&doc)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return docs, err
+		}
+		docs = append(docs, doc)
+	}
+	return docs, nil
 }
 
 // A Loader reads and decodes YAML values from an input stream with configurable
@@ -192,6 +217,92 @@ func (l *Loader) Load(v any) (err error) {
 	return nil
 }
 
+// Dump encodes a value to YAML with the given options.
+//
+// See [Marshal] for details about the conversion of Go values to YAML.
+func Dump(in any, opts ...Option) (out []byte, err error) {
+	defer handleErr(&err)
+	var buf bytes.Buffer
+	d, err := NewDumper(&buf, opts...)
+	if err != nil {
+		return nil, err
+	}
+	if err := d.Dump(in); err != nil {
+		return nil, err
+	}
+	if err := d.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// DumpAll encodes multiple values as a multi-document YAML stream.
+//
+// Each value becomes a separate YAML document, separated by "---".
+// See [Marshal] for details about the conversion of Go values to YAML.
+func DumpAll(in []any, opts ...Option) (out []byte, err error) {
+	defer handleErr(&err)
+	var buf bytes.Buffer
+	d, err := NewDumper(&buf, opts...)
+	if err != nil {
+		return nil, err
+	}
+	for _, v := range in {
+		if err := d.Dump(v); err != nil {
+			return nil, err
+		}
+	}
+	if err := d.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// A Dumper writes YAML values to an output stream with configurable options.
+type Dumper struct {
+	encoder *libyaml.Encoder
+	opts    *libyaml.Options
+}
+
+// NewDumper returns a new Dumper that writes to w with the given options.
+//
+// The Dumper should be closed after use to flush all data to w.
+func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
+	o, err := libyaml.ApplyOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &Dumper{
+		encoder: libyaml.NewEncoder(w, o),
+		opts:    o,
+	}, nil
+}
+
+// Dump writes the YAML encoding of v to the stream.
+//
+// If multiple values are dumped to the stream, the second and subsequent
+// documents will be preceded with a "---" document separator.
+//
+// See the documentation for [Marshal] for details about the conversion of Go
+// values to YAML.
+func (d *Dumper) Dump(v any) (err error) {
+	defer handleErr(&err)
+	d.encoder.MarshalDoc("", reflect.ValueOf(v))
+	return nil
+}
+
+// Close closes the Dumper by writing any remaining data.
+// It does not write a stream terminating string "...".
+func (d *Dumper) Close() (err error) {
+	defer handleErr(&err)
+	d.encoder.Finish()
+	return nil
+}
+
+//-----------------------------------------------------------------------------
+// Decode / Encode API
+//-----------------------------------------------------------------------------
+
 // A Decoder reads and decodes YAML values from an input stream.
 //
 // Deprecated: Use Loader instead. Will be removed in v5.
@@ -245,6 +356,116 @@ func (dec *Decoder) Decode(v any) (err error) {
 		return &TypeError{Errors: d.Terrors}
 	}
 	return nil
+}
+
+// An Encoder writes YAML values to an output stream.
+//
+// Deprecated: Use Dumper instead. Will be removed in v5.
+type Encoder struct {
+	encoder *libyaml.Encoder
+}
+
+// NewEncoder returns a new encoder that writes to w.
+// The Encoder should be closed after use to flush all data
+// to w.
+//
+// Deprecated: Use NewDumper instead. Will be removed in v5.
+func NewEncoder(w io.Writer) *Encoder {
+	return &Encoder{
+		encoder: libyaml.NewEncoder(w, libyaml.LegacyOptions),
+	}
+}
+
+// Encode writes the YAML encoding of v to the stream.
+// If multiple items are encoded to the stream, the
+// second and subsequent document will be preceded
+// with a "---" document separator, but the first will not.
+//
+// See the documentation for Marshal for details about the conversion of Go
+// values to YAML.
+//
+// Deprecated: Use Dumper.Dump instead. Will be removed in v5.
+func (e *Encoder) Encode(v any) (err error) {
+	defer handleErr(&err)
+	e.encoder.MarshalDoc("", reflect.ValueOf(v))
+	return nil
+}
+
+// SetIndent changes the used indentation used when encoding.
+//
+// Deprecated: Use NewDumper with WithIndent option instead. Will be removed in v5.
+func (e *Encoder) SetIndent(spaces int) {
+	if spaces < 0 {
+		panic("yaml: cannot indent to a negative number of spaces")
+	}
+	e.encoder.Indent = spaces
+}
+
+// CompactSeqIndent makes it so that '- ' is considered part of the indentation.
+//
+// Deprecated: Use NewDumper with WithCompactSeqIndent option instead. Will be removed in v5.
+func (e *Encoder) CompactSeqIndent() {
+	e.encoder.Emitter.CompactSequenceIndent = true
+}
+
+// DefaultSeqIndent makes it so that '- ' is not considered part of the indentation.
+//
+// Deprecated: This is the default behavior for Dumper. Will be removed in v5.
+func (e *Encoder) DefaultSeqIndent() {
+	e.encoder.Emitter.CompactSequenceIndent = false
+}
+
+// Close closes the encoder by writing any remaining data.
+// It does not write a stream terminating string "...".
+//
+// Deprecated: Use Dumper.Close instead. Will be removed in v5.
+func (e *Encoder) Close() (err error) {
+	defer handleErr(&err)
+	e.encoder.Finish()
+	return nil
+}
+
+//-----------------------------------------------------------------------------
+// Unmarshal / Marshal API
+//-----------------------------------------------------------------------------
+
+// Unmarshal decodes the first document found within the in byte slice
+// and assigns decoded values into the out value.
+//
+// Maps and pointers (to a struct, string, int, etc) are accepted as out
+// values. If an internal pointer within a struct is not initialized,
+// the yaml package will initialize it if necessary for unmarshalling
+// the provided data. The out parameter must not be nil.
+//
+// The type of the decoded values should be compatible with the respective
+// values in out. If one or more values cannot be decoded due to a type
+// mismatches, decoding continues partially until the end of the YAML
+// content, and a *yaml.TypeError is returned with details for all
+// missed values.
+//
+// Struct fields are only unmarshalled if they are exported (have an
+// upper case first letter), and are unmarshalled using the field name
+// lowercased as the default key. Custom keys may be defined via the
+// "yaml" name in the field tag: the content preceding the first comma
+// is used as the key, and the following comma-separated options are
+// used to tweak the marshaling process (see Marshal).
+// Conflicting names result in a runtime error.
+//
+// For example:
+//
+//	type T struct {
+//	    F int `yaml:"a,omitempty"`
+//	    B int
+//	}
+//	var t T
+//	yaml.Unmarshal([]byte("a: 1\nb: 2"), &t)
+//
+// See the documentation of Marshal for the format of tags and a list of
+// supported tag options.
+//
+// Deprecated: Use Load instead. Will be removed in v5.
+func Unmarshal(in []byte, out any) (err error) {
+	return unmarshal(in, out, V3)
 }
 
 func unmarshal(in []byte, out any, opts ...Option) (err error) {
@@ -337,231 +558,17 @@ func Marshal(in any) (out []byte, err error) {
 	return out, err
 }
 
-// Dump encodes a value to YAML with the given options.
-//
-// See [Marshal] for details about the conversion of Go values to YAML.
-func Dump(in any, opts ...Option) (out []byte, err error) {
-	defer handleErr(&err)
-	var buf bytes.Buffer
-	d, err := NewDumper(&buf, opts...)
-	if err != nil {
-		return nil, err
-	}
-	if err := d.Dump(in); err != nil {
-		return nil, err
-	}
-	if err := d.Close(); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
-// DumpAll encodes multiple values as a multi-document YAML stream.
-//
-// Each value becomes a separate YAML document, separated by "---".
-// See [Marshal] for details about the conversion of Go values to YAML.
-func DumpAll(in []any, opts ...Option) (out []byte, err error) {
-	defer handleErr(&err)
-	var buf bytes.Buffer
-	d, err := NewDumper(&buf, opts...)
-	if err != nil {
-		return nil, err
-	}
-	for _, v := range in {
-		if err := d.Dump(v); err != nil {
-			return nil, err
-		}
-	}
-	if err := d.Close(); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
-// Load decodes the first YAML document with the given options.
-//
-// Maps and pointers (to a struct, string, int, etc) are accepted as out
-// values. If an internal pointer within a struct is not initialized,
-// the yaml package will initialize it if necessary. The out parameter
-// must not be nil.
-//
-// The type of the decoded values should be compatible with the respective
-// values in out. If one or more values cannot be decoded due to type
-// mismatches, decoding continues partially until the end of the YAML
-// content, and a *yaml.TypeError is returned with details for all
-// missed values.
-//
-// Struct fields are only loaded if they are exported (have an upper case
-// first letter), and are loaded using the field name lowercased as the
-// default key. Custom keys may be defined via the "yaml" name in the field
-// tag: the content preceding the first comma is used as the key, and the
-// following comma-separated options control the loading and dumping behavior.
-//
-// For example:
-//
-//	type T struct {
-//	    F int `yaml:"a,omitempty"`
-//	    B int
-//	}
-//	var t T
-//	yaml.Load([]byte("a: 1\nb: 2"), &t)
-//
-// See the documentation of Dump for the format of tags and a list of
-// supported tag options.
-func Load(in []byte, out any, opts ...Option) error {
-	return unmarshal(in, out, opts...)
-}
-
-// LoadAll decodes all YAML documents from the input.
-//
-// Returns a slice containing all decoded documents. Each document is
-// decoded into an any value (typically map[string]any or []any).
-//
-// See [Unmarshal] for details about the conversion of YAML into Go values.
-func LoadAll(in []byte, opts ...Option) ([]any, error) {
-	l, err := NewLoader(bytes.NewReader(in), opts...)
-	if err != nil {
-		return nil, err
-	}
-	var docs []any
-	for {
-		var doc any
-		err := l.Load(&doc)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return docs, err
-		}
-		docs = append(docs, doc)
-	}
-	return docs, nil
-}
-
-// A Dumper writes YAML values to an output stream with configurable options.
-type Dumper struct {
-	encoder *libyaml.Encoder
-	opts    *libyaml.Options
-}
-
-// NewDumper returns a new Dumper that writes to w with the given options.
-//
-// The Dumper should be closed after use to flush all data to w.
-func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
-	o, err := libyaml.ApplyOptions(opts...)
-	if err != nil {
-		return nil, err
-	}
-	return &Dumper{
-		encoder: libyaml.NewEncoder(w, o),
-		opts:    o,
-	}, nil
-}
-
-// Dump writes the YAML encoding of v to the stream.
-//
-// If multiple values are dumped to the stream, the second and subsequent
-// documents will be preceded with a "---" document separator.
-//
-// See the documentation for [Marshal] for details about the conversion of Go
-// values to YAML.
-func (d *Dumper) Dump(v any) (err error) {
-	defer handleErr(&err)
-	d.encoder.MarshalDoc("", reflect.ValueOf(v))
-	return nil
-}
-
-// Close closes the Dumper by writing any remaining data.
-// It does not write a stream terminating string "...".
-func (d *Dumper) Close() (err error) {
-	defer handleErr(&err)
-	d.encoder.Finish()
-	return nil
-}
-
-// An Encoder writes YAML values to an output stream.
-//
-// Deprecated: Use Dumper instead. Will be removed in v5.
-type Encoder struct {
-	encoder *libyaml.Encoder
-}
-
-// NewEncoder returns a new encoder that writes to w.
-// The Encoder should be closed after use to flush all data
-// to w.
-//
-// Deprecated: Use NewDumper instead. Will be removed in v5.
-func NewEncoder(w io.Writer) *Encoder {
-	return &Encoder{
-		encoder: libyaml.NewEncoder(w, libyaml.LegacyOptions),
-	}
-}
-
-// Encode writes the YAML encoding of v to the stream.
-// If multiple items are encoded to the stream, the
-// second and subsequent document will be preceded
-// with a "---" document separator, but the first will not.
-//
-// See the documentation for Marshal for details about the conversion of Go
-// values to YAML.
-//
-// Deprecated: Use Dumper.Dump instead. Will be removed in v5.
-func (e *Encoder) Encode(v any) (err error) {
-	defer handleErr(&err)
-	e.encoder.MarshalDoc("", reflect.ValueOf(v))
-	return nil
-}
-
-// SetIndent changes the used indentation used when encoding.
-//
-// Deprecated: Use NewDumper with WithIndent option instead. Will be removed in v5.
-func (e *Encoder) SetIndent(spaces int) {
-	if spaces < 0 {
-		panic("yaml: cannot indent to a negative number of spaces")
-	}
-	e.encoder.Indent = spaces
-}
-
-// CompactSeqIndent makes it so that '- ' is considered part of the indentation.
-//
-// Deprecated: Use NewDumper with WithCompactSeqIndent option instead. Will be removed in v5.
-func (e *Encoder) CompactSeqIndent() {
-	e.encoder.Emitter.CompactSequenceIndent = true
-}
-
-// DefaultSeqIndent makes it so that '- ' is not considered part of the indentation.
-//
-// Deprecated: This is the default behavior for Dumper. Will be removed in v5.
-func (e *Encoder) DefaultSeqIndent() {
-	e.encoder.Emitter.CompactSequenceIndent = false
-}
-
-// Close closes the encoder by writing any remaining data.
-// It does not write a stream terminating string "...".
-//
-// Deprecated: Use Dumper.Close instead. Will be removed in v5.
-func (e *Encoder) Close() (err error) {
-	defer handleErr(&err)
-	e.encoder.Finish()
-	return nil
-}
-
-func handleErr(err *error) {
-	if v := recover(); v != nil {
-		if e, ok := v.(*libyaml.YAMLError); ok {
-			*err = e.Err
-		} else {
-			panic(v)
-		}
-	}
-}
-
-// UnmarshalError represents a single, non-fatal error that occurred during
-// the unmarshaling of a YAML document into a Go value.
-// --------------------------------------------------------------------------
-// Maintain a mapping of keys to structure field indexes
+//-----------------------------------------------------------------------------
+// Helper functions
+//-----------------------------------------------------------------------------
 
 // The code in this section was copied from mgo/bson.
+
+var (
+	structMap       = make(map[reflect.Type]*structInfo)
+	fieldMapMutex   sync.RWMutex
+	unmarshalerType reflect.Type
+)
 
 // structInfo holds details for the serialization of fields of
 // a given struct.
@@ -589,17 +596,6 @@ type fieldInfo struct {
 
 	// Inline holds the field index if the field is part of an inlined struct.
 	Inline []int
-}
-
-var (
-	structMap       = make(map[reflect.Type]*structInfo)
-	fieldMapMutex   sync.RWMutex
-	unmarshalerType reflect.Type
-)
-
-func init() {
-	var v Unmarshaler
-	unmarshalerType = reflect.ValueOf(&v).Elem().Type()
 }
 
 func getStructInfo(st reflect.Type) (*structInfo, error) {
@@ -725,4 +721,18 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 	structMap[st] = sinfo
 	fieldMapMutex.Unlock()
 	return sinfo, nil
+}
+
+//-----------------------------------------------------------------------------
+// Error function
+//-----------------------------------------------------------------------------
+
+func handleErr(err *error) {
+	if v := recover(); v != nil {
+		if e, ok := v.(*libyaml.YAMLError); ok {
+			*err = e.Err
+		} else {
+			panic(v)
+		}
+	}
 }
