@@ -105,49 +105,49 @@ func processEventsDecode(profuse, compact bool) error {
 
 				// Add the Event field
 				compactNode.Content = append(compactNode.Content,
-					toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Event"}),
-					toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Event}))
+					&yaml.Node{Kind: yaml.ScalarNode, Value: "Event"},
+					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Event})
 
 				// Add other fields if they exist
 				if info.Value != "" {
 					compactNode.Content = append(compactNode.Content,
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Value"}),
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Value}))
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "Value"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Value})
 				}
 				if info.Style != "" {
 					compactNode.Content = append(compactNode.Content,
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Style"}),
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Style}))
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "Style"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Style})
 				}
 				if info.Tag != "" {
 					compactNode.Content = append(compactNode.Content,
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Tag"}),
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Tag}))
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "Tag"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Tag})
 				}
 				if info.Anchor != "" {
 					compactNode.Content = append(compactNode.Content,
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Anchor"}),
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Anchor}))
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "Anchor"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Anchor})
 				}
 				if info.Head != "" {
 					compactNode.Content = append(compactNode.Content,
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Head"}),
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Head}))
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "Head"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Head})
 				}
 				if info.Line != "" {
 					compactNode.Content = append(compactNode.Content,
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Line"}),
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Line}))
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "Line"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Line})
 				}
 				if info.Foot != "" {
 					compactNode.Content = append(compactNode.Content,
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Foot"}),
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Foot}))
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "Foot"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Foot})
 				}
 				if info.Pos != "" {
 					compactNode.Content = append(compactNode.Content,
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Pos"}),
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Pos}))
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "Pos"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Pos})
 				}
 
 				var buf bytes.Buffer
@@ -236,49 +236,49 @@ func processEventsUnmarshal(profuse, compact bool) error {
 
 				// Add the Event field
 				compactNode.Content = append(compactNode.Content,
-					toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Event"}),
-					toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Event}))
+					&yaml.Node{Kind: yaml.ScalarNode, Value: "Event"},
+					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Event})
 
 				// Add other fields if they exist
 				if info.Value != "" {
 					compactNode.Content = append(compactNode.Content,
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Value"}),
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Value}))
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "Value"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Value})
 				}
 				if info.Style != "" {
 					compactNode.Content = append(compactNode.Content,
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Style"}),
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Style}))
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "Style"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Style})
 				}
 				if info.Tag != "" {
 					compactNode.Content = append(compactNode.Content,
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Tag"}),
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Tag}))
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "Tag"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Tag})
 				}
 				if info.Anchor != "" {
 					compactNode.Content = append(compactNode.Content,
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Anchor"}),
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Anchor}))
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "Anchor"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Anchor})
 				}
 				if info.Head != "" {
 					compactNode.Content = append(compactNode.Content,
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Head"}),
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Head}))
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "Head"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Head})
 				}
 				if info.Line != "" {
 					compactNode.Content = append(compactNode.Content,
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Line"}),
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Line}))
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "Line"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Line})
 				}
 				if info.Foot != "" {
 					compactNode.Content = append(compactNode.Content,
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Foot"}),
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Foot}))
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "Foot"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Foot})
 				}
 				if info.Pos != "" {
 					compactNode.Content = append(compactNode.Content,
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Pos"}),
-						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Pos}))
+						&yaml.Node{Kind: yaml.ScalarNode, Value: "Pos"},
+						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Pos})
 				}
 
 				var buf bytes.Buffer
@@ -351,7 +351,7 @@ func processNodeToEventsRecursive(node *yaml.Node, profuse bool) []*Event {
 	switch node.Kind {
 	case yaml.DocumentNode:
 		for _, child := range node.Content {
-			events = append(events, processNodeToEventsRecursive(fromLibNode(child), profuse)...)
+			events = append(events, processNodeToEventsRecursive(child, profuse)...)
 		}
 	case yaml.MappingNode:
 		events = append(events, &Event{
@@ -368,10 +368,10 @@ func processNodeToEventsRecursive(node *yaml.Node, profuse bool) []*Event {
 		for i := 0; i < len(node.Content); i += 2 {
 			if i+1 < len(node.Content) {
 				// Key
-				keyEvents := processNodeToEventsRecursive(fromLibNode(node.Content[i]), profuse)
+				keyEvents := processNodeToEventsRecursive(node.Content[i], profuse)
 				events = append(events, keyEvents...)
 				// Value
-				valueEvents := processNodeToEventsRecursive(fromLibNode(node.Content[i+1]), profuse)
+				valueEvents := processNodeToEventsRecursive(node.Content[i+1], profuse)
 				events = append(events, valueEvents...)
 			}
 		}
@@ -395,7 +395,7 @@ func processNodeToEventsRecursive(node *yaml.Node, profuse bool) []*Event {
 			FootComment: node.FootComment,
 		})
 		for _, child := range node.Content {
-			childEvents := processNodeToEventsRecursive(fromLibNode(child), profuse)
+			childEvents := processNodeToEventsRecursive(child, profuse)
 			events = append(events, childEvents...)
 		}
 		events = append(events, &Event{

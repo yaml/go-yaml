@@ -34,20 +34,11 @@ import (
 
 var noWriter io.Writer
 
-// Helper functions to convert between yaml.Node and libyaml.Node
-func toLibyamlNode(n *Node) *libyaml.Node {
-	return (*libyaml.Node)(n)
-}
-
-func fromLibyamlNode(n *libyaml.Node) *Node {
-	return (*Node)(n)
-}
-
 // Re-export types from internal/libyaml
 type (
 	Marshaler = libyaml.Marshaler
 	IsZeroer  = libyaml.IsZeroer
-	Node      libyaml.Node // New type to allow methods
+	Node      = libyaml.Node // Type alias for compatibility
 	Kind      = libyaml.Kind
 	Style     = libyaml.Style
 )
@@ -81,6 +72,16 @@ const (
 	LiteralStyle      = libyaml.LiteralStyle
 	FoldedStyle       = libyaml.FoldedStyle
 	FlowStyle         = libyaml.FlowStyle
+)
+
+// LineBreak represents the line ending style for YAML output.
+type LineBreak = libyaml.LineBreak
+
+// Line break constants for different platforms.
+const (
+	LineBreakLN   = libyaml.LN_BREAK   // Unix-style \n (default)
+	LineBreakCR   = libyaml.CR_BREAK   // Old Mac-style \r
+	LineBreakCRLN = libyaml.CRLN_BREAK // Windows-style \r\n
 )
 
 // Unmarshal decodes the first document found within the in byte slice
@@ -136,7 +137,7 @@ type Loader struct {
 // The Loader introduces its own buffering and may read data from r beyond the
 // YAML values requested.
 func NewLoader(r io.Reader, opts ...Option) (*Loader, error) {
-	o, err := applyOptions(opts...)
+	o, err := libyaml.ApplyOptions(opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +229,7 @@ func (dec *Decoder) KnownFields(enable bool) {
 //
 // Deprecated: Use Loader.Load instead. Will be removed in v5.
 func (dec *Decoder) Decode(v any) (err error) {
-	d := libyaml.NewDecoder(legacyOptions)
+	d := libyaml.NewDecoder(libyaml.LegacyOptions)
 	d.KnownFields = dec.knownFields
 	defer handleErr(&err)
 	node := dec.composer.Parse()
@@ -246,100 +247,9 @@ func (dec *Decoder) Decode(v any) (err error) {
 	return nil
 }
 
-// ShortTag returns the short form of the YAML tag that indicates data type for
-// the node. If the Tag field isn't explicitly defined, one will be computed
-// based on the node properties.
-func (n *Node) ShortTag() string {
-	return toLibyamlNode(n).ShortTag()
-}
-
-// LongTag returns the long form of the YAML tag that indicates data type for
-// the node. If the Tag field isn't explicitly defined, one will be computed
-// based on the node properties.
-func (n *Node) LongTag() string {
-	return toLibyamlNode(n).LongTag()
-}
-
-// SetString is a convenience function that sets the node to a string value
-// and applies the tag for binary content if the string is not valid UTF-8.
-func (n *Node) SetString(s string) {
-	toLibyamlNode(n).SetString(s)
-}
-
-// IsZero returns whether the node has all of its fields unset.
-func (n *Node) IsZero() bool {
-	return toLibyamlNode(n).IsZero()
-}
-
-// MarshalYAML implements the Marshaler interface for Node.
-// This allows Node values to be properly marshaled when embedded in structs.
-func (n Node) MarshalYAML() (any, error) {
-	// Convert to libyaml.Node for marshaling
-	return *toLibyamlNode(&n), nil
-}
-
-// UnmarshalYAML implements the Unmarshaler interface for Node.
-// This allows Node values to be properly unmarshaled when embedded in structs.
-func (n *Node) UnmarshalYAML(node *Node) error {
-	// Copy the node data
-	*n = *node
-	return nil
-}
-
-// Decode decodes the node and stores its data into the value pointed to by v.
-//
-// See the documentation for Unmarshal for details about the
-// conversion of YAML into a Go value.
-//
-// Deprecated: Use Node.Load instead. Will be removed in v5.
-func (n *Node) Decode(v any) (err error) {
-	d := libyaml.NewDecoder(legacyOptions)
-	defer handleErr(&err)
-	out := reflect.ValueOf(v)
-	if out.Kind() == reflect.Pointer && !out.IsNil() {
-		out = out.Elem()
-	}
-	d.Unmarshal(toLibyamlNode(n), out)
-	if len(d.Terrors) > 0 {
-		return &TypeError{Errors: d.Terrors}
-	}
-	return nil
-}
-
-// Load decodes the node and stores its data into the value pointed to by v,
-// applying the given options.
-//
-// This method is useful when you need to preserve options like WithKnownFields()
-// inside custom UnmarshalYAML implementations.
-//
-// Maps and pointers (to a struct, string, int, etc) are accepted as v
-// values. If an internal pointer within a struct is not initialized,
-// the yaml package will initialize it if necessary. The v parameter
-// must not be nil.
-//
-// See the documentation of the package-level Load function for details
-// about YAML to Go conversion and tag options.
-func (n *Node) Load(v any, opts ...Option) (err error) {
-	defer handleErr(&err)
-	o, err := applyOptions(opts...)
-	if err != nil {
-		return err
-	}
-	d := libyaml.NewDecoder(o)
-	out := reflect.ValueOf(v)
-	if out.Kind() == reflect.Pointer && !out.IsNil() {
-		out = out.Elem()
-	}
-	d.Unmarshal(toLibyamlNode(n), out)
-	if len(d.Terrors) > 0 {
-		return &TypeError{Errors: d.Terrors}
-	}
-	return nil
-}
-
 func unmarshal(in []byte, out any, opts ...Option) (err error) {
 	defer handleErr(&err)
-	o, err := applyOptions(opts...)
+	o, err := libyaml.ApplyOptions(opts...)
 	if err != nil {
 		return err
 	}
@@ -350,7 +260,7 @@ func unmarshal(in []byte, out any, opts ...Option) (err error) {
 		defer p.Destroy()
 		node := p.Parse()
 		if node != nil {
-			return u.UnmarshalYAML(fromLibyamlNode(node))
+			return u.UnmarshalYAML(node)
 		}
 		return nil
 	}
@@ -419,13 +329,7 @@ func unmarshal(in []byte, out any, opts ...Option) (err error) {
 // Deprecated: Use Dump instead. Will be removed in v5.
 func Marshal(in any) (out []byte, err error) {
 	defer handleErr(&err)
-	// Convert yaml.Node to libyaml.Node for encoder
-	if n, ok := in.(*Node); ok {
-		in = toLibyamlNode(n)
-	} else if n, ok := in.(Node); ok {
-		in = *toLibyamlNode(&n)
-	}
-	e := libyaml.NewEncoder(noWriter, legacyOptions)
+	e := libyaml.NewEncoder(noWriter, libyaml.LegacyOptions)
 	defer e.Destroy()
 	e.MarshalDoc("", reflect.ValueOf(in))
 	e.Finish()
@@ -438,12 +342,6 @@ func Marshal(in any) (out []byte, err error) {
 // See [Marshal] for details about the conversion of Go values to YAML.
 func Dump(in any, opts ...Option) (out []byte, err error) {
 	defer handleErr(&err)
-	// Convert yaml.Node to libyaml.Node for encoder
-	if n, ok := in.(*Node); ok {
-		in = toLibyamlNode(n)
-	} else if n, ok := in.(Node); ok {
-		in = *toLibyamlNode(&n)
-	}
 	var buf bytes.Buffer
 	d, err := NewDumper(&buf, opts...)
 	if err != nil {
@@ -550,7 +448,7 @@ type Dumper struct {
 //
 // The Dumper should be closed after use to flush all data to w.
 func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
-	o, err := applyOptions(opts...)
+	o, err := libyaml.ApplyOptions(opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -569,12 +467,6 @@ func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
 // values to YAML.
 func (d *Dumper) Dump(v any) (err error) {
 	defer handleErr(&err)
-	// Convert yaml.Node to libyaml.Node for encoder
-	if n, ok := v.(*Node); ok {
-		v = toLibyamlNode(n)
-	} else if n, ok := v.(Node); ok {
-		v = *toLibyamlNode(&n)
-	}
 	d.encoder.MarshalDoc("", reflect.ValueOf(v))
 	return nil
 }
@@ -601,7 +493,7 @@ type Encoder struct {
 // Deprecated: Use NewDumper instead. Will be removed in v5.
 func NewEncoder(w io.Writer) *Encoder {
 	return &Encoder{
-		encoder: libyaml.NewEncoder(w, legacyOptions),
+		encoder: libyaml.NewEncoder(w, libyaml.LegacyOptions),
 	}
 }
 
@@ -616,59 +508,7 @@ func NewEncoder(w io.Writer) *Encoder {
 // Deprecated: Use Dumper.Dump instead. Will be removed in v5.
 func (e *Encoder) Encode(v any) (err error) {
 	defer handleErr(&err)
-	// Convert yaml.Node to libyaml.Node for encoder
-	if n, ok := v.(*Node); ok {
-		v = toLibyamlNode(n)
-	} else if n, ok := v.(Node); ok {
-		v = *toLibyamlNode(&n)
-	}
 	e.encoder.MarshalDoc("", reflect.ValueOf(v))
-	return nil
-}
-
-// Encode encodes value v and stores its representation in n.
-//
-// See the documentation for Marshal for details about the
-// conversion of Go values into YAML.
-//
-// Deprecated: Use Node.Dump instead. Will be removed in v5.
-func (n *Node) Encode(v any) (err error) {
-	defer handleErr(&err)
-	e := libyaml.NewEncoder(noWriter, legacyOptions)
-	defer e.Destroy()
-	e.MarshalDoc("", reflect.ValueOf(v))
-	e.Finish()
-	p := libyaml.NewComposer(e.Out)
-	p.Textless = true
-	defer p.Destroy()
-	doc := p.Parse()
-	*n = *fromLibyamlNode(doc.Content[0])
-	return nil
-}
-
-// Dump encodes value v and stores its representation in n,
-// applying the given options.
-//
-// This method is useful when you need to apply specific encoding options
-// while building Node trees programmatically.
-//
-// See the documentation for Marshal for details about the
-// conversion of Go values into YAML.
-func (n *Node) Dump(v any, opts ...Option) (err error) {
-	defer handleErr(&err)
-	o, err := applyOptions(opts...)
-	if err != nil {
-		return err
-	}
-	e := libyaml.NewEncoder(noWriter, o)
-	defer e.Destroy()
-	e.MarshalDoc("", reflect.ValueOf(v))
-	e.Finish()
-	p := libyaml.NewComposer(e.Out)
-	p.Textless = true
-	defer p.Destroy()
-	doc := p.Parse()
-	*n = *fromLibyamlNode(doc.Content[0])
 	return nil
 }
 
