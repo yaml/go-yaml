@@ -87,39 +87,39 @@ func processTokensDecode(profuse, compact bool) error {
 
 				// Add the Token field
 				compactNode.Content = append(compactNode.Content,
-					&yaml.Node{Kind: yaml.ScalarNode, Value: "Token"},
-					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Token})
+					toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Token"}),
+					toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Token}))
 
 				// Add other fields if they exist
 				if info.Value != "" {
 					compactNode.Content = append(compactNode.Content,
-						&yaml.Node{Kind: yaml.ScalarNode, Value: "Value"},
-						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Value})
+						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Value"}),
+						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Value}))
 				}
 				if info.Style != "" {
 					compactNode.Content = append(compactNode.Content,
-						&yaml.Node{Kind: yaml.ScalarNode, Value: "Style"},
-						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Style})
+						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Style"}),
+						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Style}))
 				}
 				if info.Head != "" {
 					compactNode.Content = append(compactNode.Content,
-						&yaml.Node{Kind: yaml.ScalarNode, Value: "Head"},
-						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Head})
+						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Head"}),
+						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Head}))
 				}
 				if info.Line != "" {
 					compactNode.Content = append(compactNode.Content,
-						&yaml.Node{Kind: yaml.ScalarNode, Value: "Line"},
-						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Line})
+						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Line"}),
+						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Line}))
 				}
 				if info.Foot != "" {
 					compactNode.Content = append(compactNode.Content,
-						&yaml.Node{Kind: yaml.ScalarNode, Value: "Foot"},
-						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Foot})
+						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Foot"}),
+						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Foot}))
 				}
 				if info.Pos != "" {
 					compactNode.Content = append(compactNode.Content,
-						&yaml.Node{Kind: yaml.ScalarNode, Value: "Pos"},
-						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Pos})
+						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Pos"}),
+						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Pos}))
 				}
 
 				var buf bytes.Buffer
@@ -185,39 +185,39 @@ func processTokensWithParser(profuse, compact bool) error {
 
 			// Add the Token field
 			compactNode.Content = append(compactNode.Content,
-				&yaml.Node{Kind: yaml.ScalarNode, Value: "Token"},
-				&yaml.Node{Kind: yaml.ScalarNode, Value: info.Token})
+				toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Token"}),
+				toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Token}))
 
 			// Add other fields if they exist
 			if info.Value != "" {
 				compactNode.Content = append(compactNode.Content,
-					&yaml.Node{Kind: yaml.ScalarNode, Value: "Value"},
-					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Value})
+					toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Value"}),
+					toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Value}))
 			}
 			if info.Style != "" {
 				compactNode.Content = append(compactNode.Content,
-					&yaml.Node{Kind: yaml.ScalarNode, Value: "Style"},
-					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Style})
+					toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Style"}),
+					toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Style}))
 			}
 			if info.Head != "" {
 				compactNode.Content = append(compactNode.Content,
-					&yaml.Node{Kind: yaml.ScalarNode, Value: "Head"},
-					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Head})
+					toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Head"}),
+					toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Head}))
 			}
 			if info.Line != "" {
 				compactNode.Content = append(compactNode.Content,
-					&yaml.Node{Kind: yaml.ScalarNode, Value: "Line"},
-					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Line})
+					toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Line"}),
+					toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Line}))
 			}
 			if info.Foot != "" {
 				compactNode.Content = append(compactNode.Content,
-					&yaml.Node{Kind: yaml.ScalarNode, Value: "Foot"},
-					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Foot})
+					toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Foot"}),
+					toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Foot}))
 			}
 			if info.Pos != "" {
 				compactNode.Content = append(compactNode.Content,
-					&yaml.Node{Kind: yaml.ScalarNode, Value: "Pos"},
-					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Pos})
+					toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Pos"}),
+					toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Pos}))
 			}
 
 			var buf bytes.Buffer
@@ -301,39 +301,39 @@ func processTokensUnmarshal(profuse, compact bool) error {
 
 				// Add the Token field
 				compactNode.Content = append(compactNode.Content,
-					&yaml.Node{Kind: yaml.ScalarNode, Value: "Token"},
-					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Token})
+					toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Token"}),
+					toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Token}))
 
 				// Add other fields if they exist
 				if info.Value != "" {
 					compactNode.Content = append(compactNode.Content,
-						&yaml.Node{Kind: yaml.ScalarNode, Value: "Value"},
-						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Value})
+						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Value"}),
+						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Value}))
 				}
 				if info.Style != "" {
 					compactNode.Content = append(compactNode.Content,
-						&yaml.Node{Kind: yaml.ScalarNode, Value: "Style"},
-						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Style})
+						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Style"}),
+						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Style}))
 				}
 				if info.Head != "" {
 					compactNode.Content = append(compactNode.Content,
-						&yaml.Node{Kind: yaml.ScalarNode, Value: "Head"},
-						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Head})
+						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Head"}),
+						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Head}))
 				}
 				if info.Line != "" {
 					compactNode.Content = append(compactNode.Content,
-						&yaml.Node{Kind: yaml.ScalarNode, Value: "Line"},
-						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Line})
+						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Line"}),
+						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Line}))
 				}
 				if info.Foot != "" {
 					compactNode.Content = append(compactNode.Content,
-						&yaml.Node{Kind: yaml.ScalarNode, Value: "Foot"},
-						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Foot})
+						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Foot"}),
+						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Foot}))
 				}
 				if info.Pos != "" {
 					compactNode.Content = append(compactNode.Content,
-						&yaml.Node{Kind: yaml.ScalarNode, Value: "Pos"},
-						&yaml.Node{Kind: yaml.ScalarNode, Value: info.Pos})
+						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "Pos"}),
+						toLibNode(&yaml.Node{Kind: yaml.ScalarNode, Value: info.Pos}))
 				}
 
 				var buf bytes.Buffer
@@ -440,7 +440,7 @@ func processNodeToTokensRecursive(node *yaml.Node, profuse bool) []*Token {
 	switch node.Kind {
 	case yaml.DocumentNode:
 		for _, child := range node.Content {
-			tokens = append(tokens, processNodeToTokensRecursive(child, profuse)...)
+			tokens = append(tokens, processNodeToTokensRecursive(fromLibNode(child), profuse)...)
 		}
 	case yaml.MappingNode:
 		tokens = append(tokens, &Token{
@@ -463,7 +463,7 @@ func processNodeToTokensRecursive(node *yaml.Node, profuse bool) []*Token {
 					EndLine:     node.Content[i].Line,
 					EndColumn:   node.Content[i].Column,
 				})
-				keyTokens := processNodeToTokensRecursive(node.Content[i], profuse)
+				keyTokens := processNodeToTokensRecursive(fromLibNode(node.Content[i]), profuse)
 				tokens = append(tokens, keyTokens...)
 				// Value
 				tokens = append(tokens, &Token{
@@ -473,7 +473,7 @@ func processNodeToTokensRecursive(node *yaml.Node, profuse bool) []*Token {
 					EndLine:     node.Content[i+1].Line,
 					EndColumn:   node.Content[i+1].Column,
 				})
-				valueTokens := processNodeToTokensRecursive(node.Content[i+1], profuse)
+				valueTokens := processNodeToTokensRecursive(fromLibNode(node.Content[i+1]), profuse)
 				tokens = append(tokens, valueTokens...)
 			}
 		}
@@ -503,7 +503,7 @@ func processNodeToTokensRecursive(node *yaml.Node, profuse bool) []*Token {
 				EndLine:     child.Line,
 				EndColumn:   child.Column,
 			})
-			childTokens := processNodeToTokensRecursive(child, profuse)
+			childTokens := processNodeToTokensRecursive(fromLibNode(child), profuse)
 			tokens = append(tokens, childTokens...)
 		}
 		tokens = append(tokens, &Token{

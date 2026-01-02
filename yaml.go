@@ -141,9 +141,9 @@ func NewLoader(r io.Reader, opts ...Option) (*Loader, error) {
 		return nil, err
 	}
 	return &Loader{
-		composer:  libyaml.NewComposerFromReader(r),
-		decoder: libyaml.NewDecoder(o),
-		opts:    o,
+		composer: libyaml.NewComposerFromReader(r),
+		decoder:  libyaml.NewDecoder(o),
+		opts:     o,
 	}, nil
 }
 
@@ -186,7 +186,7 @@ func (l *Loader) Load(v any) (err error) {
 	if len(l.decoder.Terrors) > 0 {
 		terrors := l.decoder.Terrors
 		l.decoder.Terrors = nil
-		return &TypeError{terrors}
+		return &TypeError{Errors: terrors}
 	}
 	return nil
 }
@@ -241,7 +241,7 @@ func (dec *Decoder) Decode(v any) (err error) {
 	}
 	d.Unmarshal(node, out)
 	if len(d.Terrors) > 0 {
-		return &TypeError{d.Terrors}
+		return &TypeError{Errors: d.Terrors}
 	}
 	return nil
 }
@@ -301,7 +301,7 @@ func (n *Node) Decode(v any) (err error) {
 	}
 	d.Unmarshal(toLibyamlNode(n), out)
 	if len(d.Terrors) > 0 {
-		return &TypeError{d.Terrors}
+		return &TypeError{Errors: d.Terrors}
 	}
 	return nil
 }
@@ -332,7 +332,7 @@ func (n *Node) Load(v any, opts ...Option) (err error) {
 	}
 	d.Unmarshal(toLibyamlNode(n), out)
 	if len(d.Terrors) > 0 {
-		return &TypeError{d.Terrors}
+		return &TypeError{Errors: d.Terrors}
 	}
 	return nil
 }
@@ -367,7 +367,7 @@ func unmarshal(in []byte, out any, opts ...Option) (err error) {
 		d.Unmarshal(node, v)
 	}
 	if len(d.Terrors) > 0 {
-		return &TypeError{d.Terrors}
+		return &TypeError{Errors: d.Terrors}
 	}
 	return nil
 }
@@ -894,7 +894,6 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 	fieldMapMutex.Unlock()
 	return sinfo, nil
 }
-
 
 func isZero(v reflect.Value) bool {
 	kind := v.Kind()
