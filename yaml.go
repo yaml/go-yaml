@@ -556,14 +556,6 @@ func handleErr(err *error) {
 	}
 }
 
-func fail(err error) {
-	libyaml.Fail(err)
-}
-
-func failf(format string, args ...any) {
-	libyaml.Fail(fmt.Errorf("yaml: "+format, args...))
-}
-
 // UnmarshalError represents a single, non-fatal error that occurred during
 // the unmarshaling of a YAML document into a Go value.
 // --------------------------------------------------------------------------
@@ -733,46 +725,6 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 	structMap[st] = sinfo
 	fieldMapMutex.Unlock()
 	return sinfo, nil
-}
-
-func isZero(v reflect.Value) bool {
-	kind := v.Kind()
-	if z, ok := v.Interface().(IsZeroer); ok {
-		if (kind == reflect.Pointer || kind == reflect.Interface) && v.IsNil() {
-			return true
-		}
-		return z.IsZero()
-	}
-	switch kind {
-	case reflect.String:
-		return len(v.String()) == 0
-	case reflect.Interface, reflect.Pointer:
-		return v.IsNil()
-	case reflect.Slice:
-		return v.Len() == 0
-	case reflect.Map:
-		return v.Len() == 0
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return v.Int() == 0
-	case reflect.Float32, reflect.Float64:
-		return v.Float() == 0
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		return v.Uint() == 0
-	case reflect.Bool:
-		return !v.Bool()
-	case reflect.Struct:
-		vt := v.Type()
-		for i := v.NumField() - 1; i >= 0; i-- {
-			if vt.Field(i).PkgPath != "" {
-				continue // Private field
-			}
-			if !isZero(v.Field(i)) {
-				return false
-			}
-		}
-		return true
-	}
-	return false
 }
 
 // ParserGetEvents parses the YAML input and returns the generated event stream.
