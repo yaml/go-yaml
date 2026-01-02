@@ -371,6 +371,7 @@ func isZero(v reflect.Value) bool {
 	}
 	return false
 }
+
 type Decoder struct {
 	doc     *Node
 	aliases map[*Node]bool
@@ -623,13 +624,11 @@ func (d *Decoder) tryCallYAMLUnmarshaler(n *Node, out reflect.Value) (called boo
 		d.Terrors = append(d.Terrors, e.Errors...)
 		return true, false
 	default:
-		if e != nil {
-			d.Terrors = append(d.Terrors, &UnmarshalError{
-				Err:    e.(error),
-				Line:   n.Line,
-				Column: n.Column,
-			})
-		}
+		d.Terrors = append(d.Terrors, &UnmarshalError{
+			Err:    e.(error),
+			Line:   n.Line,
+			Column: n.Column,
+		})
 		return true, false
 	}
 }
