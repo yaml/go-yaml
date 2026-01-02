@@ -84,6 +84,17 @@ func (e *TypeError) Error() string {
 	return b.String()
 }
 
+// Unwrap returns all errors for compatibility with errors.As/Is.
+// This allows callers to unwrap TypeError and examine individual UnmarshalErrors.
+// Implements the Go 1.20+ multiple error unwrapping interface.
+func (e *TypeError) Unwrap() []error {
+	errs := make([]error, len(e.Errors))
+	for i, err := range e.Errors {
+		errs[i] = err
+	}
+	return errs
+}
+
 // Options holds configuration for loading and dumping YAML.
 type Options struct {
 	// Loader options
