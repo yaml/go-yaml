@@ -16,6 +16,7 @@
 package libyaml
 
 import (
+	"reflect"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -247,4 +248,101 @@ func (n *Node) SetString(s string) {
 	if shouldUseLiteralStyle(n.Value) {
 		n.Style = LiteralStyle
 	}
+}
+
+// Decode decodes the node and stores its data into the value pointed to by v.
+//
+// See the documentation for Unmarshal for details about the
+// conversion of YAML into a Go value.
+//
+// Deprecated: Use Node.Load instead. Will be removed in v5.
+func (n *Node) Decode(v any) (err error) {
+	d := NewDecoder(LegacyOptions)
+	defer handleErr(&err)
+	out := reflect.ValueOf(v)
+	if out.Kind() == reflect.Pointer && !out.IsNil() {
+		out = out.Elem()
+	}
+	d.Unmarshal(n, out)
+	if len(d.Terrors) > 0 {
+		return &TypeError{Errors: d.Terrors}
+	}
+	return nil
+}
+
+// Load decodes the node and stores its data into the value pointed to by v,
+// applying the given options.
+//
+// This method is useful when you need to preserve options like WithKnownFields()
+// inside custom UnmarshalYAML implementations.
+//
+// Maps and pointers (to a struct, string, int, etc) are accepted as v
+// values. If an internal pointer within a struct is not initialized,
+// the yaml package will initialize it if necessary. The v parameter
+// must not be nil.
+//
+// See the documentation of the package-level Load function for details
+// about YAML to Go conversion and tag options.
+func (n *Node) Load(v any, opts ...Option) (err error) {
+	defer handleErr(&err)
+	o, err := ApplyOptions(opts...)
+	if err != nil {
+		return err
+	}
+	d := NewDecoder(o)
+	out := reflect.ValueOf(v)
+	if out.Kind() == reflect.Pointer && !out.IsNil() {
+		out = out.Elem()
+	}
+	d.Unmarshal(n, out)
+	if len(d.Terrors) > 0 {
+		return &TypeError{Errors: d.Terrors}
+	}
+	return nil
+}
+
+// Encode encodes value v and stores its representation in n.
+//
+// See the documentation for Marshal for details about the
+// conversion of Go values into YAML.
+//
+// Deprecated: Use Node.Dump instead. Will be removed in v5.
+func (n *Node) Encode(v any) (err error) {
+	defer handleErr(&err)
+	e := NewEncoder(noWriter, LegacyOptions)
+	defer e.Destroy()
+	e.MarshalDoc("", reflect.ValueOf(v))
+	e.Finish()
+	p := NewComposer(e.Out)
+	p.Textless = true
+	defer p.Destroy()
+	doc := p.Parse()
+	*n = *doc.Content[0]
+	return nil
+}
+
+// Dump encodes value v and stores its representation in n,
+// applying the given options.
+//
+// This method is useful when you need to apply specific encoding options
+// while building Node trees programmatically.
+//
+// See the documentation for Marshal for details about the
+// conversion of Go values into YAML.
+func (n *Node) Dump(v any, opts ...Option) (err error) {
+	defer handleErr(&err)
+	o, err := ApplyOptions(opts...)
+	if err != nil {
+		return err
+	}
+	e := NewEncoder(noWriter, o)
+	defer e.Destroy()
+	e.MarshalDoc("", reflect.ValueOf(v))
+	e.Finish()
+	p := NewComposer(e.Out)
+	p.Textless = true
+	defer p.Destroy()
+	doc := p.Parse()
+	*n = *doc.Content[0]
+	return nil
 }

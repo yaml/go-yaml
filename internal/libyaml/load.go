@@ -95,25 +95,6 @@ func (e *TypeError) Unwrap() []error {
 	return errs
 }
 
-// Options holds configuration for loading and dumping YAML.
-type Options struct {
-	// Loader options
-	SingleDocument bool
-	KnownFields    bool
-	UniqueKeys     bool
-
-	// Dumper options
-	Indent                int
-	CompactSeqIndent      bool
-	LineWidth             int
-	Unicode               bool
-	Canonical             bool
-	LineBreak             LineBreak
-	ExplicitStart         bool
-	ExplicitEnd           bool
-	FlowSimpleCollections bool
-}
-
 // handleErr recovers from panics caused by yaml errors
 func handleErr(err *error) {
 	if v := recover(); v != nil {
