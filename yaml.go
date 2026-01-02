@@ -1,6 +1,17 @@
-// Copyright 2011-2019 Canonical Ltd
-// Copyright 2025 The go-yaml Project Contributors
-// SPDX-License-Identifier: Apache-2.0
+//
+// Copyright (c) 2011-2019 Canonical Ltd
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 // Package yaml implements YAML support for the Go language.
 //
@@ -17,21 +28,35 @@ import (
 	"reflect"
 	"strings"
 	"sync"
-	"unicode"
-	"unicode/utf8"
 
 	"go.yaml.in/yaml/v4/internal/libyaml"
 )
 
+var noWriter io.Writer
+
+// Helper functions to convert between yaml.Node and libyaml.Node
+func toLibyamlNode(n *Node) *libyaml.Node {
+	return (*libyaml.Node)(n)
+}
+
+func fromLibyamlNode(n *libyaml.Node) *Node {
+	return (*Node)(n)
+}
+
 // Re-export types from internal/libyaml
 type (
-	Unmarshaler = libyaml.Unmarshaler
-	Marshaler   = libyaml.Marshaler
-	IsZeroer    = libyaml.IsZeroer
-	Node        = libyaml.Node
-	Kind        = libyaml.Kind
-	Style       = libyaml.Style
+	Marshaler = libyaml.Marshaler
+	IsZeroer  = libyaml.IsZeroer
+	Node      libyaml.Node // New type to allow methods
+	Kind      = libyaml.Kind
+	Style     = libyaml.Style
 )
+
+// Unmarshaler is the interface implemented by types
+// that can unmarshal a YAML description of themselves.
+type Unmarshaler interface {
+	UnmarshalYAML(node *Node) error
+}
 
 // Re-export error types
 type (
@@ -115,11 +140,9 @@ func NewLoader(r io.Reader, opts ...Option) (*Loader, error) {
 	if err != nil {
 		return nil, err
 	}
-	p := newParserFromReader(r)
-	p.streamNodes = o.streamNodes
 	return &Loader{
-		parser:  p,
-		decoder: newDecoder(o),
+		composer:  libyaml.NewComposerFromReader(r),
+		decoder: libyaml.NewDecoder(o),
 		opts:    o,
 	}, nil
 }
@@ -146,10 +169,10 @@ func NewLoader(r io.Reader, opts ...Option) (*Loader, error) {
 // about YAML to Go conversion and tag options.
 func (l *Loader) Load(v any) (err error) {
 	defer handleErr(&err)
-	if l.opts.singleDocument && l.docCount > 0 {
+	if l.opts.SingleDocument && l.docCount > 0 {
 		return io.EOF
 	}
-	node := l.parser.parse()
+	node := l.composer.Parse() // *libyaml.Node
 	if node == nil {
 		return io.EOF
 	}
@@ -159,10 +182,10 @@ func (l *Loader) Load(v any) (err error) {
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
 		out = out.Elem()
 	}
-	l.decoder.unmarshal(node, out)
-	if len(l.decoder.terrors) > 0 {
-		terrors := l.decoder.terrors
-		l.decoder.terrors = nil
+	l.decoder.Unmarshal(node, out) // Pass libyaml.Node directly
+	if len(l.decoder.Terrors) > 0 {
+		terrors := l.decoder.Terrors
+		l.decoder.Terrors = nil
 		return &TypeError{terrors}
 	}
 	return nil
@@ -172,7 +195,7 @@ func (l *Loader) Load(v any) (err error) {
 //
 // Deprecated: Use Loader instead. Will be removed in v5.
 type Decoder struct {
-	parser      *parser
+	composer    *libyaml.Composer
 	knownFields bool
 }
 
@@ -184,7 +207,7 @@ type Decoder struct {
 // Deprecated: Use NewLoader instead. Will be removed in v5.
 func NewDecoder(r io.Reader) *Decoder {
 	return &Decoder{
-		parser: newParserFromReader(r),
+		composer: libyaml.NewComposerFromReader(r),
 	}
 }
 
@@ -205,10 +228,10 @@ func (dec *Decoder) KnownFields(enable bool) {
 //
 // Deprecated: Use Loader.Load instead. Will be removed in v5.
 func (dec *Decoder) Decode(v any) (err error) {
-	d := newDecoder(legacyOptions)
-	d.knownFields = dec.knownFields
+	d := libyaml.NewDecoder(legacyOptions)
+	d.KnownFields = dec.knownFields
 	defer handleErr(&err)
-	node := dec.parser.parse()
+	node := dec.composer.Parse()
 	if node == nil {
 		return io.EOF
 	}
@@ -216,10 +239,50 @@ func (dec *Decoder) Decode(v any) (err error) {
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
 		out = out.Elem()
 	}
-	d.unmarshal(node, out)
-	if len(d.terrors) > 0 {
-		return &TypeError{d.terrors}
+	d.Unmarshal(node, out)
+	if len(d.Terrors) > 0 {
+		return &TypeError{d.Terrors}
 	}
+	return nil
+}
+
+// ShortTag returns the short form of the YAML tag that indicates data type for
+// the node. If the Tag field isn't explicitly defined, one will be computed
+// based on the node properties.
+func (n *Node) ShortTag() string {
+	return toLibyamlNode(n).ShortTag()
+}
+
+// LongTag returns the long form of the YAML tag that indicates data type for
+// the node. If the Tag field isn't explicitly defined, one will be computed
+// based on the node properties.
+func (n *Node) LongTag() string {
+	return toLibyamlNode(n).LongTag()
+}
+
+// SetString is a convenience function that sets the node to a string value
+// and applies the tag for binary content if the string is not valid UTF-8.
+func (n *Node) SetString(s string) {
+	toLibyamlNode(n).SetString(s)
+}
+
+// IsZero returns whether the node has all of its fields unset.
+func (n *Node) IsZero() bool {
+	return toLibyamlNode(n).IsZero()
+}
+
+// MarshalYAML implements the Marshaler interface for Node.
+// This allows Node values to be properly marshaled when embedded in structs.
+func (n Node) MarshalYAML() (any, error) {
+	// Convert to libyaml.Node for marshaling
+	return *toLibyamlNode(&n), nil
+}
+
+// UnmarshalYAML implements the Unmarshaler interface for Node.
+// This allows Node values to be properly unmarshaled when embedded in structs.
+func (n *Node) UnmarshalYAML(node *Node) error {
+	// Copy the node data
+	*n = *node
 	return nil
 }
 
@@ -230,15 +293,15 @@ func (dec *Decoder) Decode(v any) (err error) {
 //
 // Deprecated: Use Node.Load instead. Will be removed in v5.
 func (n *Node) Decode(v any) (err error) {
-	d := newDecoder(legacyOptions)
+	d := libyaml.NewDecoder(legacyOptions)
 	defer handleErr(&err)
 	out := reflect.ValueOf(v)
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
 		out = out.Elem()
 	}
-	d.unmarshal(n, out)
-	if len(d.terrors) > 0 {
-		return &TypeError{d.terrors}
+	d.Unmarshal(toLibyamlNode(n), out)
+	if len(d.Terrors) > 0 {
+		return &TypeError{d.Terrors}
 	}
 	return nil
 }
@@ -262,14 +325,14 @@ func (n *Node) Load(v any, opts ...Option) (err error) {
 	if err != nil {
 		return err
 	}
-	d := newDecoder(o)
+	d := libyaml.NewDecoder(o)
 	out := reflect.ValueOf(v)
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
 		out = out.Elem()
 	}
-	d.unmarshal(n, out)
-	if len(d.terrors) > 0 {
-		return &TypeError{d.terrors}
+	d.Unmarshal(toLibyamlNode(n), out)
+	if len(d.Terrors) > 0 {
+		return &TypeError{d.Terrors}
 	}
 	return nil
 }
@@ -280,20 +343,31 @@ func unmarshal(in []byte, out any, opts ...Option) (err error) {
 	if err != nil {
 		return err
 	}
-	d := newDecoder(o)
-	p := newParser(in)
-	p.streamNodes = o.streamNodes
-	defer p.destroy()
-	node := p.parse()
+
+	// Check if out implements yaml.Unmarshaler
+	if u, ok := out.(Unmarshaler); ok {
+		p := libyaml.NewComposer(in)
+		defer p.Destroy()
+		node := p.Parse()
+		if node != nil {
+			return u.UnmarshalYAML(fromLibyamlNode(node))
+		}
+		return nil
+	}
+
+	d := libyaml.NewDecoder(o)
+	p := libyaml.NewComposer(in)
+	defer p.Destroy()
+	node := p.Parse()
 	if node != nil {
 		v := reflect.ValueOf(out)
 		if v.Kind() == reflect.Pointer && !v.IsNil() {
 			v = v.Elem()
 		}
-		d.unmarshal(node, v)
+		d.Unmarshal(node, v)
 	}
-	if len(d.terrors) > 0 {
-		return &TypeError{d.terrors}
+	if len(d.Terrors) > 0 {
+		return &TypeError{d.Terrors}
 	}
 	return nil
 }
@@ -345,11 +419,17 @@ func unmarshal(in []byte, out any, opts ...Option) (err error) {
 // Deprecated: Use Dump instead. Will be removed in v5.
 func Marshal(in any) (out []byte, err error) {
 	defer handleErr(&err)
-	e := newEncoder(noWriter, legacyOptions)
-	defer e.destroy()
-	e.marshalDoc("", reflect.ValueOf(in))
-	e.finish()
-	out = e.out
+	// Convert yaml.Node to libyaml.Node for encoder
+	if n, ok := in.(*Node); ok {
+		in = toLibyamlNode(n)
+	} else if n, ok := in.(Node); ok {
+		in = *toLibyamlNode(&n)
+	}
+	e := libyaml.NewEncoder(noWriter, legacyOptions)
+	defer e.Destroy()
+	e.MarshalDoc("", reflect.ValueOf(in))
+	e.Finish()
+	out = e.Out
 	return out, err
 }
 
@@ -358,6 +438,12 @@ func Marshal(in any) (out []byte, err error) {
 // See [Marshal] for details about the conversion of Go values to YAML.
 func Dump(in any, opts ...Option) (out []byte, err error) {
 	defer handleErr(&err)
+	// Convert yaml.Node to libyaml.Node for encoder
+	if n, ok := in.(*Node); ok {
+		in = toLibyamlNode(n)
+	} else if n, ok := in.(Node); ok {
+		in = *toLibyamlNode(&n)
+	}
 	var buf bytes.Buffer
 	d, err := NewDumper(&buf, opts...)
 	if err != nil {
@@ -456,8 +542,8 @@ func LoadAll(in []byte, opts ...Option) ([]any, error) {
 
 // A Dumper writes YAML values to an output stream with configurable options.
 type Dumper struct {
-	encoder *encoder
-	opts    *options
+	encoder *libyaml.Encoder
+	opts    *libyaml.Options
 }
 
 // NewDumper returns a new Dumper that writes to w with the given options.
@@ -469,7 +555,7 @@ func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
 		return nil, err
 	}
 	return &Dumper{
-		encoder: newEncoder(w, o),
+		encoder: libyaml.NewEncoder(w, o),
 		opts:    o,
 	}, nil
 }
@@ -483,7 +569,13 @@ func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
 // values to YAML.
 func (d *Dumper) Dump(v any) (err error) {
 	defer handleErr(&err)
-	d.encoder.marshalDoc("", reflect.ValueOf(v))
+	// Convert yaml.Node to libyaml.Node for encoder
+	if n, ok := v.(*Node); ok {
+		v = toLibyamlNode(n)
+	} else if n, ok := v.(Node); ok {
+		v = *toLibyamlNode(&n)
+	}
+	d.encoder.MarshalDoc("", reflect.ValueOf(v))
 	return nil
 }
 
@@ -491,7 +583,7 @@ func (d *Dumper) Dump(v any) (err error) {
 // It does not write a stream terminating string "...".
 func (d *Dumper) Close() (err error) {
 	defer handleErr(&err)
-	d.encoder.finish()
+	d.encoder.Finish()
 	return nil
 }
 
@@ -499,7 +591,7 @@ func (d *Dumper) Close() (err error) {
 //
 // Deprecated: Use Dumper instead. Will be removed in v5.
 type Encoder struct {
-	encoder *encoder
+	encoder *libyaml.Encoder
 }
 
 // NewEncoder returns a new encoder that writes to w.
@@ -509,7 +601,7 @@ type Encoder struct {
 // Deprecated: Use NewDumper instead. Will be removed in v5.
 func NewEncoder(w io.Writer) *Encoder {
 	return &Encoder{
-		encoder: newEncoder(w, legacyOptions),
+		encoder: libyaml.NewEncoder(w, legacyOptions),
 	}
 }
 
@@ -524,7 +616,13 @@ func NewEncoder(w io.Writer) *Encoder {
 // Deprecated: Use Dumper.Dump instead. Will be removed in v5.
 func (e *Encoder) Encode(v any) (err error) {
 	defer handleErr(&err)
-	e.encoder.marshalDoc("", reflect.ValueOf(v))
+	// Convert yaml.Node to libyaml.Node for encoder
+	if n, ok := v.(*Node); ok {
+		v = toLibyamlNode(n)
+	} else if n, ok := v.(Node); ok {
+		v = *toLibyamlNode(&n)
+	}
+	e.encoder.MarshalDoc("", reflect.ValueOf(v))
 	return nil
 }
 
@@ -536,15 +634,15 @@ func (e *Encoder) Encode(v any) (err error) {
 // Deprecated: Use Node.Dump instead. Will be removed in v5.
 func (n *Node) Encode(v any) (err error) {
 	defer handleErr(&err)
-	e := newEncoder(noWriter, legacyOptions)
-	defer e.destroy()
-	e.marshalDoc("", reflect.ValueOf(v))
-	e.finish()
-	p := newParser(e.out)
-	p.textless = true
-	defer p.destroy()
-	doc := p.parse()
-	*n = *doc.Content[0]
+	e := libyaml.NewEncoder(noWriter, legacyOptions)
+	defer e.Destroy()
+	e.MarshalDoc("", reflect.ValueOf(v))
+	e.Finish()
+	p := libyaml.NewComposer(e.Out)
+	p.Textless = true
+	defer p.Destroy()
+	doc := p.Parse()
+	*n = *fromLibyamlNode(doc.Content[0])
 	return nil
 }
 
@@ -562,15 +660,15 @@ func (n *Node) Dump(v any, opts ...Option) (err error) {
 	if err != nil {
 		return err
 	}
-	e := newEncoder(noWriter, o)
-	defer e.destroy()
-	e.marshalDoc("", reflect.ValueOf(v))
-	e.finish()
-	p := newParser(e.out)
-	p.textless = true
-	defer p.destroy()
-	doc := p.parse()
-	*n = *doc.Content[0]
+	e := libyaml.NewEncoder(noWriter, o)
+	defer e.Destroy()
+	e.MarshalDoc("", reflect.ValueOf(v))
+	e.Finish()
+	p := libyaml.NewComposer(e.Out)
+	p.Textless = true
+	defer p.Destroy()
+	doc := p.Parse()
+	*n = *fromLibyamlNode(doc.Content[0])
 	return nil
 }
 
@@ -581,21 +679,21 @@ func (e *Encoder) SetIndent(spaces int) {
 	if spaces < 0 {
 		panic("yaml: cannot indent to a negative number of spaces")
 	}
-	e.encoder.indent = spaces
+	e.encoder.Indent = spaces
 }
 
 // CompactSeqIndent makes it so that '- ' is considered part of the indentation.
 //
 // Deprecated: Use NewDumper with WithCompactSeqIndent option instead. Will be removed in v5.
 func (e *Encoder) CompactSeqIndent() {
-	e.encoder.emitter.CompactSequenceIndent = true
+	e.encoder.Emitter.CompactSequenceIndent = true
 }
 
 // DefaultSeqIndent makes it so that '- ' is not considered part of the indentation.
 //
 // Deprecated: This is the default behavior for Dumper. Will be removed in v5.
 func (e *Encoder) DefaultSeqIndent() {
-	e.encoder.emitter.CompactSequenceIndent = false
+	e.encoder.Emitter.CompactSequenceIndent = false
 }
 
 // Close closes the encoder by writing any remaining data.
@@ -604,7 +702,7 @@ func (e *Encoder) DefaultSeqIndent() {
 // Deprecated: Use Dumper.Close instead. Will be removed in v5.
 func (e *Encoder) Close() (err error) {
 	defer handleErr(&err)
-	e.encoder.finish()
+	e.encoder.Finish()
 	return nil
 }
 
@@ -628,296 +726,6 @@ func failf(format string, args ...any) {
 
 // UnmarshalError represents a single, non-fatal error that occurred during
 // the unmarshaling of a YAML document into a Go value.
-type UnmarshalError struct {
-	Err    error
-	Line   int
-	Column int
-}
-
-func (e *UnmarshalError) Error() string {
-	return fmt.Sprintf("line %d: %s", e.Line, e.Err.Error())
-}
-
-func (e *UnmarshalError) Unwrap() error {
-	return e.Err
-}
-
-// A TypeError is returned by Unmarshal when one or more fields in
-// the YAML document cannot be properly decoded into the requested
-// types. When this error is returned, the value is still
-// unmarshaled partially.
-type TypeError struct {
-	Errors []*UnmarshalError
-}
-
-func (e *TypeError) Error() string {
-	var b strings.Builder
-	b.WriteString("yaml: unmarshal errors:")
-	for _, err := range e.Errors {
-		b.WriteString("\n  " + err.Error())
-	}
-	return b.String()
-}
-
-// Is checks if the error is equal to any of the errors in the TypeError.
-//
-// [errors.Is] will call this method when unwrapping errors.
-func (e *TypeError) Is(target error) bool {
-	for _, err := range e.Errors {
-		if errors.Is(err, target) {
-			return true
-		}
-
-		// Check if the error is not wrapped in the UnmarshalError.
-		if err != nil && errors.Is(err.Err, target) {
-			return true
-		}
-	}
-	return false
-}
-
-// As checks if the error is equal to any of the errors in the TypeError.
-//
-// [errors.As] will call this method when unwrapping errors.
-func (e *TypeError) As(target any) bool {
-	for _, err := range e.Errors {
-		if errors.As(err, target) {
-			return true
-		}
-	}
-	return false
-}
-
-// Strings returns the error messages as a string slice.
-//
-// This method is provided for compatibility with code migrating from v3,
-// where TypeError.Errors was []string. New code should access the Errors
-// field directly to get structured error information including line and
-// column numbers.
-func (e *TypeError) Strings() []string {
-	result := make([]string, len(e.Errors))
-	for i, err := range e.Errors {
-		result[i] = err.Error()
-	}
-	return result
-}
-
-type Kind uint32
-
-const (
-	DocumentNode Kind = 1 << iota
-	SequenceNode
-	MappingNode
-	ScalarNode
-	AliasNode
-	StreamNode
-)
-
-type Style uint32
-
-const (
-	TaggedStyle Style = 1 << iota
-	DoubleQuotedStyle
-	SingleQuotedStyle
-	LiteralStyle
-	FoldedStyle
-	FlowStyle
-)
-
-// VersionDirective represents a YAML %YAML version directive.
-type VersionDirective struct {
-	Major int
-	Minor int
-}
-
-// TagDirective represents a YAML %TAG directive.
-type TagDirective struct {
-	Handle string
-	Prefix string
-}
-
-// Encoding represents the character encoding of a YAML stream.
-type Encoding = libyaml.Encoding
-
-// Encoding constants for different character encodings.
-const (
-	EncodingAny     = libyaml.ANY_ENCODING
-	EncodingUTF8    = libyaml.UTF8_ENCODING
-	EncodingUTF16LE = libyaml.UTF16LE_ENCODING
-	EncodingUTF16BE = libyaml.UTF16BE_ENCODING
-)
-
-// Node represents an element in the YAML document hierarchy. While documents
-// are typically encoded and decoded into higher level types, such as structs
-// and maps, Node is an intermediate representation that allows detailed
-// control over the content being decoded or encoded.
-//
-// It's worth noting that although Node offers access into details such as
-// line numbers, columns, and comments, the content when re-encoded will not
-// have its original textual representation preserved. An effort is made to
-// render the data pleasantly, and to preserve comments near the data they
-// describe, though.
-//
-// Values that make use of the Node type interact with the yaml package in the
-// same way any other type would do, by encoding and decoding yaml data
-// directly or indirectly into them.
-//
-// For example:
-//
-//	var person struct {
-//	        Name    string
-//	        Address yaml.Node
-//	}
-//	err := yaml.Unmarshal(data, &person)
-//
-// Or by itself:
-//
-//	var person Node
-//	err := yaml.Unmarshal(data, &person)
-type Node struct {
-	// Kind defines whether the node is a document, a mapping, a sequence,
-	// a scalar value, or an alias to another node. The specific data type of
-	// scalar nodes may be obtained via the ShortTag and LongTag methods.
-	Kind Kind
-
-	// Style allows customizing the appearance of the node in the tree.
-	Style Style
-
-	// Tag holds the YAML tag defining the data type for the value.
-	// When decoding, this field will always be set to the resolved tag,
-	// even when it wasn't explicitly provided in the YAML content.
-	// When encoding, if this field is unset the value type will be
-	// implied from the node properties, and if it is set, it will only
-	// be serialized into the representation if TaggedStyle is used or
-	// the implicit tag diverges from the provided one.
-	Tag string
-
-	// Value holds the unescaped and unquoted representation of the value.
-	Value string
-
-	// Anchor holds the anchor name for this node, which allows aliases to point to it.
-	Anchor string
-
-	// Alias holds the node that this alias points to. Only valid when Kind is AliasNode.
-	Alias *Node
-
-	// Content holds contained nodes for documents, mappings, and sequences.
-	Content []*Node
-
-	// HeadComment holds any comments in the lines preceding the node and
-	// not separated by an empty line.
-	HeadComment string
-
-	// LineComment holds any comments at the end of the line where the node is in.
-	LineComment string
-
-	// FootComment holds any comments following the node and before empty lines.
-	FootComment string
-
-	// Line and Column hold the node position in the decoded YAML text.
-	// These fields are not respected when encoding the node.
-	Line   int
-	Column int
-
-	// StreamNode-specific fields (only valid when Kind == StreamNode)
-
-	// Encoding holds the stream encoding (UTF-8, UTF-16LE, UTF-16BE).
-	// Only valid for StreamNode.
-	Encoding libyaml.Encoding
-
-	// Version holds the YAML version directive (%YAML).
-	// Only valid for StreamNode.
-	Version *VersionDirective
-
-	// TagDirectives holds the %TAG directives.
-	// Only valid for StreamNode.
-	TagDirectives []TagDirective
-}
-
-// IsZero returns whether the node has all of its fields unset.
-func (n *Node) IsZero() bool {
-	return n.Kind == 0 && n.Style == 0 && n.Tag == "" && n.Value == "" && n.Anchor == "" && n.Alias == nil && n.Content == nil &&
-		n.HeadComment == "" && n.LineComment == "" && n.FootComment == "" && n.Line == 0 && n.Column == 0 &&
-		n.Encoding == 0 && n.Version == nil && n.TagDirectives == nil
-}
-
-// LongTag returns the long form of the tag that indicates the data type for
-// the node. If the Tag field isn't explicitly defined, one will be computed
-// based on the node properties.
-func (n *Node) LongTag() string {
-	return longTag(n.ShortTag())
-}
-
-// ShortTag returns the short form of the YAML tag that indicates data type for
-// the node. If the Tag field isn't explicitly defined, one will be computed
-// based on the node properties.
-func (n *Node) ShortTag() string {
-	if n.indicatedString() {
-		return strTag
-	}
-	if n.Tag == "" || n.Tag == "!" {
-		switch n.Kind {
-		case MappingNode:
-			return mapTag
-		case SequenceNode:
-			return seqTag
-		case AliasNode:
-			if n.Alias != nil {
-				return n.Alias.ShortTag()
-			}
-		case ScalarNode:
-			tag, _ := resolve("", n.Value)
-			return tag
-		case 0:
-			// Special case to make the zero value convenient.
-			if n.IsZero() {
-				return nullTag
-			}
-		}
-		return ""
-	}
-	return shortTag(n.Tag)
-}
-
-func (n *Node) indicatedString() bool {
-	return n.Kind == ScalarNode &&
-		(shortTag(n.Tag) == strTag ||
-			(n.Tag == "" || n.Tag == "!") && n.Style&(SingleQuotedStyle|DoubleQuotedStyle|LiteralStyle|FoldedStyle) != 0)
-}
-
-// shouldUseLiteralStyle determines if a string should use literal style.
-// It returns true if the string contains newlines AND meets additional criteria:
-// - is at least 2 characters long
-// - contains at least one non-whitespace character
-func shouldUseLiteralStyle(s string) bool {
-	if !strings.Contains(s, "\n") || len(s) < 2 {
-		return false
-	}
-	// Must contain at least one non-whitespace character
-	for _, r := range s {
-		if !unicode.IsSpace(r) {
-			return true
-		}
-	}
-	return false
-}
-
-// SetString is a convenience function that sets the node to a string value
-// and defines its style in a pleasant way depending on its content.
-func (n *Node) SetString(s string) {
-	n.Kind = ScalarNode
-	if utf8.ValidString(s) {
-		n.Value = s
-		n.Tag = strTag
-	} else {
-		n.Value = encodeBase64(s)
-		n.Tag = binaryTag
-	}
-	if shouldUseLiteralStyle(n.Value) {
-		n.Style = LiteralStyle
-	}
-}
-
 // --------------------------------------------------------------------------
 // Maintain a mapping of keys to structure field indexes
 
@@ -1087,13 +895,6 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 	return sinfo, nil
 }
 
-// IsZeroer is used to check whether an object is zero to
-// determine whether it should be omitted when marshaling
-// with the omitempty flag. One notable implementation
-// is time.Time.
-type IsZeroer interface {
-	IsZero() bool
-}
 
 func isZero(v reflect.Value) bool {
 	kind := v.Kind()
@@ -1137,12 +938,12 @@ func isZero(v reflect.Value) bool {
 
 // ParserGetEvents parses the YAML input and returns the generated event stream.
 func ParserGetEvents(in []byte) (string, error) {
-	p := newParser(in)
-	defer p.destroy()
+	p := libyaml.NewComposer(in)
+	defer p.Destroy()
 	var events strings.Builder
 	var event libyaml.Event
 	for {
-		if err := p.parser.Parse(&event); err != nil {
+		if err := p.Parser.Parse(&event); err != nil {
 			return "", err
 		}
 		formatted := formatEvent(&event)

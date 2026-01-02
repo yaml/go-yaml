@@ -508,6 +508,12 @@ func allowedAliasRatio(decodeCount int) float64 {
 	}
 }
 
+// unmarshalerAdapter is an interface that wraps the root package's Unmarshaler interface.
+// This allows the decoder to call unmarshalers that expect *yaml.Node instead of *libyaml.Node.
+type unmarshalerAdapter interface {
+	CallRootUnmarshaler(n *Node) error
+}
+
 func (d *Decoder) Unmarshal(n *Node, out reflect.Value) (good bool) {
 	d.decodeCount++
 	if d.aliasDepth > 0 {
