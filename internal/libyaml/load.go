@@ -165,6 +165,43 @@ func init() {
 	unmarshalerType = reflect.ValueOf(&v).Elem().Type()
 }
 
+// hasUnmarshalYAMLMethod checks if a type has an UnmarshalYAML method
+// that looks like it implements yaml.Unmarshaler (from root package).
+// This is needed because we can't directly check for the interface type
+// since it's in a different package that we can't import.
+func hasUnmarshalYAMLMethod(t reflect.Type) bool {
+	method, found := t.MethodByName("UnmarshalYAML")
+	if !found {
+		return false
+	}
+
+	// Check signature: func(*T) UnmarshalYAML(*Node) error
+	mtype := method.Type
+	if mtype.NumIn() != 2 || mtype.NumOut() != 1 {
+		return false
+	}
+
+	// First param is receiver (already checked by MethodByName)
+	// Second param should be a pointer to a Node-like struct
+	paramType := mtype.In(1)
+	if paramType.Kind() != reflect.Ptr {
+		return false
+	}
+
+	elemType := paramType.Elem()
+	if elemType.Kind() != reflect.Struct || elemType.Name() != "Node" {
+		return false
+	}
+
+	// Return type should be error
+	retType := mtype.Out(0)
+	if retType.Kind() != reflect.Interface || retType.Name() != "error" {
+		return false
+	}
+
+	return true
+}
+
 func getStructInfo(st reflect.Type) (*structInfo, error) {
 	fieldMapMutex.RLock()
 	sinfo, found := structMap[st]
@@ -230,7 +267,8 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 				if ftype.Kind() != reflect.Struct {
 					return nil, errors.New("option ,inline may only be used on a struct or map field")
 				}
-				if reflect.PointerTo(ftype).Implements(unmarshalerType) {
+				// Check for both libyaml.Unmarshaler and yaml.Unmarshaler (by method name)
+				if reflect.PointerTo(ftype).Implements(unmarshalerType) || hasUnmarshalYAMLMethod(reflect.PointerTo(ftype)) {
 					inlineUnmarshalers = append(inlineUnmarshalers, []int{i})
 				} else {
 					sinfo, err := getStructInfo(ftype)
