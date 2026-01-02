@@ -180,7 +180,7 @@ func TestSetString(t *testing.T) {
 			assert.NoError(t, err)
 
 			var str string
-			err = node.Decode(&str)
+			err = node.Load(&str)
 			assert.NoError(t, err)
 			assert.Equal(t, item.str, str)
 		})
@@ -257,12 +257,12 @@ func TestNodeEncodeDecode(t *testing.T) {
 			t.Logf("Encode/Decode test value: %#v", item.value)
 
 			var v any
-			err := item.node.Decode(&v)
+			err := item.node.Load(&v)
 			assert.NoError(t, err)
 			assert.DeepEqual(t, item.value, v)
 
 			var n yaml.Node
-			err = n.Encode(item.value)
+			err = n.Dump(item.value)
 			assert.NoError(t, err)
 			assert.DeepEqual(t, item.node, n)
 		})
@@ -278,7 +278,7 @@ func TestNodeZeroEncodeDecode(t *testing.T) {
 
 	// ... and decoding.
 	v := &struct{}{}
-	err = n.Decode(&v)
+	err = n.Load(&v)
 	assert.NoError(t, err)
 	assert.IsNil(t, v)
 
@@ -289,7 +289,7 @@ func TestNodeZeroEncodeDecode(t *testing.T) {
 	n.Line = 1
 	_, err = yaml.Marshal(&n)
 	assert.ErrorMatches(t, "yaml: cannot encode node with unknown kind 0", err)
-	err = n.Decode(&v)
+	err = n.Load(&v)
 	assert.ErrorMatches(t, "yaml: cannot decode node with unknown kind 0", err)
 }
 

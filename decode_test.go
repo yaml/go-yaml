@@ -850,7 +850,7 @@ type unmarshalerType struct {
 }
 
 func (o *unmarshalerType) UnmarshalYAML(value *yaml.Node) error {
-	if err := value.Decode(&o.value); err != nil {
+	if err := value.Load(&o.value); err != nil {
 		return err
 	}
 	if i, ok := o.value.(int); ok {
@@ -1097,19 +1097,19 @@ func (v *proxyTypeError) UnmarshalYAML(node *yaml.Node) error {
 	var s string
 	var a int32
 	var b int64
-	if err := node.Decode(&s); err != nil {
+	if err := node.Load(&s); err != nil {
 		panic(err)
 	}
 	if s == "a" {
-		if err := node.Decode(&b); err == nil {
+		if err := node.Load(&b); err == nil {
 			panic("should have failed")
 		}
-		return node.Decode(&a)
+		return node.Load(&a)
 	}
-	if err := node.Decode(&a); err == nil {
+	if err := node.Load(&a); err == nil {
 		panic("should have failed")
 	}
-	return node.Decode(&b)
+	return node.Load(&b)
 }
 
 func TestUnmarshalerTypeErrorProxying(t *testing.T) {
@@ -1286,14 +1286,14 @@ type sliceUnmarshaler []int
 
 func (su *sliceUnmarshaler) UnmarshalYAML(node *yaml.Node) error {
 	var slice []int
-	err := node.Decode(&slice)
+	err := node.Load(&slice)
 	if err == nil {
 		*su = slice
 		return nil
 	}
 
 	var intVal int
-	err = node.Decode(&intVal)
+	err = node.Load(&intVal)
 	if err == nil {
 		*su = []int{intVal}
 		return nil
