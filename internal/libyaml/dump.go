@@ -358,7 +358,7 @@ func (e *Encoder) marshal(tag string, in reflect.Value) {
 	case Marshaler:
 		v, err := value.MarshalYAML()
 		if err != nil {
-			fail(err)
+			Fail(err)
 		}
 		if v == nil {
 			e.nilv()
@@ -369,7 +369,7 @@ func (e *Encoder) marshal(tag string, in reflect.Value) {
 	case encoding.TextMarshaler:
 		text, err := value.MarshalText()
 		if err != nil {
-			fail(err)
+			Fail(err)
 		}
 		in = reflect.ValueOf(string(text))
 	case nil:

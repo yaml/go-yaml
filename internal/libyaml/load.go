@@ -107,8 +107,8 @@ type Options struct {
 // handleErr recovers from panics caused by yaml errors
 func handleErr(err *error) {
 	if v := recover(); v != nil {
-		if e, ok := v.(*yamlError); ok {
-			*err = e.err
+		if e, ok := v.(*YAMLError); ok {
+			*err = e.Err
 		} else {
 			panic(v)
 		}
