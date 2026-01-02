@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"go.yaml.in/yaml/v4"
+	"go.yaml.in/yaml/v4/internal/libyaml"
 )
 
 var knownFailingTests = loadKnownFailingTests()
@@ -89,7 +90,7 @@ func normalizeLineEndings(s string) string {
 }
 
 func getEvents(in []byte) (string, error) {
-	return yaml.ParserGetEvents(in)
+	return libyaml.ParserGetEvents(in)
 }
 
 func runTest(t *testing.T, testPath string) {
