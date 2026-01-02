@@ -388,6 +388,27 @@ func NewDecoder(opts *Options) *Decoder {
 	}
 }
 
+// Unmarshal decodes YAML input into the provided output value.
+// The out parameter must be a pointer to the value to decode into.
+// Returns a TypeError if type mismatches occur during decoding.
+func Unmarshal(in []byte, out any, opts *Options) error {
+	d := NewDecoder(opts)
+	p := NewComposer(in)
+	defer p.Destroy()
+	node := p.Parse()
+	if node != nil {
+		v := reflect.ValueOf(out)
+		if v.Kind() == reflect.Pointer && !v.IsNil() {
+			v = v.Elem()
+		}
+		d.Unmarshal(node, v)
+	}
+	if len(d.Terrors) > 0 {
+		return &TypeError{Errors: d.Terrors}
+	}
+	return nil
+}
+
 func (d *Decoder) terror(n *Node, tag string, out reflect.Value) {
 	if n.Tag != "" {
 		tag = n.Tag

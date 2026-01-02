@@ -486,21 +486,7 @@ func unmarshal(in []byte, out any, opts ...Option) (err error) {
 		return nil
 	}
 
-	d := libyaml.NewDecoder(o)
-	p := libyaml.NewComposer(in)
-	defer p.Destroy()
-	node := p.Parse()
-	if node != nil {
-		v := reflect.ValueOf(out)
-		if v.Kind() == reflect.Pointer && !v.IsNil() {
-			v = v.Elem()
-		}
-		d.Unmarshal(node, v)
-	}
-	if len(d.Terrors) > 0 {
-		return &TypeError{Errors: d.Terrors}
-	}
-	return nil
+	return libyaml.Unmarshal(in, out, o)
 }
 
 // Marshal serializes the value provided into a YAML document. The structure
