@@ -101,7 +101,7 @@ func (p *Composer) peek() EventType {
 }
 
 func (p *Composer) fail(err error) {
-	fail(err)
+	Fail(err)
 }
 
 func (p *Composer) anchor(n *Node, anchor []byte) {
@@ -184,7 +184,7 @@ func (p *Composer) alias() *Node {
 	n.Alias = p.anchors[n.Value]
 	if n.Alias == nil {
 		msg := fmt.Sprintf("unknown anchor '%s' referenced", n.Value)
-		fail(&ParserError{
+		Fail(&ParserError{
 			Message: msg,
 			Mark: Mark{
 				Line:   n.Line,
@@ -282,19 +282,19 @@ func (p *Composer) mapping() *Node {
 	return n
 }
 
-// yamlError is an internal error wrapper type.
-type yamlError struct {
-	err error
+// YAMLError is an internal error wrapper type.
+type YAMLError struct {
+	Err error
 }
 
-func (e *yamlError) Error() string {
-	return e.err.Error()
+func (e *YAMLError) Error() string {
+	return e.Err.Error()
 }
 
-func fail(err error) {
-	panic(&yamlError{err})
+func Fail(err error) {
+	panic(&YAMLError{err})
 }
 
 func failf(format string, args ...any) {
-	panic(&yamlError{fmt.Errorf("yaml: "+format, args...)})
+	panic(&YAMLError{fmt.Errorf("yaml: "+format, args...)})
 }

@@ -610,24 +610,20 @@ func (e *Encoder) Close() (err error) {
 
 func handleErr(err *error) {
 	if v := recover(); v != nil {
-		if e, ok := v.(*yamlError); ok {
-			*err = e.err
+		if e, ok := v.(*libyaml.YAMLError); ok {
+			*err = e.Err
 		} else {
 			panic(v)
 		}
 	}
 }
 
-type yamlError struct {
-	err error
-}
-
 func fail(err error) {
-	panic(&yamlError{err})
+	libyaml.Fail(err)
 }
 
 func failf(format string, args ...any) {
-	panic(&yamlError{fmt.Errorf("yaml: "+format, args...)})
+	libyaml.Fail(fmt.Errorf("yaml: "+format, args...))
 }
 
 // UnmarshalError represents a single, non-fatal error that occurred during
