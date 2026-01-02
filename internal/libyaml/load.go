@@ -76,10 +76,9 @@ type TypeError struct {
 
 func (e *TypeError) Error() string {
 	var b strings.Builder
+	b.WriteString("yaml: unmarshal errors:")
 	for _, err := range e.Errors {
-		if b.Len() > 0 {
-			b.WriteString("; ")
-		}
+		b.WriteString("\n  ")
 		b.WriteString(err.Error())
 	}
 	return b.String()
