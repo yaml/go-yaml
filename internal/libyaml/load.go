@@ -445,7 +445,13 @@ func (d *Decoder) prepare(n *Node, out reflect.Value) (newout reflect.Value, unm
 			again = true
 		}
 		if out.CanAddr() {
+			// Try yaml.Unmarshaler (from root package) first
+			if called, good := d.tryCallYAMLUnmarshaler(n, out); called {
+				return out, true, good
+			}
+
 			outi := out.Addr().Interface()
+			// Check for libyaml.Unmarshaler
 			if u, ok := outi.(Unmarshaler); ok {
 				good = d.callUnmarshaler(n, u)
 				return out, true, good
@@ -512,6 +518,72 @@ func allowedAliasRatio(decodeCount int) float64 {
 // This allows the decoder to call unmarshalers that expect *yaml.Node instead of *libyaml.Node.
 type unmarshalerAdapter interface {
 	CallRootUnmarshaler(n *Node) error
+}
+
+// tryCallYAMLUnmarshaler checks if the value has an UnmarshalYAML method that takes
+// a *yaml.Node (from the root package) and calls it if found.
+// This handles the case where user types implement yaml.Unmarshaler instead of libyaml.Unmarshaler.
+func (d *Decoder) tryCallYAMLUnmarshaler(n *Node, out reflect.Value) (called bool, good bool) {
+	if !out.CanAddr() {
+		return false, false
+	}
+
+	addr := out.Addr()
+	// Check for UnmarshalYAML method
+	method := addr.MethodByName("UnmarshalYAML")
+	if !method.IsValid() {
+		return false, false
+	}
+
+	// Check method signature: func(*yaml.Node) error
+	mtype := method.Type()
+	if mtype.NumIn() != 1 || mtype.NumOut() != 1 {
+		return false, false
+	}
+
+	// Check if parameter is a pointer to a Node-like struct
+	paramType := mtype.In(0)
+	if paramType.Kind() != reflect.Ptr {
+		return false, false
+	}
+
+	elemType := paramType.Elem()
+	if elemType.Kind() != reflect.Struct {
+		return false, false
+	}
+
+	// Check if it's the same underlying type as our Node
+	// Both yaml.Node and libyaml.Node have the same structure
+	if elemType.Name() != "Node" {
+		return false, false
+	}
+
+	// Call the method with a converted node
+	// Since yaml.Node and libyaml.Node have the same structure,
+	// we can convert using unsafe pointer cast
+	nodeValue := reflect.NewAt(elemType, reflect.ValueOf(n).UnsafePointer())
+
+	results := method.Call([]reflect.Value{nodeValue})
+	err := results[0].Interface()
+
+	if err == nil {
+		return true, true
+	}
+
+	switch e := err.(type) {
+	case *TypeError:
+		d.Terrors = append(d.Terrors, e.Errors...)
+		return true, false
+	default:
+		if e != nil {
+			d.Terrors = append(d.Terrors, &UnmarshalError{
+				Err:    e.(error),
+				Line:   n.Line,
+				Column: n.Column,
+			})
+		}
+		return true, false
+	}
 }
 
 func (d *Decoder) Unmarshal(n *Node, out reflect.Value) (good bool) {
