@@ -8,6 +8,7 @@ package libyaml
 import (
 	"bytes"
 	"io"
+	"strings"
 )
 
 // The parser implements the following grammar:
@@ -1252,4 +1253,113 @@ func (parser *Parser) appendTagDirective(value TagDirective, allow_duplicates bo
 	copy(value_copy.prefix, value.prefix)
 	parser.tag_directives = append(parser.tag_directives, value_copy)
 	return nil
+}
+
+// ParserGetEvents parses the YAML input and returns the generated event stream.
+func ParserGetEvents(in []byte) (string, error) {
+	p := NewComposer(in)
+	defer p.Destroy()
+	var events strings.Builder
+	var event Event
+	for {
+		if err := p.Parser.Parse(&event); err != nil {
+			return "", err
+		}
+		formatted := formatEvent(&event)
+		events.WriteString(formatted)
+		if event.Type == STREAM_END_EVENT {
+			event.Delete()
+			break
+		}
+		event.Delete()
+		events.WriteByte('\n')
+	}
+	return events.String(), nil
+}
+
+func formatEvent(e *Event) string {
+	var b strings.Builder
+	switch e.Type {
+	case STREAM_START_EVENT:
+		b.WriteString("+STR")
+	case STREAM_END_EVENT:
+		b.WriteString("-STR")
+	case DOCUMENT_START_EVENT:
+		b.WriteString("+DOC")
+		if !e.Implicit {
+			b.WriteString(" ---")
+		}
+	case DOCUMENT_END_EVENT:
+		b.WriteString("-DOC")
+		if !e.Implicit {
+			b.WriteString(" ...")
+		}
+	case ALIAS_EVENT:
+		b.WriteString("=ALI *")
+		b.Write(e.Anchor)
+	case SCALAR_EVENT:
+		b.WriteString("=VAL")
+		if len(e.Anchor) > 0 {
+			b.WriteString(" &")
+			b.Write(e.Anchor)
+		}
+		if len(e.Tag) > 0 {
+			b.WriteString(" <")
+			b.Write(e.Tag)
+			b.WriteString(">")
+		}
+		switch e.ScalarStyle() {
+		case PLAIN_SCALAR_STYLE:
+			b.WriteString(" :")
+		case LITERAL_SCALAR_STYLE:
+			b.WriteString(" |")
+		case FOLDED_SCALAR_STYLE:
+			b.WriteString(" >")
+		case SINGLE_QUOTED_SCALAR_STYLE:
+			b.WriteString(" '")
+		case DOUBLE_QUOTED_SCALAR_STYLE:
+			b.WriteString(` "`)
+		}
+		// Escape special characters for consistent event output.
+		val := strings.NewReplacer(
+			`\`, `\\`,
+			"\n", `\n`,
+			"\t", `\t`,
+		).Replace(string(e.Value))
+		b.WriteString(val)
+
+	case SEQUENCE_START_EVENT:
+		b.WriteString("+SEQ")
+		if len(e.Anchor) > 0 {
+			b.WriteString(" &")
+			b.Write(e.Anchor)
+		}
+		if len(e.Tag) > 0 {
+			b.WriteString(" <")
+			b.Write(e.Tag)
+			b.WriteString(">")
+		}
+		if e.SequenceStyle() == FLOW_SEQUENCE_STYLE {
+			b.WriteString(" []")
+		}
+	case SEQUENCE_END_EVENT:
+		b.WriteString("-SEQ")
+	case MAPPING_START_EVENT:
+		b.WriteString("+MAP")
+		if len(e.Anchor) > 0 {
+			b.WriteString(" &")
+			b.Write(e.Anchor)
+		}
+		if len(e.Tag) > 0 {
+			b.WriteString(" <")
+			b.Write(e.Tag)
+			b.WriteString(">")
+		}
+		if e.MappingStyle() == FLOW_MAPPING_STYLE {
+			b.WriteString(" {}")
+		}
+	case MAPPING_END_EVENT:
+		b.WriteString("-MAP")
+	}
+	return b.String()
 }
