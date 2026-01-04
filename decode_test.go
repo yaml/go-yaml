@@ -1782,3 +1782,19 @@ func TestParserErrorUnknownAnchorPosition(t *testing.T) {
 		assert.DeepEqual(t, expected, asErr)
 	}
 }
+
+func TestTypeError_Strings(t *testing.T) {
+	// Create a TypeError with multiple errors
+	typeErr := &yaml.TypeError{
+		Errors: []*yaml.UnmarshalError{
+			{Err: errors.New("cannot unmarshal string into int"), Line: 5, Column: 3},
+			{Err: errors.New("cannot unmarshal bool into string"), Line: 10, Column: 7},
+		},
+	}
+
+	strings := typeErr.Strings()
+
+	assert.Equal(t, 2, len(strings))
+	assert.Equal(t, "line 5: cannot unmarshal string into int", strings[0])
+	assert.Equal(t, "line 10: cannot unmarshal bool into string", strings[1])
+}
