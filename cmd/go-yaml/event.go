@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"go.yaml.in/yaml/v4"
@@ -61,20 +60,20 @@ type EventInfo struct {
 	Pos      string `yaml:"pos,omitempty"`
 }
 
-// ProcessEvents reads YAML from stdin and outputs event information
-func ProcessEvents(profuse, compact, unmarshal bool) error {
+// ProcessEvents reads YAML from reader and outputs event information
+func ProcessEvents(reader io.Reader, profuse, compact, unmarshal bool) error {
 	if unmarshal {
-		return processEventsUnmarshal(profuse, compact)
+		return processEventsUnmarshal(reader, profuse, compact)
 	}
-	return processEventsDecode(profuse, compact)
+	return processEventsDecode(reader, profuse, compact)
 }
 
-// processEventsDecode uses yaml.Decoder for YAML processing with implicit field augmentation
-func processEventsDecode(profuse, compact bool) error {
-	// Read all input from stdin
-	input, err := io.ReadAll(os.Stdin)
+// processEventsDecode uses Loader.Load for YAML processing
+func processEventsDecode(reader io.Reader, profuse, compact bool) error {
+	// Read all input from reader
+	input, err := io.ReadAll(reader)
 	if err != nil {
-		return fmt.Errorf("failed to read stdin: %w", err)
+		return fmt.Errorf("failed to read input: %w", err)
 	}
 
 	// Get implicit flags from libyaml parser
@@ -225,11 +224,11 @@ func processEventsDecode(profuse, compact bool) error {
 }
 
 // processEventsUnmarshal uses yaml.Unmarshal for YAML processing with implicit field augmentation
-func processEventsUnmarshal(profuse, compact bool) error {
-	// Read all input from stdin
-	input, err := io.ReadAll(os.Stdin)
+func processEventsUnmarshal(reader io.Reader, profuse, compact bool) error {
+	// Read all input from reader
+	input, err := io.ReadAll(reader)
 	if err != nil {
-		return fmt.Errorf("failed to read stdin: %w", err)
+		return fmt.Errorf("failed to read input: %w", err)
 	}
 
 	// Get implicit flags from libyaml parser

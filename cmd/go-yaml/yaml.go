@@ -14,19 +14,23 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-// ProcessYAML reads YAML from stdin and outputs formatted YAML
-func ProcessYAML(preserve, unmarshal, marshal bool) error {
-	if unmarshal {
-		return processYAMLUnmarshal(preserve, marshal)
+// ProcessYAML reads YAML from reader and outputs formatted YAML
+func ProcessYAML(reader io.Reader, preserve, unmarshalMode, decodeMode, marshalMode, encodeMode bool, opts []yaml.Option) error {
+	if unmarshalMode {
+		return processYAMLUnmarshal(reader, preserve, marshalMode)
 	}
-	return processYAMLDecode(preserve, marshal)
+	if decodeMode {
+		return processYAMLDecode(reader, preserve, encodeMode, nil) // Decode API doesn't support options
+	}
+	// Default: use Load API with options
+	return processYAMLLoad(reader, preserve, marshalMode, encodeMode, opts)
 }
 
-// processYAMLDecode uses Loader.Load for YAML processing
-func processYAMLDecode(preserve, marshal bool) error {
+// processYAMLLoad uses Loader.Load for YAML processing with options
+func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []yaml.Option) error {
 	if preserve {
 		// Preserve comments and styles by using yaml.Node
-		loader, err := yaml.NewLoader(os.Stdin)
+		loader, err := yaml.NewLoader(reader, opts...)
 		if err != nil {
 			return fmt.Errorf("failed to create loader: %w", err)
 		}
@@ -60,15 +64,23 @@ func processYAMLDecode(preserve, marshal bool) error {
 			}
 
 			if marshal {
-				// Use Dump for output
-				output, err := yaml.Dump(outNode)
+				// Use Marshal for output (no options)
+				output, err := yaml.Marshal(outNode) //nolint:staticcheck // Intentionally using deprecated API for --marshal flag
 				if err != nil {
-					return fmt.Errorf("failed to dump YAML: %w", err)
+					return fmt.Errorf("failed to marshal YAML: %w", err)
 				}
 				fmt.Print(string(output))
+			} else if encode {
+				// Use Encoder for output (no options)
+				enc := yaml.NewEncoder(os.Stdout)           //nolint:staticcheck // Intentionally using deprecated API for --encode flag
+				if err := enc.Encode(outNode); err != nil { //nolint:staticcheck // Deprecated API for --encode
+					enc.Close() //nolint:staticcheck // Deprecated API for --encode
+					return fmt.Errorf("failed to encode YAML: %w", err)
+				}
+				enc.Close() //nolint:staticcheck // Deprecated API for --encode
 			} else {
-				// Use Dumper for output
-				dumper, err := yaml.NewDumper(os.Stdout)
+				// Use Dumper for output with options
+				dumper, err := yaml.NewDumper(os.Stdout, opts...)
 				if err != nil {
 					return fmt.Errorf("failed to create dumper: %w", err)
 				}
@@ -81,7 +93,7 @@ func processYAMLDecode(preserve, marshal bool) error {
 		}
 	} else {
 		// Don't preserve comments and styles - use `any` for clean output
-		loader, err := yaml.NewLoader(os.Stdin)
+		loader, err := yaml.NewLoader(reader, opts...)
 		if err != nil {
 			return fmt.Errorf("failed to create loader: %w", err)
 		}
@@ -104,15 +116,23 @@ func processYAMLDecode(preserve, marshal bool) error {
 			firstDoc = false
 
 			if marshal {
-				// Use Dump for output
-				output, err := yaml.Dump(data)
+				// Use Marshal for output (no options)
+				output, err := yaml.Marshal(data) //nolint:staticcheck // Intentionally using deprecated API for --marshal flag
 				if err != nil {
-					return fmt.Errorf("failed to dump YAML: %w", err)
+					return fmt.Errorf("failed to marshal YAML: %w", err)
 				}
 				fmt.Print(string(output))
+			} else if encode {
+				// Use Encoder for output (no options)
+				enc := yaml.NewEncoder(os.Stdout)        //nolint:staticcheck // Intentionally using deprecated API for --encode flag
+				if err := enc.Encode(data); err != nil { //nolint:staticcheck // Deprecated API for --encode
+					enc.Close() //nolint:staticcheck // Deprecated API for --encode
+					return fmt.Errorf("failed to encode YAML: %w", err)
+				}
+				enc.Close() //nolint:staticcheck // Deprecated API for --encode
 			} else {
-				// Use Dumper for output
-				dumper, err := yaml.NewDumper(os.Stdout)
+				// Use Dumper for output with options
+				dumper, err := yaml.NewDumper(os.Stdout, opts...)
 				if err != nil {
 					return fmt.Errorf("failed to create dumper: %w", err)
 				}
@@ -128,12 +148,99 @@ func processYAMLDecode(preserve, marshal bool) error {
 	return nil
 }
 
+// processYAMLDecode uses deprecated Decoder.Decode for YAML processing (no options support)
+func processYAMLDecode(reader io.Reader, preserve, encode bool, opts []yaml.Option) error {
+	decoder := yaml.NewDecoder(reader) //nolint:staticcheck // Intentionally using deprecated API for --decode flag
+	firstDoc := true
+
+	for {
+		if preserve {
+			var node yaml.Node
+			err := decoder.Decode(&node) //nolint:staticcheck // Deprecated API for --decode
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				return fmt.Errorf("failed to decode YAML: %w", err)
+			}
+
+			// Add document separator for all documents except the first
+			if !firstDoc {
+				fmt.Println("---")
+			}
+			firstDoc = false
+
+			// If the node is not a DocumentNode, wrap it in one
+			var outNode *yaml.Node
+			if node.Kind == yaml.DocumentNode {
+				outNode = &node
+			} else {
+				outNode = &yaml.Node{
+					Kind:    yaml.DocumentNode,
+					Content: []*yaml.Node{&node},
+				}
+			}
+
+			if encode {
+				// Use Encoder for output
+				enc := yaml.NewEncoder(os.Stdout)           //nolint:staticcheck // Intentionally using deprecated API for --encode flag
+				if err := enc.Encode(outNode); err != nil { //nolint:staticcheck // Deprecated API for --encode
+					enc.Close() //nolint:staticcheck // Deprecated API for --encode
+					return fmt.Errorf("failed to encode YAML: %w", err)
+				}
+				enc.Close() //nolint:staticcheck // Deprecated API for --encode
+			} else {
+				// Default output (no options for deprecated Decode API)
+				output, err := yaml.Marshal(outNode) //nolint:staticcheck // Deprecated API for --decode
+				if err != nil {
+					return fmt.Errorf("failed to marshal YAML: %w", err)
+				}
+				fmt.Print(string(output))
+			}
+		} else {
+			var data any
+			err := decoder.Decode(&data) //nolint:staticcheck // Deprecated API for --decode
+			if err != nil {
+				if err == io.EOF || err.Error() == "EOF" {
+					break
+				}
+				return fmt.Errorf("failed to decode YAML: %w", err)
+			}
+
+			// Add document separator for all documents except the first
+			if !firstDoc {
+				fmt.Println("---")
+			}
+			firstDoc = false
+
+			if encode {
+				// Use Encoder for output
+				enc := yaml.NewEncoder(os.Stdout)        //nolint:staticcheck // Intentionally using deprecated API for --encode flag
+				if err := enc.Encode(data); err != nil { //nolint:staticcheck // Deprecated API for --encode
+					enc.Close() //nolint:staticcheck // Deprecated API for --encode
+					return fmt.Errorf("failed to encode YAML: %w", err)
+				}
+				enc.Close() //nolint:staticcheck // Deprecated API for --encode
+			} else {
+				// Default output (no options for deprecated Decode API)
+				output, err := yaml.Marshal(data) //nolint:staticcheck // Deprecated API for --decode
+				if err != nil {
+					return fmt.Errorf("failed to marshal YAML: %w", err)
+				}
+				fmt.Print(string(output))
+			}
+		}
+	}
+
+	return nil
+}
+
 // processYAMLUnmarshal uses yaml.Unmarshal for YAML processing
-func processYAMLUnmarshal(preserve, marshal bool) error {
-	// Read all input from stdin
-	input, err := io.ReadAll(os.Stdin)
+func processYAMLUnmarshal(reader io.Reader, preserve, marshal bool) error {
+	// Read all input from reader
+	input, err := io.ReadAll(reader)
 	if err != nil {
-		return fmt.Errorf("failed to read stdin: %w", err)
+		return fmt.Errorf("failed to read input: %w", err)
 	}
 
 	// Split input into documents

@@ -53,8 +53,8 @@ func (ms MapSlice) MarshalYAML() (any, error) {
 type NodeInfo struct {
 	Kind          string             `yaml:"kind"`
 	Style         string             `yaml:"style,omitempty"`
-	Anchor        string             `yaml:"anchor,omitempty"`
 	Tag           string             `yaml:"tag,omitempty"`
+	Anchor        string             `yaml:"anchor,omitempty"`
 	Head          string             `yaml:"head,omitempty"`
 	Line          string             `yaml:"line,omitempty"`
 	Foot          string             `yaml:"foot,omitempty"`

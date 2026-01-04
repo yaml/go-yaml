@@ -26,6 +26,13 @@ type TestCase struct {
 	YAML  string `yaml:"YAML,omitempty"`
 	Json  string `yaml:"json,omitempty"`
 	JSON  string `yaml:"JSON,omitempty"`
+	// New option flags
+	V2Yaml      string `yaml:"v2-yaml,omitempty"`
+	V3Yaml      string `yaml:"v3-yaml,omitempty"`
+	Indent3Yaml string `yaml:"indent3-yaml,omitempty"`
+	Width40Yaml string `yaml:"width40-yaml,omitempty"`
+	CompactYaml string `yaml:"compact-yaml,omitempty"`
+	V3Indent2   string `yaml:"v3-indent2-yaml,omitempty"`
 }
 
 // TestSuite is a sequence of test cases
@@ -33,16 +40,22 @@ type TestSuite []TestCase
 
 // flagMapping maps test file field names to CLI flags
 var flagMapping = map[string]string{
-	"token": "-t",
-	"TOKEN": "-T",
-	"event": "-e",
-	"EVENT": "-E",
-	"node":  "-n",
-	"NODE":  "-N",
-	"yaml":  "-y",
-	"YAML":  "-Y",
-	"json":  "-j",
-	"JSON":  "-J",
+	"token":           "-t",
+	"TOKEN":           "-T",
+	"event":           "-e",
+	"EVENT":           "-E",
+	"node":            "-n",
+	"NODE":            "-N",
+	"yaml":            "-y",
+	"YAML":            "-Y",
+	"json":            "-j",
+	"JSON":            "-J",
+	"v2-yaml":         "--v2 -y",
+	"v3-yaml":         "--v3 -y",
+	"indent3-yaml":    "--indent=3 -y",
+	"width40-yaml":    "--width=40 -y",
+	"compact-yaml":    "--compact -y",
+	"v3-indent2-yaml": "--v3 --indent=2 -y",
 }
 
 func TestCLI(t *testing.T) {
@@ -102,6 +115,12 @@ func runTestCase(t *testing.T, tc TestCase) {
 		{"YAML", flagMapping["YAML"], tc.YAML},
 		{"json", flagMapping["json"], tc.Json},
 		{"JSON", flagMapping["JSON"], tc.JSON},
+		{"v2-yaml", flagMapping["v2-yaml"], tc.V2Yaml},
+		{"v3-yaml", flagMapping["v3-yaml"], tc.V3Yaml},
+		{"indent3-yaml", flagMapping["indent3-yaml"], tc.Indent3Yaml},
+		{"width40-yaml", flagMapping["width40-yaml"], tc.Width40Yaml},
+		{"compact-yaml", flagMapping["compact-yaml"], tc.CompactYaml},
+		{"v3-indent2-yaml", flagMapping["v3-indent2-yaml"], tc.V3Indent2},
 	}
 
 	for _, test := range tests {
@@ -110,8 +129,10 @@ func runTestCase(t *testing.T, tc TestCase) {
 		}
 
 		t.Run(test.field, func(t *testing.T) {
-			// Run the CLI command
-			cmd := exec.Command("go", "run", ".", test.flag)
+			// Run the CLI command - split flags on spaces
+			args := []string{"run", "."}
+			args = append(args, strings.Fields(test.flag)...)
+			cmd := exec.Command("go", args...)
 			cmd.Stdin = strings.NewReader(tc.Text)
 
 			var stdout, stderr bytes.Buffer
