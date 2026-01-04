@@ -1,7 +1,7 @@
 // Copyright 2006-2010 Kirill Simonov
 // Copyright 2011-2019 Canonical Ltd
 // Copyright 2025 The go-yaml Project Contributors
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0 AND MIT
 
 package libyaml
 
