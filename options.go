@@ -172,9 +172,9 @@ func WithUniqueKeys(uniqueKeys ...bool) Option {
 //   - Position information (Line, Column)
 //
 // An empty YAML stream returns a single StreamNode.
-// When called without arguments, defaults to true.
+// When called without arguments, defaults to true (enables stream nodes).
 //
-// The default is false.
+// When this option is not used, stream nodes are not returned.
 func WithStreamNodes(enable ...bool) Option {
 	return func(o *options) error {
 		if len(enable) > 1 {

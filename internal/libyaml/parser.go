@@ -340,12 +340,12 @@ func (parser *Parser) parseDocumentStart(event *Event, implicit bool) error {
 		end_mark := token.EndMark
 
 		*event = Event{
-			Type:              DOCUMENT_START_EVENT,
-			StartMark:         start_mark,
-			EndMark:           end_mark,
-			version_directive: version_directive,
-			tag_directives:    tag_directives,
-			Implicit:          false,
+			Type:             DOCUMENT_START_EVENT,
+			StartMark:        start_mark,
+			EndMark:          end_mark,
+			versionDirective: version_directive,
+			tagDirectives:    tag_directives,
+			Implicit:         false,
 		}
 		parser.skipToken()
 

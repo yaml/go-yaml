@@ -342,10 +342,10 @@ type Event struct {
 	encoding Encoding
 
 	// The version directive (for DOCUMENT_START_EVENT).
-	version_directive *VersionDirective
+	versionDirective *VersionDirective
 
 	// The list of tag directives (for DOCUMENT_START_EVENT).
-	tag_directives []TagDirective
+	tagDirectives []TagDirective
 
 	// The comments
 	HeadComment []byte
@@ -381,10 +381,10 @@ func (e *Event) MappingStyle() MappingStyle   { return MappingStyle(e.Style) }
 func (e *Event) GetEncoding() Encoding { return e.encoding }
 
 // GetVersionDirective returns the version directive (for DOCUMENT_START_EVENT).
-func (e *Event) GetVersionDirective() *VersionDirective { return e.version_directive }
+func (e *Event) GetVersionDirective() *VersionDirective { return e.versionDirective }
 
 // GetTagDirectives returns the tag directives (for DOCUMENT_START_EVENT).
-func (e *Event) GetTagDirectives() []TagDirective { return e.tag_directives }
+func (e *Event) GetTagDirectives() []TagDirective { return e.tagDirectives }
 
 // Nodes
 
