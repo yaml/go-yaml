@@ -5,7 +5,6 @@ package libyaml
 
 import (
 	"bytes"
-	"regexp"
 	"testing"
 
 	"go.yaml.in/yaml/v4/internal/testutil/assert"
@@ -94,10 +93,8 @@ func runScanErrorTest(t *testing.T, tc TestCase) {
 	if wantError {
 		assert.Truef(t, scanErr != nil, "Expected scanner error, but got none")
 		// Check error message against regex pattern if provided
-		if tc.Like != "" && scanErr != nil {
-			matched, err := regexp.MatchString(tc.Like, scanErr.Error())
-			assert.NoErrorf(t, err, "invalid regex pattern: %s", tc.Like)
-			assert.Truef(t, matched, "error %q should match pattern %q", scanErr.Error(), tc.Like)
+		if tc.Like != "" {
+			assert.ErrorMatchesf(t, tc.Like, scanErr, "")
 		}
 	} else {
 		assert.Truef(t, scanErr == nil, "Expected no scanner error, but got %v", scanErr)
