@@ -367,14 +367,14 @@ func (emitter *Emitter) emitStreamStart(event *Event) error {
 func (emitter *Emitter) emitDocumentStart(event *Event, first bool) error {
 	if event.Type == DOCUMENT_START_EVENT {
 
-		if event.version_directive != nil {
-			if err := emitter.analyzeVersionDirective(event.version_directive); err != nil {
+		if event.versionDirective != nil {
+			if err := emitter.analyzeVersionDirective(event.versionDirective); err != nil {
 				return err
 			}
 		}
 
-		for i := 0; i < len(event.tag_directives); i++ {
-			tag_directive := &event.tag_directives[i]
+		for i := 0; i < len(event.tagDirectives); i++ {
+			tag_directive := &event.tagDirectives[i]
 			if err := emitter.analyzeTagDirective(tag_directive); err != nil {
 				return err
 			}
@@ -395,7 +395,7 @@ func (emitter *Emitter) emitDocumentStart(event *Event, first bool) error {
 			implicit = false
 		}
 
-		if emitter.OpenEnded && (event.version_directive != nil || len(event.tag_directives) > 0) {
+		if emitter.OpenEnded && (event.versionDirective != nil || len(event.tagDirectives) > 0) {
 			if err := emitter.writeIndicator([]byte("..."), true, false, false); err != nil {
 				return err
 			}
@@ -404,7 +404,7 @@ func (emitter *Emitter) emitDocumentStart(event *Event, first bool) error {
 			}
 		}
 
-		if event.version_directive != nil {
+		if event.versionDirective != nil {
 			implicit = false
 			if err := emitter.writeIndicator([]byte("%YAML"), true, false, false); err != nil {
 				return err
@@ -417,10 +417,10 @@ func (emitter *Emitter) emitDocumentStart(event *Event, first bool) error {
 			}
 		}
 
-		if len(event.tag_directives) > 0 {
+		if len(event.tagDirectives) > 0 {
 			implicit = false
-			for i := 0; i < len(event.tag_directives); i++ {
-				tag_directive := &event.tag_directives[i]
+			for i := 0; i < len(event.tagDirectives); i++ {
+				tag_directive := &event.tagDirectives[i]
 				if err := emitter.writeIndicator([]byte("%TAG"), true, false, false); err != nil {
 					return err
 				}

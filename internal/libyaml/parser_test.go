@@ -67,21 +67,21 @@ func runParseEventsDetailedTest(t *testing.T, tc TestCase) {
 		}
 
 		if wantSpec.VersionDirective != nil {
-			assert.NotNilf(t, event.version_directive, "event[%d].version_directive should not be nil", i)
-			assert.Equalf(t, wantSpec.VersionDirective.Major, int(event.version_directive.major),
-				"event[%d].version_directive.major = %d, want %d", i, event.version_directive.major, wantSpec.VersionDirective.Major)
-			assert.Equalf(t, wantSpec.VersionDirective.Minor, int(event.version_directive.minor),
-				"event[%d].version_directive.minor = %d, want %d", i, event.version_directive.minor, wantSpec.VersionDirective.Minor)
+			assert.NotNilf(t, event.versionDirective, "event[%d].versionDirective should not be nil", i)
+			assert.Equalf(t, wantSpec.VersionDirective.Major, int(event.versionDirective.major),
+				"event[%d].versionDirective.major = %d, want %d", i, event.versionDirective.major, wantSpec.VersionDirective.Major)
+			assert.Equalf(t, wantSpec.VersionDirective.Minor, int(event.versionDirective.minor),
+				"event[%d].versionDirective.minor = %d, want %d", i, event.versionDirective.minor, wantSpec.VersionDirective.Minor)
 		}
 
 		if len(wantSpec.TagDirectives) > 0 {
-			assert.Equalf(t, len(wantSpec.TagDirectives), len(event.tag_directives),
-				"event[%d].tag_directives length = %d, want %d", i, len(event.tag_directives), len(wantSpec.TagDirectives))
+			assert.Equalf(t, len(wantSpec.TagDirectives), len(event.tagDirectives),
+				"event[%d].tagDirectives length = %d, want %d", i, len(event.tagDirectives), len(wantSpec.TagDirectives))
 			for j, wantTd := range wantSpec.TagDirectives {
-				assert.Truef(t, bytes.Equal(event.tag_directives[j].handle, []byte(wantTd.Handle)),
-					"event[%d].tag_directives[%d].handle = %q, want %q", i, j, event.tag_directives[j].handle, wantTd.Handle)
-				assert.Truef(t, bytes.Equal(event.tag_directives[j].prefix, []byte(wantTd.Prefix)),
-					"event[%d].tag_directives[%d].prefix = %q, want %q", i, j, event.tag_directives[j].prefix, wantTd.Prefix)
+				assert.Truef(t, bytes.Equal(event.tagDirectives[j].handle, []byte(wantTd.Handle)),
+					"event[%d].tagDirectives[%d].handle = %q, want %q", i, j, event.tagDirectives[j].handle, wantTd.Handle)
+				assert.Truef(t, bytes.Equal(event.tagDirectives[j].prefix, []byte(wantTd.Prefix)),
+					"event[%d].tagDirectives[%d].prefix = %q, want %q", i, j, event.tagDirectives[j].prefix, wantTd.Prefix)
 			}
 		}
 	}

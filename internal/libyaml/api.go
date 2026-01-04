@@ -289,10 +289,10 @@ func NewStreamEndEvent() Event {
 // NewDocumentStartEvent creates a new DOCUMENT-START event.
 func NewDocumentStartEvent(version_directive *VersionDirective, tag_directives []TagDirective, implicit bool) Event {
 	return Event{
-		Type:              DOCUMENT_START_EVENT,
-		version_directive: version_directive,
-		tag_directives:    tag_directives,
-		Implicit:          implicit,
+		Type:             DOCUMENT_START_EVENT,
+		versionDirective: version_directive,
+		tagDirectives:    tag_directives,
+		Implicit:         implicit,
 	}
 }
 
