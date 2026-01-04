@@ -1,0 +1,124 @@
+- name: Version preset V2
+  text: |
+    foo:
+      - bar
+      - baz
+  v2-yaml: |
+    foo:
+      - bar
+      - baz
+
+- name: Version preset V3
+  text: |
+    foo:
+      - bar
+      - baz
+  v3-yaml: |
+    foo:
+        - bar
+        - baz
+
+- name: Custom indent level 3
+  text: |
+    foo:
+      - bar
+      - baz
+  indent3-yaml: |
+    foo:
+     - bar
+     - baz
+
+- name: Line width wrapping
+  text: |
+    text: "This is a very long line of text that should wrap at a specific width"
+  width40-yaml: |
+    text: This is a very long line of text that
+      should wrap at a specific width
+
+- name: Compact sequence indentation
+  text: |
+    foo:
+      - bar
+      - baz
+  compact-yaml: |
+    foo:
+    - bar
+    - baz
+
+- name: V3 with indent override
+  text: |
+    foo:
+      - bar
+      - baz
+  v3-indent2-yaml: |
+    foo:
+      - bar
+      - baz
+
+- name: Nested structure with V2
+  text: |
+    root:
+      level1:
+        - item1
+        - item2
+      level2:
+        key: value
+  v2-yaml: |
+    root:
+      level1:
+        - item1
+        - item2
+      level2:
+        key: value
+
+- name: Nested structure with V3
+  text: |
+    root:
+      level1:
+        - item1
+        - item2
+      level2:
+        key: value
+  v3-yaml: |
+    root:
+        level1:
+            - item1
+            - item2
+        level2:
+            key: value
+
+- name: Multiple items default (V4)
+  text: |
+    items:
+      - one
+      - two
+      - three
+  yaml: |
+    items:
+    - one
+    - two
+    - three
+
+- name: Multiple items V2
+  text: |
+    items:
+      - one
+      - two
+      - three
+  v2-yaml: |
+    items:
+      - one
+      - two
+      - three
+
+- name: Multiple items V3
+  text: |
+    items:
+      - one
+      - two
+      - three
+  v3-yaml: |
+    items:
+        - one
+        - two
+        - three

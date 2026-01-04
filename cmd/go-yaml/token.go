@@ -41,12 +41,12 @@ type TokenInfo struct {
 	Pos   string `yaml:"pos,omitempty"`
 }
 
-// ProcessTokens reads YAML from stdin and outputs token information using the internal scanner
-func ProcessTokens(profuse, compact, unmarshal bool) error {
+// ProcessTokens reads YAML from reader and outputs token information using the internal scanner
+func ProcessTokens(reader io.Reader, profuse, compact, unmarshal bool) error {
 	if unmarshal {
-		return processTokensUnmarshal(profuse, compact)
+		return processTokensUnmarshal(reader, profuse, compact)
 	}
-	return processTokensWithParser(profuse, compact)
+	return processTokensWithParser(reader, profuse, compact)
 }
 
 // processTokensDecode uses Loader.Load for YAML processing
@@ -159,8 +159,8 @@ func processTokensDecode(profuse, compact bool) error {
 }
 
 // processTokensWithParser uses the internal parser for token processing
-func processTokensWithParser(profuse, compact bool) error {
-	p, err := NewParser(os.Stdin)
+func processTokensWithParser(reader io.Reader, profuse, compact bool) error {
+	p, err := NewParser(reader)
 	if err != nil {
 		return fmt.Errorf("failed to create parser: %w", err)
 	}
@@ -252,11 +252,11 @@ func processTokensWithParser(profuse, compact bool) error {
 }
 
 // processTokensUnmarshal uses [yaml.Unmarshal] for YAML processing
-func processTokensUnmarshal(profuse, compact bool) error {
-	// Read all input from stdin
-	input, err := io.ReadAll(os.Stdin)
+func processTokensUnmarshal(reader io.Reader, profuse, compact bool) error {
+	// Read all input from reader
+	input, err := io.ReadAll(reader)
 	if err != nil {
-		return fmt.Errorf("failed to read stdin: %w", err)
+		return fmt.Errorf("failed to read input: %w", err)
 	}
 
 	// Split input into documents
