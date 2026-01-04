@@ -22,12 +22,16 @@ import (
 
 // Composer produces a node tree out of a libyaml event stream.
 type Composer struct {
-	Parser   Parser
-	event    Event
-	doc      *Node
-	anchors  map[string]*Node
-	doneInit bool
-	Textless bool
+	Parser       Parser
+	event        Event
+	doc          *Node
+	anchors      map[string]*Node
+	doneInit     bool
+	Textless     bool
+	streamNodes  bool     // enable stream node emission
+	returnStream bool     // flag to return stream node next
+	atStreamEnd  bool     // at stream end
+	encoding     Encoding // stream encoding from STREAM_START
 }
 
 // NewComposer creates a new composer from a byte slice.
@@ -56,8 +60,17 @@ func (p *Composer) init() {
 		return
 	}
 	p.anchors = make(map[string]*Node)
+	// Peek to get the encoding from STREAM_START_EVENT
+	if p.peek() == STREAM_START_EVENT {
+		p.encoding = p.event.GetEncoding()
+	}
 	p.expect(STREAM_START_EVENT)
 	p.doneInit = true
+
+	// If stream nodes are enabled, prepare to return the first stream node
+	if p.streamNodes {
+		p.returnStream = true
+	}
 }
 
 func (p *Composer) Destroy() {
@@ -65,6 +78,11 @@ func (p *Composer) Destroy() {
 		p.event.Delete()
 	}
 	p.Parser.Delete()
+}
+
+// SetStreamNodes enables or disables stream node emission.
+func (p *Composer) SetStreamNodes(enable bool) {
+	p.streamNodes = enable
 }
 
 // expect consumes an event from the event stream and
@@ -114,6 +132,30 @@ func (p *Composer) anchor(n *Node, anchor []byte) {
 // Parse parses the next YAML node from the event stream.
 func (p *Composer) Parse() *Node {
 	p.init()
+
+	// Handle stream nodes if enabled
+	if p.streamNodes {
+		// Check for stream end first
+		if p.peek() == STREAM_END_EVENT {
+			// If we haven't returned the final stream node yet, return it now
+			if !p.atStreamEnd {
+				p.atStreamEnd = true
+				return p.createStreamNode()
+			}
+			// Already returned final stream node
+			return nil
+		}
+
+		// Check if we should return a stream node before the next document
+		if p.returnStream {
+			p.returnStream = false
+			n := p.createStreamNode()
+			// Capture directives from upcoming document
+			p.captureDirectives(n)
+			return n
+		}
+	}
+
 	switch p.peek() {
 	case SCALAR_EVENT:
 		return p.scalar()
@@ -126,7 +168,7 @@ func (p *Composer) Parse() *Node {
 	case DOCUMENT_START_EVENT:
 		return p.document()
 	case STREAM_END_EVENT:
-		// Happens when attempting to decode an empty buffer.
+		// Happens when attempting to decode an empty buffer (when not using stream nodes).
 		return nil
 	case TAIL_COMMENT_EVENT:
 		panic("internal error: unexpected tail comment event (please report)")
@@ -176,7 +218,46 @@ func (p *Composer) document() *Node {
 		n.FootComment = string(p.event.FootComment)
 	}
 	p.expect(DOCUMENT_END_EVENT)
+
+	// If stream nodes enabled, prepare to return a stream node next
+	if p.streamNodes {
+		p.returnStream = true
+	}
+
 	return n
+}
+
+func (p *Composer) createStreamNode() *Node {
+	n := &Node{
+		Kind:     StreamNode,
+		Encoding: p.encoding,
+	}
+	if !p.Textless && p.event.Type != NO_EVENT {
+		n.Line = p.event.StartMark.Line + 1
+		n.Column = p.event.StartMark.Column + 1
+	}
+	return n
+}
+
+// captureDirectives captures version and tag directives from upcoming DOCUMENT_START.
+func (p *Composer) captureDirectives(n *Node) {
+	if p.peek() == DOCUMENT_START_EVENT {
+		if vd := p.event.GetVersionDirective(); vd != nil {
+			n.Version = &StreamVersionDirective{
+				Major: vd.Major(),
+				Minor: vd.Minor(),
+			}
+		}
+		if tds := p.event.GetTagDirectives(); len(tds) > 0 {
+			n.TagDirectives = make([]StreamTagDirective, len(tds))
+			for i, td := range tds {
+				n.TagDirectives[i] = StreamTagDirective{
+					Handle: td.GetHandle(),
+					Prefix: td.GetPrefix(),
+				}
+			}
+		}
+	}
 }
 
 func (p *Composer) alias() *Node {
