@@ -49,6 +49,13 @@ type Unmarshaler interface {
 	UnmarshalYAML(node *Node) error
 }
 
+// Re-export stream-related types
+type (
+	StreamVersionDirective = libyaml.StreamVersionDirective
+	StreamTagDirective     = libyaml.StreamTagDirective
+	Encoding               = libyaml.Encoding
+)
+
 // Re-export error types
 type (
 	UnmarshalError = libyaml.UnmarshalError
@@ -62,6 +69,7 @@ const (
 	MappingNode  = libyaml.MappingNode
 	ScalarNode   = libyaml.ScalarNode
 	AliasNode    = libyaml.AliasNode
+	StreamNode   = libyaml.StreamNode
 )
 
 // Re-export Style constants
@@ -166,8 +174,10 @@ func NewLoader(r io.Reader, opts ...Option) (*Loader, error) {
 	if err != nil {
 		return nil, err
 	}
+	c := libyaml.NewComposerFromReader(r)
+	c.SetStreamNodes(o.StreamNodes)
 	return &Loader{
-		composer: libyaml.NewComposerFromReader(r),
+		composer: c,
 		decoder:  libyaml.NewDecoder(o),
 		opts:     o,
 	}, nil
@@ -737,6 +747,7 @@ var (
 	WithCompactSeqIndent      = libyaml.WithCompactSeqIndent
 	WithKnownFields           = libyaml.WithKnownFields
 	WithSingleDocument        = libyaml.WithSingleDocument
+	WithStreamNodes           = libyaml.WithStreamNodes
 	WithLineWidth             = libyaml.WithLineWidth
 	WithUnicode               = libyaml.WithUnicode
 	WithUniqueKeys            = libyaml.WithUniqueKeys
