@@ -288,9 +288,9 @@ func TestNodeZeroEncodeDecode(t *testing.T) {
 	// Kind zero is still unknown, though.
 	n.Line = 1
 	_, err = yaml.Marshal(&n)
-	assert.ErrorMatches(t, "yaml: cannot encode node with unknown kind 0", err)
+	assert.ErrorMatches(t, "yaml: cannot represent node with unknown kind 0", err)
 	err = n.Load(&v)
-	assert.ErrorMatches(t, "yaml: cannot decode node with unknown kind 0", err)
+	assert.ErrorMatches(t, "yaml: cannot construct node with unknown kind 0", err)
 }
 
 func TestNodeOmitEmpty(t *testing.T) {
@@ -305,7 +305,7 @@ func TestNodeOmitEmpty(t *testing.T) {
 
 	v.B.Line = 1
 	_, err = yaml.Marshal(&v)
-	assert.ErrorMatches(t, "yaml: cannot encode node with unknown kind 0", err)
+	assert.ErrorMatches(t, "yaml: cannot represent node with unknown kind 0", err)
 }
 
 // NodeInfo represents the information about a YAML node in a test-friendly format

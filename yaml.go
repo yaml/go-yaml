@@ -66,7 +66,7 @@ const (
 
 // Re-export error types
 type (
-	UnmarshalError = libyaml.UnmarshalError
+	UnmarshalError = libyaml.ConstructError
 	TypeError      = libyaml.TypeError
 )
 
@@ -168,7 +168,7 @@ func LoadAll(in []byte, opts ...Option) ([]any, error) {
 // options.
 type Loader struct {
 	composer *libyaml.Composer
-	decoder  *libyaml.Decoder
+	decoder  *libyaml.Constructor
 	opts     *libyaml.Options
 	docCount int
 }
@@ -186,7 +186,7 @@ func NewLoader(r io.Reader, opts ...Option) (*Loader, error) {
 	c.SetStreamNodes(o.StreamNodes)
 	return &Loader{
 		composer: c,
-		decoder:  libyaml.NewDecoder(o),
+		decoder:  libyaml.NewConstructor(o),
 		opts:     o,
 	}, nil
 }
@@ -226,7 +226,7 @@ func (l *Loader) Load(v any) (err error) {
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
 		out = out.Elem()
 	}
-	l.decoder.Unmarshal(node, out) // Pass libyaml.Node directly
+	l.decoder.Construct(node, out) // Pass libyaml.Node directly
 	if len(l.decoder.Terrors) > 0 {
 		terrors := l.decoder.Terrors
 		l.decoder.Terrors = nil
@@ -278,7 +278,7 @@ func DumpAll(in []any, opts ...Option) (out []byte, err error) {
 
 // A Dumper writes YAML values to an output stream with configurable options.
 type Dumper struct {
-	encoder *libyaml.Encoder
+	encoder *libyaml.Representer
 	opts    *libyaml.Options
 }
 
@@ -291,7 +291,7 @@ func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
 		return nil, err
 	}
 	return &Dumper{
-		encoder: libyaml.NewEncoder(w, o),
+		encoder: libyaml.NewRepresenter(w, o),
 		opts:    o,
 	}, nil
 }
@@ -358,7 +358,7 @@ func (dec *Decoder) KnownFields(enable bool) {
 //
 // Deprecated: Use Loader.Load instead. Will be removed in v5.
 func (dec *Decoder) Decode(v any) (err error) {
-	d := libyaml.NewDecoder(libyaml.LegacyOptions)
+	d := libyaml.NewConstructor(libyaml.LegacyOptions)
 	d.KnownFields = dec.knownFields
 	defer handleErr(&err)
 	node := dec.composer.Parse()
@@ -369,7 +369,7 @@ func (dec *Decoder) Decode(v any) (err error) {
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
 		out = out.Elem()
 	}
-	d.Unmarshal(node, out)
+	d.Construct(node, out)
 	if len(d.Terrors) > 0 {
 		return &TypeError{Errors: d.Terrors}
 	}
@@ -380,7 +380,7 @@ func (dec *Decoder) Decode(v any) (err error) {
 //
 // Deprecated: Use Dumper instead. Will be removed in v5.
 type Encoder struct {
-	encoder *libyaml.Encoder
+	encoder *libyaml.Representer
 }
 
 // NewEncoder returns a new encoder that writes to w.
@@ -390,7 +390,7 @@ type Encoder struct {
 // Deprecated: Use NewDumper instead. Will be removed in v5.
 func NewEncoder(w io.Writer) *Encoder {
 	return &Encoder{
-		encoder: libyaml.NewEncoder(w, libyaml.LegacyOptions),
+		encoder: libyaml.NewRepresenter(w, libyaml.LegacyOptions),
 	}
 }
 
@@ -476,7 +476,7 @@ func (e *Encoder) Close() (err error) {
 //	    B int
 //	}
 //	var t T
-//	yaml.Unmarshal([]byte("a: 1\nb: 2"), &t)
+//	yaml.Construct([]byte("a: 1\nb: 2"), &t)
 //
 // See the documentation of Marshal for the format of tags and a list of
 // supported tag options.
@@ -504,7 +504,7 @@ func unmarshal(in []byte, out any, opts ...Option) (err error) {
 		return nil
 	}
 
-	return libyaml.Unmarshal(in, out, o)
+	return libyaml.Construct(in, out, o)
 }
 
 // Marshal serializes the value provided into a YAML document. The structure
@@ -554,7 +554,7 @@ func unmarshal(in []byte, out any, opts ...Option) (err error) {
 // Deprecated: Use Dump instead. Will be removed in v5.
 func Marshal(in any) (out []byte, err error) {
 	defer handleErr(&err)
-	e := libyaml.NewEncoder(noWriter, libyaml.LegacyOptions)
+	e := libyaml.NewRepresenter(noWriter, libyaml.LegacyOptions)
 	defer e.Destroy()
 	e.MarshalDoc("", reflect.ValueOf(in))
 	e.Finish()

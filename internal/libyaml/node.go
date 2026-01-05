@@ -284,13 +284,13 @@ func (n *Node) SetString(s string) {
 //
 // Deprecated: Use Node.Load instead. Will be removed in v5.
 func (n *Node) Decode(v any) (err error) {
-	d := NewDecoder(LegacyOptions)
+	d := NewConstructor(LegacyOptions)
 	defer handleErr(&err)
 	out := reflect.ValueOf(v)
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
 		out = out.Elem()
 	}
-	d.Unmarshal(n, out)
+	d.Construct(n, out)
 	if len(d.Terrors) > 0 {
 		return &TypeError{Errors: d.Terrors}
 	}
@@ -316,12 +316,12 @@ func (n *Node) Load(v any, opts ...Option) (err error) {
 	if err != nil {
 		return err
 	}
-	d := NewDecoder(o)
+	d := NewConstructor(o)
 	out := reflect.ValueOf(v)
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
 		out = out.Elem()
 	}
-	d.Unmarshal(n, out)
+	d.Construct(n, out)
 	if len(d.Terrors) > 0 {
 		return &TypeError{Errors: d.Terrors}
 	}
@@ -336,7 +336,7 @@ func (n *Node) Load(v any, opts ...Option) (err error) {
 // Deprecated: Use Node.Dump instead. Will be removed in v5.
 func (n *Node) Encode(v any) (err error) {
 	defer handleErr(&err)
-	e := NewEncoder(noWriter, LegacyOptions)
+	e := NewRepresenter(noWriter, LegacyOptions)
 	defer e.Destroy()
 	e.MarshalDoc("", reflect.ValueOf(v))
 	e.Finish()
@@ -362,7 +362,7 @@ func (n *Node) Dump(v any, opts ...Option) (err error) {
 	if err != nil {
 		return err
 	}
-	e := NewEncoder(noWriter, o)
+	e := NewRepresenter(noWriter, o)
 	defer e.Destroy()
 	e.MarshalDoc("", reflect.ValueOf(v))
 	e.Finish()

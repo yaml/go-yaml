@@ -28,16 +28,16 @@ import (
 )
 
 // --------------------------------------------------------------------------
-// Interfaces and types needed by decoder
+// Interfaces and types needed by constructor
 
-// Unmarshaler interface may be implemented by types to customize their
-// behavior when being unmarshaled from a YAML document.
-type Unmarshaler interface {
+// Constructer interface may be implemented by types to customize their
+// behavior when being constructed from a YAML document.
+type Constructer interface {
 	UnmarshalYAML(value *Node) error
 }
 
-type obsoleteUnmarshaler interface {
-	UnmarshalYAML(unmarshal func(any) error) error
+type obsoleteConstructer interface {
+	UnmarshalYAML(construct func(any) error) error
 }
 
 // Marshaler interface may be implemented by types to customize their
@@ -53,30 +53,30 @@ type IsZeroer interface {
 	IsZero() bool
 }
 
-// UnmarshalError represents a single, non-fatal error that occurred during
-// the unmarshaling of a YAML document into a Go value.
-type UnmarshalError struct {
+// ConstructError represents a single, non-fatal error that occurred during
+// the constructing of a YAML document into a Go value.
+type ConstructError struct {
 	Err    error
 	Line   int
 	Column int
 }
 
-func (e *UnmarshalError) Error() string {
+func (e *ConstructError) Error() string {
 	return fmt.Sprintf("line %d: %s", e.Line, e.Err.Error())
 }
 
-func (e *UnmarshalError) Unwrap() error {
+func (e *ConstructError) Unwrap() error {
 	return e.Err
 }
 
 // TypeError is returned when one or more fields cannot be properly decoded.
 type TypeError struct {
-	Errors []*UnmarshalError
+	Errors []*ConstructError
 }
 
 func (e *TypeError) Error() string {
 	var b strings.Builder
-	b.WriteString("yaml: unmarshal errors:")
+	b.WriteString("yaml: construct errors:")
 	for _, err := range e.Errors {
 		b.WriteString("\n  ")
 		b.WriteString(err.Error())
@@ -85,7 +85,7 @@ func (e *TypeError) Error() string {
 }
 
 // Unwrap returns all errors for compatibility with errors.As/Is.
-// This allows callers to unwrap TypeError and examine individual UnmarshalErrors.
+// This allows callers to unwrap TypeError and examine individual ConstructErrors.
 // Implements the Go 1.20+ multiple error unwrapping interface.
 func (e *TypeError) Unwrap() []error {
 	errs := make([]error, len(e.Errors))
@@ -117,9 +117,9 @@ type structInfo struct {
 	// contains an ,inline map, or -1 if there's none.
 	InlineMap int
 
-	// InlineUnmarshalers holds indexes to inlined fields that
-	// contain unmarshaler values.
-	InlineUnmarshalers [][]int
+	// InlineConstructers holds indexes to inlined fields that
+	// contain constructer values.
+	InlineConstructers [][]int
 }
 
 type fieldInfo struct {
@@ -138,19 +138,19 @@ type fieldInfo struct {
 var (
 	structMap       = make(map[reflect.Type]*structInfo)
 	fieldMapMutex   sync.RWMutex
-	unmarshalerType reflect.Type
+	constructerType reflect.Type
 )
 
 func init() {
-	var v Unmarshaler
-	unmarshalerType = reflect.ValueOf(&v).Elem().Type()
+	var v Constructer
+	constructerType = reflect.ValueOf(&v).Elem().Type()
 }
 
-// hasUnmarshalYAMLMethod checks if a type has an UnmarshalYAML method
-// that looks like it implements yaml.Unmarshaler (from root package).
+// hasConstructYAMLMethod checks if a type has an UnmarshalYAML method
+// that looks like it implements yaml.Constructer (from root package).
 // This is needed because we can't directly check for the interface type
 // since it's in a different package that we can't import.
-func hasUnmarshalYAMLMethod(t reflect.Type) bool {
+func hasConstructYAMLMethod(t reflect.Type) bool {
 	method, found := t.MethodByName("UnmarshalYAML")
 	if !found {
 		return false
@@ -195,7 +195,7 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 	fieldsMap := make(map[string]fieldInfo)
 	fieldsList := make([]fieldInfo, 0, n)
 	inlineMap := -1
-	inlineUnmarshalers := [][]int(nil)
+	inlineConstructers := [][]int(nil)
 	for i := 0; i != n; i++ {
 		field := st.Field(i)
 		if field.PkgPath != "" && !field.Anonymous {
@@ -248,16 +248,16 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 				if ftype.Kind() != reflect.Struct {
 					return nil, errors.New("option ,inline may only be used on a struct or map field")
 				}
-				// Check for both libyaml.Unmarshaler and yaml.Unmarshaler (by method name)
-				if reflect.PointerTo(ftype).Implements(unmarshalerType) || hasUnmarshalYAMLMethod(reflect.PointerTo(ftype)) {
-					inlineUnmarshalers = append(inlineUnmarshalers, []int{i})
+				// Check for both libyaml.Constructer and yaml.Constructer (by method name)
+				if reflect.PointerTo(ftype).Implements(constructerType) || hasConstructYAMLMethod(reflect.PointerTo(ftype)) {
+					inlineConstructers = append(inlineConstructers, []int{i})
 				} else {
 					sinfo, err := getStructInfo(ftype)
 					if err != nil {
 						return nil, err
 					}
-					for _, index := range sinfo.InlineUnmarshalers {
-						inlineUnmarshalers = append(inlineUnmarshalers, append([]int{i}, index...))
+					for _, index := range sinfo.InlineConstructers {
+						inlineConstructers = append(inlineConstructers, append([]int{i}, index...))
 					}
 					for _, finfo := range sinfo.FieldsList {
 						if _, found := fieldsMap[finfo.Key]; found {
@@ -300,7 +300,7 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 		FieldsMap:          fieldsMap,
 		FieldsList:         fieldsList,
 		InlineMap:          inlineMap,
-		InlineUnmarshalers: inlineUnmarshalers,
+		InlineConstructers: inlineConstructers,
 	}
 
 	fieldMapMutex.Lock()
@@ -353,19 +353,19 @@ func isZero(v reflect.Value) bool {
 	return false
 }
 
-type Decoder struct {
+type Constructor struct {
 	doc     *Node
 	aliases map[*Node]bool
-	Terrors []*UnmarshalError
+	Terrors []*ConstructError
 
 	stringMapType  reflect.Type
 	generalMapType reflect.Type
 
-	KnownFields bool
-	UniqueKeys  bool
-	decodeCount int
-	aliasCount  int
-	aliasDepth  int
+	KnownFields    bool
+	UniqueKeys     bool
+	constructCount int
+	aliasCount     int
+	aliasDepth     int
 
 	mergedFields map[any]bool
 }
@@ -378,8 +378,8 @@ var (
 	ifaceType      = generalMapType.Elem()
 )
 
-func NewDecoder(opts *Options) *Decoder {
-	return &Decoder{
+func NewConstructor(opts *Options) *Constructor {
+	return &Constructor{
 		stringMapType:  stringMapType,
 		generalMapType: generalMapType,
 		KnownFields:    opts.KnownFields,
@@ -388,11 +388,11 @@ func NewDecoder(opts *Options) *Decoder {
 	}
 }
 
-// Unmarshal decodes YAML input into the provided output value.
+// Construct decodes YAML input into the provided output value.
 // The out parameter must be a pointer to the value to decode into.
 // Returns a TypeError if type mismatches occur during decoding.
-func Unmarshal(in []byte, out any, opts *Options) error {
-	d := NewDecoder(opts)
+func Construct(in []byte, out any, opts *Options) error {
+	d := NewConstructor(opts)
 	p := NewComposer(in)
 	defer p.Destroy()
 	node := p.Parse()
@@ -401,7 +401,7 @@ func Unmarshal(in []byte, out any, opts *Options) error {
 		if v.Kind() == reflect.Pointer && !v.IsNil() {
 			v = v.Elem()
 		}
-		d.Unmarshal(node, v)
+		d.Construct(node, v)
 	}
 	if len(d.Terrors) > 0 {
 		return &TypeError{Errors: d.Terrors}
@@ -409,7 +409,7 @@ func Unmarshal(in []byte, out any, opts *Options) error {
 	return nil
 }
 
-func (d *Decoder) terror(n *Node, tag string, out reflect.Value) {
+func (d *Constructor) terror(n *Node, tag string, out reflect.Value) {
 	if n.Tag != "" {
 		tag = n.Tag
 	}
@@ -421,14 +421,14 @@ func (d *Decoder) terror(n *Node, tag string, out reflect.Value) {
 			value = " `" + value + "`"
 		}
 	}
-	d.Terrors = append(d.Terrors, &UnmarshalError{
-		Err:    fmt.Errorf("cannot unmarshal %s%s into %s", shortTag(tag), value, out.Type()),
+	d.Terrors = append(d.Terrors, &ConstructError{
+		Err:    fmt.Errorf("cannot construct %s%s into %s", shortTag(tag), value, out.Type()),
 		Line:   n.Line,
 		Column: n.Column,
 	})
 }
 
-func (d *Decoder) callUnmarshaler(n *Node, u Unmarshaler) (good bool) {
+func (d *Constructor) callConstructer(n *Node, u Constructer) (good bool) {
 	err := u.UnmarshalYAML(n)
 	switch e := err.(type) {
 	case nil:
@@ -437,7 +437,7 @@ func (d *Decoder) callUnmarshaler(n *Node, u Unmarshaler) (good bool) {
 		d.Terrors = append(d.Terrors, e.Errors...)
 		return false
 	default:
-		d.Terrors = append(d.Terrors, &UnmarshalError{
+		d.Terrors = append(d.Terrors, &ConstructError{
 			Err:    err,
 			Line:   n.Line,
 			Column: n.Column,
@@ -446,11 +446,11 @@ func (d *Decoder) callUnmarshaler(n *Node, u Unmarshaler) (good bool) {
 	}
 }
 
-func (d *Decoder) callObsoleteUnmarshaler(n *Node, u obsoleteUnmarshaler) (good bool) {
+func (d *Constructor) callObsoleteConstructer(n *Node, u obsoleteConstructer) (good bool) {
 	terrlen := len(d.Terrors)
 	err := u.UnmarshalYAML(func(v any) (err error) {
 		defer handleErr(&err)
-		d.Unmarshal(n, reflect.ValueOf(v))
+		d.Construct(n, reflect.ValueOf(v))
 		if len(d.Terrors) > terrlen {
 			issues := d.Terrors[terrlen:]
 			d.Terrors = d.Terrors[:terrlen]
@@ -465,7 +465,7 @@ func (d *Decoder) callObsoleteUnmarshaler(n *Node, u obsoleteUnmarshaler) (good 
 		d.Terrors = append(d.Terrors, e.Errors...)
 		return false
 	default:
-		d.Terrors = append(d.Terrors, &UnmarshalError{
+		d.Terrors = append(d.Terrors, &ConstructError{
 			Err:    err,
 			Line:   n.Line,
 			Column: n.Column,
@@ -476,7 +476,7 @@ func (d *Decoder) callObsoleteUnmarshaler(n *Node, u obsoleteUnmarshaler) (good 
 
 func isTextUnmarshaler(out reflect.Value) bool {
 	// Dereference pointers to check the underlying type,
-	// similar to how prepare() handles Unmarshaler checks.
+	// similar to how prepare() handles Constructer checks.
 	for out.Kind() == reflect.Pointer {
 		if out.IsNil() {
 			// Create a new instance to check the type
@@ -495,11 +495,11 @@ func isTextUnmarshaler(out reflect.Value) bool {
 // d.prepare initializes and dereferences pointers and calls UnmarshalYAML
 // if a value is found to implement it.
 // It returns the initialized and dereferenced out value, whether
-// unmarshalling was already done by UnmarshalYAML, and if so whether
-// its types unmarshalled appropriately.
+// construction was already done by UnmarshalYAML, and if so whether
+// its types constructed appropriately.
 //
 // If n holds a null value, prepare returns before doing anything.
-func (d *Decoder) prepare(n *Node, out reflect.Value) (newout reflect.Value, unmarshaled, good bool) {
+func (d *Constructor) prepare(n *Node, out reflect.Value) (newout reflect.Value, constructed, good bool) {
 	if n.ShortTag() == nullTag {
 		return out, false, false
 	}
@@ -514,19 +514,19 @@ func (d *Decoder) prepare(n *Node, out reflect.Value) (newout reflect.Value, unm
 			again = true
 		}
 		if out.CanAddr() {
-			// Try yaml.Unmarshaler (from root package) first
-			if called, good := d.tryCallYAMLUnmarshaler(n, out); called {
+			// Try yaml.Constructer (from root package) first
+			if called, good := d.tryCallYAMLConstructer(n, out); called {
 				return out, true, good
 			}
 
 			outi := out.Addr().Interface()
-			// Check for libyaml.Unmarshaler
-			if u, ok := outi.(Unmarshaler); ok {
-				good = d.callUnmarshaler(n, u)
+			// Check for libyaml.Constructer
+			if u, ok := outi.(Constructer); ok {
+				good = d.callConstructer(n, u)
 				return out, true, good
 			}
-			if u, ok := outi.(obsoleteUnmarshaler); ok {
-				good = d.callObsoleteUnmarshaler(n, u)
+			if u, ok := outi.(obsoleteConstructer); ok {
+				good = d.callObsoleteConstructer(n, u)
 				return out, true, good
 			}
 		}
@@ -534,7 +534,7 @@ func (d *Decoder) prepare(n *Node, out reflect.Value) (newout reflect.Value, unm
 	return out, false, false
 }
 
-func (d *Decoder) fieldByIndex(n *Node, v reflect.Value, index []int) (field reflect.Value) {
+func (d *Constructor) fieldByIndex(n *Node, v reflect.Value, index []int) (field reflect.Value) {
 	if n.ShortTag() == nullTag {
 		return reflect.Value{}
 	}
@@ -567,32 +567,32 @@ const (
 	alias_ratio_range = float64(alias_ratio_range_high - alias_ratio_range_low)
 )
 
-func allowedAliasRatio(decodeCount int) float64 {
+func allowedAliasRatio(constructCount int) float64 {
 	switch {
-	case decodeCount <= alias_ratio_range_low:
+	case constructCount <= alias_ratio_range_low:
 		// allow 99% to come from alias expansion for small-to-medium documents
 		return 0.99
-	case decodeCount >= alias_ratio_range_high:
+	case constructCount >= alias_ratio_range_high:
 		// allow 10% to come from alias expansion for very large documents
 		return 0.10
 	default:
 		// scale smoothly from 99% down to 10% over the range.
 		// this maps to 396,000 - 400,000 allowed alias-driven decodes over the range.
 		// 400,000 decode operations is ~100MB of allocations in worst-case scenarios (single-item maps).
-		return 0.99 - 0.89*(float64(decodeCount-alias_ratio_range_low)/alias_ratio_range)
+		return 0.99 - 0.89*(float64(constructCount-alias_ratio_range_low)/alias_ratio_range)
 	}
 }
 
-// unmarshalerAdapter is an interface that wraps the root package's Unmarshaler interface.
-// This allows the decoder to call unmarshalers that expect *yaml.Node instead of *libyaml.Node.
-type unmarshalerAdapter interface {
-	CallRootUnmarshaler(n *Node) error
+// constructerAdapter is an interface that wraps the root package's Constructer interface.
+// This allows the constructor to call constructers that expect *yaml.Node instead of *libyaml.Node.
+type constructerAdapter interface {
+	CallRootConstructer(n *Node) error
 }
 
-// tryCallYAMLUnmarshaler checks if the value has an UnmarshalYAML method that takes
+// tryCallYAMLConstructer checks if the value has an UnmarshalYAML method that takes
 // a *yaml.Node (from the root package) and calls it if found.
-// This handles the case where user types implement yaml.Unmarshaler instead of libyaml.Unmarshaler.
-func (d *Decoder) tryCallYAMLUnmarshaler(n *Node, out reflect.Value) (called bool, good bool) {
+// This handles the case where user types implement yaml.Constructer instead of libyaml.Constructer.
+func (d *Constructor) tryCallYAMLConstructer(n *Node, out reflect.Value) (called bool, good bool) {
 	if !out.CanAddr() {
 		return false, false
 	}
@@ -644,7 +644,7 @@ func (d *Decoder) tryCallYAMLUnmarshaler(n *Node, out reflect.Value) (called boo
 		d.Terrors = append(d.Terrors, e.Errors...)
 		return true, false
 	default:
-		d.Terrors = append(d.Terrors, &UnmarshalError{
+		d.Terrors = append(d.Terrors, &ConstructError{
 			Err:    e.(error),
 			Line:   n.Line,
 			Column: n.Column,
@@ -653,12 +653,12 @@ func (d *Decoder) tryCallYAMLUnmarshaler(n *Node, out reflect.Value) (called boo
 	}
 }
 
-func (d *Decoder) Unmarshal(n *Node, out reflect.Value) (good bool) {
-	d.decodeCount++
+func (d *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
+	d.constructCount++
 	if d.aliasDepth > 0 {
 		d.aliasCount++
 	}
-	if d.aliasCount > 100 && d.decodeCount > 1000 && float64(d.aliasCount)/float64(d.decodeCount) > allowedAliasRatio(d.decodeCount) {
+	if d.aliasCount > 100 && d.constructCount > 1000 && float64(d.aliasCount)/float64(d.constructCount) > allowedAliasRatio(d.constructCount) {
 		failf("document contains excessive aliasing")
 	}
 	if out.Type() == nodeType {
@@ -667,14 +667,14 @@ func (d *Decoder) Unmarshal(n *Node, out reflect.Value) (good bool) {
 	}
 
 	// When out type implements [encoding.TextUnmarshaler], ensure the node is
-	// a scalar. Otherwise, for example, unmarshaling a YAML mapping into
+	// a scalar. Otherwise, for example, constructing a YAML mapping into
 	// a struct having no exported fields, but implementing TextUnmarshaler
 	// would silently succeed, but do nothing.
 	//
 	// Note that this matches the behavior of both encoding/json and encoding/json/v2.
 	if n.Kind != ScalarNode && isTextUnmarshaler(out) {
-		err := fmt.Errorf("cannot unmarshal %s into %s (TextUnmarshaler)", shortTag(n.Tag), out.Type())
-		d.Terrors = append(d.Terrors, &UnmarshalError{
+		err := fmt.Errorf("cannot construct %s into %s (TextUnmarshaler)", shortTag(n.Tag), out.Type())
+		d.Terrors = append(d.Terrors, &ConstructError{
 			Err:    err,
 			Line:   n.Line,
 			Column: n.Column,
@@ -687,8 +687,8 @@ func (d *Decoder) Unmarshal(n *Node, out reflect.Value) (good bool) {
 	case AliasNode:
 		return d.alias(n, out)
 	}
-	out, unmarshaled, good := d.prepare(n, out)
-	if unmarshaled {
+	out, constructed, good := d.prepare(n, out)
+	if constructed {
 		return good
 	}
 	switch n.Kind {
@@ -704,34 +704,34 @@ func (d *Decoder) Unmarshal(n *Node, out reflect.Value) (good bool) {
 		}
 		fallthrough
 	default:
-		failf("cannot decode node with unknown kind %d", n.Kind)
+		failf("cannot construct node with unknown kind %d", n.Kind)
 	}
 	return good
 }
 
-func (d *Decoder) document(n *Node, out reflect.Value) (good bool) {
+func (d *Constructor) document(n *Node, out reflect.Value) (good bool) {
 	if len(n.Content) == 1 {
 		d.doc = n
-		d.Unmarshal(n.Content[0], out)
+		d.Construct(n.Content[0], out)
 		return true
 	}
 	return false
 }
 
-func (d *Decoder) alias(n *Node, out reflect.Value) (good bool) {
+func (d *Constructor) alias(n *Node, out reflect.Value) (good bool) {
 	if d.aliases[n] {
 		// TODO this could actually be allowed in some circumstances.
 		failf("anchor '%s' value contains itself", n.Value)
 	}
 	d.aliases[n] = true
 	d.aliasDepth++
-	good = d.Unmarshal(n.Alias, out)
+	good = d.Construct(n.Alias, out)
 	d.aliasDepth--
 	delete(d.aliases, n)
 	return good
 }
 
-func (d *Decoder) null(out reflect.Value) bool {
+func (d *Constructor) null(out reflect.Value) bool {
 	if out.CanAddr() {
 		switch out.Kind() {
 		case reflect.Interface, reflect.Pointer, reflect.Map, reflect.Slice:
@@ -742,7 +742,7 @@ func (d *Decoder) null(out reflect.Value) bool {
 	return false
 }
 
-func (d *Decoder) scalar(n *Node, out reflect.Value) bool {
+func (d *Constructor) scalar(n *Node, out reflect.Value) bool {
 	var tag string
 	var resolved any
 	if n.indicatedString() {
@@ -775,14 +775,14 @@ func (d *Decoder) scalar(n *Node, out reflect.Value) bool {
 			if tag == binaryTag {
 				text = []byte(resolved.(string))
 			} else {
-				// We let any value be unmarshaled into TextUnmarshaler.
+				// We let any value be constructed into TextUnmarshaler.
 				// That might be more lax than we'd like, but the
 				// TextUnmarshaler itself should bowl out any dubious values.
 				text = []byte(n.Value)
 			}
 			err := u.UnmarshalText(text)
 			if err != nil {
-				d.Terrors = append(d.Terrors, &UnmarshalError{
+				d.Terrors = append(d.Terrors, &ConstructError{
 					Err:    err,
 					Line:   n.Line,
 					Column: n.Column,
@@ -878,7 +878,7 @@ func (d *Decoder) scalar(n *Node, out reflect.Value) bool {
 			return true
 		case string:
 			// This offers some compatibility with the 1.1 spec (https://yaml.org/type/bool.html).
-			// It only works if explicitly attempting to unmarshal into a typed bool value.
+			// It only works if explicitly attempting to construct into a typed bool value.
 			switch resolved {
 			case "y", "Y", "yes", "Yes", "YES", "on", "On", "ON":
 				out.SetBool(true)
@@ -922,7 +922,7 @@ func settableValueOf(i any) reflect.Value {
 	return sv
 }
 
-func (d *Decoder) sequence(n *Node, out reflect.Value) (good bool) {
+func (d *Constructor) sequence(n *Node, out reflect.Value) (good bool) {
 	l := len(n.Content)
 
 	var iface reflect.Value
@@ -946,7 +946,7 @@ func (d *Decoder) sequence(n *Node, out reflect.Value) (good bool) {
 	j := 0
 	for i := 0; i < l; i++ {
 		e := reflect.New(et).Elem()
-		if ok := d.Unmarshal(n.Content[i], e); ok {
+		if ok := d.Construct(n.Content[i], e); ok {
 			out.Index(j).Set(e)
 			j++
 		}
@@ -960,7 +960,7 @@ func (d *Decoder) sequence(n *Node, out reflect.Value) (good bool) {
 	return true
 }
 
-func (d *Decoder) mapping(n *Node, out reflect.Value) (good bool) {
+func (d *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 	l := len(n.Content)
 	if d.UniqueKeys {
 		nerrs := len(d.Terrors)
@@ -969,7 +969,7 @@ func (d *Decoder) mapping(n *Node, out reflect.Value) (good bool) {
 			for j := i + 2; j < l; j += 2 {
 				nj := n.Content[j]
 				if ni.Kind == nj.Kind && ni.Value == nj.Value {
-					d.Terrors = append(d.Terrors, &UnmarshalError{
+					d.Terrors = append(d.Terrors, &ConstructError{
 						Err:    fmt.Errorf("mapping key %#v already defined at line %d", nj.Value, ni.Line),
 						Line:   nj.Line,
 						Column: nj.Column,
@@ -1029,7 +1029,7 @@ func (d *Decoder) mapping(n *Node, out reflect.Value) (good bool) {
 			continue
 		}
 		k := reflect.New(kt).Elem()
-		if d.Unmarshal(n.Content[i], k) {
+		if d.Construct(n.Content[i], k) {
 			if mergedFields != nil {
 				ki := k.Interface()
 				if d.getPossiblyUnhashableKey(mergedFields, ki) {
@@ -1045,7 +1045,7 @@ func (d *Decoder) mapping(n *Node, out reflect.Value) (good bool) {
 				failf("cannot use '%#v' as a map key; try decoding into yaml.Node", k.Interface())
 			}
 			e := reflect.New(et).Elem()
-			if d.Unmarshal(n.Content[i+1], e) || n.Content[i+1].ShortTag() == nullTag && (mapIsNew || !out.MapIndex(k).IsValid()) {
+			if d.Construct(n.Content[i+1], e) || n.Content[i+1].ShortTag() == nullTag && (mapIsNew || !out.MapIndex(k).IsValid()) {
 				out.SetMapIndex(k, e)
 			}
 		}
@@ -1075,7 +1075,7 @@ func isStringMap(n *Node) bool {
 	return true
 }
 
-func (d *Decoder) mappingStruct(n *Node, out reflect.Value) (good bool) {
+func (d *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
 	sinfo, err := getStructInfo(out.Type())
 	if err != nil {
 		panic(err)
@@ -1088,7 +1088,7 @@ func (d *Decoder) mappingStruct(n *Node, out reflect.Value) (good bool) {
 		elemType = inlineMap.Type().Elem()
 	}
 
-	for _, index := range sinfo.InlineUnmarshalers {
+	for _, index := range sinfo.InlineConstructers {
 		field := d.fieldByIndex(n, out, index)
 		d.prepare(n, field)
 	}
@@ -1108,7 +1108,7 @@ func (d *Decoder) mappingStruct(n *Node, out reflect.Value) (good bool) {
 			mergeNode = n.Content[i+1]
 			continue
 		}
-		if !d.Unmarshal(ni, name) {
+		if !d.Construct(ni, name) {
 			continue
 		}
 		sname := name.String()
@@ -1121,7 +1121,7 @@ func (d *Decoder) mappingStruct(n *Node, out reflect.Value) (good bool) {
 		if info, ok := sinfo.FieldsMap[sname]; ok {
 			if d.UniqueKeys {
 				if doneFields[info.Id] {
-					d.Terrors = append(d.Terrors, &UnmarshalError{
+					d.Terrors = append(d.Terrors, &ConstructError{
 						Err:    fmt.Errorf("field %s already set in type %s", name.String(), out.Type()),
 						Line:   ni.Line,
 						Column: ni.Column,
@@ -1136,16 +1136,16 @@ func (d *Decoder) mappingStruct(n *Node, out reflect.Value) (good bool) {
 			} else {
 				field = d.fieldByIndex(n, out, info.Inline)
 			}
-			d.Unmarshal(n.Content[i+1], field)
+			d.Construct(n.Content[i+1], field)
 		} else if sinfo.InlineMap != -1 {
 			if inlineMap.IsNil() {
 				inlineMap.Set(reflect.MakeMap(inlineMap.Type()))
 			}
 			value := reflect.New(elemType).Elem()
-			d.Unmarshal(n.Content[i+1], value)
+			d.Construct(n.Content[i+1], value)
 			inlineMap.SetMapIndex(name, value)
 		} else if d.KnownFields {
-			d.Terrors = append(d.Terrors, &UnmarshalError{
+			d.Terrors = append(d.Terrors, &ConstructError{
 				Err:    fmt.Errorf("field %s not found in type %s", name.String(), out.Type()),
 				Line:   ni.Line,
 				Column: ni.Column,
@@ -1164,7 +1164,7 @@ func failWantMap() {
 	failf("map merge requires map or sequence of maps as the value")
 }
 
-func (d *Decoder) setPossiblyUnhashableKey(m map[any]bool, key any, value bool) {
+func (d *Constructor) setPossiblyUnhashableKey(m map[any]bool, key any, value bool) {
 	defer func() {
 		if err := recover(); err != nil {
 			failf("%v", err)
@@ -1173,7 +1173,7 @@ func (d *Decoder) setPossiblyUnhashableKey(m map[any]bool, key any, value bool) 
 	m[key] = value
 }
 
-func (d *Decoder) getPossiblyUnhashableKey(m map[any]bool, key any) bool {
+func (d *Constructor) getPossiblyUnhashableKey(m map[any]bool, key any) bool {
 	defer func() {
 		if err := recover(); err != nil {
 			failf("%v", err)
@@ -1182,13 +1182,13 @@ func (d *Decoder) getPossiblyUnhashableKey(m map[any]bool, key any) bool {
 	return m[key]
 }
 
-func (d *Decoder) merge(parent *Node, merge *Node, out reflect.Value) {
+func (d *Constructor) merge(parent *Node, merge *Node, out reflect.Value) {
 	mergedFields := d.mergedFields
 	if mergedFields == nil {
 		d.mergedFields = make(map[any]bool)
 		for i := 0; i < len(parent.Content); i += 2 {
 			k := reflect.New(ifaceType).Elem()
-			if d.Unmarshal(parent.Content[i], k) {
+			if d.Construct(parent.Content[i], k) {
 				d.setPossiblyUnhashableKey(d.mergedFields, k.Interface(), true)
 			}
 		}
@@ -1196,12 +1196,12 @@ func (d *Decoder) merge(parent *Node, merge *Node, out reflect.Value) {
 
 	switch merge.Kind {
 	case MappingNode:
-		d.Unmarshal(merge, out)
+		d.Construct(merge, out)
 	case AliasNode:
 		if merge.Alias != nil && merge.Alias.Kind != MappingNode {
 			failWantMap()
 		}
-		d.Unmarshal(merge, out)
+		d.Construct(merge, out)
 	case SequenceNode:
 		for i := 0; i < len(merge.Content); i++ {
 			ni := merge.Content[i]
@@ -1212,7 +1212,7 @@ func (d *Decoder) merge(parent *Node, merge *Node, out reflect.Value) {
 			} else if ni.Kind != MappingNode {
 				failWantMap()
 			}
-			d.Unmarshal(ni, out)
+			d.Construct(ni, out)
 		}
 	default:
 		failWantMap()

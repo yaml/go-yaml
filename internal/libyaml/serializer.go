@@ -26,7 +26,7 @@ import (
 
 // node serializes a Node tree into YAML events.
 // This is the core of the serializer stage - it walks the tree and produces events.
-func (e *Encoder) node(node *Node, tail string) {
+func (e *Representer) node(node *Node, tail string) {
 	// Zero nodes behave as nil.
 	if node.Kind == 0 && node.IsZero() {
 		e.nilv()
@@ -151,8 +151,8 @@ func (e *Encoder) node(node *Node, tail string) {
 			if stag != "" {
 				failf("cannot marshal invalid UTF-8 data as %s", stag)
 			}
-			// It can't be encoded directly as YAML so use a binary tag
-			// and encode it as base64.
+			// It can't be representd directly as YAML so use a binary tag
+			// and represent it as base64.
 			tag = binaryTag
 			value = encodeBase64(value)
 		}
@@ -175,13 +175,13 @@ func (e *Encoder) node(node *Node, tail string) {
 
 		e.emitScalar(value, node.Anchor, tag, style, []byte(node.HeadComment), []byte(node.LineComment), []byte(node.FootComment), []byte(tail))
 	default:
-		failf("cannot encode node with unknown kind %d", node.Kind)
+		failf("cannot represent node with unknown kind %d", node.Kind)
 	}
 }
 
 // isSimpleCollection checks if a node contains only scalar values and would
 // fit within the line width when rendered in flow style.
-func (e *Encoder) isSimpleCollection(node *Node) bool {
+func (e *Representer) isSimpleCollection(node *Node) bool {
 	if !e.flowSimpleCollections {
 		return false
 	}
@@ -204,7 +204,7 @@ func (e *Encoder) isSimpleCollection(node *Node) bool {
 }
 
 // estimateFlowLength estimates the character length of a node in flow style.
-func (e *Encoder) estimateFlowLength(node *Node) int {
+func (e *Representer) estimateFlowLength(node *Node) int {
 	if node.Kind == SequenceNode {
 		// [item1, item2, ...] = 2 + sum(len(items)) + 2*(len-1)
 		length := 2 // []

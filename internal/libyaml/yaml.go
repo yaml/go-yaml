@@ -642,7 +642,7 @@ type Parser struct {
 	marks          []Mark         // The stack of marks.
 	tag_directives []TagDirective // The list of TAG directives.
 
-	// Dumper stuff
+	// Representer stuff
 
 	aliases []AliasData // The alias data.
 
@@ -788,7 +788,7 @@ type Emitter struct {
 
 	key_line_comment []byte
 
-	// Dumper stuff
+	// Representer stuff
 
 	opened bool // If the stream was already opened?
 	closed bool // If the stream was already closed?
