@@ -95,13 +95,13 @@ const (
 	FlowStyle
 )
 
-// StreamVersionDirective represents a YAML %YAML version directive in a stream node.
+// StreamVersionDirective represents a YAML %YAML version directive for stream nodes.
 type StreamVersionDirective struct {
 	Major int
 	Minor int
 }
 
-// StreamTagDirective represents a YAML %TAG directive in a stream node.
+// StreamTagDirective represents a YAML %TAG directive for stream nodes.
 type StreamTagDirective struct {
 	Handle string
 	Prefix string
