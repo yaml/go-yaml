@@ -26,7 +26,7 @@
 - unmarshal-error:
     name: Invalid float value
     yaml: 'v: !!float ''error'''
-    want: 'yaml: cannot decode !!str `error` as a !!float'
+    want: 'yaml: cannot construct !!str `error` as a !!float'
 
 - unmarshal-error:
     name: Incomplete flow sequence
@@ -167,45 +167,45 @@
     type: testStructA_TextUnmarshaler
     yaml: 'a: {foo: bar}'
     want: |-
-      yaml: unmarshal errors:
-        line 1: cannot unmarshal !!map into yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
+      yaml: construct errors:
+        line 1: cannot construct !!map into yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
 
 - unmarshal-error:
     name: Sequence into TextUnmarshaler (value field)
     type: testStructA_TextUnmarshaler
     yaml: 'a: [foo, bar]'
     want: |-
-      yaml: unmarshal errors:
-        line 1: cannot unmarshal !!seq into yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
+      yaml: construct errors:
+        line 1: cannot construct !!seq into yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
 
 - unmarshal-error:
     name: Mapping into TextUnmarshaler (pointer field)
     type: testStructA_TextUnmarshalerPtr
     yaml: 'a: {foo: bar}'
     want: |-
-      yaml: unmarshal errors:
-        line 1: cannot unmarshal !!map into *yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
+      yaml: construct errors:
+        line 1: cannot construct !!map into *yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
 
 - unmarshal-error:
     name: Sequence into TextUnmarshaler (pointer field)
     type: testStructA_TextUnmarshalerPtr
     yaml: 'a: [foo, bar]'
     want: |-
-      yaml: unmarshal errors:
-        line 1: cannot unmarshal !!seq into *yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
+      yaml: construct errors:
+        line 1: cannot construct !!seq into *yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
 
 - unmarshal-error:
     name: Mapping into TextUnmarshaler (pointer-pointer field)
     type: testStructA_TextUnmarshalerPtrPtr
     yaml: 'a: {foo: bar}'
     want: |-
-      yaml: unmarshal errors:
-        line 1: cannot unmarshal !!map into **yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
+      yaml: construct errors:
+        line 1: cannot construct !!map into **yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
 
 - unmarshal-error:
     name: Sequence into TextUnmarshaler (pointer-pointer field)
     type: testStructA_TextUnmarshalerPtrPtr
     yaml: 'a: [foo, bar]'
     want: |-
-      yaml: unmarshal errors:
-        line 1: cannot unmarshal !!seq into **yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
+      yaml: construct errors:
+        line 1: cannot construct !!seq into **yaml_test.simpleTextUnmarshaler (TextUnmarshaler)

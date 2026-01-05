@@ -172,7 +172,7 @@ func numLess(a, b reflect.Value) bool {
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Sentinel values for newEncoder parameters.
+// Sentinel values for newRepresenter parameters.
 // These provide clarity at call sites, similar to http.NoBody.
 var (
 	noWriter           io.Writer         = nil
@@ -180,7 +180,7 @@ var (
 	noTagDirective     []TagDirective    = nil
 )
 
-type Encoder struct {
+type Representer struct {
 	Emitter               Emitter
 	Out                   []byte
 	flow                  bool
@@ -192,11 +192,11 @@ type Encoder struct {
 	flowSimpleCollections bool
 }
 
-// NewEncoder creates a new YAML encoder with the given options.
+// NewRepresenter creates a new YAML representr with the given options.
 //
-// The writer parameter specifies the output destination for the encoder.
-// If writer is nil, the encoder will write to an internal buffer.
-func NewEncoder(writer io.Writer, opts *Options) *Encoder {
+// The writer parameter specifies the output destination for the representr.
+// If writer is nil, the representr will write to an internal buffer.
+func NewRepresenter(writer io.Writer, opts *Options) *Representer {
 	emitter := NewEmitter()
 	emitter.CompactSequenceIndent = opts.CompactSeqIndent
 	emitter.SetWidth(opts.LineWidth)
@@ -204,7 +204,7 @@ func NewEncoder(writer io.Writer, opts *Options) *Encoder {
 	emitter.SetCanonical(opts.Canonical)
 	emitter.SetLineBreak(opts.LineBreak)
 
-	e := &Encoder{
+	e := &Representer{
 		Emitter:               emitter,
 		Indent:                opts.Indent,
 		lineWidth:             opts.LineWidth,
@@ -222,7 +222,7 @@ func NewEncoder(writer io.Writer, opts *Options) *Encoder {
 	return e
 }
 
-func (e *Encoder) init() {
+func (e *Representer) init() {
 	if e.doneInit {
 		return
 	}
@@ -234,21 +234,21 @@ func (e *Encoder) init() {
 	e.doneInit = true
 }
 
-func (e *Encoder) Finish() {
+func (e *Representer) Finish() {
 	e.Emitter.OpenEnded = false
 	e.emit(NewStreamEndEvent())
 }
 
-func (e *Encoder) Destroy() {
+func (e *Representer) Destroy() {
 	e.Emitter.Delete()
 }
 
-func (e *Encoder) emit(event Event) {
+func (e *Representer) emit(event Event) {
 	// This will internally delete the event value.
 	e.must(e.Emitter.Emit(&event))
 }
 
-func (e *Encoder) must(err error) {
+func (e *Representer) must(err error) {
 	if err != nil {
 		msg := err.Error()
 		if msg == "" {
@@ -258,7 +258,7 @@ func (e *Encoder) must(err error) {
 	}
 }
 
-func (e *Encoder) MarshalDoc(tag string, in reflect.Value) {
+func (e *Representer) MarshalDoc(tag string, in reflect.Value) {
 	e.init()
 	var node *Node
 	if in.IsValid() {
@@ -275,8 +275,7 @@ func (e *Encoder) MarshalDoc(tag string, in reflect.Value) {
 	}
 }
 
-
-func (e *Encoder) marshal(tag string, in reflect.Value) {
+func (e *Representer) marshal(tag string, in reflect.Value) {
 	tag = shortTag(tag)
 	if !in.IsValid() || in.Kind() == reflect.Pointer && in.IsNil() {
 		e.nilv()
@@ -351,7 +350,7 @@ func (e *Encoder) marshal(tag string, in reflect.Value) {
 	}
 }
 
-func (e *Encoder) mapv(tag string, in reflect.Value) {
+func (e *Representer) mapv(tag string, in reflect.Value) {
 	e.mappingv(tag, func() {
 		keys := keyList(in.MapKeys())
 		sort.Sort(keys)
@@ -362,7 +361,7 @@ func (e *Encoder) mapv(tag string, in reflect.Value) {
 	})
 }
 
-func (e *Encoder) fieldByIndex(v reflect.Value, index []int) (field reflect.Value) {
+func (e *Representer) fieldByIndex(v reflect.Value, index []int) (field reflect.Value) {
 	for _, num := range index {
 		for {
 			if v.Kind() == reflect.Pointer {
@@ -379,7 +378,7 @@ func (e *Encoder) fieldByIndex(v reflect.Value, index []int) (field reflect.Valu
 	return v
 }
 
-func (e *Encoder) structv(tag string, in reflect.Value) {
+func (e *Representer) structv(tag string, in reflect.Value) {
 	sinfo, err := getStructInfo(in.Type())
 	if err != nil {
 		panic(err)
@@ -421,7 +420,7 @@ func (e *Encoder) structv(tag string, in reflect.Value) {
 	})
 }
 
-func (e *Encoder) mappingv(tag string, f func()) {
+func (e *Representer) mappingv(tag string, f func()) {
 	implicit := tag == ""
 	style := BLOCK_MAPPING_STYLE
 	if e.flow {
@@ -433,7 +432,7 @@ func (e *Encoder) mappingv(tag string, f func()) {
 	e.emit(NewMappingEndEvent())
 }
 
-func (e *Encoder) slicev(tag string, in reflect.Value) {
+func (e *Representer) slicev(tag string, in reflect.Value) {
 	implicit := tag == ""
 	style := BLOCK_SEQUENCE_STYLE
 	if e.flow {
@@ -493,7 +492,7 @@ func looksLikeMerge(s string) (result bool) {
 	return s == "<<"
 }
 
-func (e *Encoder) stringv(tag string, in reflect.Value) {
+func (e *Representer) stringv(tag string, in reflect.Value) {
 	var style ScalarStyle
 	s := in.String()
 	canUsePlain := true
@@ -505,13 +504,13 @@ func (e *Encoder) stringv(tag string, in reflect.Value) {
 		if tag != "" {
 			failf("cannot marshal invalid UTF-8 data as %s", shortTag(tag))
 		}
-		// It can't be encoded directly as YAML so use a binary tag
-		// and encode it as base64.
+		// It can't be representd directly as YAML so use a binary tag
+		// and represent it as base64.
 		tag = binaryTag
 		s = encodeBase64(s)
 	case tag == "":
 		// Check to see if it would resolve to a specific
-		// tag when encoded unquoted. If it doesn't,
+		// tag when representd unquoted. If it doesn't,
 		// there's no need to quote it.
 		rtag, _ := resolve("", s)
 		canUsePlain = rtag == strTag &&
@@ -537,7 +536,7 @@ func (e *Encoder) stringv(tag string, in reflect.Value) {
 	e.emitScalar(s, "", tag, style, nil, nil, nil, nil)
 }
 
-func (e *Encoder) boolv(tag string, in reflect.Value) {
+func (e *Representer) boolv(tag string, in reflect.Value) {
 	var s string
 	if in.Bool() {
 		s = "true"
@@ -547,23 +546,23 @@ func (e *Encoder) boolv(tag string, in reflect.Value) {
 	e.emitScalar(s, "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
-func (e *Encoder) intv(tag string, in reflect.Value) {
+func (e *Representer) intv(tag string, in reflect.Value) {
 	s := strconv.FormatInt(in.Int(), 10)
 	e.emitScalar(s, "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
-func (e *Encoder) uintv(tag string, in reflect.Value) {
+func (e *Representer) uintv(tag string, in reflect.Value) {
 	s := strconv.FormatUint(in.Uint(), 10)
 	e.emitScalar(s, "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
-func (e *Encoder) timev(tag string, in reflect.Value) {
+func (e *Representer) timev(tag string, in reflect.Value) {
 	t := in.Interface().(time.Time)
 	s := t.Format(time.RFC3339Nano)
 	e.emitScalar(s, "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
-func (e *Encoder) floatv(tag string, in reflect.Value) {
+func (e *Representer) floatv(tag string, in reflect.Value) {
 	// Issue #352: When formatting, use the precision of the underlying value
 	precision := 64
 	if in.Kind() == reflect.Float32 {
@@ -582,11 +581,11 @@ func (e *Encoder) floatv(tag string, in reflect.Value) {
 	e.emitScalar(s, "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
-func (e *Encoder) nilv() {
+func (e *Representer) nilv() {
 	e.emitScalar("null", "", "", PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
-func (e *Encoder) emitScalar(
+func (e *Representer) emitScalar(
 	value, anchor, tag string, style ScalarStyle, head, line, foot, tail []byte,
 ) {
 	// TODO Kill this function. Replace all initialize calls by their underlining Go literals.
@@ -602,7 +601,6 @@ func (e *Encoder) emitScalar(
 	e.emit(event)
 }
 
-func (e *Encoder) nodev(in reflect.Value) {
+func (e *Representer) nodev(in reflect.Value) {
 	e.node(in.Interface().(*Node), "")
 }
-

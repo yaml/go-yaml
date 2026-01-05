@@ -109,7 +109,7 @@ func resolve(tag string, in string) (rtag string, out any) {
 				}
 			}
 		}
-		failf("cannot decode %s `%s` as a %s", shortTag(rtag), in, shortTag(tag))
+		failf("cannot construct %s `%s` as a %s", shortTag(rtag), in, shortTag(tag))
 	}()
 
 	// Any data is accepted as a !!str or !!binary.
