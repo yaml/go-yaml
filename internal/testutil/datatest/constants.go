@@ -1,6 +1,9 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+// Constant registry for symbolic test data values.
+// Allows test data to reference constants by name instead of magic numbers.
+
 package datatest
 
 import "fmt"

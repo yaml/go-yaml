@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Package assert provides assertion functions for tests.
-// This is an internal package that was created to provide a simple way to write tests.
+// This is an internal package that was created to provide a simple way to
+// write tests.
 //
 // The idea was to do not add a dependency on a testing framework.
 package assert

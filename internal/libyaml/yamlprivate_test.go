@@ -1,6 +1,9 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+// Tests for internal constants.
+// Verifies buffer size and configuration constant values.
+
 package libyaml
 
 import (

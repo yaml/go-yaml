@@ -3,6 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+// Options configuration for loading and dumping YAML.
+// Provides centralized control for indentation, line width, strictness, and
+// more.
+
 package libyaml
 
 import (

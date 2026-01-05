@@ -1,6 +1,9 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+// Tests for assertion functions.
+// Verifies the behavior of internal test assertion helpers.
+
 package assert
 
 import (

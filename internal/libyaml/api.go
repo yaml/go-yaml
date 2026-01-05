@@ -3,6 +3,10 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0 AND MIT
 
+// High-level API helpers for parser and emitter initialization and
+// configuration.
+// Provides convenience functions for token insertion and stream management.
+
 package libyaml
 
 import (

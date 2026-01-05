@@ -13,6 +13,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Representer stage: Converts Go values to YAML nodes.
+// Handles marshaling from Go types to the intermediate node representation.
+
 package libyaml
 
 import (

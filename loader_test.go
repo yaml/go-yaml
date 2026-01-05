@@ -1,3 +1,6 @@
+// Tests for the streaming Loader API, including StreamNode functionality
+// and multi-document streaming.
+
 package yaml_test
 
 import (

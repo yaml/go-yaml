@@ -1,6 +1,9 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+// Tests for YAML test data loading.
+// Verifies test data loading utilities and scalar coercion functions.
+
 package libyaml
 
 import (

@@ -1,6 +1,9 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+// Type converters for test data unmarshaling.
+// Provides custom conversion logic for test data types like IntOrStr.
+
 package datatest
 
 import "fmt"

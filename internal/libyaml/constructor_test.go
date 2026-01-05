@@ -1,6 +1,9 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+// Tests for the constructor stage.
+// Verifies YAML node to Go value conversion and error handling.
+
 package libyaml
 
 import (

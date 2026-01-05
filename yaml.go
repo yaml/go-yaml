@@ -7,6 +7,18 @@
 // Source code and other details for the project are available at GitHub:
 //
 //	https://github.com/yaml/go-yaml
+//
+// This file contains:
+// - Version presets (V2, V3, V4)
+// - Options API (WithIndent, WithKnownFields, etc.)
+// - Type and constant re-exports from internal/libyaml
+// - Helper functions for struct field handling
+// - Deprecated APIs (Decoder, Encoder, Unmarshal, Marshal)
+//
+// For the main API, see:
+// - loader.go: Load, LoadAll, Loader
+// - dumper.go: Dump, DumpAll, Dumper
+
 package yaml
 
 import (
@@ -19,17 +31,6 @@ import (
 
 	"go.yaml.in/yaml/v4/internal/libyaml"
 )
-
-// This file contains:
-// - Version presets (V2, V3, V4)
-// - Options API (WithIndent, WithKnownFields, etc.)
-// - Type and constant re-exports from internal/libyaml
-// - Helper functions for struct field handling
-// - Deprecated APIs (Decoder, Encoder, Unmarshal, Marshal)
-//
-// For the main API, see:
-// - loader.go: Load, LoadAll, Loader
-// - dumper.go: Dump, DumpAll, Dumper
 
 //-----------------------------------------------------------------------------
 // Version presets
