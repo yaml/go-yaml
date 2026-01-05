@@ -1,6 +1,9 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+// Test runner for data-driven test execution.
+// Manages test handlers and orchestrates YAML-based test execution.
+
 package datatest
 
 import (

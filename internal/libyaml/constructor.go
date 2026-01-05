@@ -13,6 +13,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Constructor stage: Converts YAML nodes to Go values.
+// Handles type resolution, custom unmarshalers, and struct field mapping.
+
 package libyaml
 
 import (

@@ -1,6 +1,8 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+// Example: With V4 Override demonstrates overriding V4 preset options.
+
 package main
 
 import (

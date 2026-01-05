@@ -3,6 +3,10 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0 AND MIT
 
+// Core libyaml types and structures.
+// Defines Parser, Emitter, Event, Token, and related constants for YAML
+// processing.
+
 package libyaml
 
 import (

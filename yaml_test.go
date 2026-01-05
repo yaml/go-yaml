@@ -2,6 +2,9 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+// Tests for YAML marshal/unmarshal functionality, including struct tags,
+// type conversions, anchors/aliases, and edge cases.
+
 package yaml_test
 
 import (

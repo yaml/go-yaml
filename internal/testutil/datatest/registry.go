@@ -1,6 +1,9 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+// Type registry for test data type resolution.
+// Maps type names to Go types for dynamic test data instantiation.
+
 package datatest
 
 import (

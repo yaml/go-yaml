@@ -1,6 +1,8 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+// Example: Basic Loader demonstrates simple YAML loading into structs.
+
 package main
 
 import (

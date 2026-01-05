@@ -1,6 +1,9 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+// YAML Test Suite compliance tests.
+// Runs official YAML test suite cases and tracks known failures.
+
 package yts
 
 import (

@@ -3,6 +3,10 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0 AND MIT
 
+// Input reader with encoding detection and buffering.
+// Handles BOM detection, UTF-8/UTF-16 conversion, and provides buffered input
+// for the scanner.
+
 package libyaml
 
 import (

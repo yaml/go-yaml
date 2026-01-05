@@ -1,6 +1,9 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+// Tests for the emitter stage.
+// Verifies YAML output generation from events.
+
 package libyaml
 
 import (

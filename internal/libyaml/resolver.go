@@ -13,6 +13,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Tag resolution for YAML scalars.
+// Determines implicit types (int, float, bool, null, timestamp) from untagged
+// scalar values.
+
 package libyaml
 
 import (

@@ -1,6 +1,9 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+// Error types for YAML parsing and emitting.
+// Provides structured error reporting with line/column information.
+
 package libyaml
 
 import (

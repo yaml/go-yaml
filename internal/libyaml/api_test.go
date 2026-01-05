@@ -1,6 +1,10 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+// Tests for high-level API helpers.
+// Data-driven tests for parser/emitter configuration and token insertion
+// functions.
+
 package libyaml
 
 import (

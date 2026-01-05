@@ -3,6 +3,9 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0 AND MIT
 
+// Output writer with buffering.
+// Provides write buffering for the emitter stage.
+
 package libyaml
 
 import "fmt"
