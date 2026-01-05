@@ -1,6 +1,10 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+// Tests for the scanner stage.
+// Verifies input stream to token stream transformation, indentation handling,
+// and simple keys.
+
 package libyaml
 
 import (

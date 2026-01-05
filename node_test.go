@@ -13,6 +13,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Tests for Node operations, including encoding/decoding with Node,
+// node manipulation, and style handling.
+
 package yaml_test
 
 import (

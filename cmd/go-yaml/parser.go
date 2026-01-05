@@ -1,6 +1,9 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+// Parser wrapper for CLI YAML token/event processing. Provides a simplified
+// interface for the command-line tool to access internal parser functionality.
+
 package main
 
 import (

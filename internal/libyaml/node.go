@@ -13,6 +13,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Node types and constants for YAML tree representation.
+// Defines Kind, Style, and Node structure for intermediate YAML representation.
+
 package libyaml
 
 import (

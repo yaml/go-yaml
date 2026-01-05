@@ -3,6 +3,10 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0 AND MIT
 
+// Internal constants and buffer sizes.
+// Defines buffer sizes, stack sizes, and other internal configuration
+// constants for libyaml.
+
 package libyaml
 
 const (

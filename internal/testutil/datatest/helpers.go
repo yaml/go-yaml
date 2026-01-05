@@ -1,6 +1,9 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+// Helper functions for test data processing.
+// Includes hex decoding, struct unmarshaling, and test case normalization.
+
 package datatest
 
 import (

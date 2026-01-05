@@ -1,6 +1,8 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+// Node Load Strict Unmarshaler demonstrates strict unmarshaling with Nodes.
+
 package main
 
 import (

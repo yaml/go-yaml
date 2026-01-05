@@ -1,6 +1,8 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+// Example: Version Options demonstrates using YAML version presets.
+
 package main
 
 import (

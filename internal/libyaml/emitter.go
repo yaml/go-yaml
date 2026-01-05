@@ -3,6 +3,9 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0 AND MIT
 
+// Emitter stage: Generates YAML output from events.
+// Handles formatting, indentation, line wrapping, and output buffering.
+
 package libyaml
 
 import (

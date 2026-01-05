@@ -1,6 +1,8 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+// Example: Load Into Node demonstrates loading YAML into Node structures.
+
 package main
 
 import (

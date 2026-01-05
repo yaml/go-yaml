@@ -3,14 +3,9 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0 AND MIT
 
-package libyaml
-
-import (
-	"bytes"
-	"io"
-	"strings"
-)
-
+// Parser stage: Transforms token stream into event stream.
+// Implements a recursive-descent parser (LL(1)) following the YAML grammar specification.
+//
 // The parser implements the following grammar:
 //
 // stream               ::= STREAM-START implicit_document? explicit_document* STREAM-END
@@ -48,6 +43,14 @@ import (
 //                          flow_mapping_entry?
 //                          FLOW-MAPPING-END
 // flow_mapping_entry   ::= flow_node | KEY flow_node? (VALUE flow_node?)?
+
+package libyaml
+
+import (
+	"bytes"
+	"io"
+	"strings"
+)
 
 // Peek the next token in the token queue.
 func (parser *Parser) peekToken(out **Token) error {

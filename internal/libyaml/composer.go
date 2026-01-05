@@ -13,6 +13,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Composer stage: Builds a node tree from a libyaml event stream.
+// Handles document structure, anchors, and comment attachment.
+
 package libyaml
 
 import (

@@ -3,6 +3,12 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0 AND MIT
 
+// Scanner stage: Transforms input stream into token sequence.
+// The Scanner is the most complex stage, handling indentation, simple keys,
+// and block collection detection.
+//
+// Detailed documentation follows:
+
 package libyaml
 
 import (

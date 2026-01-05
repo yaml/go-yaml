@@ -14,6 +14,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Serializer stage: Converts representation tree (Nodes) to event stream.
+// Walks the node tree and produces events for the emitter.
+
 package libyaml
 
 import (
