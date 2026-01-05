@@ -496,13 +496,13 @@ func (e *Representer) stringv(tag string, in reflect.Value) {
 		if tag != "" {
 			failf("cannot marshal invalid UTF-8 data as %s", shortTag(tag))
 		}
-		// It can't be representd directly as YAML so use a binary tag
+		// It can't be represented directly as YAML so use a binary tag
 		// and represent it as base64.
 		tag = binaryTag
 		s = encodeBase64(s)
 	case tag == "":
 		// Check to see if it would resolve to a specific
-		// tag when representd unquoted. If it doesn't,
+		// tag when represented unquoted. If it doesn't,
 		// there's no need to quote it.
 		rtag, _ := resolve("", s)
 		canUsePlain = rtag == strTag &&

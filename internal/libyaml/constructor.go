@@ -22,13 +22,13 @@ import (
 // --------------------------------------------------------------------------
 // Interfaces and types needed by constructor
 
-// Constructer interface may be implemented by types to customize their
+// constructor interface may be implemented by types to customize their
 // behavior when being constructed from a YAML document.
-type Constructer interface {
+type constructor interface {
 	UnmarshalYAML(value *Node) error
 }
 
-type obsoleteConstructer interface {
+type obsoleteConstructor interface {
 	UnmarshalYAML(construct func(any) error) error
 }
 
@@ -123,9 +123,9 @@ type structInfo struct {
 	// contains an ,inline map, or -1 if there's none.
 	InlineMap int
 
-	// InlineConstructers holds indexes to inlined fields that
-	// contain constructer values.
-	InlineConstructers [][]int
+	// InlineConstructors holds indexes to inlined fields that
+	// contain constructor values.
+	InlineConstructors [][]int
 }
 
 type fieldInfo struct {
@@ -144,16 +144,16 @@ type fieldInfo struct {
 var (
 	structMap       = make(map[reflect.Type]*structInfo)
 	fieldMapMutex   sync.RWMutex
-	constructerType reflect.Type
+	constructorType reflect.Type
 )
 
 func init() {
-	var v Constructer
-	constructerType = reflect.ValueOf(&v).Elem().Type()
+	var v constructor
+	constructorType = reflect.ValueOf(&v).Elem().Type()
 }
 
 // hasConstructYAMLMethod checks if a type has an UnmarshalYAML method
-// that looks like it implements yaml.Constructer (from root package).
+// that looks like it implements yaml.Unmarshaler (from root package).
 // This is needed because we can't directly check for the interface type
 // since it's in a different package that we can't import.
 func hasConstructYAMLMethod(t reflect.Type) bool {
@@ -201,7 +201,7 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 	fieldsMap := make(map[string]fieldInfo)
 	fieldsList := make([]fieldInfo, 0, n)
 	inlineMap := -1
-	inlineConstructers := [][]int(nil)
+	inlineConstructors := [][]int(nil)
 	for i := 0; i != n; i++ {
 		field := st.Field(i)
 		if field.PkgPath != "" && !field.Anonymous {
@@ -254,16 +254,16 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 				if ftype.Kind() != reflect.Struct {
 					return nil, errors.New("option ,inline may only be used on a struct or map field")
 				}
-				// Check for both libyaml.Constructer and yaml.Constructer (by method name)
-				if reflect.PointerTo(ftype).Implements(constructerType) || hasConstructYAMLMethod(reflect.PointerTo(ftype)) {
-					inlineConstructers = append(inlineConstructers, []int{i})
+				// Check for both libyaml.constructor and yaml.Unmarshaler (by method name)
+				if reflect.PointerTo(ftype).Implements(constructorType) || hasConstructYAMLMethod(reflect.PointerTo(ftype)) {
+					inlineConstructors = append(inlineConstructors, []int{i})
 				} else {
 					sinfo, err := getStructInfo(ftype)
 					if err != nil {
 						return nil, err
 					}
-					for _, index := range sinfo.InlineConstructers {
-						inlineConstructers = append(inlineConstructers, append([]int{i}, index...))
+					for _, index := range sinfo.InlineConstructors {
+						inlineConstructors = append(inlineConstructors, append([]int{i}, index...))
 					}
 					for _, finfo := range sinfo.FieldsList {
 						if _, found := fieldsMap[finfo.Key]; found {
@@ -306,7 +306,7 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 		FieldsMap:          fieldsMap,
 		FieldsList:         fieldsList,
 		InlineMap:          inlineMap,
-		InlineConstructers: inlineConstructers,
+		InlineConstructors: inlineConstructors,
 	}
 
 	fieldMapMutex.Lock()
@@ -434,7 +434,7 @@ func (d *Constructor) terror(n *Node, tag string, out reflect.Value) {
 	})
 }
 
-func (d *Constructor) callConstructer(n *Node, u Constructer) (good bool) {
+func (d *Constructor) callConstructor(n *Node, u constructor) (good bool) {
 	err := u.UnmarshalYAML(n)
 	switch e := err.(type) {
 	case nil:
@@ -452,7 +452,7 @@ func (d *Constructor) callConstructer(n *Node, u Constructer) (good bool) {
 	}
 }
 
-func (d *Constructor) callObsoleteConstructer(n *Node, u obsoleteConstructer) (good bool) {
+func (d *Constructor) callObsoleteConstructor(n *Node, u obsoleteConstructor) (good bool) {
 	terrlen := len(d.Terrors)
 	err := u.UnmarshalYAML(func(v any) (err error) {
 		defer handleErr(&err)
@@ -482,7 +482,7 @@ func (d *Constructor) callObsoleteConstructer(n *Node, u obsoleteConstructer) (g
 
 func isTextUnmarshaler(out reflect.Value) bool {
 	// Dereference pointers to check the underlying type,
-	// similar to how prepare() handles Constructer checks.
+	// similar to how prepare() handles Constructor checks.
 	for out.Kind() == reflect.Pointer {
 		if out.IsNil() {
 			// Create a new instance to check the type
@@ -520,19 +520,19 @@ func (d *Constructor) prepare(n *Node, out reflect.Value) (newout reflect.Value,
 			again = true
 		}
 		if out.CanAddr() {
-			// Try yaml.Constructer (from root package) first
-			if called, good := d.tryCallYAMLConstructer(n, out); called {
+			// Try yaml.Unmarshaler (from root package) first
+			if called, good := d.tryCallYAMLConstructor(n, out); called {
 				return out, true, good
 			}
 
 			outi := out.Addr().Interface()
-			// Check for libyaml.Constructer
-			if u, ok := outi.(Constructer); ok {
-				good = d.callConstructer(n, u)
+			// Check for libyaml.constructor
+			if u, ok := outi.(constructor); ok {
+				good = d.callConstructor(n, u)
 				return out, true, good
 			}
-			if u, ok := outi.(obsoleteConstructer); ok {
-				good = d.callObsoleteConstructer(n, u)
+			if u, ok := outi.(obsoleteConstructor); ok {
+				good = d.callObsoleteConstructor(n, u)
 				return out, true, good
 			}
 		}
@@ -589,16 +589,16 @@ func allowedAliasRatio(constructCount int) float64 {
 	}
 }
 
-// constructerAdapter is an interface that wraps the root package's Constructer interface.
-// This allows the constructor to call constructers that expect *yaml.Node instead of *libyaml.Node.
-type constructerAdapter interface {
-	CallRootConstructer(n *Node) error
+// constructorAdapter is an interface that wraps the root package's Unmarshaler interface.
+// This allows the constructor to call constructors that expect *yaml.Node instead of *libyaml.Node.
+type constructorAdapter interface {
+	CallRootConstructor(n *Node) error
 }
 
-// tryCallYAMLConstructer checks if the value has an UnmarshalYAML method that takes
+// tryCallYAMLConstructor checks if the value has an UnmarshalYAML method that takes
 // a *yaml.Node (from the root package) and calls it if found.
-// This handles the case where user types implement yaml.Constructer instead of libyaml.Constructer.
-func (d *Constructor) tryCallYAMLConstructer(n *Node, out reflect.Value) (called bool, good bool) {
+// This handles the case where user types implement yaml.Unmarshaler instead of libyaml.constructor.
+func (d *Constructor) tryCallYAMLConstructor(n *Node, out reflect.Value) (called bool, good bool) {
 	if !out.CanAddr() {
 		return false, false
 	}
@@ -1094,7 +1094,7 @@ func (d *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
 		elemType = inlineMap.Type().Elem()
 	}
 
-	for _, index := range sinfo.InlineConstructers {
+	for _, index := range sinfo.InlineConstructors {
 		field := d.fieldByIndex(n, out, index)
 		d.prepare(n, field)
 	}
