@@ -51,9 +51,17 @@ type Unmarshaler interface {
 
 // Re-export stream-related types
 type (
-	StreamVersionDirective = libyaml.StreamVersionDirective
-	StreamTagDirective     = libyaml.StreamTagDirective
-	Encoding               = libyaml.Encoding
+	VersionDirective = libyaml.StreamVersionDirective
+	TagDirective     = libyaml.StreamTagDirective
+	Encoding         = libyaml.Encoding
+)
+
+// Re-export encoding constants
+const (
+	EncodingAny     = libyaml.ANY_ENCODING
+	EncodingUTF8    = libyaml.UTF8_ENCODING
+	EncodingUTF16LE = libyaml.UTF16LE_ENCODING
+	EncodingUTF16BE = libyaml.UTF16BE_ENCODING
 )
 
 // Re-export error types
