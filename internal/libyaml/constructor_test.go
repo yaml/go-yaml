@@ -10,8 +10,8 @@ import (
 	"go.yaml.in/yaml/v4/internal/testutil/assert"
 )
 
-func TestLoader(t *testing.T) {
-	RunTestCases(t, "loader.yaml", map[string]TestHandler{
+func TestConstructor(t *testing.T) {
+	RunTestCases(t, "constructor.yaml", map[string]TestHandler{
 		"scalar-resolution": func(t *testing.T, tc TestCase) {
 			t.Helper()
 
