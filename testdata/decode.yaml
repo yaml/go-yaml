@@ -675,9 +675,43 @@
     want:
       uint64_maxint64: MaxInt64
 
+# Plus sign prefix tests (PR #136)
+- decode:
+    name: uint64 max with plus sign
+    yaml: 'v: +18446744073709551615'
+    type: map[string]uint64
+    want:
+      v: MaxUint64
+
+- decode:
+    name: uint64 max hex with plus sign
+    yaml: 'v: +0xFFFFFFFFFFFFFFFF'
+    type: map[string]uint64
+    want:
+      v: MaxUint64
+
 - decode:
     name: uint64 underflow
     yaml: 'uint64_underflow: -1'
+    type: map[string]uint64
+    want: {}
+
+# Float to int boundary tests (PR #134)
+- decode:
+    name: float64 overflow to int64
+    yaml: 'v: 1.0e+20'
+    type: map[string]int64
+    want: {}
+
+- decode:
+    name: float64 underflow to int64
+    yaml: 'v: -1.0e+20'
+    type: map[string]int64
+    want: {}
+
+- decode:
+    name: float64 underflow to uint64
+    yaml: 'v: -1.0'
     type: map[string]uint64
     want: {}
 
@@ -766,6 +800,20 @@
     type: map[string]any
     want:
       v: -1.0
+
+- decode:
+    name: explicit float tag on MaxInt64
+    yaml: 'v: !!float 9223372036854775807'
+    type: map[string]any
+    want:
+      v: 9.223372036854776e+18
+
+- decode:
+    name: explicit float tag on MaxUint64
+    yaml: 'v: !!float 18446744073709551615'
+    type: map[string]any
+    want:
+      v: 1.8446744073709552e+19
 
 - decode:
     name: explicit null tag on empty string
