@@ -87,6 +87,20 @@ func (e *TypeError) Unwrap() []error {
 	return errs
 }
 
+// Strings returns the error messages as a string slice.
+//
+// This method is provided for compatibility with code migrating from v3,
+// where TypeError.Errors was []string. New code should access the Errors
+// field directly to get structured error information including line and
+// column numbers.
+func (e *TypeError) Strings() []string {
+	result := make([]string, len(e.Errors))
+	for i, err := range e.Errors {
+		result[i] = err.Error()
+	}
+	return result
+}
+
 // handleErr recovers from panics caused by yaml errors
 func handleErr(err *error) {
 	if v := recover(); v != nil {
