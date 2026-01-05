@@ -226,8 +226,7 @@ func (n *Node) ShortTag() string {
 				return n.Alias.ShortTag()
 			}
 		case ScalarNode:
-			tag, _ := resolve("", n.Value)
-			return tag
+			return strTag
 		case 0:
 			// Special case to make the zero value convenient.
 			if n.IsZero() {

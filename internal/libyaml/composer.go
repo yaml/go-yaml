@@ -180,11 +180,13 @@ func (p *Composer) Parse() *Node {
 func (p *Composer) node(kind Kind, defaultTag, tag, value string) *Node {
 	var style Style
 	if tag != "" && tag != "!" {
+		// Normalize tag to short form (e.g., tag:yaml.org,2002:str -> !!str)
 		tag = shortTag(tag)
 		style = TaggedStyle
 	} else if defaultTag != "" {
 		tag = defaultTag
 	} else if kind == ScalarNode {
+		// Delegate to resolver to determine tag from value
 		tag, _ = resolve("", value)
 	}
 	n := &Node{
@@ -293,11 +295,7 @@ func (p *Composer) scalar() *Node {
 	nodeValue := string(p.event.Value)
 	nodeTag := string(p.event.Tag)
 	var defaultTag string
-	if nodeStyle == 0 {
-		if nodeValue == "<<" {
-			defaultTag = mergeTag
-		}
-	} else {
+	if nodeStyle != 0 {
 		defaultTag = strTag
 	}
 	n := p.node(ScalarNode, defaultTag, nodeTag, nodeValue)

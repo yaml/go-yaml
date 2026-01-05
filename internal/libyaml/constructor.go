@@ -1222,5 +1222,5 @@ func (d *Decoder) merge(parent *Node, merge *Node, out reflect.Value) {
 }
 
 func isMerge(n *Node) bool {
-	return n.Kind == ScalarNode && n.Value == "<<" && (n.Tag == "" || n.Tag == "!" || shortTag(n.Tag) == mergeTag)
+	return n.Kind == ScalarNode && shortTag(n.Tag) == mergeTag
 }
