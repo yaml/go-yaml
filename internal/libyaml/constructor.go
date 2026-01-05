@@ -87,6 +87,32 @@ func (e *TypeError) Unwrap() []error {
 	return errs
 }
 
+// As implements errors.As for Go versions prior to 1.20 that don't support
+// the Unwrap() []error interface. It allows TypeError to match against
+// *ConstructError targets by returning the first error in the list.
+func (e *TypeError) As(target any) bool {
+	if len(e.Errors) == 0 {
+		return false
+	}
+	if t, ok := target.(**ConstructError); ok {
+		*t = e.Errors[0]
+		return true
+	}
+	return false
+}
+
+// Is implements errors.Is for Go versions prior to 1.20 that don't support
+// the Unwrap() []error interface. It checks if any wrapped error matches
+// the target error.
+func (e *TypeError) Is(target error) bool {
+	for _, err := range e.Errors {
+		if errors.Is(err, target) {
+			return true
+		}
+	}
+	return false
+}
+
 // Strings returns the error messages as a string slice.
 //
 // This method is provided for compatibility with code migrating from v3,
