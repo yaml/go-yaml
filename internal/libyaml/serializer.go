@@ -142,7 +142,7 @@ func (e *Representer) node(node *Node, tail string) {
 			if stag != "" {
 				failf("cannot marshal invalid UTF-8 data as %s", stag)
 			}
-			// It can't be representd directly as YAML so use a binary tag
+			// It can't be represented directly as YAML so use a binary tag
 			// and represent it as base64.
 			tag = binaryTag
 			value = encodeBase64(value)
