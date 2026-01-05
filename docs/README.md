@@ -4,6 +4,7 @@
 
 | Document | Description |
 |----------|-------------|
+| [How go-yaml Works](how-go-yaml-works.md) | Understanding the YAML processing pipeline |
 | [v3 to v4 Migration](v3-to-v4-migration.md) | Complete guide for upgrading from v3 |
 | [Dump and Load API](dump-load-api.md) | Comprehensive API guide |
 | [Options Reference](options.md) | All configuration options explained |
