@@ -862,14 +862,21 @@ func (d *Constructor) scalar(n *Node, out reflect.Value) bool {
 				return true
 			}
 		case uint64:
-			if !isDuration && resolved <= math.MaxInt64 && !out.OverflowInt(int64(resolved)) {
-				out.SetInt(int64(resolved))
-				return true
+			if !isDuration && resolved <= math.MaxInt64 {
+				intVal := int64(resolved)
+				if !out.OverflowInt(intVal) {
+					out.SetInt(intVal)
+					return true
+				}
 			}
 		case float64:
-			if !isDuration && resolved <= math.MaxInt64 && !out.OverflowInt(int64(resolved)) {
-				out.SetInt(int64(resolved))
-				return true
+			if !isDuration && resolved >= math.MinInt64 && resolved <= math.MaxInt64 {
+				intVal := int64(resolved)
+				// Verify conversion is lossless (handles floating-point precision)
+				if float64(intVal) == resolved && !out.OverflowInt(intVal) {
+					out.SetInt(intVal)
+					return true
+				}
 			}
 		case string:
 			if out.Type() == durationType {
@@ -898,9 +905,13 @@ func (d *Constructor) scalar(n *Node, out reflect.Value) bool {
 				return true
 			}
 		case float64:
-			if resolved <= math.MaxUint64 && !out.OverflowUint(uint64(resolved)) {
-				out.SetUint(uint64(resolved))
-				return true
+			if resolved >= 0 && resolved <= math.MaxUint64 {
+				uintVal := uint64(resolved)
+				// Verify conversion is lossless (handles floating-point precision)
+				if float64(uintVal) == resolved && !out.OverflowUint(uintVal) {
+					out.SetUint(uintVal)
+					return true
+				}
 			}
 		}
 	case reflect.Bool:
