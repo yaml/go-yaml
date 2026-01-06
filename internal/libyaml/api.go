@@ -97,6 +97,12 @@ func (parser *Parser) GetCommentsHead() int {
 	return parser.comments_head
 }
 
+// SetSkipComments enables or disables comment scanning.
+// When enabled, the scanner skips comment tokens for better performance.
+func (parser *Parser) SetSkipComments(skip bool) {
+	parser.skip_comments = skip
+}
+
 // NewEmitter creates a new emitter object.
 func NewEmitter() Emitter {
 	return Emitter{

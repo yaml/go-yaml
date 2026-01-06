@@ -1,0 +1,92 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Options test cases for go-yaml
+#
+# Purpose: Tests option validation and processing, including plugin kind validation.
+#
+# Format: Test cases use type-as-key format:
+#   - test-type:
+#       name: Test case name
+#       ...
+#
+# Test Types:
+#   plugin-kind - Validates that valid plugin kinds are accepted
+#   plugin-kind-error - Validates that invalid plugin kinds are rejected
+#   opts-yaml - Validates that OptsYAML successfully parses valid option strings
+#   opts-yaml-error - Validates that OptsYAML rejects invalid option strings
+#
+# Common Keys:
+#   name - Test case name (string)
+#   kind - Plugin kind to test (string, for plugin-kind tests)
+#   yaml - YAML option string to parse (string, for opts-yaml tests)
+#   want - Expected error message (for error tests)
+
+- plugin-kind:
+    name: valid comment plugin kind
+    kind: comment
+
+- plugin-kind-error:
+    name: invalid custom plugin kind
+    kind: custom
+    want: 'yaml: unknown plugin kind "custom"'
+
+- plugin-kind-error:
+    name: invalid arbitrary plugin kind
+    kind: my-special-plugin
+    want: 'yaml: unknown plugin kind "my-special-plugin"'
+
+- plugin-kind-error:
+    name: invalid load plugin kind (not yet supported)
+    kind: load
+    want: 'yaml: unknown plugin kind "load"'
+
+- plugin-kind-error:
+    name: invalid dump plugin kind (not yet supported)
+    kind: dump
+    want: 'yaml: unknown plugin kind "dump"'
+
+- plugin-kind-error:
+    name: invalid empty plugin kind
+    kind: ""
+    want: 'yaml: unknown plugin kind ""'
+
+- opts-yaml:
+    name: valid options
+    yaml: |
+      indent: 4
+      known-fields: true
+
+- opts-yaml:
+    name: all valid options
+    yaml: |
+      indent: 2
+      compact-seq-indent: true
+      line-width: 80
+      unicode: true
+      canonical: false
+      line-break: ln
+      explicit-start: true
+      explicit-end: false
+      flow-simple-coll: true
+      known-fields: true
+      single-document: true
+      unique-keys: true
+
+- opts-yaml-error:
+    name: typo in field name
+    yaml: |
+      knnown-fields: true
+    want: 'knnown-fields not found'
+
+- opts-yaml-error:
+    name: another typo
+    yaml: |
+      indnt: 2
+    want: 'indnt not found'
+
+- opts-yaml-error:
+    name: multiple options with one typo
+    yaml: |
+      indent: 2
+      unicoode: true
+    want: 'unicoode not found'
