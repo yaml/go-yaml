@@ -177,7 +177,7 @@ func NewLoader(r io.Reader, opts ...Option) (*Loader, error) {
 	if err != nil {
 		return nil, err
 	}
-	c := libyaml.NewComposerFromReader(r)
+	c := libyaml.NewComposerFromReader(r, o)
 	c.SetStreamNodes(o.StreamNodes)
 	return &Loader{
 		composer: c,

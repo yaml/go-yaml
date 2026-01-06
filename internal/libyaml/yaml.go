@@ -642,6 +642,8 @@ type Parser struct {
 	comments      []Comment // The folded comments for all parsed tokens
 	comments_head int
 
+	skip_comments bool // Skip comment scanning for performance
+
 	// Scanner stuff
 
 	stream_start_produced bool // Have we started to scan the input stream?
