@@ -104,8 +104,8 @@
   node: |
     - anchor: anchor1
       plain: first
-    - tag: '!!map'
-      anchor: anchor2
+    - anchor: anchor2
+      tag: '!!map'
       mapping:
       - plain: key
       - plain: value
@@ -114,15 +114,15 @@
       content:
       - kind: Scalar
         style: Plain
-        tag: '!!str'
         anchor: anchor1
+        tag: '!!str'
         text: first
     - kind: Document
       content:
       - kind: Mapping
         style: Plain
-        tag: '!!map'
         anchor: anchor2
+        tag: '!!map'
         content:
         - kind: Scalar
           style: Plain
@@ -438,14 +438,14 @@
       line: '# line1'
       plain: value1
     - foot: '# foot2'
-      tag: '!!seq'
       anchor: anchor2
+      tag: '!!seq'
       sequence:
       - head: '# head2'
         line: '# line2'
         plain: item
-    - tag: '!!map'
-      anchor: anchor3
+    - anchor: anchor3
+      tag: '!!map'
       mapping:
       - head: '# head3'
         foot: '# foot3'
@@ -458,8 +458,8 @@
       content:
       - kind: Scalar
         style: Plain
-        tag: '!!str'
         anchor: anchor1
+        tag: '!!str'
         head: '# head1'
         line: '# line1'
         text: value1
@@ -468,8 +468,8 @@
       content:
       - kind: Sequence
         style: Plain
-        tag: '!!seq'
         anchor: anchor2
+        tag: '!!seq'
         content:
         - kind: Scalar
           style: Plain
@@ -481,8 +481,8 @@
       content:
       - kind: Mapping
         style: Plain
-        tag: '!!map'
         anchor: anchor3
+        tag: '!!map'
         content:
         - kind: Scalar
           style: Plain

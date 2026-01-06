@@ -1,7 +1,7 @@
 # Key ordering tests for -n and -N flags
 # These tests verify that keys appear in the correct order:
-# For -n: tag, anchor, head, line, foot, then content (mapping/sequence/scalar)
-# For -N: kind, style, tag, anchor, head, line, foot, then text/content
+# For -n: anchor, tag, head, line, foot, then content (mapping/sequence/scalar)
+# For -N: kind, style, anchor, tag, head, line, foot, then text/content
 
 - name: Scalar with tag and anchor
   text: |
@@ -14,8 +14,8 @@
     content:
     - kind: Scalar
       style: Plain
-      tag: '!!str'
       anchor: myanchor
+      tag: '!!str'
       text: value
 
 - name: Scalar with anchor and comments
@@ -34,8 +34,8 @@
     content:
     - kind: Scalar
       style: Plain
-      tag: '!!str'
       anchor: myanchor
+      tag: '!!str'
       head: '# head comment'
       line: '# line comment'
       foot: '# foot comment'
@@ -48,8 +48,8 @@
     key: value # line comment
     # foot comment
   node: |
-    tag: '!!map'
     anchor: myanchor
+    tag: '!!map'
     mapping:
     - head: '# head comment'
       foot: '# foot comment'
@@ -61,8 +61,8 @@
     content:
     - kind: Mapping
       style: Plain
-      tag: '!!map'
       anchor: myanchor
+      tag: '!!map'
       content:
       - kind: Scalar
         style: Plain
@@ -82,8 +82,8 @@
     - item1
     - item2
   node: |
-    tag: '!!seq'
     anchor: myseq
+    tag: '!!seq'
     sequence:
     - plain: item1
     - plain: item2
@@ -92,8 +92,8 @@
     content:
     - kind: Sequence
       style: Plain
-      tag: '!!seq'
       anchor: myseq
+      tag: '!!seq'
       content:
       - kind: Scalar
         style: Plain
@@ -112,8 +112,8 @@
     - item2
     # foot comment
   node: |
-    tag: '!!seq'
     anchor: myseq
+    tag: '!!seq'
     sequence:
     - head: '# head comment'
       plain: item1
@@ -124,8 +124,8 @@
     content:
     - kind: Sequence
       style: Plain
-      tag: '!!seq'
       anchor: myseq
+      tag: '!!seq'
       content:
       - kind: Scalar
         style: Plain
@@ -149,8 +149,8 @@
     content:
     - kind: Scalar
       style: Plain
-      tag: '!!str'
       anchor: anchor
+      tag: '!!str'
       text: tagged
 
 - name: Comments come before content
@@ -192,8 +192,8 @@
     content:
     - kind: Scalar
       style: Double
-      tag: '!!str'
       anchor: myanchor
+      tag: '!!str'
       text: quoted
 
 - name: Nested mapping with ordered keys
@@ -205,13 +205,13 @@
       # inner head
       key: value
   node: |
-    tag: '!!map'
     anchor: outer
+    tag: '!!map'
     mapping:
     - head: '# outer head'
       plain: nested
-    - tag: '!!map'
-      anchor: inner
+    - anchor: inner
+      tag: '!!map'
       mapping:
       - head: '# inner head'
         plain: key
@@ -221,8 +221,8 @@
     content:
     - kind: Mapping
       style: Plain
-      tag: '!!map'
       anchor: outer
+      tag: '!!map'
       content:
       - kind: Scalar
         style: Plain
@@ -231,8 +231,8 @@
         text: nested
       - kind: Mapping
         style: Plain
-        tag: '!!map'
         anchor: inner
+        tag: '!!map'
         content:
         - kind: Scalar
           style: Plain
