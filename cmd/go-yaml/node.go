@@ -53,8 +53,8 @@ func (ms MapSlice) MarshalYAML() (any, error) {
 type NodeInfo struct {
 	Kind          string             `yaml:"kind"`
 	Style         string             `yaml:"style,omitempty"`
-	Tag           string             `yaml:"tag,omitempty"`
 	Anchor        string             `yaml:"anchor,omitempty"`
+	Tag           string             `yaml:"tag,omitempty"`
 	Head          string             `yaml:"head,omitempty"`
 	Line          string             `yaml:"line,omitempty"`
 	Foot          string             `yaml:"foot,omitempty"`
@@ -264,12 +264,12 @@ func FormatNodeCompact(n yaml.Node) any {
 		// Document has properties - create a result map with ordered keys
 		result := MapSlice{}
 
-		// Add optional fields in order: tag, anchor, comments
-		if tag := formatTag(n.Tag, n.Style, false); tag != "" && tag != "!!str" {
-			result = append(result, MapItem{Key: "tag", Value: tag})
-		}
+		// Add optional fields in order: anchor, tag, comments
 		if n.Anchor != "" {
 			result = append(result, MapItem{Key: "anchor", Value: n.Anchor})
+		}
+		if tag := formatTag(n.Tag, n.Style, false); tag != "" && tag != "!!str" {
+			result = append(result, MapItem{Key: "tag", Value: tag})
 		}
 		if n.HeadComment != "" {
 			result = append(result, MapItem{Key: "head", Value: n.HeadComment})
@@ -295,12 +295,12 @@ func FormatNodeCompact(n yaml.Node) any {
 	case yaml.MappingNode:
 		result := MapSlice{}
 
-		// Add optional fields in order: tag, anchor, comments
-		if tag := formatTag(n.Tag, n.Style, false); tag != "" && tag != "!!str" {
-			result = append(result, MapItem{Key: "tag", Value: tag})
-		}
+		// Add optional fields in order: anchor, tag, comments
 		if n.Anchor != "" {
 			result = append(result, MapItem{Key: "anchor", Value: n.Anchor})
+		}
+		if tag := formatTag(n.Tag, n.Style, false); tag != "" && tag != "!!str" {
+			result = append(result, MapItem{Key: "tag", Value: tag})
 		}
 		if n.HeadComment != "" {
 			result = append(result, MapItem{Key: "head", Value: n.HeadComment})
@@ -323,12 +323,12 @@ func FormatNodeCompact(n yaml.Node) any {
 	case yaml.SequenceNode:
 		result := MapSlice{}
 
-		// Add optional fields in order: tag, anchor, comments
-		if tag := formatTag(n.Tag, n.Style, false); tag != "" && tag != "!!str" {
-			result = append(result, MapItem{Key: "tag", Value: tag})
-		}
+		// Add optional fields in order: anchor, tag, comments
 		if n.Anchor != "" {
 			result = append(result, MapItem{Key: "anchor", Value: n.Anchor})
+		}
+		if tag := formatTag(n.Tag, n.Style, false); tag != "" && tag != "!!str" {
+			result = append(result, MapItem{Key: "tag", Value: tag})
 		}
 		if n.HeadComment != "" {
 			result = append(result, MapItem{Key: "head", Value: n.HeadComment})
@@ -351,12 +351,12 @@ func FormatNodeCompact(n yaml.Node) any {
 	case yaml.ScalarNode:
 		result := MapSlice{}
 
-		// Add optional fields in order: tag, anchor, comments
-		if tag := formatTag(n.Tag, n.Style, false); tag != "" && tag != "!!str" {
-			result = append(result, MapItem{Key: "tag", Value: tag})
-		}
+		// Add optional fields in order: anchor, tag, comments
 		if n.Anchor != "" {
 			result = append(result, MapItem{Key: "anchor", Value: n.Anchor})
+		}
+		if tag := formatTag(n.Tag, n.Style, false); tag != "" && tag != "!!str" {
+			result = append(result, MapItem{Key: "tag", Value: tag})
 		}
 		if n.HeadComment != "" {
 			result = append(result, MapItem{Key: "head", Value: n.HeadComment})
