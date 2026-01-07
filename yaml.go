@@ -501,8 +501,8 @@ func (dec *Decoder) Decode(v any) (err error) {
 		out = out.Elem()
 	}
 	d.Construct(node, out)
-	if len(d.Terrors) > 0 {
-		return &TypeError{Errors: d.Terrors}
+	if len(d.TypeErrors) > 0 {
+		return &TypeError{Errors: d.TypeErrors}
 	}
 	return nil
 }

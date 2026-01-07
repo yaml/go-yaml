@@ -141,10 +141,10 @@ func (l *Loader) Load(v any) (err error) {
 		out = out.Elem()
 	}
 	l.decoder.Construct(node, out) // Pass libyaml.Node directly
-	if len(l.decoder.Terrors) > 0 {
-		terrors := l.decoder.Terrors
-		l.decoder.Terrors = nil
-		return &TypeError{Errors: terrors}
+	if len(l.decoder.TypeErrors) > 0 {
+		typeErrors := l.decoder.TypeErrors
+		l.decoder.TypeErrors = nil
+		return &TypeError{Errors: typeErrors}
 	}
 	return nil
 }

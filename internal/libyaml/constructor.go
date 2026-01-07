@@ -386,9 +386,9 @@ func isZero(v reflect.Value) bool {
 }
 
 type Constructor struct {
-	doc     *Node
-	aliases map[*Node]bool
-	Terrors []*ConstructError
+	doc        *Node
+	aliases    map[*Node]bool
+	TypeErrors []*ConstructError
 
 	stringMapType  reflect.Type
 	generalMapType reflect.Type
@@ -435,13 +435,13 @@ func Construct(in []byte, out any, opts *Options) error {
 		}
 		d.Construct(node, v)
 	}
-	if len(d.Terrors) > 0 {
-		return &TypeError{Errors: d.Terrors}
+	if len(d.TypeErrors) > 0 {
+		return &TypeError{Errors: d.TypeErrors}
 	}
 	return nil
 }
 
-func (d *Constructor) terror(n *Node, tag string, out reflect.Value) {
+func (d *Constructor) tagError(n *Node, tag string, out reflect.Value) {
 	if n.Tag != "" {
 		tag = n.Tag
 	}
@@ -453,7 +453,7 @@ func (d *Constructor) terror(n *Node, tag string, out reflect.Value) {
 			value = " `" + value + "`"
 		}
 	}
-	d.Terrors = append(d.Terrors, &ConstructError{
+	d.TypeErrors = append(d.TypeErrors, &ConstructError{
 		Err:    fmt.Errorf("cannot construct %s%s into %s", shortTag(tag), value, out.Type()),
 		Line:   n.Line,
 		Column: n.Column,
@@ -466,10 +466,10 @@ func (d *Constructor) callConstructor(n *Node, u constructor) (good bool) {
 	case nil:
 		return true
 	case *TypeError:
-		d.Terrors = append(d.Terrors, e.Errors...)
+		d.TypeErrors = append(d.TypeErrors, e.Errors...)
 		return false
 	default:
-		d.Terrors = append(d.Terrors, &ConstructError{
+		d.TypeErrors = append(d.TypeErrors, &ConstructError{
 			Err:    err,
 			Line:   n.Line,
 			Column: n.Column,
@@ -479,13 +479,13 @@ func (d *Constructor) callConstructor(n *Node, u constructor) (good bool) {
 }
 
 func (d *Constructor) callObsoleteConstructor(n *Node, u obsoleteConstructor) (good bool) {
-	terrlen := len(d.Terrors)
+	terrlen := len(d.TypeErrors)
 	err := u.UnmarshalYAML(func(v any) (err error) {
 		defer handleErr(&err)
 		d.Construct(n, reflect.ValueOf(v))
-		if len(d.Terrors) > terrlen {
-			issues := d.Terrors[terrlen:]
-			d.Terrors = d.Terrors[:terrlen]
+		if len(d.TypeErrors) > terrlen {
+			issues := d.TypeErrors[terrlen:]
+			d.TypeErrors = d.TypeErrors[:terrlen]
 			return &TypeError{issues}
 		}
 		return nil
@@ -494,10 +494,10 @@ func (d *Constructor) callObsoleteConstructor(n *Node, u obsoleteConstructor) (g
 	case nil:
 		return true
 	case *TypeError:
-		d.Terrors = append(d.Terrors, e.Errors...)
+		d.TypeErrors = append(d.TypeErrors, e.Errors...)
 		return false
 	default:
-		d.Terrors = append(d.Terrors, &ConstructError{
+		d.TypeErrors = append(d.TypeErrors, &ConstructError{
 			Err:    err,
 			Line:   n.Line,
 			Column: n.Column,
@@ -673,10 +673,10 @@ func (d *Constructor) tryCallYAMLConstructor(n *Node, out reflect.Value) (called
 
 	switch e := err.(type) {
 	case *TypeError:
-		d.Terrors = append(d.Terrors, e.Errors...)
+		d.TypeErrors = append(d.TypeErrors, e.Errors...)
 		return true, false
 	default:
-		d.Terrors = append(d.Terrors, &ConstructError{
+		d.TypeErrors = append(d.TypeErrors, &ConstructError{
 			Err:    e.(error),
 			Line:   n.Line,
 			Column: n.Column,
@@ -706,7 +706,7 @@ func (d *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
 	// Note that this matches the behavior of both encoding/json and encoding/json/v2.
 	if n.Kind != ScalarNode && isTextUnmarshaler(out) {
 		err := fmt.Errorf("cannot construct %s into %s (TextUnmarshaler)", shortTag(n.Tag), out.Type())
-		d.Terrors = append(d.Terrors, &ConstructError{
+		d.TypeErrors = append(d.TypeErrors, &ConstructError{
 			Err:    err,
 			Line:   n.Line,
 			Column: n.Column,
@@ -814,7 +814,7 @@ func (d *Constructor) scalar(n *Node, out reflect.Value) bool {
 			}
 			err := u.UnmarshalText(text)
 			if err != nil {
-				d.Terrors = append(d.Terrors, &ConstructError{
+				d.TypeErrors = append(d.TypeErrors, &ConstructError{
 					Err:    err,
 					Line:   n.Line,
 					Column: n.Column,
@@ -954,7 +954,7 @@ func (d *Constructor) scalar(n *Node, out reflect.Value) bool {
 	case reflect.Pointer:
 		panic("yaml internal error: please report the issue")
 	}
-	d.terror(n, tag, out)
+	d.tagError(n, tag, out)
 	return false
 }
 
@@ -981,7 +981,7 @@ func (d *Constructor) sequence(n *Node, out reflect.Value) (good bool) {
 		iface = out
 		out = settableValueOf(make([]any, l))
 	default:
-		d.terror(n, seqTag, out)
+		d.tagError(n, seqTag, out)
 		return false
 	}
 	et := out.Type().Elem()
@@ -1006,13 +1006,13 @@ func (d *Constructor) sequence(n *Node, out reflect.Value) (good bool) {
 func (d *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 	l := len(n.Content)
 	if d.UniqueKeys {
-		nerrs := len(d.Terrors)
+		nerrs := len(d.TypeErrors)
 		for i := 0; i < l; i += 2 {
 			ni := n.Content[i]
 			for j := i + 2; j < l; j += 2 {
 				nj := n.Content[j]
 				if ni.Kind == nj.Kind && ni.Value == nj.Value {
-					d.Terrors = append(d.Terrors, &ConstructError{
+					d.TypeErrors = append(d.TypeErrors, &ConstructError{
 						Err:    fmt.Errorf("mapping key %#v already defined at line %d", nj.Value, ni.Line),
 						Line:   nj.Line,
 						Column: nj.Column,
@@ -1020,7 +1020,7 @@ func (d *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 				}
 			}
 		}
-		if len(d.Terrors) > nerrs {
+		if len(d.TypeErrors) > nerrs {
 			return false
 		}
 	}
@@ -1038,7 +1038,7 @@ func (d *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 		}
 		iface.Set(out)
 	default:
-		d.terror(n, mapTag, out)
+		d.tagError(n, mapTag, out)
 		return false
 	}
 
@@ -1164,7 +1164,7 @@ func (d *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
 		if info, ok := sinfo.FieldsMap[sname]; ok {
 			if d.UniqueKeys {
 				if doneFields[info.Id] {
-					d.Terrors = append(d.Terrors, &ConstructError{
+					d.TypeErrors = append(d.TypeErrors, &ConstructError{
 						Err:    fmt.Errorf("field %s already set in type %s", name.String(), out.Type()),
 						Line:   ni.Line,
 						Column: ni.Column,
@@ -1188,7 +1188,7 @@ func (d *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
 			d.Construct(n.Content[i+1], value)
 			inlineMap.SetMapIndex(name, value)
 		} else if d.KnownFields {
-			d.Terrors = append(d.Terrors, &ConstructError{
+			d.TypeErrors = append(d.TypeErrors, &ConstructError{
 				Err:    fmt.Errorf("field %s not found in type %s", name.String(), out.Type()),
 				Line:   ni.Line,
 				Column: ni.Column,
