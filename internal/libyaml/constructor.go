@@ -341,10 +341,10 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 	return sinfo, nil
 }
 
-// IsZeroer is used to check whether an object is zero to
-// determine whether it should be omitted when marshaling
-// with the omitempty flag. One notable implementation
-// is time.Time.
+// isZero reports whether v represents the zero value for its type.
+// If v implements the IsZeroer interface, IsZero() is called.
+// Otherwise, zero is determined by checking type-specific conditions.
+// This is used to determine omitempty behavior when marshaling.
 func isZero(v reflect.Value) bool {
 	kind := v.Kind()
 	if z, ok := v.Interface().(IsZeroer); ok {
