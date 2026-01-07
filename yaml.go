@@ -75,20 +75,45 @@ var V4 = Options(
 // Re-exported from internal/libyaml.
 type Option = libyaml.Option
 
-// Re-export option functions from internal/libyaml
 var (
-	WithIndent                = libyaml.WithIndent
-	WithCompactSeqIndent      = libyaml.WithCompactSeqIndent
-	WithKnownFields           = libyaml.WithKnownFields
-	WithSingleDocument        = libyaml.WithSingleDocument
-	WithStreamNodes           = libyaml.WithStreamNodes
-	WithLineWidth             = libyaml.WithLineWidth
-	WithUnicode               = libyaml.WithUnicode
-	WithUniqueKeys            = libyaml.WithUniqueKeys
-	WithCanonical             = libyaml.WithCanonical
-	WithLineBreak             = libyaml.WithLineBreak
-	WithExplicitStart         = libyaml.WithExplicitStart
-	WithExplicitEnd           = libyaml.WithExplicitEnd
+	// WithIndent sets indentation spaces (2-9).
+	// See internal/libyaml.WithIndent.
+	WithIndent = libyaml.WithIndent
+	// WithCompactSeqIndent configures '- ' as part of indentation.
+	// See internal/libyaml.WithCompactSeqIndent.
+	WithCompactSeqIndent = libyaml.WithCompactSeqIndent
+	// WithKnownFields enables strict field checking during loading.
+	// See internal/libyaml.WithKnownFields.
+	WithKnownFields = libyaml.WithKnownFields
+	// WithSingleDocument only processes first document in stream.
+	// See internal/libyaml.WithSingleDocument.
+	WithSingleDocument = libyaml.WithSingleDocument
+	// WithStreamNodes enables stream boundary nodes when loading.
+	// See internal/libyaml.WithStreamNodes.
+	WithStreamNodes = libyaml.WithStreamNodes
+	// WithLineWidth sets preferred line width for output.
+	// See internal/libyaml.WithLineWidth.
+	WithLineWidth = libyaml.WithLineWidth
+	// WithUnicode controls non-ASCII characters in output.
+	// See internal/libyaml.WithUnicode.
+	WithUnicode = libyaml.WithUnicode
+	// WithUniqueKeys enables duplicate key detection.
+	// See internal/libyaml.WithUniqueKeys.
+	WithUniqueKeys = libyaml.WithUniqueKeys
+	// WithCanonical forces canonical YAML output format.
+	// See internal/libyaml.WithCanonical.
+	WithCanonical = libyaml.WithCanonical
+	// WithLineBreak sets line ending style for output.
+	// See internal/libyaml.WithLineBreak.
+	WithLineBreak = libyaml.WithLineBreak
+	// WithExplicitStart controls document start markers (---).
+	// See internal/libyaml.WithExplicitStart.
+	WithExplicitStart = libyaml.WithExplicitStart
+	// WithExplicitEnd controls document end markers (...).
+	// See internal/libyaml.WithExplicitEnd.
+	WithExplicitEnd = libyaml.WithExplicitEnd
+	// WithFlowSimpleCollections controls flow style for simple collections.
+	// See internal/libyaml.WithFlowSimpleCollections.
 	WithFlowSimpleCollections = libyaml.WithFlowSimpleCollections
 )
 
@@ -205,13 +230,22 @@ func OptsYAML(yamlStr string) (Option, error) {
 // Type and constant re-exports
 //-----------------------------------------------------------------------------
 
-// Re-export types from internal/libyaml
 type (
-	Node      = libyaml.Node
-	Kind      = libyaml.Kind
-	Style     = libyaml.Style
+	// Node represents a YAML node in the document tree.
+	// See internal/libyaml.Node.
+	Node = libyaml.Node
+	// Kind identifies the type of a YAML node.
+	// See internal/libyaml.Kind.
+	Kind = libyaml.Kind
+	// Style controls the presentation of a YAML node.
+	// See internal/libyaml.Style.
+	Style = libyaml.Style
+	// Marshaler is implemented by types with custom YAML marshaling.
+	// See internal/libyaml.Marshaler.
 	Marshaler = libyaml.Marshaler
-	IsZeroer  = libyaml.IsZeroer
+	// IsZeroer is implemented by types that can report if they're zero.
+	// See internal/libyaml.IsZeroer.
+	IsZeroer = libyaml.IsZeroer
 )
 
 // Unmarshaler is the interface implemented by types
