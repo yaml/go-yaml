@@ -39,7 +39,7 @@ func init() {
 	for _, c := range "0123456789" {
 		t[int(c)] = 'D' // Digit
 	}
-	for _, c := range "yYnNtTfFoO~<" {
+	for _, c := range "yYnNtTfFoO~<" { // < for merge key <<
 		t[int(c)] = 'M' // In map
 	}
 	t[int('.')] = '.' // Float (potentially in map)
