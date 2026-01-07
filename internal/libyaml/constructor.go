@@ -524,7 +524,7 @@ func isTextUnmarshaler(out reflect.Value) bool {
 	return false
 }
 
-// d.prepare initializes and dereferences pointers and calls UnmarshalYAML
+// prepare initializes and dereferences pointers and calls UnmarshalYAML
 // if a value is found to implement it.
 // It returns the initialized and dereferenced out value, whether
 // construction was already done by UnmarshalYAML, and if so whether
