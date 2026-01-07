@@ -12,9 +12,6 @@ import (
 	"unicode/utf8"
 )
 
-// Serializer Stage: Converts representation tree (Nodes) to event stream
-// The serializer walks the node tree and produces events via emitter.Emit()
-
 // node serializes a Node tree into YAML events.
 // This is the core of the serializer stage - it walks the tree and produces events.
 func (e *Representer) node(node *Node, tail string) {
