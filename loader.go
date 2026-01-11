@@ -4,21 +4,34 @@
 // This file contains the Loader API for reading YAML documents.
 //
 // Primary functions:
-// - Load: Decode first YAML document into a value
-// - LoadAll: Decode all YAML documents from input
+// - Load: Decode YAML document(s) into a value (use WithAll for multi-doc)
 // - NewLoader: Create a streaming loader from io.Reader
 
 package yaml
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"reflect"
 
 	"go.yaml.in/yaml/v4/internal/libyaml"
 )
 
-// Load decodes the first YAML document with the given options.
+// Load decodes YAML document(s) with the given options.
+//
+// By default, Load requires exactly one document in the input.
+// If zero documents are found, it returns an error.
+// If multiple documents are found, it returns an error.
+//
+// Use WithAll() to load all documents into a slice:
+//
+//	var configs []Config
+//	yaml.Load(multiDocYAML, &configs, yaml.WithAll())
+//
+// When WithAll is used, out must be a pointer to a slice.
+// Each document is decoded into the slice element type.
+// Zero documents results in an empty slice (no error).
 //
 // Maps and pointers (to a struct, string, int, etc) are accepted as out
 // values. If an internal pointer within a struct is not initialized,
@@ -49,33 +62,101 @@ import (
 // See the documentation of Dump for the format of tags and a list of
 // supported tag options.
 func Load(in []byte, out any, opts ...Option) error {
-	return unmarshal(in, out, opts...)
+	o, err := libyaml.ApplyOptions(opts...)
+	if err != nil {
+		return err
+	}
+
+	if o.All {
+		// Multi-document mode: out must be pointer to slice
+		return loadAll(in, out, o)
+	}
+
+	// Single-document mode: exactly one document required
+	return loadSingle(in, out, o)
 }
 
-// LoadAll decodes all YAML documents from the input.
-//
-// Returns a slice containing all decoded documents. Each document is
-// decoded into an any value (typically map[string]any or []any).
-//
-// See [Unmarshal] for details about the conversion of YAML into Go values.
-func LoadAll(in []byte, opts ...Option) ([]any, error) {
-	l, err := NewLoader(bytes.NewReader(in), opts...)
-	if err != nil {
-		return nil, err
+// loadAll loads all documents into a slice
+func loadAll(in []byte, out any, opts *libyaml.Options) error {
+	outVal := reflect.ValueOf(out)
+	if outVal.Kind() != reflect.Pointer || outVal.IsNil() {
+		return &TypeError{Errors: []*libyaml.ConstructError{{
+			Err: errors.New("yaml: WithAll requires a non-nil pointer to a slice"),
+		}}}
 	}
-	var docs []any
+
+	sliceVal := outVal.Elem()
+	if sliceVal.Kind() != reflect.Slice {
+		return &TypeError{Errors: []*libyaml.ConstructError{{
+			Err: errors.New("yaml: WithAll requires a pointer to a slice"),
+		}}}
+	}
+
+	// Create a new slice (clear existing content)
+	sliceVal.Set(reflect.MakeSlice(sliceVal.Type(), 0, 0))
+
+	l, err := NewLoader(bytes.NewReader(in), func(o *libyaml.Options) error {
+		*o = *opts // Copy options
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	elemType := sliceVal.Type().Elem()
 	for {
-		var doc any
-		err := l.Load(&doc)
+		// Create new element of slice's element type
+		elemPtr := reflect.New(elemType)
+		err := l.Load(elemPtr.Interface())
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			return docs, err
+			return err
 		}
-		docs = append(docs, doc)
+		// Append decoded element to slice
+		sliceVal.Set(reflect.Append(sliceVal, elemPtr.Elem()))
 	}
-	return docs, nil
+
+	return nil
+}
+
+// loadSingle loads exactly one document (strict)
+func loadSingle(in []byte, out any, opts *libyaml.Options) error {
+	l, err := NewLoader(bytes.NewReader(in), func(o *libyaml.Options) error {
+		*o = *opts // Copy options
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	// Load first document
+	err = l.Load(out)
+	if err == io.EOF {
+		return &TypeError{Errors: []*libyaml.ConstructError{{
+			Err: errors.New("yaml: no documents in stream"),
+		}}}
+	}
+	if err != nil {
+		return err
+	}
+
+	// Check for additional documents
+	var dummy any
+	err = l.Load(&dummy)
+	if err != io.EOF {
+		if err != nil {
+			// Some other error occurred
+			return err
+		}
+		// Successfully loaded a second document - this is an error in strict mode
+		return &TypeError{Errors: []*libyaml.ConstructError{{
+			Err: errors.New("yaml: expected single document, found multiple"),
+		}}}
+	}
+
+	return nil
 }
 
 // A Loader reads and decodes YAML values from an input stream with configurable

@@ -20,6 +20,7 @@ type Options struct {
 	SingleDocument bool // Only load first document
 	UniqueKeys     bool // Enforce unique keys in mappings
 	StreamNodes    bool // Enable stream node emission
+	All            bool // Load/Dump all documents in multi-document streams
 
 	// Dumping options
 	Indent                int       // Indentation spaces (2-9)
@@ -134,6 +135,32 @@ func WithStreamNodes(enable ...bool) Option {
 	val := len(enable) == 0 || enable[0]
 	return func(o *Options) error {
 		o.StreamNodes = val
+		return nil
+	}
+}
+
+// WithAll enables multi-document mode for Load and Dump operations.
+//
+// When used with Load, the target must be a pointer to a slice.
+// All documents in the YAML stream will be decoded into the slice.
+// Zero documents results in an empty slice (no error).
+//
+// When used with Dump, the input must be a slice.
+// Each element will be encoded as a separate YAML document
+// with "---" separators.
+//
+// When called without arguments, defaults to true.
+//
+// The default is false (single-document mode).
+func WithAll(all ...bool) Option {
+	if len(all) > 1 {
+		return func(o *Options) error {
+			return errors.New("yaml: WithAll accepts at most one argument")
+		}
+	}
+	val := len(all) == 0 || all[0]
+	return func(o *Options) error {
+		o.All = val
 		return nil
 	}
 }

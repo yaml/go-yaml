@@ -7,7 +7,9 @@
 package yts
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -96,6 +98,21 @@ func getEvents(in []byte) (string, error) {
 	return libyaml.ParserGetEvents(in)
 }
 
+// loadFirstDocument loads only the first document from YAML input.
+// Returns nil value and nil error for empty input (0 documents).
+// Ignores additional documents if present.
+func loadFirstDocument(in []byte, out any) error {
+	loader, err := yaml.NewLoader(bytes.NewReader(in))
+	if err != nil {
+		return err
+	}
+	err = loader.Load(out)
+	if err == io.EOF {
+		return nil // Empty input is OK for YTS
+	}
+	return err
+}
+
 func runTest(t *testing.T, testPath string) {
 	t.Helper()
 
@@ -126,7 +143,7 @@ func runTest(t *testing.T, testPath string) {
 
 	t.Run("UnmarshalTest", func(t *testing.T) {
 		shouldSkipTest(t)
-		unmarshalErr = yaml.Load(inYAML, &unmarshaledValue)
+		unmarshalErr = loadFirstDocument(inYAML, &unmarshaledValue)
 
 		if expectError {
 			if unmarshalErr == nil {
@@ -176,7 +193,7 @@ func runTest(t *testing.T, testPath string) {
 		shouldSkipTest(t)
 		var currentUnmarshaledValue any
 
-		currentUnmarshalErr := yaml.Load(inYAML, &currentUnmarshaledValue)
+		currentUnmarshalErr := loadFirstDocument(inYAML, &currentUnmarshaledValue)
 
 		if !(currentUnmarshalErr == nil || expectError) {
 			return
@@ -196,13 +213,13 @@ func runTest(t *testing.T, testPath string) {
 			return
 		}
 		var expectedUnmarshaledValue any
-		err = yaml.Load(expectedOutYAML, &expectedUnmarshaledValue)
+		err = loadFirstDocument(expectedOutYAML, &expectedUnmarshaledValue)
 		if err != nil {
 			t.Errorf("Test: %s\nDescription: %s\nError: Failed to unmarshal out.yaml: %v", testPath, testDescription, err)
 			return
 		}
 		var reUnmarshaledValue any
-		err = yaml.Load(marshaledYAML, &reUnmarshaledValue)
+		err = loadFirstDocument(marshaledYAML, &reUnmarshaledValue)
 		if err != nil {
 			t.Errorf("Test: %s\nDescription: %s\nError: Failed to re-unmarshal marshaled YAML: %v", testPath, testDescription, err)
 		} else if !reflect.DeepEqual(reUnmarshaledValue, expectedUnmarshaledValue) {
@@ -214,7 +231,7 @@ func runTest(t *testing.T, testPath string) {
 		shouldSkipTest(t)
 		var currentUnmarshaledValue any
 
-		currentUnmarshalErr := yaml.Load(inYAML, &currentUnmarshaledValue)
+		currentUnmarshalErr := loadFirstDocument(inYAML, &currentUnmarshaledValue)
 
 		if !(currentUnmarshalErr == nil || expectError) {
 			return

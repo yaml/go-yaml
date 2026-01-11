@@ -69,13 +69,12 @@ go-yaml provides five main API functions for dumping and loading YAML:
 
 | Reader | Writer | Configurable | Use Case | Deprecated |
 |--------|--------|--------------|----------|------------|
-| `Load` | `Dump` | Yes | Single document with options | No |
-| `LoadAll` | `DumpAll` | Yes | Multi-doc with options | No |
+| `Load` | `Dump` | Yes | Single or multi-doc with options | No |
 | `NewLoader` | `NewDumper` | Yes | Large files, continuous streams | No |
 | `Unmarshal` | `Marshal` | No | Quick conversions, preset behavior | Yes |
 | `Decode` | `Encode` | No | Multi-doc streams, preset behavior | Yes |
 
-## Configurable API: Dump, DumpAll, Load, LoadAll
+## Configurable API: Dump and Load
 
 Like Marshal/Unmarshal but with options support.
 Perfect for single operations that need custom behavior.
@@ -94,13 +93,11 @@ With custom options:
 data, err := yaml.Dump(&config, yaml.WithIndent(4))
 ```
 
-### DumpAll
-
-Dump multiple values as a multi-document stream:
+Dump multiple values as a multi-document stream using `WithAll()`:
 
 ```go
-docs := []any{config1, config2, config3}
-data, err := yaml.DumpAll(docs, yaml.WithIndent(2))
+docs := []Config{config1, config2, config3}
+data, err := yaml.Dump(docs, yaml.WithAll(), yaml.WithIndent(2))
 // Output:
 // name: first
 // ---
@@ -111,12 +108,15 @@ data, err := yaml.DumpAll(docs, yaml.WithIndent(2))
 
 ### Load
 
-Load the first document with options:
+Load a single document with options:
 
 ```go
 var config Config
 err := yaml.Load(yamlData, &config, yaml.WithKnownFields())
 ```
+
+**Important:** `Load` requires exactly one document by default.
+Zero documents or multiple documents will return an error.
 
 Strict validation catches typos:
 
@@ -131,9 +131,7 @@ err := yaml.Load(yamlData, &config, yaml.WithKnownFields())
 // Error: field prto not found in type Config
 ```
 
-### LoadAll
-
-Load all documents from a multi-document stream:
+Load all documents from a multi-document stream using `WithAll()`:
 
 ```go
 multiDoc := []byte(`
@@ -144,10 +142,19 @@ name: second
 name: third
 `)
 
-docs, err := yaml.LoadAll(multiDoc)
+var docs []map[string]any
+err := yaml.Load(multiDoc, &docs, yaml.WithAll())
 for i, doc := range docs {
     fmt.Printf("Doc %d: %v\n", i, doc)
 }
+```
+
+With typed slices:
+
+```go
+var configs []Config
+err := yaml.Load(multiDoc, &configs, yaml.WithAll())
+// Each document decoded as Config
 ```
 
 **When to use:** Need options but don't need streaming.
@@ -592,11 +599,12 @@ func MergeConfigs(files []string) ([]byte, error) {
 
     for _, f := range files {
         data, _ := os.ReadFile(f)
-        docs, _ := yaml.LoadAll(data)
+        var docs []any
+        _ = yaml.Load(data, &docs, yaml.WithAll())
         allDocs = append(allDocs, docs...)
     }
 
-    return yaml.DumpAll(allDocs, yaml.WithIndent(2))
+    return yaml.Dump(allDocs, yaml.WithAll(), yaml.WithIndent(2))
 }
 ```
 
