@@ -963,8 +963,8 @@ func TestUnmarshalerWholeDocument(t *testing.T) {
 }
 
 func TestUnmarshalerTypeError(t *testing.T) {
-	unmarshalerResult[2] = &yaml.TypeError{Errors: []*yaml.UnmarshalError{{Err: errors.New("foo"), Line: 1, Column: 1}}}
-	unmarshalerResult[4] = &yaml.TypeError{Errors: []*yaml.UnmarshalError{{Err: errors.New("bar"), Line: 1, Column: 1}}}
+	unmarshalerResult[2] = &yaml.TypeError{Errors: []*yaml.LoadError{{Err: errors.New("foo"), Line: 1, Column: 1}}}
+	unmarshalerResult[4] = &yaml.TypeError{Errors: []*yaml.LoadError{{Err: errors.New("bar"), Line: 1, Column: 1}}}
 	defer func() {
 		delete(unmarshalerResult, 2)
 		delete(unmarshalerResult, 4)
@@ -995,8 +995,8 @@ func TestUnmarshalerTypeError(t *testing.T) {
 }
 
 func TestObsoleteUnmarshalerTypeError(t *testing.T) {
-	unmarshalerResult[2] = &yaml.TypeError{Errors: []*yaml.UnmarshalError{{Err: errors.New("foo"), Line: 1, Column: 1}}}
-	unmarshalerResult[4] = &yaml.TypeError{Errors: []*yaml.UnmarshalError{{Err: errors.New("bar"), Line: 1, Column: 1}}}
+	unmarshalerResult[2] = &yaml.TypeError{Errors: []*yaml.LoadError{{Err: errors.New("foo"), Line: 1, Column: 1}}}
+	unmarshalerResult[4] = &yaml.TypeError{Errors: []*yaml.LoadError{{Err: errors.New("bar"), Line: 1, Column: 1}}}
 	defer func() {
 		delete(unmarshalerResult, 2)
 		delete(unmarshalerResult, 4)
@@ -1031,13 +1031,13 @@ func TestTypeError_Unwrapping(t *testing.T) {
 	errSentinel := errors.New("foo")
 	errSentinel2 := errors.New("bar")
 
-	errUnmarshal := &yaml.UnmarshalError{
+	errUnmarshal := &yaml.LoadError{
 		Line:   1,
 		Column: 2,
 		Err:    errSentinel,
 	}
 
-	errUnmarshal2 := &yaml.UnmarshalError{
+	errUnmarshal2 := &yaml.LoadError{
 		Line:   2,
 		Column: 2,
 		Err:    errSentinel2,
@@ -1045,13 +1045,13 @@ func TestTypeError_Unwrapping(t *testing.T) {
 
 	// Simulate a TypeError
 	err := &yaml.TypeError{
-		Errors: []*yaml.UnmarshalError{
+		Errors: []*yaml.LoadError{
 			errUnmarshal,
 			errUnmarshal2,
 		},
 	}
 
-	var errTarget *yaml.UnmarshalError
+	var errTarget *yaml.LoadError
 	// check we can unwrap an error
 	assert.ErrorAs(t, err, &errTarget)
 
@@ -1066,13 +1066,13 @@ func TestTypeError_Unwrapping(t *testing.T) {
 func TestTypeError_Unwrapping_Failures(t *testing.T) {
 	errSentinel := errors.New("foo")
 
-	errUnmarshal := &yaml.UnmarshalError{
+	errUnmarshal := &yaml.LoadError{
 		Line:   1,
 		Column: 2,
 		Err:    errSentinel,
 	}
 
-	errUnmarshal2 := &yaml.UnmarshalError{
+	errUnmarshal2 := &yaml.LoadError{
 		Line:   2,
 		Column: 2,
 		Err:    errors.New("bar"),
@@ -1080,13 +1080,13 @@ func TestTypeError_Unwrapping_Failures(t *testing.T) {
 
 	// Simulate a TypeError
 	err := &yaml.TypeError{
-		Errors: []*yaml.UnmarshalError{
+		Errors: []*yaml.LoadError{
 			errUnmarshal,
 			errUnmarshal2,
 		},
 	}
 
-	var errTarget *yaml.UnmarshalError
+	var errTarget *yaml.LoadError
 	// check we can unwrap an error
 	assert.ErrorAs(t, err, &errTarget)
 
@@ -1192,7 +1192,7 @@ func TestUnmarshalerError(t *testing.T) {
 	}{}
 	err := yaml.Unmarshal([]byte(data), &dst)
 	expectedErr := &yaml.TypeError{
-		Errors: []*yaml.UnmarshalError{
+		Errors: []*yaml.LoadError{
 			{Line: 1, Column: 17, Err: errFailing},
 		},
 	}
@@ -1218,7 +1218,7 @@ func TestObsoleteUnmarshalerError(t *testing.T) {
 	}{}
 	err := yaml.Unmarshal([]byte(data), &dst)
 	expectedErr := &yaml.TypeError{
-		Errors: []*yaml.UnmarshalError{
+		Errors: []*yaml.LoadError{
 			{Line: 1, Column: 17, Err: errFailing},
 		},
 	}
@@ -1246,7 +1246,7 @@ func TestTextUnmarshalerError(t *testing.T) {
 	}{}
 	err := yaml.Unmarshal([]byte(data), &dst)
 	expectedErr := &yaml.TypeError{
-		Errors: []*yaml.UnmarshalError{
+		Errors: []*yaml.LoadError{
 			{Line: 1, Column: 17, Err: errFailing},
 		},
 	}
@@ -1260,7 +1260,7 @@ func TestTextUnmarshalerError(t *testing.T) {
 func TestUnmarshalError_Unwrapping(t *testing.T) {
 	errSentinel := errors.New("foo")
 
-	errUnmarshal := &yaml.UnmarshalError{
+	errUnmarshal := &yaml.LoadError{
 		Line:   1,
 		Column: 2,
 		Err:    errSentinel,
@@ -1792,7 +1792,7 @@ func TestParserErrorUnknownAnchorPosition(t *testing.T) {
 func TestTypeError_Strings(t *testing.T) {
 	// Create a TypeError with multiple errors
 	typeErr := &yaml.TypeError{
-		Errors: []*yaml.UnmarshalError{
+		Errors: []*yaml.LoadError{
 			{Err: errors.New("cannot unmarshal string into int"), Line: 5, Column: 3},
 			{Err: errors.New("cannot unmarshal bool into string"), Line: 10, Column: 7},
 		},
