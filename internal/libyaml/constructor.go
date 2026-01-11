@@ -359,7 +359,7 @@ func Construct(in []byte, out any, opts *Options) error {
 	return nil
 }
 
-func (d *Constructor) tagError(n *Node, tag string, out reflect.Value) {
+func (c *Constructor) tagError(n *Node, tag string, out reflect.Value) {
 	if n.Tag != "" {
 		tag = n.Tag
 	}
@@ -371,23 +371,23 @@ func (d *Constructor) tagError(n *Node, tag string, out reflect.Value) {
 			value = " `" + value + "`"
 		}
 	}
-	d.TypeErrors = append(d.TypeErrors, &ConstructError{
+	c.TypeErrors = append(c.TypeErrors, &ConstructError{
 		Err:    fmt.Errorf("cannot construct %s%s into %s", shortTag(tag), value, out.Type()),
 		Line:   n.Line,
 		Column: n.Column,
 	})
 }
 
-func (d *Constructor) callConstructor(n *Node, u constructor) (good bool) {
+func (c *Constructor) callConstructor(n *Node, u constructor) (good bool) {
 	err := u.UnmarshalYAML(n)
 	switch e := err.(type) {
 	case nil:
 		return true
 	case *TypeError:
-		d.TypeErrors = append(d.TypeErrors, e.Errors...)
+		c.TypeErrors = append(c.TypeErrors, e.Errors...)
 		return false
 	default:
-		d.TypeErrors = append(d.TypeErrors, &ConstructError{
+		c.TypeErrors = append(c.TypeErrors, &ConstructError{
 			Err:    err,
 			Line:   n.Line,
 			Column: n.Column,
@@ -396,14 +396,14 @@ func (d *Constructor) callConstructor(n *Node, u constructor) (good bool) {
 	}
 }
 
-func (d *Constructor) callObsoleteConstructor(n *Node, u obsoleteConstructor) (good bool) {
-	terrlen := len(d.TypeErrors)
+func (c *Constructor) callObsoleteConstructor(n *Node, u obsoleteConstructor) (good bool) {
+	terrlen := len(c.TypeErrors)
 	err := u.UnmarshalYAML(func(v any) (err error) {
 		defer handleErr(&err)
-		d.Construct(n, reflect.ValueOf(v))
-		if len(d.TypeErrors) > terrlen {
-			issues := d.TypeErrors[terrlen:]
-			d.TypeErrors = d.TypeErrors[:terrlen]
+		c.Construct(n, reflect.ValueOf(v))
+		if len(c.TypeErrors) > terrlen {
+			issues := c.TypeErrors[terrlen:]
+			c.TypeErrors = c.TypeErrors[:terrlen]
 			return &TypeError{issues}
 		}
 		return nil
@@ -412,10 +412,10 @@ func (d *Constructor) callObsoleteConstructor(n *Node, u obsoleteConstructor) (g
 	case nil:
 		return true
 	case *TypeError:
-		d.TypeErrors = append(d.TypeErrors, e.Errors...)
+		c.TypeErrors = append(c.TypeErrors, e.Errors...)
 		return false
 	default:
-		d.TypeErrors = append(d.TypeErrors, &ConstructError{
+		c.TypeErrors = append(c.TypeErrors, &ConstructError{
 			Err:    err,
 			Line:   n.Line,
 			Column: n.Column,
@@ -449,7 +449,7 @@ func isTextUnmarshaler(out reflect.Value) bool {
 // its types constructed appropriately.
 //
 // If n holds a null value, prepare returns before doing anything.
-func (d *Constructor) prepare(n *Node, out reflect.Value) (newout reflect.Value, constructed, good bool) {
+func (c *Constructor) prepare(n *Node, out reflect.Value) (newout reflect.Value, constructed, good bool) {
 	if n.ShortTag() == nullTag {
 		return out, false, false
 	}
@@ -465,18 +465,18 @@ func (d *Constructor) prepare(n *Node, out reflect.Value) (newout reflect.Value,
 		}
 		if out.CanAddr() {
 			// Try yaml.Unmarshaler (from root package) first
-			if called, good := d.tryCallYAMLConstructor(n, out); called {
+			if called, good := c.tryCallYAMLConstructor(n, out); called {
 				return out, true, good
 			}
 
 			outi := out.Addr().Interface()
 			// Check for libyaml.constructor
 			if u, ok := outi.(constructor); ok {
-				good = d.callConstructor(n, u)
+				good = c.callConstructor(n, u)
 				return out, true, good
 			}
 			if u, ok := outi.(obsoleteConstructor); ok {
-				good = d.callObsoleteConstructor(n, u)
+				good = c.callObsoleteConstructor(n, u)
 				return out, true, good
 			}
 		}
@@ -484,7 +484,7 @@ func (d *Constructor) prepare(n *Node, out reflect.Value) (newout reflect.Value,
 	return out, false, false
 }
 
-func (d *Constructor) fieldByIndex(n *Node, v reflect.Value, index []int) (field reflect.Value) {
+func (c *Constructor) fieldByIndex(n *Node, v reflect.Value, index []int) (field reflect.Value) {
 	if n.ShortTag() == nullTag {
 		return reflect.Value{}
 	}
@@ -542,7 +542,7 @@ type constructorAdapter interface {
 // tryCallYAMLConstructor checks if the value has an UnmarshalYAML method that takes
 // a *yaml.Node (from the root package) and calls it if found.
 // This handles the case where user types implement yaml.Unmarshaler instead of libyaml.constructor.
-func (d *Constructor) tryCallYAMLConstructor(n *Node, out reflect.Value) (called bool, good bool) {
+func (c *Constructor) tryCallYAMLConstructor(n *Node, out reflect.Value) (called bool, good bool) {
 	if !out.CanAddr() {
 		return false, false
 	}
@@ -591,10 +591,10 @@ func (d *Constructor) tryCallYAMLConstructor(n *Node, out reflect.Value) (called
 
 	switch e := err.(type) {
 	case *TypeError:
-		d.TypeErrors = append(d.TypeErrors, e.Errors...)
+		c.TypeErrors = append(c.TypeErrors, e.Errors...)
 		return true, false
 	default:
-		d.TypeErrors = append(d.TypeErrors, &ConstructError{
+		c.TypeErrors = append(c.TypeErrors, &ConstructError{
 			Err:    e.(error),
 			Line:   n.Line,
 			Column: n.Column,
@@ -603,12 +603,12 @@ func (d *Constructor) tryCallYAMLConstructor(n *Node, out reflect.Value) (called
 	}
 }
 
-func (d *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
-	d.constructCount++
-	if d.aliasDepth > 0 {
-		d.aliasCount++
+func (c *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
+	c.constructCount++
+	if c.aliasDepth > 0 {
+		c.aliasCount++
 	}
-	if d.aliasCount > 100 && d.constructCount > 1000 && float64(d.aliasCount)/float64(d.constructCount) > allowedAliasRatio(d.constructCount) {
+	if c.aliasCount > 100 && c.constructCount > 1000 && float64(c.aliasCount)/float64(c.constructCount) > allowedAliasRatio(c.constructCount) {
 		failf("document contains excessive aliasing")
 	}
 	if out.Type() == nodeType {
@@ -624,7 +624,7 @@ func (d *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
 	// Note that this matches the behavior of both encoding/json and encoding/json/v2.
 	if n.Kind != ScalarNode && isTextUnmarshaler(out) {
 		err := fmt.Errorf("cannot construct %s into %s (TextUnmarshaler)", shortTag(n.Tag), out.Type())
-		d.TypeErrors = append(d.TypeErrors, &ConstructError{
+		c.TypeErrors = append(c.TypeErrors, &ConstructError{
 			Err:    err,
 			Line:   n.Line,
 			Column: n.Column,
@@ -633,24 +633,24 @@ func (d *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
 	}
 	switch n.Kind {
 	case DocumentNode:
-		return d.document(n, out)
+		return c.document(n, out)
 	case AliasNode:
-		return d.alias(n, out)
+		return c.alias(n, out)
 	}
-	out, constructed, good := d.prepare(n, out)
+	out, constructed, good := c.prepare(n, out)
 	if constructed {
 		return good
 	}
 	switch n.Kind {
 	case ScalarNode:
-		good = d.scalar(n, out)
+		good = c.scalar(n, out)
 	case MappingNode:
-		good = d.mapping(n, out)
+		good = c.mapping(n, out)
 	case SequenceNode:
-		good = d.sequence(n, out)
+		good = c.sequence(n, out)
 	case 0:
 		if n.IsZero() {
-			return d.null(out)
+			return c.null(out)
 		}
 		fallthrough
 	default:
@@ -659,29 +659,29 @@ func (d *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
 	return good
 }
 
-func (d *Constructor) document(n *Node, out reflect.Value) (good bool) {
+func (c *Constructor) document(n *Node, out reflect.Value) (good bool) {
 	if len(n.Content) == 1 {
-		d.doc = n
-		d.Construct(n.Content[0], out)
+		c.doc = n
+		c.Construct(n.Content[0], out)
 		return true
 	}
 	return false
 }
 
-func (d *Constructor) alias(n *Node, out reflect.Value) (good bool) {
-	if d.aliases[n] {
+func (c *Constructor) alias(n *Node, out reflect.Value) (good bool) {
+	if c.aliases[n] {
 		// TODO this could actually be allowed in some circumstances.
 		failf("anchor '%s' value contains itself", n.Value)
 	}
-	d.aliases[n] = true
-	d.aliasDepth++
-	good = d.Construct(n.Alias, out)
-	d.aliasDepth--
-	delete(d.aliases, n)
+	c.aliases[n] = true
+	c.aliasDepth++
+	good = c.Construct(n.Alias, out)
+	c.aliasDepth--
+	delete(c.aliases, n)
 	return good
 }
 
-func (d *Constructor) null(out reflect.Value) bool {
+func (c *Constructor) null(out reflect.Value) bool {
 	if out.CanAddr() {
 		switch out.Kind() {
 		case reflect.Interface, reflect.Pointer, reflect.Map, reflect.Slice:
@@ -692,7 +692,7 @@ func (d *Constructor) null(out reflect.Value) bool {
 	return false
 }
 
-func (d *Constructor) scalar(n *Node, out reflect.Value) bool {
+func (c *Constructor) scalar(n *Node, out reflect.Value) bool {
 	var tag string
 	var resolved any
 	if n.indicatedString() {
@@ -709,7 +709,7 @@ func (d *Constructor) scalar(n *Node, out reflect.Value) bool {
 		}
 	}
 	if resolved == nil {
-		return d.null(out)
+		return c.null(out)
 	}
 	if resolvedv := reflect.ValueOf(resolved); out.Type() == resolvedv.Type() {
 		// We've resolved to exactly the type we want, so use that.
@@ -732,7 +732,7 @@ func (d *Constructor) scalar(n *Node, out reflect.Value) bool {
 			}
 			err := u.UnmarshalText(text)
 			if err != nil {
-				d.TypeErrors = append(d.TypeErrors, &ConstructError{
+				c.TypeErrors = append(c.TypeErrors, &ConstructError{
 					Err:    err,
 					Line:   n.Line,
 					Column: n.Column,
@@ -872,7 +872,7 @@ func (d *Constructor) scalar(n *Node, out reflect.Value) bool {
 	case reflect.Pointer:
 		panic("yaml internal error: please report the issue")
 	}
-	d.tagError(n, tag, out)
+	c.tagError(n, tag, out)
 	return false
 }
 
@@ -883,7 +883,7 @@ func settableValueOf(i any) reflect.Value {
 	return sv
 }
 
-func (d *Constructor) sequence(n *Node, out reflect.Value) (good bool) {
+func (c *Constructor) sequence(n *Node, out reflect.Value) (good bool) {
 	l := len(n.Content)
 
 	var iface reflect.Value
@@ -899,7 +899,7 @@ func (d *Constructor) sequence(n *Node, out reflect.Value) (good bool) {
 		iface = out
 		out = settableValueOf(make([]any, l))
 	default:
-		d.tagError(n, seqTag, out)
+		c.tagError(n, seqTag, out)
 		return false
 	}
 	et := out.Type().Elem()
@@ -907,7 +907,7 @@ func (d *Constructor) sequence(n *Node, out reflect.Value) (good bool) {
 	j := 0
 	for i := 0; i < l; i++ {
 		e := reflect.New(et).Elem()
-		if ok := d.Construct(n.Content[i], e); ok {
+		if ok := c.Construct(n.Content[i], e); ok {
 			out.Index(j).Set(e)
 			j++
 		}
@@ -921,16 +921,16 @@ func (d *Constructor) sequence(n *Node, out reflect.Value) (good bool) {
 	return true
 }
 
-func (d *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
+func (c *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 	l := len(n.Content)
-	if d.UniqueKeys {
-		nerrs := len(d.TypeErrors)
+	if c.UniqueKeys {
+		nerrs := len(c.TypeErrors)
 		for i := 0; i < l; i += 2 {
 			ni := n.Content[i]
 			for j := i + 2; j < l; j += 2 {
 				nj := n.Content[j]
 				if ni.Kind == nj.Kind && ni.Value == nj.Value {
-					d.TypeErrors = append(d.TypeErrors, &ConstructError{
+					c.TypeErrors = append(c.TypeErrors, &ConstructError{
 						Err:    fmt.Errorf("mapping key %#v already defined at line %d", nj.Value, ni.Line),
 						Line:   nj.Line,
 						Column: nj.Column,
@@ -938,25 +938,25 @@ func (d *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 				}
 			}
 		}
-		if len(d.TypeErrors) > nerrs {
+		if len(c.TypeErrors) > nerrs {
 			return false
 		}
 	}
 	switch out.Kind() {
 	case reflect.Struct:
-		return d.mappingStruct(n, out)
+		return c.mappingStruct(n, out)
 	case reflect.Map:
 		// okay
 	case reflect.Interface:
 		iface := out
 		if isStringMap(n) {
-			out = reflect.MakeMap(d.stringMapType)
+			out = reflect.MakeMap(c.stringMapType)
 		} else {
-			out = reflect.MakeMap(d.generalMapType)
+			out = reflect.MakeMap(c.generalMapType)
 		}
 		iface.Set(out)
 	default:
-		d.tagError(n, mapTag, out)
+		c.tagError(n, mapTag, out)
 		return false
 	}
 
@@ -964,18 +964,18 @@ func (d *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 	kt := outt.Key()
 	et := outt.Elem()
 
-	stringMapType := d.stringMapType
-	generalMapType := d.generalMapType
+	stringMapType := c.stringMapType
+	generalMapType := c.generalMapType
 	if outt.Elem() == ifaceType {
 		if outt.Key().Kind() == reflect.String {
-			d.stringMapType = outt
+			c.stringMapType = outt
 		} else if outt.Key() == ifaceType {
-			d.generalMapType = outt
+			c.generalMapType = outt
 		}
 	}
 
-	mergedFields := d.mergedFields
-	d.mergedFields = nil
+	mergedFields := c.mergedFields
+	c.mergedFields = nil
 
 	var mergeNode *Node
 
@@ -990,13 +990,13 @@ func (d *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 			continue
 		}
 		k := reflect.New(kt).Elem()
-		if d.Construct(n.Content[i], k) {
+		if c.Construct(n.Content[i], k) {
 			if mergedFields != nil {
 				ki := k.Interface()
-				if d.getPossiblyUnhashableKey(mergedFields, ki) {
+				if c.getPossiblyUnhashableKey(mergedFields, ki) {
 					continue
 				}
-				d.setPossiblyUnhashableKey(mergedFields, ki, true)
+				c.setPossiblyUnhashableKey(mergedFields, ki, true)
 			}
 			kkind := k.Kind()
 			if kkind == reflect.Interface {
@@ -1006,19 +1006,19 @@ func (d *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 				failf("cannot use '%#v' as a map key; try decoding into yaml.Node", k.Interface())
 			}
 			e := reflect.New(et).Elem()
-			if d.Construct(n.Content[i+1], e) || n.Content[i+1].ShortTag() == nullTag && (mapIsNew || !out.MapIndex(k).IsValid()) {
+			if c.Construct(n.Content[i+1], e) || n.Content[i+1].ShortTag() == nullTag && (mapIsNew || !out.MapIndex(k).IsValid()) {
 				out.SetMapIndex(k, e)
 			}
 		}
 	}
 
-	d.mergedFields = mergedFields
+	c.mergedFields = mergedFields
 	if mergeNode != nil {
-		d.merge(n, mergeNode, out)
+		c.merge(n, mergeNode, out)
 	}
 
-	d.stringMapType = stringMapType
-	d.generalMapType = generalMapType
+	c.stringMapType = stringMapType
+	c.generalMapType = generalMapType
 	return true
 }
 
@@ -1036,7 +1036,7 @@ func isStringMap(n *Node) bool {
 	return true
 }
 
-func (d *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
+func (c *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
 	sinfo, err := getStructInfo(out.Type())
 	if err != nil {
 		panic(err)
@@ -1050,15 +1050,15 @@ func (d *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
 	}
 
 	for _, index := range sinfo.InlineConstructors {
-		field := d.fieldByIndex(n, out, index)
-		d.prepare(n, field)
+		field := c.fieldByIndex(n, out, index)
+		c.prepare(n, field)
 	}
 
-	mergedFields := d.mergedFields
-	d.mergedFields = nil
+	mergedFields := c.mergedFields
+	c.mergedFields = nil
 	var mergeNode *Node
 	var doneFields []bool
-	if d.UniqueKeys {
+	if c.UniqueKeys {
 		doneFields = make([]bool, len(sinfo.FieldsList))
 	}
 	name := settableValueOf("")
@@ -1069,7 +1069,7 @@ func (d *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
 			mergeNode = n.Content[i+1]
 			continue
 		}
-		if !d.Construct(ni, name) {
+		if !c.Construct(ni, name) {
 			continue
 		}
 		sname := name.String()
@@ -1080,9 +1080,9 @@ func (d *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
 			mergedFields[sname] = true
 		}
 		if info, ok := sinfo.FieldsMap[sname]; ok {
-			if d.UniqueKeys {
+			if c.UniqueKeys {
 				if doneFields[info.Id] {
-					d.TypeErrors = append(d.TypeErrors, &ConstructError{
+					c.TypeErrors = append(c.TypeErrors, &ConstructError{
 						Err:    fmt.Errorf("field %s already set in type %s", name.String(), out.Type()),
 						Line:   ni.Line,
 						Column: ni.Column,
@@ -1095,18 +1095,18 @@ func (d *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
 			if info.Inline == nil {
 				field = out.Field(info.Num)
 			} else {
-				field = d.fieldByIndex(n, out, info.Inline)
+				field = c.fieldByIndex(n, out, info.Inline)
 			}
-			d.Construct(n.Content[i+1], field)
+			c.Construct(n.Content[i+1], field)
 		} else if sinfo.InlineMap != -1 {
 			if inlineMap.IsNil() {
 				inlineMap.Set(reflect.MakeMap(inlineMap.Type()))
 			}
 			value := reflect.New(elemType).Elem()
-			d.Construct(n.Content[i+1], value)
+			c.Construct(n.Content[i+1], value)
 			inlineMap.SetMapIndex(name, value)
-		} else if d.KnownFields {
-			d.TypeErrors = append(d.TypeErrors, &ConstructError{
+		} else if c.KnownFields {
+			c.TypeErrors = append(c.TypeErrors, &ConstructError{
 				Err:    fmt.Errorf("field %s not found in type %s", name.String(), out.Type()),
 				Line:   ni.Line,
 				Column: ni.Column,
@@ -1114,9 +1114,9 @@ func (d *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
 		}
 	}
 
-	d.mergedFields = mergedFields
+	c.mergedFields = mergedFields
 	if mergeNode != nil {
-		d.merge(n, mergeNode, out)
+		c.merge(n, mergeNode, out)
 	}
 	return true
 }
@@ -1125,7 +1125,7 @@ func failWantMap() {
 	failf("map merge requires map or sequence of maps as the value")
 }
 
-func (d *Constructor) setPossiblyUnhashableKey(m map[any]bool, key any, value bool) {
+func (c *Constructor) setPossiblyUnhashableKey(m map[any]bool, key any, value bool) {
 	defer func() {
 		if err := recover(); err != nil {
 			failf("%v", err)
@@ -1134,7 +1134,7 @@ func (d *Constructor) setPossiblyUnhashableKey(m map[any]bool, key any, value bo
 	m[key] = value
 }
 
-func (d *Constructor) getPossiblyUnhashableKey(m map[any]bool, key any) bool {
+func (c *Constructor) getPossiblyUnhashableKey(m map[any]bool, key any) bool {
 	defer func() {
 		if err := recover(); err != nil {
 			failf("%v", err)
@@ -1143,26 +1143,26 @@ func (d *Constructor) getPossiblyUnhashableKey(m map[any]bool, key any) bool {
 	return m[key]
 }
 
-func (d *Constructor) merge(parent *Node, merge *Node, out reflect.Value) {
-	mergedFields := d.mergedFields
+func (c *Constructor) merge(parent *Node, merge *Node, out reflect.Value) {
+	mergedFields := c.mergedFields
 	if mergedFields == nil {
-		d.mergedFields = make(map[any]bool)
+		c.mergedFields = make(map[any]bool)
 		for i := 0; i < len(parent.Content); i += 2 {
 			k := reflect.New(ifaceType).Elem()
-			if d.Construct(parent.Content[i], k) {
-				d.setPossiblyUnhashableKey(d.mergedFields, k.Interface(), true)
+			if c.Construct(parent.Content[i], k) {
+				c.setPossiblyUnhashableKey(c.mergedFields, k.Interface(), true)
 			}
 		}
 	}
 
 	switch merge.Kind {
 	case MappingNode:
-		d.Construct(merge, out)
+		c.Construct(merge, out)
 	case AliasNode:
 		if merge.Alias != nil && merge.Alias.Kind != MappingNode {
 			failWantMap()
 		}
-		d.Construct(merge, out)
+		c.Construct(merge, out)
 	case SequenceNode:
 		for i := 0; i < len(merge.Content); i++ {
 			ni := merge.Content[i]
@@ -1173,13 +1173,13 @@ func (d *Constructor) merge(parent *Node, merge *Node, out reflect.Value) {
 			} else if ni.Kind != MappingNode {
 				failWantMap()
 			}
-			d.Construct(ni, out)
+			c.Construct(ni, out)
 		}
 	default:
 		failWantMap()
 	}
 
-	d.mergedFields = mergedFields
+	c.mergedFields = mergedFields
 }
 
 func isMerge(n *Node) bool {

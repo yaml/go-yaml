@@ -47,129 +47,129 @@ func NewComposerFromReader(r io.Reader) *Composer {
 	return &p
 }
 
-func (p *Composer) init() {
-	if p.doneInit {
+func (c *Composer) init() {
+	if c.doneInit {
 		return
 	}
-	p.anchors = make(map[string]*Node)
+	c.anchors = make(map[string]*Node)
 	// Peek to get the encoding from STREAM_START_EVENT
-	if p.peek() == STREAM_START_EVENT {
-		p.encoding = p.event.GetEncoding()
+	if c.peek() == STREAM_START_EVENT {
+		c.encoding = c.event.GetEncoding()
 	}
-	p.expect(STREAM_START_EVENT)
-	p.doneInit = true
+	c.expect(STREAM_START_EVENT)
+	c.doneInit = true
 
 	// If stream nodes are enabled, prepare to return the first stream node
-	if p.streamNodes {
-		p.returnStream = true
+	if c.streamNodes {
+		c.returnStream = true
 	}
 }
 
-func (p *Composer) Destroy() {
-	if p.event.Type != NO_EVENT {
-		p.event.Delete()
+func (c *Composer) Destroy() {
+	if c.event.Type != NO_EVENT {
+		c.event.Delete()
 	}
-	p.Parser.Delete()
+	c.Parser.Delete()
 }
 
 // SetStreamNodes enables or disables stream node emission.
-func (p *Composer) SetStreamNodes(enable bool) {
-	p.streamNodes = enable
+func (c *Composer) SetStreamNodes(enable bool) {
+	c.streamNodes = enable
 }
 
 // expect consumes an event from the event stream and
 // checks that it's of the expected type.
-func (p *Composer) expect(e EventType) {
-	if p.event.Type == NO_EVENT {
-		if err := p.Parser.Parse(&p.event); err != nil {
-			p.fail(err)
+func (c *Composer) expect(e EventType) {
+	if c.event.Type == NO_EVENT {
+		if err := c.Parser.Parse(&c.event); err != nil {
+			c.fail(err)
 		}
 	}
-	if p.event.Type == STREAM_END_EVENT {
+	if c.event.Type == STREAM_END_EVENT {
 		failf("attempted to go past the end of stream; corrupted value?")
 	}
-	if p.event.Type != e {
-		p.fail(fmt.Errorf("expected %s event but got %s", e, p.event.Type))
+	if c.event.Type != e {
+		c.fail(fmt.Errorf("expected %s event but got %s", e, c.event.Type))
 	}
-	p.event.Delete()
-	p.event.Type = NO_EVENT
+	c.event.Delete()
+	c.event.Type = NO_EVENT
 }
 
 // peek peeks at the next event in the event stream,
-// puts the results into p.event and returns the event type.
-func (p *Composer) peek() EventType {
-	if p.event.Type != NO_EVENT {
-		return p.event.Type
+// puts the results into c.event and returns the event type.
+func (c *Composer) peek() EventType {
+	if c.event.Type != NO_EVENT {
+		return c.event.Type
 	}
 	// It's curious choice from the underlying API to generally return a
 	// positive result on success, but on this case return true in an error
 	// scenario. This was the source of bugs in the past (issue #666).
-	if err := p.Parser.Parse(&p.event); err != nil {
-		p.fail(err)
+	if err := c.Parser.Parse(&c.event); err != nil {
+		c.fail(err)
 	}
-	return p.event.Type
+	return c.event.Type
 }
 
-func (p *Composer) fail(err error) {
+func (c *Composer) fail(err error) {
 	Fail(err)
 }
 
-func (p *Composer) anchor(n *Node, anchor []byte) {
+func (c *Composer) anchor(n *Node, anchor []byte) {
 	if anchor != nil {
 		n.Anchor = string(anchor)
-		p.anchors[n.Anchor] = n
+		c.anchors[n.Anchor] = n
 	}
 }
 
 // Parse parses the next YAML node from the event stream.
-func (p *Composer) Parse() *Node {
-	p.init()
+func (c *Composer) Parse() *Node {
+	c.init()
 
 	// Handle stream nodes if enabled
-	if p.streamNodes {
+	if c.streamNodes {
 		// Check for stream end first
-		if p.peek() == STREAM_END_EVENT {
+		if c.peek() == STREAM_END_EVENT {
 			// If we haven't returned the final stream node yet, return it now
-			if !p.atStreamEnd {
-				p.atStreamEnd = true
-				return p.createStreamNode()
+			if !c.atStreamEnd {
+				c.atStreamEnd = true
+				return c.createStreamNode()
 			}
 			// Already returned final stream node
 			return nil
 		}
 
 		// Check if we should return a stream node before the next document
-		if p.returnStream {
-			p.returnStream = false
-			n := p.createStreamNode()
+		if c.returnStream {
+			c.returnStream = false
+			n := c.createStreamNode()
 			// Capture directives from upcoming document
-			p.captureDirectives(n)
+			c.captureDirectives(n)
 			return n
 		}
 	}
 
-	switch p.peek() {
+	switch c.peek() {
 	case SCALAR_EVENT:
-		return p.scalar()
+		return c.scalar()
 	case ALIAS_EVENT:
-		return p.alias()
+		return c.alias()
 	case MAPPING_START_EVENT:
-		return p.mapping()
+		return c.mapping()
 	case SEQUENCE_START_EVENT:
-		return p.sequence()
+		return c.sequence()
 	case DOCUMENT_START_EVENT:
-		return p.document()
+		return c.document()
 	case STREAM_END_EVENT:
 		// Happens when attempting to decode an empty buffer (when not using stream nodes).
 		return nil
 	case TAIL_COMMENT_EVENT:
 		panic("internal error: unexpected tail comment event (please report)")
 	default:
-		panic("internal error: attempted to parse unknown event (please report): " + p.event.Type.String())
+		panic("internal error: attempted to parse unknown event (please report): " + c.event.Type.String())
 	}
 }
 
-func (p *Composer) node(kind Kind, defaultTag, tag, value string) *Node {
+func (c *Composer) node(kind Kind, defaultTag, tag, value string) *Node {
 	var style Style
 	if tag != "" && tag != "!" {
 		// Normalize tag to short form (e.g., tag:yaml.org,2002:str -> !!str)
@@ -187,62 +187,62 @@ func (p *Composer) node(kind Kind, defaultTag, tag, value string) *Node {
 		Value: value,
 		Style: style,
 	}
-	if !p.Textless {
-		n.Line = p.event.StartMark.Line + 1
-		n.Column = p.event.StartMark.Column + 1
-		n.HeadComment = string(p.event.HeadComment)
-		n.LineComment = string(p.event.LineComment)
-		n.FootComment = string(p.event.FootComment)
+	if !c.Textless {
+		n.Line = c.event.StartMark.Line + 1
+		n.Column = c.event.StartMark.Column + 1
+		n.HeadComment = string(c.event.HeadComment)
+		n.LineComment = string(c.event.LineComment)
+		n.FootComment = string(c.event.FootComment)
 	}
 	return n
 }
 
-func (p *Composer) parseChild(parent *Node) *Node {
-	child := p.Parse()
+func (c *Composer) parseChild(parent *Node) *Node {
+	child := c.Parse()
 	parent.Content = append(parent.Content, child)
 	return child
 }
 
-func (p *Composer) document() *Node {
-	n := p.node(DocumentNode, "", "", "")
-	p.doc = n
-	p.expect(DOCUMENT_START_EVENT)
-	p.parseChild(n)
-	if p.peek() == DOCUMENT_END_EVENT {
-		n.FootComment = string(p.event.FootComment)
+func (c *Composer) document() *Node {
+	n := c.node(DocumentNode, "", "", "")
+	c.doc = n
+	c.expect(DOCUMENT_START_EVENT)
+	c.parseChild(n)
+	if c.peek() == DOCUMENT_END_EVENT {
+		n.FootComment = string(c.event.FootComment)
 	}
-	p.expect(DOCUMENT_END_EVENT)
+	c.expect(DOCUMENT_END_EVENT)
 
 	// If stream nodes enabled, prepare to return a stream node next
-	if p.streamNodes {
-		p.returnStream = true
+	if c.streamNodes {
+		c.returnStream = true
 	}
 
 	return n
 }
 
-func (p *Composer) createStreamNode() *Node {
+func (c *Composer) createStreamNode() *Node {
 	n := &Node{
 		Kind:     StreamNode,
-		Encoding: p.encoding,
+		Encoding: c.encoding,
 	}
-	if !p.Textless && p.event.Type != NO_EVENT {
-		n.Line = p.event.StartMark.Line + 1
-		n.Column = p.event.StartMark.Column + 1
+	if !c.Textless && c.event.Type != NO_EVENT {
+		n.Line = c.event.StartMark.Line + 1
+		n.Column = c.event.StartMark.Column + 1
 	}
 	return n
 }
 
 // captureDirectives captures version and tag directives from upcoming DOCUMENT_START.
-func (p *Composer) captureDirectives(n *Node) {
-	if p.peek() == DOCUMENT_START_EVENT {
-		if vd := p.event.GetVersionDirective(); vd != nil {
+func (c *Composer) captureDirectives(n *Node) {
+	if c.peek() == DOCUMENT_START_EVENT {
+		if vd := c.event.GetVersionDirective(); vd != nil {
 			n.Version = &StreamVersionDirective{
 				Major: vd.Major(),
 				Minor: vd.Minor(),
 			}
 		}
-		if tds := p.event.GetTagDirectives(); len(tds) > 0 {
+		if tds := c.event.GetTagDirectives(); len(tds) > 0 {
 			n.TagDirectives = make([]StreamTagDirective, len(tds))
 			for i, td := range tds {
 				n.TagDirectives[i] = StreamTagDirective{
@@ -254,9 +254,9 @@ func (p *Composer) captureDirectives(n *Node) {
 	}
 }
 
-func (p *Composer) alias() *Node {
-	n := p.node(AliasNode, "", "", string(p.event.Anchor))
-	n.Alias = p.anchors[n.Value]
+func (c *Composer) alias() *Node {
+	n := c.node(AliasNode, "", "", string(c.event.Anchor))
+	n.Alias = c.anchors[n.Value]
 	if n.Alias == nil {
 		msg := fmt.Sprintf("unknown anchor '%s' referenced", n.Value)
 		Fail(&ParserError{
@@ -267,12 +267,12 @@ func (p *Composer) alias() *Node {
 			},
 		})
 	}
-	p.expect(ALIAS_EVENT)
+	c.expect(ALIAS_EVENT)
 	return n
 }
 
-func (p *Composer) scalar() *Node {
-	parsedStyle := p.event.ScalarStyle()
+func (c *Composer) scalar() *Node {
+	parsedStyle := c.event.ScalarStyle()
 	var nodeStyle Style
 	switch {
 	case parsedStyle&DOUBLE_QUOTED_SCALAR_STYLE != 0:
@@ -284,46 +284,46 @@ func (p *Composer) scalar() *Node {
 	case parsedStyle&FOLDED_SCALAR_STYLE != 0:
 		nodeStyle = FoldedStyle
 	}
-	nodeValue := string(p.event.Value)
-	nodeTag := string(p.event.Tag)
+	nodeValue := string(c.event.Value)
+	nodeTag := string(c.event.Tag)
 	var defaultTag string
 	if nodeStyle != 0 {
 		defaultTag = strTag
 	}
-	n := p.node(ScalarNode, defaultTag, nodeTag, nodeValue)
+	n := c.node(ScalarNode, defaultTag, nodeTag, nodeValue)
 	n.Style |= nodeStyle
-	p.anchor(n, p.event.Anchor)
-	p.expect(SCALAR_EVENT)
+	c.anchor(n, c.event.Anchor)
+	c.expect(SCALAR_EVENT)
 	return n
 }
 
-func (p *Composer) sequence() *Node {
-	n := p.node(SequenceNode, seqTag, string(p.event.Tag), "")
-	if p.event.SequenceStyle()&FLOW_SEQUENCE_STYLE != 0 {
+func (c *Composer) sequence() *Node {
+	n := c.node(SequenceNode, seqTag, string(c.event.Tag), "")
+	if c.event.SequenceStyle()&FLOW_SEQUENCE_STYLE != 0 {
 		n.Style |= FlowStyle
 	}
-	p.anchor(n, p.event.Anchor)
-	p.expect(SEQUENCE_START_EVENT)
-	for p.peek() != SEQUENCE_END_EVENT {
-		p.parseChild(n)
+	c.anchor(n, c.event.Anchor)
+	c.expect(SEQUENCE_START_EVENT)
+	for c.peek() != SEQUENCE_END_EVENT {
+		c.parseChild(n)
 	}
-	n.LineComment = string(p.event.LineComment)
-	n.FootComment = string(p.event.FootComment)
-	p.expect(SEQUENCE_END_EVENT)
+	n.LineComment = string(c.event.LineComment)
+	n.FootComment = string(c.event.FootComment)
+	c.expect(SEQUENCE_END_EVENT)
 	return n
 }
 
-func (p *Composer) mapping() *Node {
-	n := p.node(MappingNode, mapTag, string(p.event.Tag), "")
+func (c *Composer) mapping() *Node {
+	n := c.node(MappingNode, mapTag, string(c.event.Tag), "")
 	block := true
-	if p.event.MappingStyle()&FLOW_MAPPING_STYLE != 0 {
+	if c.event.MappingStyle()&FLOW_MAPPING_STYLE != 0 {
 		block = false
 		n.Style |= FlowStyle
 	}
-	p.anchor(n, p.event.Anchor)
-	p.expect(MAPPING_START_EVENT)
-	for p.peek() != MAPPING_END_EVENT {
-		k := p.parseChild(n)
+	c.anchor(n, c.event.Anchor)
+	c.expect(MAPPING_START_EVENT)
+	for c.peek() != MAPPING_END_EVENT {
+		k := c.parseChild(n)
 		if block && k.FootComment != "" {
 			// Must be a foot comment for the prior value when being dedented.
 			if len(n.Content) > 2 {
@@ -331,25 +331,25 @@ func (p *Composer) mapping() *Node {
 				k.FootComment = ""
 			}
 		}
-		v := p.parseChild(n)
+		v := c.parseChild(n)
 		if k.FootComment == "" && v.FootComment != "" {
 			k.FootComment = v.FootComment
 			v.FootComment = ""
 		}
-		if p.peek() == TAIL_COMMENT_EVENT {
+		if c.peek() == TAIL_COMMENT_EVENT {
 			if k.FootComment == "" {
-				k.FootComment = string(p.event.FootComment)
+				k.FootComment = string(c.event.FootComment)
 			}
-			p.expect(TAIL_COMMENT_EVENT)
+			c.expect(TAIL_COMMENT_EVENT)
 		}
 	}
-	n.LineComment = string(p.event.LineComment)
-	n.FootComment = string(p.event.FootComment)
+	n.LineComment = string(c.event.LineComment)
+	n.FootComment = string(c.event.FootComment)
 	if n.Style&FlowStyle == 0 && n.FootComment != "" && len(n.Content) > 1 {
 		n.Content[len(n.Content)-2].FootComment = n.FootComment
 		n.FootComment = ""
 	}
-	p.expect(MAPPING_END_EVENT)
+	c.expect(MAPPING_END_EVENT)
 	return n
 }
 
