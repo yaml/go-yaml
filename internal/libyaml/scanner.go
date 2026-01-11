@@ -6,8 +6,6 @@
 // Scanner stage: Transforms input stream into token sequence.
 // The Scanner is the most complex stage, handling indentation, simple keys,
 // and block collection detection.
-//
-// Detailed documentation follows:
 
 package libyaml
 
