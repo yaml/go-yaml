@@ -353,15 +353,6 @@ func (p *Composer) mapping() *Node {
 	return n
 }
 
-// YAMLError is an internal error wrapper type.
-type YAMLError struct {
-	Err error
-}
-
-func (e *YAMLError) Error() string {
-	return e.Err.Error()
-}
-
 func Fail(err error) {
 	panic(&YAMLError{err})
 }
