@@ -271,8 +271,8 @@ const (
 
 // Re-export error types
 type (
-	UnmarshalError = libyaml.ConstructError
-	TypeError      = libyaml.TypeError
+	LoadError = libyaml.ConstructError
+	TypeError = libyaml.TypeError
 )
 
 // Re-export Kind constants
