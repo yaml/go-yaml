@@ -110,8 +110,7 @@
         1:
       b
         2:
-    want: "yaml: while scanning a simple key at line 3: line 4, column 4:
-            could not find expected ':'"
+    want: "yaml: line 4, column 4: mapping values are not allowed in this context"
 
 - unmarshal-error:
     name: Missing colon in mapping (inline)
@@ -129,8 +128,8 @@
       #
       -
       {
-    want: "yaml: while scanning a simple key at line 3: line 4:
-            could not find expected ':'"
+    want: "yaml: while parsing a flow node at line 3:
+            did not find expected node content"
 
 - unmarshal-error:
     name: Incomplete UTF-8 sequence (Issue 666)
