@@ -14,10 +14,10 @@ import (
 
 // node serializes a Node tree into YAML events.
 // This is the core of the serializer stage - it walks the tree and produces events.
-func (e *Representer) node(node *Node, tail string) {
+func (r *Representer) node(node *Node, tail string) {
 	// Zero nodes behave as nil.
 	if node.Kind == 0 && node.IsZero() {
-		e.nilv()
+		r.nilv()
 		return
 	}
 
@@ -57,45 +57,45 @@ func (e *Representer) node(node *Node, tail string) {
 	case DocumentNode:
 		event := NewDocumentStartEvent(noVersionDirective, noTagDirective, true)
 		event.HeadComment = []byte(node.HeadComment)
-		e.emit(event)
+		r.emit(event)
 		for _, node := range node.Content {
-			e.node(node, "")
+			r.node(node, "")
 		}
 		event = NewDocumentEndEvent(true)
 		event.FootComment = []byte(node.FootComment)
-		e.emit(event)
+		r.emit(event)
 
 	case SequenceNode:
 		style := BLOCK_SEQUENCE_STYLE
 		// Use flow style if explicitly requested or if it's a simple
 		// collection (scalar-only contents that fit within line width,
 		// enabled via WithFlowSimpleCollections)
-		if node.Style&FlowStyle != 0 || e.isSimpleCollection(node) {
+		if node.Style&FlowStyle != 0 || r.isSimpleCollection(node) {
 			style = FLOW_SEQUENCE_STYLE
 		}
 		event := NewSequenceStartEvent([]byte(node.Anchor), []byte(longTag(tag)), tag == "", style)
 		event.HeadComment = []byte(node.HeadComment)
-		e.emit(event)
+		r.emit(event)
 		for _, node := range node.Content {
-			e.node(node, "")
+			r.node(node, "")
 		}
 		event = NewSequenceEndEvent()
 		event.LineComment = []byte(node.LineComment)
 		event.FootComment = []byte(node.FootComment)
-		e.emit(event)
+		r.emit(event)
 
 	case MappingNode:
 		style := BLOCK_MAPPING_STYLE
 		// Use flow style if explicitly requested or if it's a simple
 		// collection (scalar-only contents that fit within line width,
 		// enabled via WithFlowSimpleCollections)
-		if node.Style&FlowStyle != 0 || e.isSimpleCollection(node) {
+		if node.Style&FlowStyle != 0 || r.isSimpleCollection(node) {
 			style = FLOW_MAPPING_STYLE
 		}
 		event := NewMappingStartEvent([]byte(node.Anchor), []byte(longTag(tag)), tag == "", style)
 		event.TailComment = []byte(tail)
 		event.HeadComment = []byte(node.HeadComment)
-		e.emit(event)
+		r.emit(event)
 
 		// The tail logic below moves the foot comment of prior keys to the following key,
 		// since the value for each key may be a nested structure and the foot needs to be
@@ -110,25 +110,25 @@ func (e *Representer) node(node *Node, tail string) {
 				kopy.FootComment = ""
 				k = &kopy
 			}
-			e.node(k, tail)
+			r.node(k, tail)
 			tail = foot
 
 			v := node.Content[i+1]
-			e.node(v, "")
+			r.node(v, "")
 		}
 
 		event = NewMappingEndEvent()
 		event.TailComment = []byte(tail)
 		event.LineComment = []byte(node.LineComment)
 		event.FootComment = []byte(node.FootComment)
-		e.emit(event)
+		r.emit(event)
 
 	case AliasNode:
 		event := NewAliasEvent([]byte(node.Value))
 		event.HeadComment = []byte(node.HeadComment)
 		event.LineComment = []byte(node.LineComment)
 		event.FootComment = []byte(node.FootComment)
-		e.emit(event)
+		r.emit(event)
 
 	case ScalarNode:
 		value := node.Value
@@ -161,7 +161,7 @@ func (e *Representer) node(node *Node, tail string) {
 			style = DOUBLE_QUOTED_SCALAR_STYLE
 		}
 
-		e.emitScalar(value, node.Anchor, tag, style, []byte(node.HeadComment), []byte(node.LineComment), []byte(node.FootComment), []byte(tail))
+		r.emitScalar(value, node.Anchor, tag, style, []byte(node.HeadComment), []byte(node.LineComment), []byte(node.FootComment), []byte(tail))
 	default:
 		failf("cannot represent node with unknown kind %d", node.Kind)
 	}
@@ -169,8 +169,8 @@ func (e *Representer) node(node *Node, tail string) {
 
 // isSimpleCollection checks if a node contains only scalar values and would
 // fit within the line width when rendered in flow style.
-func (e *Representer) isSimpleCollection(node *Node) bool {
-	if !e.flowSimpleCollections {
+func (r *Representer) isSimpleCollection(node *Node) bool {
+	if !r.flowSimpleCollections {
 		return false
 	}
 	if node.Kind != SequenceNode && node.Kind != MappingNode {
@@ -183,8 +183,8 @@ func (e *Representer) isSimpleCollection(node *Node) bool {
 		}
 	}
 	// Estimate flow style length
-	estimatedLen := e.estimateFlowLength(node)
-	width := e.lineWidth
+	estimatedLen := r.estimateFlowLength(node)
+	width := r.lineWidth
 	if width <= 0 {
 		width = 80 // Default width if not set
 	}
@@ -192,7 +192,7 @@ func (e *Representer) isSimpleCollection(node *Node) bool {
 }
 
 // estimateFlowLength estimates the character length of a node in flow style.
-func (e *Representer) estimateFlowLength(node *Node) int {
+func (r *Representer) estimateFlowLength(node *Node) int {
 	if node.Kind == SequenceNode {
 		// [item1, item2, ...] = 2 + sum(len(items)) + 2*(len-1)
 		length := 2 // []

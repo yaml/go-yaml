@@ -166,7 +166,7 @@ func NewRepresenter(writer io.Writer, opts *Options) *Representer {
 	emitter.SetCanonical(opts.Canonical)
 	emitter.SetLineBreak(opts.LineBreak)
 
-	e := &Representer{
+	r := &Representer{
 		Emitter:               emitter,
 		Indent:                opts.Indent,
 		lineWidth:             opts.LineWidth,
@@ -176,41 +176,41 @@ func NewRepresenter(writer io.Writer, opts *Options) *Representer {
 	}
 
 	if writer != nil {
-		e.Emitter.SetOutputWriter(writer)
+		r.Emitter.SetOutputWriter(writer)
 	} else {
-		e.Emitter.SetOutputString(&e.Out)
+		r.Emitter.SetOutputString(&r.Out)
 	}
 
-	return e
+	return r
 }
 
-func (e *Representer) init() {
-	if e.doneInit {
+func (r *Representer) init() {
+	if r.doneInit {
 		return
 	}
-	if e.Indent == 0 {
-		e.Indent = 4
+	if r.Indent == 0 {
+		r.Indent = 4
 	}
-	e.Emitter.BestIndent = e.Indent
-	e.emit(NewStreamStartEvent(UTF8_ENCODING))
-	e.doneInit = true
+	r.Emitter.BestIndent = r.Indent
+	r.emit(NewStreamStartEvent(UTF8_ENCODING))
+	r.doneInit = true
 }
 
-func (e *Representer) Finish() {
-	e.Emitter.OpenEnded = false
-	e.emit(NewStreamEndEvent())
+func (r *Representer) Finish() {
+	r.Emitter.OpenEnded = false
+	r.emit(NewStreamEndEvent())
 }
 
-func (e *Representer) Destroy() {
-	e.Emitter.Delete()
+func (r *Representer) Destroy() {
+	r.Emitter.Delete()
 }
 
-func (e *Representer) emit(event Event) {
+func (r *Representer) emit(event Event) {
 	// This will internally delete the event value.
-	e.must(e.Emitter.Emit(&event))
+	r.must(r.Emitter.Emit(&event))
 }
 
-func (e *Representer) must(err error) {
+func (r *Representer) must(err error) {
 	if err != nil {
 		msg := err.Error()
 		if msg == "" {
@@ -220,33 +220,33 @@ func (e *Representer) must(err error) {
 	}
 }
 
-func (e *Representer) MarshalDoc(tag string, in reflect.Value) {
-	e.init()
+func (r *Representer) MarshalDoc(tag string, in reflect.Value) {
+	r.init()
 	var node *Node
 	if in.IsValid() {
 		node, _ = in.Interface().(*Node)
 	}
 	if node != nil && node.Kind == DocumentNode {
-		e.nodev(in)
+		r.nodev(in)
 	} else {
 		// Use !explicitStart for implicit flag (true = implicit/no marker)
-		e.emit(NewDocumentStartEvent(noVersionDirective, noTagDirective, !e.explicitStart))
-		e.marshal(tag, in)
+		r.emit(NewDocumentStartEvent(noVersionDirective, noTagDirective, !r.explicitStart))
+		r.marshal(tag, in)
 		// Use !explicitEnd for implicit flag
-		e.emit(NewDocumentEndEvent(!e.explicitEnd))
+		r.emit(NewDocumentEndEvent(!r.explicitEnd))
 	}
 }
 
-func (e *Representer) marshal(tag string, in reflect.Value) {
+func (r *Representer) marshal(tag string, in reflect.Value) {
 	tag = shortTag(tag)
 	if !in.IsValid() || in.Kind() == reflect.Pointer && in.IsNil() {
-		e.nilv()
+		r.nilv()
 		return
 	}
 	iface := in.Interface()
 	switch value := iface.(type) {
 	case *Node:
-		e.nodev(in)
+		r.nodev(in)
 		return
 	case Node:
 		if !in.CanAddr() {
@@ -254,16 +254,16 @@ func (e *Representer) marshal(tag string, in reflect.Value) {
 			n.Set(in)
 			in = n
 		}
-		e.nodev(in.Addr())
+		r.nodev(in.Addr())
 		return
 	case time.Time:
-		e.timev(tag, in)
+		r.timev(tag, in)
 		return
 	case *time.Time:
-		e.timev(tag, in.Elem())
+		r.timev(tag, in.Elem())
 		return
 	case time.Duration:
-		e.stringv(tag, reflect.ValueOf(value.String()))
+		r.stringv(tag, reflect.ValueOf(value.String()))
 		return
 	case Marshaler:
 		v, err := value.MarshalYAML()
@@ -271,10 +271,10 @@ func (e *Representer) marshal(tag string, in reflect.Value) {
 			Fail(err)
 		}
 		if v == nil {
-			e.nilv()
+			r.nilv()
 			return
 		}
-		e.marshal(tag, reflect.ValueOf(v))
+		r.marshal(tag, reflect.ValueOf(v))
 		return
 	case encoding.TextMarshaler:
 		text, err := value.MarshalText()
@@ -283,47 +283,47 @@ func (e *Representer) marshal(tag string, in reflect.Value) {
 		}
 		in = reflect.ValueOf(string(text))
 	case nil:
-		e.nilv()
+		r.nilv()
 		return
 	}
 	switch in.Kind() {
 	case reflect.Interface:
-		e.marshal(tag, in.Elem())
+		r.marshal(tag, in.Elem())
 	case reflect.Map:
-		e.mapv(tag, in)
+		r.mapv(tag, in)
 	case reflect.Pointer:
-		e.marshal(tag, in.Elem())
+		r.marshal(tag, in.Elem())
 	case reflect.Struct:
-		e.structv(tag, in)
+		r.structv(tag, in)
 	case reflect.Slice, reflect.Array:
-		e.slicev(tag, in)
+		r.slicev(tag, in)
 	case reflect.String:
-		e.stringv(tag, in)
+		r.stringv(tag, in)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		e.intv(tag, in)
+		r.intv(tag, in)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		e.uintv(tag, in)
+		r.uintv(tag, in)
 	case reflect.Float32, reflect.Float64:
-		e.floatv(tag, in)
+		r.floatv(tag, in)
 	case reflect.Bool:
-		e.boolv(tag, in)
+		r.boolv(tag, in)
 	default:
 		panic("cannot marshal type: " + in.Type().String())
 	}
 }
 
-func (e *Representer) mapv(tag string, in reflect.Value) {
-	e.mappingv(tag, func() {
+func (r *Representer) mapv(tag string, in reflect.Value) {
+	r.mappingv(tag, func() {
 		keys := keyList(in.MapKeys())
 		sort.Sort(keys)
 		for _, k := range keys {
-			e.marshal("", k)
-			e.marshal("", in.MapIndex(k))
+			r.marshal("", k)
+			r.marshal("", in.MapIndex(k))
 		}
 	})
 }
 
-func (e *Representer) fieldByIndex(v reflect.Value, index []int) (field reflect.Value) {
+func (r *Representer) fieldByIndex(v reflect.Value, index []int) (field reflect.Value) {
 	for _, num := range index {
 		for {
 			if v.Kind() == reflect.Pointer {
@@ -340,18 +340,18 @@ func (e *Representer) fieldByIndex(v reflect.Value, index []int) (field reflect.
 	return v
 }
 
-func (e *Representer) structv(tag string, in reflect.Value) {
+func (r *Representer) structv(tag string, in reflect.Value) {
 	sinfo, err := getStructInfo(in.Type())
 	if err != nil {
 		panic(err)
 	}
-	e.mappingv(tag, func() {
+	r.mappingv(tag, func() {
 		for _, info := range sinfo.FieldsList {
 			var value reflect.Value
 			if info.Inline == nil {
 				value = in.Field(info.Num)
 			} else {
-				value = e.fieldByIndex(in, info.Inline)
+				value = r.fieldByIndex(in, info.Inline)
 				if !value.IsValid() {
 					continue
 				}
@@ -359,54 +359,54 @@ func (e *Representer) structv(tag string, in reflect.Value) {
 			if info.OmitEmpty && isZero(value) {
 				continue
 			}
-			e.marshal("", reflect.ValueOf(info.Key))
-			e.flow = info.Flow
-			e.marshal("", value)
+			r.marshal("", reflect.ValueOf(info.Key))
+			r.flow = info.Flow
+			r.marshal("", value)
 		}
 		if sinfo.InlineMap >= 0 {
 			m := in.Field(sinfo.InlineMap)
 			if m.Len() > 0 {
-				e.flow = false
+				r.flow = false
 				keys := keyList(m.MapKeys())
 				sort.Sort(keys)
 				for _, k := range keys {
 					if _, found := sinfo.FieldsMap[k.String()]; found {
 						panic(fmt.Sprintf("cannot have key %q in inlined map: conflicts with struct field", k.String()))
 					}
-					e.marshal("", k)
-					e.flow = false
-					e.marshal("", m.MapIndex(k))
+					r.marshal("", k)
+					r.flow = false
+					r.marshal("", m.MapIndex(k))
 				}
 			}
 		}
 	})
 }
 
-func (e *Representer) mappingv(tag string, f func()) {
+func (r *Representer) mappingv(tag string, f func()) {
 	implicit := tag == ""
 	style := BLOCK_MAPPING_STYLE
-	if e.flow {
-		e.flow = false
+	if r.flow {
+		r.flow = false
 		style = FLOW_MAPPING_STYLE
 	}
-	e.emit(NewMappingStartEvent(nil, []byte(tag), implicit, style))
+	r.emit(NewMappingStartEvent(nil, []byte(tag), implicit, style))
 	f()
-	e.emit(NewMappingEndEvent())
+	r.emit(NewMappingEndEvent())
 }
 
-func (e *Representer) slicev(tag string, in reflect.Value) {
+func (r *Representer) slicev(tag string, in reflect.Value) {
 	implicit := tag == ""
 	style := BLOCK_SEQUENCE_STYLE
-	if e.flow {
-		e.flow = false
+	if r.flow {
+		r.flow = false
 		style = FLOW_SEQUENCE_STYLE
 	}
-	e.emit(NewSequenceStartEvent(nil, []byte(tag), implicit, style))
+	r.emit(NewSequenceStartEvent(nil, []byte(tag), implicit, style))
 	n := in.Len()
 	for i := 0; i < n; i++ {
-		e.marshal("", in.Index(i))
+		r.marshal("", in.Index(i))
 	}
-	e.emit(NewSequenceEndEvent())
+	r.emit(NewSequenceEndEvent())
 }
 
 // isBase60 returns whether s is in base 60 notation as defined in YAML 1.1.
@@ -454,7 +454,7 @@ func looksLikeMerge(s string) (result bool) {
 	return s == "<<"
 }
 
-func (e *Representer) stringv(tag string, in reflect.Value) {
+func (r *Representer) stringv(tag string, in reflect.Value) {
 	var style ScalarStyle
 	s := in.String()
 	canUsePlain := true
@@ -485,7 +485,7 @@ func (e *Representer) stringv(tag string, in reflect.Value) {
 	// text that's incompatible with that tag.
 	switch {
 	case strings.Contains(s, "\n"):
-		if e.flow || !shouldUseLiteralStyle(s) {
+		if r.flow || !shouldUseLiteralStyle(s) {
 			style = DOUBLE_QUOTED_SCALAR_STYLE
 		} else {
 			style = LITERAL_SCALAR_STYLE
@@ -495,36 +495,36 @@ func (e *Representer) stringv(tag string, in reflect.Value) {
 	default:
 		style = DOUBLE_QUOTED_SCALAR_STYLE
 	}
-	e.emitScalar(s, "", tag, style, nil, nil, nil, nil)
+	r.emitScalar(s, "", tag, style, nil, nil, nil, nil)
 }
 
-func (e *Representer) boolv(tag string, in reflect.Value) {
+func (r *Representer) boolv(tag string, in reflect.Value) {
 	var s string
 	if in.Bool() {
 		s = "true"
 	} else {
 		s = "false"
 	}
-	e.emitScalar(s, "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
+	r.emitScalar(s, "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
-func (e *Representer) intv(tag string, in reflect.Value) {
+func (r *Representer) intv(tag string, in reflect.Value) {
 	s := strconv.FormatInt(in.Int(), 10)
-	e.emitScalar(s, "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
+	r.emitScalar(s, "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
-func (e *Representer) uintv(tag string, in reflect.Value) {
+func (r *Representer) uintv(tag string, in reflect.Value) {
 	s := strconv.FormatUint(in.Uint(), 10)
-	e.emitScalar(s, "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
+	r.emitScalar(s, "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
-func (e *Representer) timev(tag string, in reflect.Value) {
+func (r *Representer) timev(tag string, in reflect.Value) {
 	t := in.Interface().(time.Time)
 	s := t.Format(time.RFC3339Nano)
-	e.emitScalar(s, "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
+	r.emitScalar(s, "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
-func (e *Representer) floatv(tag string, in reflect.Value) {
+func (r *Representer) floatv(tag string, in reflect.Value) {
 	// Issue #352: When formatting, use the precision of the underlying value
 	precision := 64
 	if in.Kind() == reflect.Float32 {
@@ -540,14 +540,14 @@ func (e *Representer) floatv(tag string, in reflect.Value) {
 	case "NaN":
 		s = ".nan"
 	}
-	e.emitScalar(s, "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
+	r.emitScalar(s, "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
-func (e *Representer) nilv() {
-	e.emitScalar("null", "", "", PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
+func (r *Representer) nilv() {
+	r.emitScalar("null", "", "", PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 }
 
-func (e *Representer) emitScalar(
+func (r *Representer) emitScalar(
 	value, anchor, tag string, style ScalarStyle, head, line, foot, tail []byte,
 ) {
 	// TODO Kill this function. Replace all initialize calls by their underlining Go literals.
@@ -560,9 +560,9 @@ func (e *Representer) emitScalar(
 	event.LineComment = line
 	event.FootComment = foot
 	event.TailComment = tail
-	e.emit(event)
+	r.emit(event)
 }
 
-func (e *Representer) nodev(in reflect.Value) {
-	e.node(in.Interface().(*Node), "")
+func (r *Representer) nodev(in reflect.Value) {
+	r.node(in.Interface().(*Node), "")
 }
