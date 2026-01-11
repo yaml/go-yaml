@@ -510,7 +510,7 @@ type ReadHandler func(parser *Parser, buffer []byte) (n int, err error)
 
 // SimpleKey holds information about a potential simple key.
 type SimpleKey struct {
-	possible     bool // Is a simple key possible?
+	flow_level   int  // What flow level is the key at?
 	required     bool // Is a simple key required?
 	token_number int  // The number of the token.
 	mark         Mark // The position mark.
@@ -657,9 +657,10 @@ type Parser struct {
 	indent  int   // The current indentation level.
 	indents []int // The indentation levels stack.
 
-	simple_key_allowed bool        // May a simple key occur at the current position?
-	simple_keys        []SimpleKey // The stack of simple keys.
-	simple_keys_by_tok map[int]int // possible simple_key indexes indexed by token_number
+	simple_key_allowed  bool        // May a simple key occur at the current position?
+	simple_key_possible bool        // Is the current simple key possible?
+	simple_key          SimpleKey   // The current simple key.
+	simple_key_stack    []SimpleKey // The stack of simple keys.
 
 	// Parser stuff
 
