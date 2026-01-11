@@ -151,15 +151,15 @@ func processEventsDecode(profuse, compact bool) error {
 				}
 
 				var buf bytes.Buffer
-				enc, err := yaml.NewDumper(&buf)
+				dumper, err := yaml.NewDumper(&buf)
 				if err != nil {
 					return fmt.Errorf("failed to create dumper: %w", err)
 				}
-				if err := enc.Dump([]*yaml.Node{compactNode}); err != nil {
-					enc.Close()
+				if err := dumper.Dump([]*yaml.Node{compactNode}); err != nil {
+					dumper.Close()
 					return fmt.Errorf("failed to dump compact event info: %w", err)
 				}
-				enc.Close()
+				dumper.Close()
 				fmt.Print(buf.String())
 			}
 		} else {
@@ -168,15 +168,15 @@ func processEventsDecode(profuse, compact bool) error {
 				info := formatEventInfo(event, profuse)
 
 				var buf bytes.Buffer
-				enc, err := yaml.NewDumper(&buf)
+				dumper, err := yaml.NewDumper(&buf)
 				if err != nil {
 					return fmt.Errorf("failed to create dumper: %w", err)
 				}
-				if err := enc.Dump([]*EventInfo{info}); err != nil {
-					enc.Close()
+				if err := dumper.Dump([]*EventInfo{info}); err != nil {
+					dumper.Close()
 					return fmt.Errorf("failed to dump event info: %w", err)
 				}
-				enc.Close()
+				dumper.Close()
 				fmt.Print(buf.String())
 			}
 		}
@@ -282,15 +282,15 @@ func processEventsUnmarshal(profuse, compact bool) error {
 				}
 
 				var buf bytes.Buffer
-				enc, err := yaml.NewDumper(&buf)
+				dumper, err := yaml.NewDumper(&buf)
 				if err != nil {
 					return fmt.Errorf("failed to create dumper: %w", err)
 				}
-				if err := enc.Dump([]*yaml.Node{compactNode}); err != nil {
-					enc.Close()
+				if err := dumper.Dump([]*yaml.Node{compactNode}); err != nil {
+					dumper.Close()
 					return fmt.Errorf("failed to dump compact event info: %w", err)
 				}
-				enc.Close()
+				dumper.Close()
 				fmt.Print(buf.String())
 			}
 		} else {
@@ -299,15 +299,15 @@ func processEventsUnmarshal(profuse, compact bool) error {
 				info := formatEventInfo(event, profuse)
 
 				var buf bytes.Buffer
-				enc, err := yaml.NewDumper(&buf)
+				dumper, err := yaml.NewDumper(&buf)
 				if err != nil {
 					return fmt.Errorf("failed to create dumper: %w", err)
 				}
-				if err := enc.Dump([]*EventInfo{info}); err != nil {
-					enc.Close()
+				if err := dumper.Dump([]*EventInfo{info}); err != nil {
+					dumper.Close()
 					return fmt.Errorf("failed to dump event info: %w", err)
 				}
-				enc.Close()
+				dumper.Close()
 				fmt.Print(buf.String())
 			}
 		}

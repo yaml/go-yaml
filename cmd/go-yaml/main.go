@@ -208,14 +208,14 @@ func main() {
 				info := FormatNode(node)
 
 				var buf bytes.Buffer
-				enc, err := yaml.NewDumper(&buf)
+				dumper, err := yaml.NewDumper(&buf)
 				if err != nil {
 					log.Fatal("Failed to create dumper:", err)
 				}
-				if err := enc.Dump(info); err != nil {
+				if err := dumper.Dump(info); err != nil {
 					log.Fatal("Failed to dump node info:", err)
 				}
-				enc.Close()
+				dumper.Close()
 				fmt.Print(buf.String())
 			}
 		}
@@ -261,15 +261,15 @@ func ProcessNodeUnmarshal() error {
 		info := FormatNode(node)
 
 		var buf bytes.Buffer
-		enc, err := yaml.NewDumper(&buf)
+		dumper, err := yaml.NewDumper(&buf)
 		if err != nil {
 			return fmt.Errorf("failed to create dumper: %w", err)
 		}
-		if err := enc.Dump(info); err != nil {
-			enc.Close()
+		if err := dumper.Dump(info); err != nil {
+			dumper.Close()
 			return fmt.Errorf("failed to dump node info: %w", err)
 		}
-		enc.Close()
+		dumper.Close()
 		fmt.Print(buf.String())
 	}
 
