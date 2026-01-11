@@ -285,8 +285,7 @@ The `go-yaml` CLI tool leverages this to show tokens, events, and nodes.
 
 ### Extensibility
 
-The future plugin system (planned for v4) will allow hooking into any
-stage to customize behavior.
+A plugin system allows hooking into any stage to customize behavior.
 Want custom tag resolution? Hook the Resolver.
 Want custom output formatting? Hook the Emitter.
 
