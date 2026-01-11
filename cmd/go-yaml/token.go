@@ -123,15 +123,15 @@ func processTokensDecode(profuse, compact bool) error {
 				}
 
 				var buf bytes.Buffer
-				enc, err := yaml.NewDumper(&buf)
+				dumper, err := yaml.NewDumper(&buf)
 				if err != nil {
 					return fmt.Errorf("failed to create dumper: %w", err)
 				}
-				if err := enc.Dump([]*yaml.Node{compactNode}); err != nil {
-					enc.Close()
+				if err := dumper.Dump([]*yaml.Node{compactNode}); err != nil {
+					dumper.Close()
 					return fmt.Errorf("failed to dump compact token info: %w", err)
 				}
-				enc.Close()
+				dumper.Close()
 				fmt.Print(buf.String())
 			}
 		} else {
@@ -140,15 +140,15 @@ func processTokensDecode(profuse, compact bool) error {
 				info := formatTokenInfo(token, profuse)
 
 				var buf bytes.Buffer
-				enc, err := yaml.NewDumper(&buf)
+				dumper, err := yaml.NewDumper(&buf)
 				if err != nil {
 					return fmt.Errorf("failed to create dumper: %w", err)
 				}
-				if err := enc.Dump([]*TokenInfo{info}); err != nil {
-					enc.Close()
+				if err := dumper.Dump([]*TokenInfo{info}); err != nil {
+					dumper.Close()
 					return fmt.Errorf("failed to dump token info: %w", err)
 				}
-				enc.Close()
+				dumper.Close()
 				fmt.Print(buf.String())
 			}
 		}
@@ -221,28 +221,28 @@ func processTokensWithParser(profuse, compact bool) error {
 			}
 
 			var buf bytes.Buffer
-			enc, err := yaml.NewDumper(&buf)
+			dumper, err := yaml.NewDumper(&buf)
 			if err != nil {
 				return fmt.Errorf("failed to create dumper: %w", err)
 			}
-			if err := enc.Dump([]*yaml.Node{compactNode}); err != nil {
-				enc.Close()
+			if err := dumper.Dump([]*yaml.Node{compactNode}); err != nil {
+				dumper.Close()
 				return fmt.Errorf("failed to dump compact token info: %w", err)
 			}
-			enc.Close()
+			dumper.Close()
 			fmt.Print(buf.String())
 		} else {
 			// For non-compact mode, output each token as a separate mapping
 			var buf bytes.Buffer
-			enc, err := yaml.NewDumper(&buf)
+			dumper, err := yaml.NewDumper(&buf)
 			if err != nil {
 				return fmt.Errorf("failed to create dumper: %w", err)
 			}
-			if err := enc.Dump([]*TokenInfo{info}); err != nil {
-				enc.Close()
+			if err := dumper.Dump([]*TokenInfo{info}); err != nil {
+				dumper.Close()
 				return fmt.Errorf("failed to dump token info: %w", err)
 			}
-			enc.Close()
+			dumper.Close()
 			fmt.Print(buf.String())
 		}
 	}
@@ -337,15 +337,15 @@ func processTokensUnmarshal(profuse, compact bool) error {
 				}
 
 				var buf bytes.Buffer
-				enc, err := yaml.NewDumper(&buf)
+				dumper, err := yaml.NewDumper(&buf)
 				if err != nil {
 					return fmt.Errorf("failed to create dumper: %w", err)
 				}
-				if err := enc.Dump([]*yaml.Node{compactNode}); err != nil {
-					enc.Close()
+				if err := dumper.Dump([]*yaml.Node{compactNode}); err != nil {
+					dumper.Close()
 					return fmt.Errorf("failed to dump compact token info: %w", err)
 				}
-				enc.Close()
+				dumper.Close()
 				fmt.Print(buf.String())
 			}
 		} else {
@@ -354,15 +354,15 @@ func processTokensUnmarshal(profuse, compact bool) error {
 				info := formatTokenInfo(token, profuse)
 
 				var buf bytes.Buffer
-				enc, err := yaml.NewDumper(&buf)
+				dumper, err := yaml.NewDumper(&buf)
 				if err != nil {
 					return fmt.Errorf("failed to create dumper: %w", err)
 				}
-				if err := enc.Dump([]*TokenInfo{info}); err != nil {
-					enc.Close()
+				if err := dumper.Dump([]*TokenInfo{info}); err != nil {
+					dumper.Close()
 					return fmt.Errorf("failed to dump token info: %w", err)
 				}
-				enc.Close()
+				dumper.Close()
 				fmt.Print(buf.String())
 			}
 		}
