@@ -21,7 +21,7 @@
 //	// Encode Go struct to YAML
 //	data, err := yaml.Marshal(&config)
 //
-// For encoding/decoding with options, use [Load], [LoadAll], [Dump], [DumpAll]:
+// For encoding/decoding with options, use [Load] and [Dump]:
 //
 //	// Decode with strict field checking
 //	err := yaml.Load(data, &config, yaml.WithKnownFields())
@@ -29,11 +29,13 @@
 //	// Encode with custom indent
 //	data, err := yaml.Dump(&config, yaml.WithIndent(2))
 //
-//	// Decode all documents
-//	docs, err := yaml.LoadAll(multiDocYAML)
+//	// Decode all documents from multi-document stream
+//	var docs []Config
+//	err := yaml.Load(multiDocYAML, &docs, yaml.WithAll())
 //
-//	// Encode multiple documents
-//	data, err := yaml.DumpAll([]any{doc1, doc2})
+//	// Encode multiple documents as multi-document stream
+//	docs := []Config{config1, config2}
+//	data, err := yaml.Dump(docs, yaml.WithAll())
 //
 // # Streaming with Loader and Dumper
 //

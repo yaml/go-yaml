@@ -192,3 +192,88 @@ func TestStreamNodeDisabled(t *testing.T) {
 	// Should get a DocumentNode, not a StreamNode
 	assert.Equal(t, yaml.DocumentNode, node.Kind)
 }
+
+// TestLoadWithAll_TypedSlice tests loading multiple documents into a typed slice
+func TestLoadWithAll_TypedSlice(t *testing.T) {
+	type Config struct {
+		Name string `yaml:"name"`
+	}
+
+	input := []byte("---\nname: first\n---\nname: second\n---\nname: third\n")
+
+	var configs []Config
+	err := yaml.Load(input, &configs, yaml.WithAll())
+	assert.NoError(t, err)
+
+	assert.Equal(t, 3, len(configs))
+	assert.Equal(t, "first", configs[0].Name)
+	assert.Equal(t, "second", configs[1].Name)
+	assert.Equal(t, "third", configs[2].Name)
+}
+
+// TestLoadWithAll_UntypedSlice tests loading multiple documents into []any
+func TestLoadWithAll_UntypedSlice(t *testing.T) {
+	input := []byte("---\nname: first\n---\nname: second\n")
+
+	var docs []any
+	err := yaml.Load(input, &docs, yaml.WithAll())
+	assert.NoError(t, err)
+
+	assert.Equal(t, 2, len(docs))
+}
+
+// TestLoadWithAll_EmptyInput tests that 0 documents with WithAll results in empty slice
+func TestLoadWithAll_EmptyInput(t *testing.T) {
+	input := []byte("")
+
+	var docs []any
+	err := yaml.Load(input, &docs, yaml.WithAll())
+	assert.NoError(t, err)
+
+	assert.Equal(t, 0, len(docs))
+}
+
+// TestLoadWithAll_NonSlice tests that WithAll with non-slice target returns error
+func TestLoadWithAll_NonSlice(t *testing.T) {
+	input := []byte("---\nname: first\n---\nname: second\n")
+
+	var single map[string]any
+	err := yaml.Load(input, &single, yaml.WithAll())
+	assert.NotNil(t, err)
+	assert.ErrorMatches(t, ".*WithAll requires a pointer to a slice.*", err)
+}
+
+// TestLoad_SingleDocument tests loading exactly one document
+func TestLoad_SingleDocument(t *testing.T) {
+	type Config struct {
+		Name string `yaml:"name"`
+	}
+
+	input := []byte("name: myconfig\n")
+
+	var config Config
+	err := yaml.Load(input, &config)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "myconfig", config.Name)
+}
+
+// TestLoad_ZeroDocuments tests that 0 documents returns error
+func TestLoad_ZeroDocuments(t *testing.T) {
+	input := []byte("")
+
+	var config map[string]any
+	err := yaml.Load(input, &config)
+	assert.NotNil(t, err)
+	assert.ErrorMatches(t, ".*no documents in stream.*", err)
+}
+
+// TestLoad_MultipleDocuments tests that 2+ documents returns error
+func TestLoad_MultipleDocuments(t *testing.T) {
+	input := []byte("---\nname: first\n---\nname: second\n")
+
+	var config map[string]any
+	err := yaml.Load(input, &config)
+	assert.NotNil(t, err)
+	assert.ErrorMatches(t, ".*expected single document, found multiple.*", err)
+}

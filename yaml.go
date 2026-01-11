@@ -16,8 +16,8 @@
 // - Deprecated APIs (Decoder, Encoder, Unmarshal, Marshal)
 //
 // For the main API, see:
-// - loader.go: Load, LoadAll, Loader
-// - dumper.go: Dump, DumpAll, Dumper
+// - loader.go: Load, Loader
+// - dumper.go: Dump, Dumper
 
 package yaml
 
@@ -91,6 +91,9 @@ var (
 	// WithStreamNodes enables stream boundary nodes when loading.
 	// See internal/libyaml.WithStreamNodes.
 	WithStreamNodes = libyaml.WithStreamNodes
+	// WithAll enables multi-document mode for Load and Dump.
+	// See internal/libyaml.WithAll.
+	WithAll = libyaml.WithAll
 	// WithLineWidth sets preferred line width for output.
 	// See internal/libyaml.WithLineWidth.
 	WithLineWidth = libyaml.WithLineWidth

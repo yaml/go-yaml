@@ -4,14 +4,14 @@
 // This file contains the Dumper API for writing YAML documents.
 //
 // Primary functions:
-// - Dump: Encode a value to YAML
-// - DumpAll: Encode multiple values as multi-document YAML
+// - Dump: Encode value(s) to YAML (use WithAll for multi-doc)
 // - NewDumper: Create a streaming dumper to io.Writer
 
 package yaml
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"reflect"
 
@@ -20,39 +20,56 @@ import (
 
 // Dump encodes a value to YAML with the given options.
 //
+// By default, Dump encodes a single value as a single YAML document.
+//
+// Use WithAll() to encode multiple values as a multi-document stream:
+//
+//	docs := []Config{config1, config2, config3}
+//	yaml.Dump(docs, yaml.WithAll())
+//
+// When WithAll is used, in must be a slice.
+// Each element is encoded as a separate YAML document with "---" separators.
+//
 // See [Marshal] for details about the conversion of Go values to YAML.
 func Dump(in any, opts ...Option) (out []byte, err error) {
 	defer handleErr(&err)
-	var buf bytes.Buffer
-	d, err := NewDumper(&buf, opts...)
-	if err != nil {
-		return nil, err
-	}
-	if err := d.Dump(in); err != nil {
-		return nil, err
-	}
-	if err := d.Close(); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
 
-// DumpAll encodes multiple values as a multi-document YAML stream.
-//
-// Each value becomes a separate YAML document, separated by "---".
-// See [Marshal] for details about the conversion of Go values to YAML.
-func DumpAll(in []any, opts ...Option) (out []byte, err error) {
-	defer handleErr(&err)
-	var buf bytes.Buffer
-	d, err := NewDumper(&buf, opts...)
+	o, err := libyaml.ApplyOptions(opts...)
 	if err != nil {
 		return nil, err
 	}
-	for _, v := range in {
-		if err := d.Dump(v); err != nil {
+
+	var buf bytes.Buffer
+	d, err := NewDumper(&buf, func(opts *libyaml.Options) error {
+		*opts = *o // Copy options
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if o.All {
+		// Multi-document mode: in must be a slice
+		inVal := reflect.ValueOf(in)
+		if inVal.Kind() != reflect.Slice {
+			return nil, &TypeError{Errors: []*libyaml.ConstructError{{
+				Err: errors.New("yaml: WithAll requires a slice input"),
+			}}}
+		}
+
+		// Dump each element as a separate document
+		for i := 0; i < inVal.Len(); i++ {
+			if err := d.Dump(inVal.Index(i).Interface()); err != nil {
+				return nil, err
+			}
+		}
+	} else {
+		// Single-document mode
+		if err := d.Dump(in); err != nil {
 			return nil, err
 		}
 	}
+
 	if err := d.Close(); err != nil {
 		return nil, err
 	}
