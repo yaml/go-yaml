@@ -6,7 +6,7 @@ This guide will help you migrate your code from `go.yaml.in/yaml/v3`
 ## Quick Migration Checklist
 
 - [ ] Update import path
-- [ ] Replace deprecated API calls (optional but recommended)
+- [ ] Replace deprecated API calls
 - [ ] Handle TypeError.Errors type change (if you use it directly)
 - [ ] Adjust formatting expectations or use yaml.V3 preset
 - [ ] Update tests
@@ -32,7 +32,6 @@ Update all import statements throughout your codebase.
 ### Recommended: Use New API
 
 v4 introduces a cleaner API with better naming.
-The old API still works but is deprecated.
 
 #### Loading YAML
 
@@ -41,14 +40,9 @@ The old API still works but is deprecated.
 err := yaml.Unmarshal(data, &config)
 ```
 
-**v4 (recommended):**
+**v4:**
 ```go
 err := yaml.Load(data, &config)
-```
-
-**v4 (legacy, still works):**
-```go
-err := yaml.Unmarshal(data, &config)  // Deprecated but functional
 ```
 
 #### Dumping YAML
@@ -58,14 +52,9 @@ err := yaml.Unmarshal(data, &config)  // Deprecated but functional
 data, err := yaml.Marshal(&config)
 ```
 
-**v4 (recommended):**
+**v4:**
 ```go
 data, err := yaml.Dump(&config)
-```
-
-**v4 (legacy, still works):**
-```go
-data, err := yaml.Marshal(&config)  // Deprecated but functional
 ```
 
 #### Streaming Decoding
@@ -76,16 +65,10 @@ decoder := yaml.NewDecoder(reader)
 err := decoder.Decode(&config)
 ```
 
-**v4 (recommended):**
+**v4:**
 ```go
 loader := yaml.NewLoader(reader)
 err := loader.Load(&config)
-```
-
-**v4 (legacy, still works):**
-```go
-decoder := yaml.NewDecoder(reader)  // Deprecated but functional
-err := decoder.Decode(&config)
 ```
 
 #### Streaming Encoding
@@ -97,18 +80,11 @@ err := encoder.Encode(&config)
 encoder.Close()
 ```
 
-**v4 (recommended):**
+**v4:**
 ```go
 dumper := yaml.NewDumper(writer)
 err := dumper.Dump(&config)
 dumper.Close()
-```
-
-**v4 (legacy, still works):**
-```go
-encoder := yaml.NewEncoder(writer)  // Deprecated but functional
-err := encoder.Encode(&config)
-encoder.Close()
 ```
 
 ## Breaking Changes
@@ -324,7 +300,7 @@ data, err := yaml.Dump(&config, yaml.V3)
 go test ./...
 
 # Check for deprecation warnings (Go 1.18+)
-go test -v ./... 2>&1 | grep -i deprecat
+go test -v ./... 2>&1 | grep -i 'deprecat.*'
 
 # Verify YAML output formatting
 # Use the go-yaml CLI tool to compare
