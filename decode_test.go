@@ -521,6 +521,15 @@ bar: def`,
 			B: "def", // value should be set using whole tag as a name, see issue: <https://github.com/yaml/go-yaml/issues/157>
 		},
 	},
+
+	// Issue #245 - escaped slash
+	{
+		"a: \"\\/\"\nb: /",
+		map[string]any{
+			"a": "/",
+			"b": "/",
+		},
+	},
 }
 
 type M map[string]any
