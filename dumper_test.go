@@ -1,4 +1,4 @@
-// Tests for the Dump API, including WithAll functionality.
+// Tests for the Dump API, including WithAllDocuments functionality.
 
 package yaml_test
 
@@ -24,8 +24,8 @@ func TestDump_SingleValue(t *testing.T) {
 	assert.True(t, strings.Contains(string(data), "name: myconfig"))
 }
 
-// TestDumpWithAll_TypedSlice tests dumping multiple values from typed slice
-func TestDumpWithAll_TypedSlice(t *testing.T) {
+// TestDumpWithAllDocuments_TypedSlice tests dumping multiple values from typed slice
+func TestDumpWithAllDocuments_TypedSlice(t *testing.T) {
 	type Config struct {
 		Name string `yaml:"name"`
 	}
@@ -36,7 +36,7 @@ func TestDumpWithAll_TypedSlice(t *testing.T) {
 		{Name: "third"},
 	}
 
-	data, err := yaml.Dump(configs, yaml.WithAll())
+	data, err := yaml.Dump(configs, yaml.WithAllDocuments())
 	assert.NoError(t, err)
 
 	// Should have document separators
@@ -46,14 +46,14 @@ func TestDumpWithAll_TypedSlice(t *testing.T) {
 	assert.True(t, strings.Contains(string(data), "name: third"))
 }
 
-// TestDumpWithAll_UntypedSlice tests dumping multiple values from []any
-func TestDumpWithAll_UntypedSlice(t *testing.T) {
+// TestDumpWithAllDocuments_UntypedSlice tests dumping multiple values from []any
+func TestDumpWithAllDocuments_UntypedSlice(t *testing.T) {
 	docs := []any{
 		map[string]string{"name": "first"},
 		map[string]string{"name": "second"},
 	}
 
-	data, err := yaml.Dump(docs, yaml.WithAll())
+	data, err := yaml.Dump(docs, yaml.WithAllDocuments())
 	assert.NoError(t, err)
 
 	// Should have document separator
@@ -62,11 +62,11 @@ func TestDumpWithAll_UntypedSlice(t *testing.T) {
 	assert.True(t, strings.Contains(string(data), "name: second"))
 }
 
-// TestDumpWithAll_EmptySlice tests dumping an empty slice
-func TestDumpWithAll_EmptySlice(t *testing.T) {
+// TestDumpWithAllDocuments_EmptySlice tests dumping an empty slice
+func TestDumpWithAllDocuments_EmptySlice(t *testing.T) {
 	var docs []any
 
-	data, err := yaml.Dump(docs, yaml.WithAll())
+	data, err := yaml.Dump(docs, yaml.WithAllDocuments())
 	// Empty slice produces an empty YAML stream
 	// This may produce an error or empty output depending on implementation
 	if err != nil {
@@ -78,11 +78,11 @@ func TestDumpWithAll_EmptySlice(t *testing.T) {
 	}
 }
 
-// TestDumpWithAll_NonSlice tests that WithAll with non-slice returns error
-func TestDumpWithAll_NonSlice(t *testing.T) {
+// TestDumpWithAllDocuments_NonSlice tests that WithAllDocuments with non-slice returns error
+func TestDumpWithAllDocuments_NonSlice(t *testing.T) {
 	single := map[string]string{"name": "single"}
 
-	_, err := yaml.Dump(single, yaml.WithAll())
+	_, err := yaml.Dump(single, yaml.WithAllDocuments())
 	assert.NotNil(t, err)
-	assert.ErrorMatches(t, ".*WithAll requires a slice input.*", err)
+	assert.ErrorMatches(t, ".*WithAllDocuments requires a slice input.*", err)
 }

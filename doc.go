@@ -31,11 +31,11 @@
 //
 //	// Decode all documents from multi-document stream
 //	var docs []Config
-//	err := yaml.Load(multiDocYAML, &docs, yaml.WithAll())
+//	err := yaml.Load(multiDocYAML, &docs, yaml.WithAllDocuments())
 //
 //	// Encode multiple documents as multi-document stream
 //	docs := []Config{config1, config2}
-//	data, err := yaml.Dump(docs, yaml.WithAll())
+//	data, err := yaml.Dump(docs, yaml.WithAllDocuments())
 //
 // # Streaming with Loader and Dumper
 //

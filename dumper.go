@@ -22,12 +22,12 @@ import (
 //
 // By default, Dump encodes a single value as a single YAML document.
 //
-// Use WithAll() to encode multiple values as a multi-document stream:
+// Use WithAllDocuments() to encode multiple values as a multi-document stream:
 //
 //	docs := []Config{config1, config2, config3}
-//	yaml.Dump(docs, yaml.WithAll())
+//	yaml.Dump(docs, yaml.WithAllDocuments())
 //
-// When WithAll is used, in must be a slice.
+// When WithAllDocuments is used, in must be a slice.
 // Each element is encoded as a separate YAML document with "---" separators.
 //
 // See [Marshal] for details about the conversion of Go values to YAML.
@@ -48,12 +48,12 @@ func Dump(in any, opts ...Option) (out []byte, err error) {
 		return nil, err
 	}
 
-	if o.All {
+	if o.AllDocuments {
 		// Multi-document mode: in must be a slice
 		inVal := reflect.ValueOf(in)
 		if inVal.Kind() != reflect.Slice {
 			return nil, &TypeError{Errors: []*libyaml.ConstructError{{
-				Err: errors.New("yaml: WithAll requires a slice input"),
+				Err: errors.New("yaml: WithAllDocuments requires a slice input"),
 			}}}
 		}
 
