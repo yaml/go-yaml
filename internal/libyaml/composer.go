@@ -218,7 +218,7 @@ func (c *Composer) node(kind Kind, defaultTag, tag, value string) *Node {
 				// TODO: Consider how to handle comment plugin errors
 				_ = err
 			}
-		} else if c.opts != nil && c.opts.LegacyComments {
+		} else if c.opts != nil && c.opts.V3Comments {
 			// V3 default behavior (backward compatible for deprecated functions)
 			n.HeadComment = string(c.event.HeadComment)
 			n.LineComment = string(c.event.LineComment)

@@ -31,7 +31,7 @@ database:
 	fmt.Println("---")
 
 	// Load with V3 preset + v3 comment plugin
-	var data map[string]interface{}
+	var data map[string]any
 	err := yaml.Load([]byte(yamlWithComments), &data, yaml.V3, yaml.WithPlugin(v3.New()))
 	if err != nil {
 		panic(err)
@@ -78,6 +78,7 @@ database:
 	fmt.Println(string(output))
 }
 
+//nolint:modernize // Keep custom min for Go 1.18 compatibility
 func min(a, b int) int {
 	if a < b {
 		return a

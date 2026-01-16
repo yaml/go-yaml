@@ -172,6 +172,14 @@ func initOptionRegistry() {
 			val := value == "true"
 			return []yaml.Option{yaml.WithStreamNodes(val)}, nil
 		}},
+		"v3-comments": {typ: "bool", handler: func(value string) ([]yaml.Option, error) {
+			val := value == "true"
+			return []yaml.Option{yaml.WithV3Comments(val)}, nil
+		}},
+		"comments": {typ: "bool", handler: func(value string) ([]yaml.Option, error) {
+			val := value == "true"
+			return []yaml.Option{yaml.WithV3Comments(val)}, nil
+		}},
 	}
 }
 
@@ -276,6 +284,7 @@ Loading options:
   single-document       Only process first document (short: single)
   all-documents         Multi-document mode (short: all)
   stream-nodes          Enable stream boundary nodes (short: stream)
+  v3-comments           Enable V3-style comment loading (short: comments)
 
 Boolean options: use 'name' for true, 'no-name' for false
 Multiple options: comma-separated or repeat -o flag
@@ -288,11 +297,15 @@ Examples:
 }
 
 // buildOptions creates the yaml.Option slice based on config file and -o flags
-func buildOptions(configFile string, optionFlags []string) ([]yaml.Option, error) {
+func buildOptions(configFile string, optionFlags []string, commentsMode bool) ([]yaml.Option, error) {
 	var opts []yaml.Option
 
 	// Default to V4 preset
 	opts = append(opts, yaml.V4)
+
+	// CLI always loads comments for inspection purposes by default
+	// The -c flag and -o comments options provide explicit control
+	opts = append(opts, yaml.WithV3Comments())
 
 	// Load config file if specified
 	if configFile != "" {
@@ -348,6 +361,7 @@ func main() {
 	nodeProfuseMode := flag.Bool("N", false, "Node with tag and style for all scalars")
 
 	// Shared flags
+	commentsMode := flag.Bool("c", false, "Enable comment loading (V3-style)")
 	longMode := flag.Bool("l", false, "Long (block) formatted output")
 
 	// Config file flag
@@ -376,6 +390,7 @@ func main() {
 	flag.BoolVar(eventProfuseMode, "EVENT", false, "Event with line info")
 	flag.BoolVar(nodeMode, "node", false, "Node representation output")
 	flag.BoolVar(nodeProfuseMode, "NODE", false, "Node with tag and style for all scalars")
+	flag.BoolVar(commentsMode, "comments", false, "Enable comment loading (V3-style)")
 	flag.BoolVar(longMode, "long", false, "Long (block) formatted output")
 	flag.StringVar(configFile, "config", "", "Load options from YAML config file")
 
@@ -423,7 +438,7 @@ func main() {
 	var opts []yaml.Option
 	if !unmarshalMode && !decodeMode {
 		var err error
-		opts, err = buildOptions(*configFile, optionFlags)
+		opts, err = buildOptions(*configFile, optionFlags, *commentsMode)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n\n", err)
 			printAvailableOptions()
@@ -686,6 +701,7 @@ Output Mode Options:
   -n, --node       Node representation output
   -N, --NODE       Node with tag and style for all scalars
 
+  -c, --comments   Enable comment loading (V3-style)
   -l, --long       Long (block) formatted output
 
 Formatting Options:

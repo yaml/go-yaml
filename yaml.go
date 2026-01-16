@@ -124,6 +124,9 @@ var (
 	// WithQuotePreference sets preferred quote style when quoting is required.
 	// See internal/libyaml.WithQuotePreference.
 	WithQuotePreference = libyaml.WithQuotePreference
+	// WithV3Comments enables V3-style comment handling.
+	// See internal/libyaml.WithV3Comments.
+	WithV3Comments = libyaml.WithV3Comments
 )
 
 // Plugin options
@@ -202,7 +205,7 @@ func WithoutPlugin(kinds ...string) Option {
 			switch kind {
 			case "comment":
 				o.CommentProcessor = nil
-				if !o.LegacyComments {
+				if !o.V3Comments {
 					o.SkipComments = true
 				}
 			}
@@ -211,11 +214,11 @@ func WithoutPlugin(kinds ...string) Option {
 	}
 }
 
-// withLegacyComments enables V3 default comment behavior for deprecated functions.
+// withV3Comments enables V3 default comment behavior for deprecated functions.
 // This is an internal option not exposed to users.
-func withLegacyComments() Option {
+func withV3Comments() Option {
 	return func(o *libyaml.Options) error {
-		o.LegacyComments = true
+		o.V3Comments = true
 		o.SkipComments = false
 		return nil
 	}
@@ -628,7 +631,7 @@ type Decoder struct {
 // data from r beyond the YAML values requested.
 func NewDecoder(r io.Reader) *Decoder {
 	return &Decoder{
-		composer: libyaml.NewComposerFromReader(r, libyaml.LegacyOptions),
+		composer: libyaml.NewComposerFromReader(r, libyaml.DefaultOptions),
 	}
 }
 
