@@ -101,6 +101,7 @@ func countComments(node *yaml.Node) int {
 	return count
 }
 
+//nolint:modernize // Keep custom min for Go 1.18 compatibility
 func min(a, b int) int {
 	if a < b {
 		return a
