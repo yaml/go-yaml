@@ -93,11 +93,11 @@ With custom options:
 data, err := yaml.Dump(&config, yaml.WithIndent(4))
 ```
 
-Dump multiple values as a multi-document stream using `WithAll()`:
+Dump multiple values as a multi-document stream using `WithAllDocuments()`:
 
 ```go
 docs := []Config{config1, config2, config3}
-data, err := yaml.Dump(docs, yaml.WithAll(), yaml.WithIndent(2))
+data, err := yaml.Dump(docs, yaml.WithAllDocuments(), yaml.WithIndent(2))
 // Output:
 // name: first
 // ---
@@ -131,7 +131,7 @@ err := yaml.Load(yamlData, &config, yaml.WithKnownFields())
 // Error: field prto not found in type Config
 ```
 
-Load all documents from a multi-document stream using `WithAll()`:
+Load all documents from a multi-document stream using `WithAllDocuments()`:
 
 ```go
 multiDoc := []byte(`
@@ -143,7 +143,7 @@ name: third
 `)
 
 var docs []map[string]any
-err := yaml.Load(multiDoc, &docs, yaml.WithAll())
+err := yaml.Load(multiDoc, &docs, yaml.WithAllDocuments())
 for i, doc := range docs {
     fmt.Printf("Doc %d: %v\n", i, doc)
 }
@@ -153,7 +153,7 @@ With typed slices:
 
 ```go
 var configs []Config
-err := yaml.Load(multiDoc, &configs, yaml.WithAll())
+err := yaml.Load(multiDoc, &configs, yaml.WithAllDocuments())
 // Each document decoded as Config
 ```
 
@@ -600,11 +600,11 @@ func MergeConfigs(files []string) ([]byte, error) {
     for _, f := range files {
         data, _ := os.ReadFile(f)
         var docs []any
-        _ = yaml.Load(data, &docs, yaml.WithAll())
+        _ = yaml.Load(data, &docs, yaml.WithAllDocuments())
         allDocs = append(allDocs, docs...)
     }
 
-    return yaml.Dump(allDocs, yaml.WithAll(), yaml.WithIndent(2))
+    return yaml.Dump(allDocs, yaml.WithAllDocuments(), yaml.WithIndent(2))
 }
 ```
 

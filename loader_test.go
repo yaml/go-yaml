@@ -193,8 +193,8 @@ func TestStreamNodeDisabled(t *testing.T) {
 	assert.Equal(t, yaml.DocumentNode, node.Kind)
 }
 
-// TestLoadWithAll_TypedSlice tests loading multiple documents into a typed slice
-func TestLoadWithAll_TypedSlice(t *testing.T) {
+// TestLoadWithAllDocuments_TypedSlice tests loading multiple documents into a typed slice
+func TestLoadWithAllDocuments_TypedSlice(t *testing.T) {
 	type Config struct {
 		Name string `yaml:"name"`
 	}
@@ -202,7 +202,7 @@ func TestLoadWithAll_TypedSlice(t *testing.T) {
 	input := []byte("---\nname: first\n---\nname: second\n---\nname: third\n")
 
 	var configs []Config
-	err := yaml.Load(input, &configs, yaml.WithAll())
+	err := yaml.Load(input, &configs, yaml.WithAllDocuments())
 	assert.NoError(t, err)
 
 	assert.Equal(t, 3, len(configs))
@@ -211,36 +211,36 @@ func TestLoadWithAll_TypedSlice(t *testing.T) {
 	assert.Equal(t, "third", configs[2].Name)
 }
 
-// TestLoadWithAll_UntypedSlice tests loading multiple documents into []any
-func TestLoadWithAll_UntypedSlice(t *testing.T) {
+// TestLoadWithAllDocuments_UntypedSlice tests loading multiple documents into []any
+func TestLoadWithAllDocuments_UntypedSlice(t *testing.T) {
 	input := []byte("---\nname: first\n---\nname: second\n")
 
 	var docs []any
-	err := yaml.Load(input, &docs, yaml.WithAll())
+	err := yaml.Load(input, &docs, yaml.WithAllDocuments())
 	assert.NoError(t, err)
 
 	assert.Equal(t, 2, len(docs))
 }
 
-// TestLoadWithAll_EmptyInput tests that 0 documents with WithAll results in empty slice
-func TestLoadWithAll_EmptyInput(t *testing.T) {
+// TestLoadWithAllDocuments_EmptyInput tests that 0 documents with WithAllDocuments results in empty slice
+func TestLoadWithAllDocuments_EmptyInput(t *testing.T) {
 	input := []byte("")
 
 	var docs []any
-	err := yaml.Load(input, &docs, yaml.WithAll())
+	err := yaml.Load(input, &docs, yaml.WithAllDocuments())
 	assert.NoError(t, err)
 
 	assert.Equal(t, 0, len(docs))
 }
 
-// TestLoadWithAll_NonSlice tests that WithAll with non-slice target returns error
-func TestLoadWithAll_NonSlice(t *testing.T) {
+// TestLoadWithAllDocuments_NonSlice tests that WithAllDocuments with non-slice target returns error
+func TestLoadWithAllDocuments_NonSlice(t *testing.T) {
 	input := []byte("---\nname: first\n---\nname: second\n")
 
 	var single map[string]any
-	err := yaml.Load(input, &single, yaml.WithAll())
+	err := yaml.Load(input, &single, yaml.WithAllDocuments())
 	assert.NotNil(t, err)
-	assert.ErrorMatches(t, ".*WithAll requires a pointer to a slice.*", err)
+	assert.ErrorMatches(t, ".*WithAllDocuments requires a pointer to a slice.*", err)
 }
 
 // TestLoad_SingleDocument tests loading exactly one document

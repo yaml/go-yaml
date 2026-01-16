@@ -24,12 +24,12 @@ import (
 // If zero documents are found, it returns an error.
 // If multiple documents are found, it returns an error.
 //
-// Use WithAll() to load all documents into a slice:
+// Use WithAllDocuments() to load all documents into a slice:
 //
 //	var configs []Config
-//	yaml.Load(multiDocYAML, &configs, yaml.WithAll())
+//	yaml.Load(multiDocYAML, &configs, yaml.WithAllDocuments())
 //
-// When WithAll is used, out must be a pointer to a slice.
+// When WithAllDocuments is used, out must be a pointer to a slice.
 // Each document is decoded into the slice element type.
 // Zero documents results in an empty slice (no error).
 //
@@ -67,7 +67,7 @@ func Load(in []byte, out any, opts ...Option) error {
 		return err
 	}
 
-	if o.All {
+	if o.AllDocuments {
 		// Multi-document mode: out must be pointer to slice
 		return loadAll(in, out, o)
 	}
@@ -81,14 +81,14 @@ func loadAll(in []byte, out any, opts *libyaml.Options) error {
 	outVal := reflect.ValueOf(out)
 	if outVal.Kind() != reflect.Pointer || outVal.IsNil() {
 		return &TypeError{Errors: []*libyaml.ConstructError{{
-			Err: errors.New("yaml: WithAll requires a non-nil pointer to a slice"),
+			Err: errors.New("yaml: WithAllDocuments requires a non-nil pointer to a slice"),
 		}}}
 	}
 
 	sliceVal := outVal.Elem()
 	if sliceVal.Kind() != reflect.Slice {
 		return &TypeError{Errors: []*libyaml.ConstructError{{
-			Err: errors.New("yaml: WithAll requires a pointer to a slice"),
+			Err: errors.New("yaml: WithAllDocuments requires a pointer to a slice"),
 		}}}
 	}
 

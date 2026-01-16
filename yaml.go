@@ -91,9 +91,9 @@ var (
 	// WithStreamNodes enables stream boundary nodes when loading.
 	// See internal/libyaml.WithStreamNodes.
 	WithStreamNodes = libyaml.WithStreamNodes
-	// WithAll enables multi-document mode for Load and Dump.
-	// See internal/libyaml.WithAll.
-	WithAll = libyaml.WithAll
+	// WithAllDocuments enables multi-document mode for Load and Dump.
+	// See internal/libyaml.WithAllDocuments.
+	WithAllDocuments = libyaml.WithAllDocuments
 	// WithLineWidth sets preferred line width for output.
 	// See internal/libyaml.WithLineWidth.
 	WithLineWidth = libyaml.WithLineWidth
