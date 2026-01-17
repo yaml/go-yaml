@@ -6,7 +6,7 @@ This guide will help you migrate your code from `go.yaml.in/yaml/v3`
 ## Quick Migration Checklist
 
 - [ ] Update import path
-- [ ] Replace deprecated API calls
+- [ ] Optionally migrate to new API (Load/Dump, Loader/Dumper)
 - [ ] Handle TypeError.Errors type change (if you use it directly)
 - [ ] Adjust formatting expectations or use yaml.V3 preset
 - [ ] Update tests
@@ -248,20 +248,18 @@ data, err := yaml.Dump(&config,
 
 ## Backward Compatibility
 
-All v3 APIs continue to work in v4 but are **deprecated** for removal
-in v5:
+All v3 APIs continue to work in v4. The classic API remains supported
+for simple use cases:
 
-- `Unmarshal()` → Use `Load()`
-- `Marshal()` → Use `Dump()`
-- `NewDecoder()` → Use `NewLoader()`
-- `NewEncoder()` → Use `NewDumper()`
-- `Decoder.Decode()` → Use `Loader.Load()`
-- `Encoder.Encode()` → Use `Dumper.Dump()`
+- `Unmarshal()` - Classic API (or use `Load()` for more flexibility)
+- `Marshal()` - Classic API (or use `Dump()` for more flexibility)
+- `NewDecoder()` - Classic API (or use `NewLoader()` for more flexibility)
+- `NewEncoder()` - Classic API (or use `NewDumper()` for more flexibility)
 
 You can migrate incrementally:
 1. Update import path to v4
 2. Verify tests pass
-3. Gradually replace deprecated APIs
+3. Optionally migrate to new API for additional features
 4. Update TypeError.Errors handling if applicable
 
 ## Migration Strategies
@@ -299,9 +297,6 @@ data, err := yaml.Dump(&config, yaml.V3)
 # Run your existing tests
 go test ./...
 
-# Check for deprecation warnings (Go 1.18+)
-go test -v ./... 2>&1 | grep -i 'deprecat.*'
-
 # Verify YAML output formatting
 # Use the go-yaml CLI tool to compare
 go install go.yaml.in/yaml/v4/cmd/go-yaml@latest
@@ -326,9 +321,9 @@ for _, e := range typeErr.Errors {
 }
 ```
 
-### Issue: Deprecation warnings
+### Issue: Want more flexibility from classic API
 
-**Solution:** Replace deprecated APIs:
+**Solution:** Migrate to the new API for options support:
 - `Unmarshal` → `Load`
 - `Marshal` → `Dump`
 - `NewDecoder` → `NewLoader`
