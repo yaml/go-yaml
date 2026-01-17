@@ -1,0 +1,245 @@
+# Key ordering tests for -n and -N flags
+# These tests verify that keys appear in the correct order:
+# For -n: anchor, tag, head, line, foot, then content (mapping/sequence/scalar)
+# For -N: kind, style, anchor, tag, head, line, foot, then text/content
+
+- name: Scalar with tag and anchor
+  text: |
+    &myanchor !!str value
+  node: |
+    anchor: myanchor
+    plain: value
+  NODE: |
+    kind: Document
+    content:
+    - kind: Scalar
+      style: Plain
+      anchor: myanchor
+      tag: '!!str'
+      text: value
+
+- name: Scalar with anchor and comments
+  text: |
+    # head comment
+    &myanchor value # line comment
+    # foot comment
+  node: |
+    anchor: myanchor
+    head: '# head comment'
+    line: '# line comment'
+    foot: '# foot comment'
+    plain: value
+  NODE: |
+    kind: Document
+    content:
+    - kind: Scalar
+      style: Plain
+      anchor: myanchor
+      tag: '!!str'
+      head: '# head comment'
+      line: '# line comment'
+      foot: '# foot comment'
+      text: value
+
+- name: Mapping with tag, anchor, and comments
+  text: |
+    # head comment
+    &myanchor !!map
+    key: value # line comment
+    # foot comment
+  node: |
+    anchor: myanchor
+    tag: '!!map'
+    mapping:
+    - head: '# head comment'
+      foot: '# foot comment'
+      plain: key
+    - line: '# line comment'
+      plain: value
+  NODE: |
+    kind: Document
+    content:
+    - kind: Mapping
+      style: Plain
+      anchor: myanchor
+      tag: '!!map'
+      content:
+      - kind: Scalar
+        style: Plain
+        tag: '!!str'
+        head: '# head comment'
+        foot: '# foot comment'
+        text: key
+      - kind: Scalar
+        style: Plain
+        tag: '!!str'
+        line: '# line comment'
+        text: value
+
+- name: Sequence with tag and anchor
+  text: |
+    &myseq !!seq
+    - item1
+    - item2
+  node: |
+    anchor: myseq
+    tag: '!!seq'
+    sequence:
+    - plain: item1
+    - plain: item2
+  NODE: |
+    kind: Document
+    content:
+    - kind: Sequence
+      style: Plain
+      anchor: myseq
+      tag: '!!seq'
+      content:
+      - kind: Scalar
+        style: Plain
+        tag: '!!str'
+        text: item1
+      - kind: Scalar
+        style: Plain
+        tag: '!!str'
+        text: item2
+
+- name: Sequence with all metadata fields
+  text: |
+    # head comment
+    &myseq !!seq
+    - item1
+    - item2
+    # foot comment
+  node: |
+    anchor: myseq
+    tag: '!!seq'
+    sequence:
+    - head: '# head comment'
+      plain: item1
+    - foot: '# foot comment'
+      plain: item2
+  NODE: |
+    kind: Document
+    content:
+    - kind: Sequence
+      style: Plain
+      anchor: myseq
+      tag: '!!seq'
+      content:
+      - kind: Scalar
+        style: Plain
+        tag: '!!str'
+        head: '# head comment'
+        text: item1
+      - kind: Scalar
+        style: Plain
+        tag: '!!str'
+        foot: '# foot comment'
+        text: item2
+
+- name: Tag comes before anchor
+  text: |
+    &anchor !!str tagged
+  node: |
+    anchor: anchor
+    plain: tagged
+  NODE: |
+    kind: Document
+    content:
+    - kind: Scalar
+      style: Plain
+      anchor: anchor
+      tag: '!!str'
+      text: tagged
+
+- name: Comments come before content
+  text: |
+    # head
+    key: value # line
+  node: |
+    mapping:
+    - head: '# head'
+      plain: key
+    - line: '# line'
+      plain: value
+  NODE: |
+    kind: Document
+    content:
+    - kind: Mapping
+      style: Plain
+      tag: '!!map'
+      content:
+      - kind: Scalar
+        style: Plain
+        tag: '!!str'
+        head: '# head'
+        text: key
+      - kind: Scalar
+        style: Plain
+        tag: '!!str'
+        line: '# line'
+        text: value
+
+- name: Double quoted scalar with tag and anchor
+  text: |
+    &myanchor !!str "quoted"
+  node: |
+    anchor: myanchor
+    double: quoted
+  NODE: |
+    kind: Document
+    content:
+    - kind: Scalar
+      style: Double
+      anchor: myanchor
+      tag: '!!str'
+      text: quoted
+
+- name: Nested mapping with ordered keys
+  text: |
+    &outer !!map
+    # outer head
+    nested:
+      &inner !!map
+      # inner head
+      key: value
+  node: |
+    anchor: outer
+    tag: '!!map'
+    mapping:
+    - head: '# outer head'
+      plain: nested
+    - anchor: inner
+      tag: '!!map'
+      mapping:
+      - head: '# inner head'
+        plain: key
+      - plain: value
+  NODE: |
+    kind: Document
+    content:
+    - kind: Mapping
+      style: Plain
+      anchor: outer
+      tag: '!!map'
+      content:
+      - kind: Scalar
+        style: Plain
+        tag: '!!str'
+        head: '# outer head'
+        text: nested
+      - kind: Mapping
+        style: Plain
+        anchor: inner
+        tag: '!!map'
+        content:
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          head: '# inner head'
+          text: key
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: value

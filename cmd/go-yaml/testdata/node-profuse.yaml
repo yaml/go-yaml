@@ -1,0 +1,76 @@
+# Node profuse mode tests - comparing -n and -N flags
+
+- name: Plain scalar
+  text: |
+    hello
+  node: |
+    plain: hello
+  NODE: |
+    kind: Document
+    content:
+    - kind: Scalar
+      style: Plain
+      tag: '!!str'
+      text: hello
+
+- name: Double quoted scalar
+  text: |
+    "hello"
+  node: |
+    double: hello
+  NODE: |
+    kind: Document
+    content:
+    - kind: Scalar
+      style: Double
+      tag: '!!str'
+      text: hello
+
+- name: Integer scalar
+  text: |
+    42
+  node: |
+    plain: "42"
+  NODE: |
+    kind: Document
+    content:
+    - kind: Scalar
+      style: Plain
+      tag: '!!int'
+      text: "42"
+
+- name: Explicit tag
+  text: |
+    !!str 42
+  node: |
+    plain: "42"
+  NODE: |
+    kind: Document
+    content:
+    - kind: Scalar
+      style: Plain
+      tag: '!!str'
+      text: "42"
+
+- name: Mapping with plain scalars
+  text: |
+    key: value
+  node: |
+    mapping:
+    - plain: key
+    - plain: value
+  NODE: |
+    kind: Document
+    content:
+    - kind: Mapping
+      style: Plain
+      tag: '!!map'
+      content:
+      - kind: Scalar
+        style: Plain
+        tag: '!!str'
+        text: key
+      - kind: Scalar
+        style: Plain
+        tag: '!!str'
+        text: value

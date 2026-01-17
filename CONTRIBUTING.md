@@ -109,10 +109,11 @@ foo: &a1 bar
 - Fork and clone the repository
 - Make your changes
 - Run tests, linters and formatters
-  - `make test`
-  - `make lint`
   - `make fmt`
   - `make tidy`
+  - `make lint`
+  - `make test`
+  - You can use `make check` to run all of the above
 - Submit a [Pull Request](https://github.com/yaml/go-yaml/pulls)
 
 

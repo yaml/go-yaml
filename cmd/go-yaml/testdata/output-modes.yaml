@@ -1,0 +1,204 @@
+# Tests for different output modes: yaml, YAML, json, JSON
+
+- name: Simple mapping - YAML output
+  text: |
+    foo: bar
+    baz: qux
+  yaml: |
+    baz: qux
+    foo: bar
+  YAML: |
+    foo: bar
+    baz: qux
+  json: |
+    {"baz":"qux","foo":"bar"}
+  JSON: |
+    {
+      "baz": "qux",
+      "foo": "bar"
+    }
+
+- name: Simple sequence - YAML output
+  text: |
+    - item1
+    - item2
+    - item3
+  yaml: |
+    - item1
+    - item2
+    - item3
+  YAML: |
+    - item1
+    - item2
+    - item3
+  json: |
+    ["item1","item2","item3"]
+  JSON: |
+    [
+      "item1",
+      "item2",
+      "item3"
+    ]
+
+- name: Nested structure - YAML output
+  text: |
+    users:
+      - name: Alice
+        age: 30
+      - name: Bob
+        age: 25
+  yaml: |
+    users:
+    - age: 30
+      name: Alice
+    - age: 25
+      name: Bob
+  YAML: |
+    users:
+    - name: Alice
+      age: 30
+    - name: Bob
+      age: 25
+  json: |
+    {"users":[{"age":30,"name":"Alice"},{"age":25,"name":"Bob"}]}
+  JSON: |
+    {
+      "users": [
+        {
+          "age": 30,
+          "name": "Alice"
+        },
+        {
+          "age": 25,
+          "name": "Bob"
+        }
+      ]
+    }
+
+- name: YAML with comments - preserved
+  text: |
+    # This is a head comment
+    key: value  # This is a line comment
+    # This is a foot comment
+  yaml: |
+    key: value
+  YAML: |
+    # This is a head comment
+    key: value # This is a line comment
+    # This is a foot comment
+  json: |
+    {"key":"value"}
+  JSON: |
+    {
+      "key": "value"
+    }
+
+- name: Flow style mapping - preserved
+  text: "{a: 1, b: 2, c: 3}"
+  yaml: |
+    a: 1
+    b: 2
+    c: 3
+  YAML: "{a: 1, b: 2, c: 3}"
+  json: |
+    {"a":1,"b":2,"c":3}
+  JSON: |
+    {
+      "a": 1,
+      "b": 2,
+      "c": 3
+    }
+
+- name: Quoted strings - preserved
+  text: |
+    single: 'quoted string'
+    double: "quoted string"
+    plain: plain string
+  yaml: |
+    double: quoted string
+    plain: plain string
+    single: quoted string
+  YAML: |
+    single: 'quoted string'
+    double: "quoted string"
+    plain: plain string
+  json: |
+    {"double":"quoted string","plain":"plain string","single":"quoted string"}
+  JSON: |
+    {
+      "double": "quoted string",
+      "plain": "plain string",
+      "single": "quoted string"
+    }
+
+- name: Literal block scalar - style preserved
+  text: |
+    description: |
+      This is a literal
+      block scalar that
+      preserves newlines.
+  yaml: |
+    description: |
+      This is a literal
+      block scalar that
+      preserves newlines.
+  YAML: |
+    description: |
+      This is a literal
+      block scalar that
+      preserves newlines.
+  json: |
+    {"description":"This is a literal\nblock scalar that\npreserves newlines.\n"}
+  JSON: |
+    {
+      "description": "This is a literal\nblock scalar that\npreserves newlines.\n"
+    }
+
+- name: Folded block scalar - style preserved
+  text: |
+    description: >
+      This is a folded
+      block scalar that
+      folds newlines.
+  yaml: |
+    description: |
+      This is a folded block scalar that folds newlines.
+  YAML: |
+    description: >
+      This is a folded block scalar that folds newlines.
+  json: |
+    {"description":"This is a folded block scalar that folds newlines.\n"}
+  JSON: |
+    {
+      "description": "This is a folded block scalar that folds newlines.\n"
+    }
+
+- name: Mixed types
+  text: |
+    string: hello
+    number: 42
+    float: 3.14
+    bool: true
+    null_value: null
+  yaml: |
+    bool: true
+    float: 3.14
+    null_value: null
+    number: 42
+    string: hello
+  YAML: |
+    string: hello
+    number: 42
+    float: 3.14
+    bool: true
+    null_value: null
+  json: |
+    {"bool":true,"float":3.14,"null_value":null,"number":42,"string":"hello"}
+  JSON: |
+    {
+      "bool": true,
+      "float": 3.14,
+      "null_value": null,
+      "number": 42,
+      "string": "hello"
+    }

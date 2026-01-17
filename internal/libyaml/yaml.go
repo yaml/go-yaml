@@ -189,10 +189,11 @@ const (
 	KEY_TOKEN         // A KEY token.
 	VALUE_TOKEN       // A VALUE token.
 
-	ALIAS_TOKEN  // An ALIAS token.
-	ANCHOR_TOKEN // An ANCHOR token.
-	TAG_TOKEN    // A TAG token.
-	SCALAR_TOKEN // A SCALAR token.
+	ALIAS_TOKEN   // An ALIAS token.
+	ANCHOR_TOKEN  // An ANCHOR token.
+	TAG_TOKEN     // A TAG token.
+	SCALAR_TOKEN  // A SCALAR token.
+	COMMENT_TOKEN // A COMMENT token.
 )
 
 func (tt TokenType) String() string {
@@ -241,6 +242,8 @@ func (tt TokenType) String() string {
 		return "TAG_TOKEN"
 	case SCALAR_TOKEN:
 		return "SCALAR_TOKEN"
+	case COMMENT_TOKEN:
+		return "COMMENT_TOKEN"
 	}
 	return "<unknown token>"
 }
@@ -654,14 +657,14 @@ type Parser struct {
 }
 
 type Comment struct {
-	scan_mark  Mark // Position where scanning for comments started
-	token_mark Mark // Position after which tokens will be associated with this comment
-	start_mark Mark // Position of '#' comment mark
-	end_mark   Mark // Position where comment terminated
+	ScanMark  Mark // Position where scanning for comments started
+	TokenMark Mark // Position after which tokens will be associated with this comment
+	StartMark Mark // Position of '#' comment mark
+	EndMark   Mark // Position where comment terminated
 
-	head []byte
-	line []byte
-	foot []byte
+	Head []byte
+	Line []byte
+	Foot []byte
 }
 
 // Emitter Definitions

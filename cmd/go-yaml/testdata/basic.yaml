@@ -1,0 +1,94 @@
+# Basic functionality tests for go-yaml CLI
+
+- name: Simple scalar mapping
+  text: |
+    key: value
+  token: |
+    - {token: STREAM-START}
+    - {token: BLOCK-MAPPING-START}
+    - {token: KEY}
+    - {token: SCALAR, value: key}
+    - {token: VALUE}
+    - {token: SCALAR, value: value}
+    - {token: BLOCK-END}
+    - {token: STREAM-END}
+  event: |
+    - {event: DOCUMENT-START}
+    - {event: MAPPING-START}
+    - {event: SCALAR, value: key}
+    - {event: SCALAR, value: value}
+    - {event: MAPPING-END}
+    - {event: DOCUMENT-END}
+  node: |
+    mapping:
+    - plain: key
+    - plain: value
+
+- name: Simple sequence
+  text: |
+    - item1
+    - item2
+  token: |
+    - {token: STREAM-START}
+    - {token: BLOCK-SEQUENCE-START}
+    - {token: BLOCK-ENTRY}
+    - {token: SCALAR, value: item1}
+    - {token: BLOCK-ENTRY}
+    - {token: SCALAR, value: item2}
+    - {token: BLOCK-END}
+    - {token: STREAM-END}
+  event: |
+    - {event: DOCUMENT-START}
+    - {event: SEQUENCE-START}
+    - {event: SCALAR, value: item1}
+    - {event: SCALAR, value: item2}
+    - {event: SEQUENCE-END}
+    - {event: DOCUMENT-END}
+
+- name: Nested mapping and sequence
+  text: |
+    list:
+      - a
+      - b
+  token: |
+    - {token: STREAM-START}
+    - {token: BLOCK-MAPPING-START}
+    - {token: KEY}
+    - {token: SCALAR, value: list}
+    - {token: VALUE}
+    - {token: BLOCK-SEQUENCE-START}
+    - {token: BLOCK-ENTRY}
+    - {token: SCALAR, value: a}
+    - {token: BLOCK-ENTRY}
+    - {token: SCALAR, value: b}
+    - {token: BLOCK-END}
+    - {token: BLOCK-END}
+    - {token: STREAM-END}
+  event: |
+    - {event: DOCUMENT-START}
+    - {event: MAPPING-START}
+    - {event: SCALAR, value: list}
+    - {event: SEQUENCE-START}
+    - {event: SCALAR, value: a}
+    - {event: SCALAR, value: b}
+    - {event: SEQUENCE-END}
+    - {event: MAPPING-END}
+    - {event: DOCUMENT-END}
+
+- name: Flow style mapping
+  text: |
+    {a: b, c: d}
+  token: |
+    - {token: STREAM-START}
+    - {token: FLOW-MAPPING-START}
+    - {token: KEY}
+    - {token: SCALAR, value: a}
+    - {token: VALUE}
+    - {token: SCALAR, value: b}
+    - {token: FLOW-ENTRY}
+    - {token: KEY}
+    - {token: SCALAR, value: c}
+    - {token: VALUE}
+    - {token: SCALAR, value: d}
+    - {token: FLOW-MAPPING-END}
+    - {token: STREAM-END}
