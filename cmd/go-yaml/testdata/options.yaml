@@ -122,3 +122,58 @@
         - one
         - two
         - three
+
+- name: Canonical formatting
+  text: |
+    foo: bar
+    num: 42
+  canonical-yaml: |
+    ---
+    {
+      ? "foo"
+      : "bar",
+      ? "num"
+      : "42",
+    }
+
+- name: Explicit markers
+  text: |
+    foo: bar
+  explicit-yaml: |
+    ---
+    foo: bar
+    ...
+
+- name: Explicit start only
+  text: |
+    foo: bar
+  explicit-start-yaml: |
+    ---
+    foo: bar
+
+- name: Unicode disabled
+  text: |
+    foo: bar
+  no-unicode-yaml: |
+    foo: bar
+
+- name: Comma-separated options
+  text: |
+    foo: bar
+  canonical-explicit-yaml: |
+    ---
+    {
+      ? "foo"
+      : "bar",
+    }
+    ...
+
+- name: Multiple option overrides
+  text: |
+    foo:
+      - bar
+      - baz
+  v2-indent4-yaml: |
+    foo:
+        - bar
+        - baz

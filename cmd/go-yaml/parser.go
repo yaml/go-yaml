@@ -159,10 +159,10 @@ func (p *Parser) appendCommentTokenIfNotEmpty(value []byte, commentType string, 
 			Type:        "COMMENT",
 			Value:       string(value),
 			CommentType: commentType,
-			StartLine:   int(comment.StartMark.Line) + 1,
-			StartColumn: int(comment.StartMark.Column) + 1,
-			EndLine:     int(comment.EndMark.Line) + 1,
-			EndColumn:   int(comment.EndMark.Column) + 1,
+			StartLine:   comment.StartMark.Line + 1,
+			StartColumn: comment.StartMark.Column + 1,
+			EndLine:     comment.EndMark.Line + 1,
+			EndColumn:   comment.EndMark.Column + 1,
 		}
 		p.pendingTokens = append(p.pendingTokens, commentToken)
 	}
