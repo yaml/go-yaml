@@ -8,9 +8,9 @@ from simple one-liners to advanced streaming with full configuration control.
 **For new code in v4+, prefer `Dump`/`Load` over `Marshal`/`Unmarshal` and
 `Encode`/`Decode`.**
 
-**IMPORTANT**: `Marshal`, `Unmarshal`, `Encoder`, and `Decoder` are deprecated
-as of v4 and will be removed in v5.
-Use `Dump`/`Load` and `Dumper`/`Loader` instead.
+The classic API (`Marshal`, `Unmarshal`, `Encoder`, `Decoder`) remains supported
+for compatibility, but `Dump`/`Load` and `Dumper`/`Loader` offer more flexibility
+with options support.
 
 ### Why Dump and Load?
 
@@ -36,16 +36,16 @@ provide a full Dump and Load stack.
 Those involve the Represent (for Dump) and Construct (for Load) YAML stack
 stages and v4 will offer those (optionally) for Dump and Load.
 
-### Transition Path
+### Classic API
 
-`Marshal`/`Unmarshal` and `Encode`/`Decode` are retained in v4 to smooth the
-transition from v3:
+`Marshal`/`Unmarshal` and `Encode`/`Decode` provide a simple, options-free
+interface:
 
-- They work **without options** and continue using **v3 semantics** (4-space
+- They work **without options** and use **v3 semantics** (4-space
   indent, non-compact sequences)
-- They're perfect for upgrading existing v3 code with minimal changes
-- For new code, use `Dump`/`Load` instead—they can replicate the old behavior
-  and much more
+- They're perfect for simple use cases and upgrading existing v3 code
+- For new code, use `Dump`/`Load` instead—they can replicate the same behavior
+  with added flexibility
 
 ### Flexibility
 
@@ -67,12 +67,12 @@ when you need it.
 
 go-yaml provides five main API functions for dumping and loading YAML:
 
-| Reader | Writer | Configurable | Use Case | Deprecated |
-|--------|--------|--------------|----------|------------|
-| `Load` | `Dump` | Yes | Single or multi-doc with options | No |
-| `NewLoader` | `NewDumper` | Yes | Large files, continuous streams | No |
-| `Unmarshal` | `Marshal` | No | Quick conversions, preset behavior | Yes |
-| `Decode` | `Encode` | No | Multi-doc streams, preset behavior | Yes |
+| Reader | Writer | Configurable | Use Case |
+|--------|--------|--------------|----------|
+| `Load` | `Dump` | Yes | Single or multi-doc with options |
+| `NewLoader` | `NewDumper` | Yes | Large files, continuous streams |
+| `Unmarshal` | `Marshal` | No | Quick conversions, preset behavior |
+| `NewDecoder` | `NewEncoder` | No | Multi-doc streams, preset behavior |
 
 ## Configurable API: Dump and Load
 
@@ -242,12 +242,9 @@ for {
 **When to use:** Large files, network streams, processing documents
 incrementally, or when you need maximum control.
 
-## DEPRECATED: Static Behavior API (Marshal and Unmarshal)
+## Classic API: Marshal and Unmarshal
 
-**DEPRECATED**: This API is deprecated in v4 and will be removed in v5.
-Use `Dump` and `Load` instead.
-
-No options, no streaming—just convert.
+Simple conversion with no options or streaming.
 
 **Note:** These functions use **v3 semantics** (4-space indent, non-compact
 sequences) and **do not accept options**.
@@ -306,10 +303,7 @@ fmt.Println(config.Name)  // "myapp"
 **When to use:** Quick scripts, tests, simple config files where default
 formatting is fine.
 
-## DEPRECATED: Static Behavior Streaming API (Encoder and Decoder)
-
-**DEPRECATED**: This API is deprecated in v4 and will be removed in v5.
-Use `Dumper` and `Loader` instead.
+## Classic Streaming API: Encoder and Decoder
 
 For multi-document streams without needing options.
 Simple functions for encoding/decoding streams.

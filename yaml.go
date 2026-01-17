@@ -13,7 +13,7 @@
 // - Options API (WithIndent, WithKnownFields, etc.)
 // - Type and constant re-exports from internal/libyaml
 // - Helper functions for struct field handling
-// - Deprecated APIs (Decoder, Encoder, Unmarshal, Marshal)
+// - Classic APIs (Decoder, Encoder, Unmarshal, Marshal)
 //
 // For the main API, see:
 // - loader.go: Load, Loader
@@ -486,12 +486,10 @@ func handleErr(err *error) {
 }
 
 //-----------------------------------------------------------------------------
-// Deprecated APIs
+// Classic APIs
 //-----------------------------------------------------------------------------
 
 // A Decoder reads and decodes YAML values from an input stream.
-//
-// Deprecated: Use Loader instead. Will be removed in v5.
 type Decoder struct {
 	composer    *libyaml.Composer
 	knownFields bool
@@ -501,8 +499,6 @@ type Decoder struct {
 //
 // The decoder introduces its own buffering and may read
 // data from r beyond the YAML values requested.
-//
-// Deprecated: Use NewLoader instead. Will be removed in v5.
 func NewDecoder(r io.Reader) *Decoder {
 	return &Decoder{
 		composer: libyaml.NewComposerFromReader(r),
@@ -511,9 +507,6 @@ func NewDecoder(r io.Reader) *Decoder {
 
 // KnownFields ensures that the keys in decoded mappings to
 // exist as fields in the struct being decoded into.
-//
-// Deprecated: Use NewLoader with WithKnownFields option instead.
-// Will be removed in v5.
 func (dec *Decoder) KnownFields(enable bool) {
 	dec.knownFields = enable
 }
@@ -523,10 +516,8 @@ func (dec *Decoder) KnownFields(enable bool) {
 //
 // See the documentation for Unmarshal for details about the
 // conversion of YAML into a Go value.
-//
-// Deprecated: Use Loader.Load instead. Will be removed in v5.
 func (dec *Decoder) Decode(v any) (err error) {
-	d := libyaml.NewConstructor(libyaml.LegacyOptions)
+	d := libyaml.NewConstructor(libyaml.DefaultOptions)
 	d.KnownFields = dec.knownFields
 	defer handleErr(&err)
 	node := dec.composer.Parse()
@@ -545,8 +536,6 @@ func (dec *Decoder) Decode(v any) (err error) {
 }
 
 // An Encoder writes YAML values to an output stream.
-//
-// Deprecated: Use Dumper instead. Will be removed in v5.
 type Encoder struct {
 	encoder *libyaml.Representer
 }
@@ -554,11 +543,9 @@ type Encoder struct {
 // NewEncoder returns a new encoder that writes to w.
 // The Encoder should be closed after use to flush all data
 // to w.
-//
-// Deprecated: Use NewDumper instead. Will be removed in v5.
 func NewEncoder(w io.Writer) *Encoder {
 	return &Encoder{
-		encoder: libyaml.NewRepresenter(w, libyaml.LegacyOptions),
+		encoder: libyaml.NewRepresenter(w, libyaml.DefaultOptions),
 	}
 }
 
@@ -569,8 +556,6 @@ func NewEncoder(w io.Writer) *Encoder {
 //
 // See the documentation for Marshal for details about the conversion of Go
 // values to YAML.
-//
-// Deprecated: Use Dumper.Dump instead. Will be removed in v5.
 func (e *Encoder) Encode(v any) (err error) {
 	defer handleErr(&err)
 	e.encoder.MarshalDoc("", reflect.ValueOf(v))
@@ -578,8 +563,6 @@ func (e *Encoder) Encode(v any) (err error) {
 }
 
 // SetIndent changes the used indentation used when encoding.
-//
-// Deprecated: Use NewDumper with WithIndent option instead. Will be removed in v5.
 func (e *Encoder) SetIndent(spaces int) {
 	if spaces < 0 {
 		panic("yaml: cannot indent to a negative number of spaces")
@@ -588,23 +571,17 @@ func (e *Encoder) SetIndent(spaces int) {
 }
 
 // CompactSeqIndent makes it so that '- ' is considered part of the indentation.
-//
-// Deprecated: Use NewDumper with WithCompactSeqIndent option instead. Will be removed in v5.
 func (e *Encoder) CompactSeqIndent() {
 	e.encoder.Emitter.CompactSequenceIndent = true
 }
 
 // DefaultSeqIndent makes it so that '- ' is not considered part of the indentation.
-//
-// Deprecated: This is the default behavior for Dumper. Will be removed in v5.
 func (e *Encoder) DefaultSeqIndent() {
 	e.encoder.Emitter.CompactSequenceIndent = false
 }
 
 // Close closes the encoder by writing any remaining data.
 // It does not write a stream terminating string "...".
-//
-// Deprecated: Use Dumper.Close instead. Will be removed in v5.
 func (e *Encoder) Close() (err error) {
 	defer handleErr(&err)
 	e.encoder.Finish()
@@ -644,8 +621,6 @@ func (e *Encoder) Close() (err error) {
 //
 // See the documentation of Marshal for the format of tags and a list of
 // supported tag options.
-//
-// Deprecated: Use Load instead. Will be removed in v5.
 func Unmarshal(in []byte, out any) (err error) {
 	return unmarshal(in, out, V3)
 }
@@ -714,11 +689,9 @@ func unmarshal(in []byte, out any, opts ...Option) (err error) {
 //	}
 //	yaml.Marshal(&T{B: 2}) // Returns "b: 2\n"
 //	yaml.Marshal(&T{F: 1}} // Returns "a: 1\nb: 0\n"
-//
-// Deprecated: Use Dump instead. Will be removed in v5.
 func Marshal(in any) (out []byte, err error) {
 	defer handleErr(&err)
-	e := libyaml.NewRepresenter(noWriter, libyaml.LegacyOptions)
+	e := libyaml.NewRepresenter(noWriter, libyaml.DefaultOptions)
 	defer e.Destroy()
 	e.MarshalDoc("", reflect.ValueOf(in))
 	e.Finish()

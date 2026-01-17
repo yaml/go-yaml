@@ -273,10 +273,8 @@ func (n *Node) SetString(s string) {
 //
 // See the documentation for Unmarshal for details about the
 // conversion of YAML into a Go value.
-//
-// Deprecated: Use Node.Load instead. Will be removed in v5.
 func (n *Node) Decode(v any) (err error) {
-	d := NewConstructor(LegacyOptions)
+	d := NewConstructor(DefaultOptions)
 	defer handleErr(&err)
 	out := reflect.ValueOf(v)
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
@@ -324,11 +322,9 @@ func (n *Node) Load(v any, opts ...Option) (err error) {
 //
 // See the documentation for Marshal for details about the
 // conversion of Go values into YAML.
-//
-// Deprecated: Use Node.Dump instead. Will be removed in v5.
 func (n *Node) Encode(v any) (err error) {
 	defer handleErr(&err)
-	e := NewRepresenter(noWriter, LegacyOptions)
+	e := NewRepresenter(noWriter, DefaultOptions)
 	defer e.Destroy()
 	e.MarshalDoc("", reflect.ValueOf(v))
 	e.Finish()
