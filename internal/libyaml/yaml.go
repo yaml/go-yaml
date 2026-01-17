@@ -63,6 +63,15 @@ const (
 	CRLN_BREAK // Use CR LN for line breaks (DOS style).
 )
 
+type QuoteStyle int
+
+// Quote style types for required quoting.
+const (
+	QuoteSingle QuoteStyle = iota // Prefer single quotes when quoting is required.
+	QuoteDouble                   // Prefer double quotes when quoting is required.
+	QuoteLegacy                   // Legacy behavior: double in representer, single in emitter.
+)
+
 type ErrorType int
 
 // Many bad things could happen with the parser and emitter.
@@ -725,11 +734,12 @@ type Emitter struct {
 
 	// Emitter stuff
 
-	canonical  bool      // If the output is in the canonical style?
-	BestIndent int       // The number of indentation spaces.
-	best_width int       // The preferred width of the output lines.
-	unicode    bool      // Allow unescaped non-ASCII characters?
-	line_break LineBreak // The preferred line break.
+	canonical      bool       // If the output is in the canonical style?
+	BestIndent     int        // The number of indentation spaces.
+	best_width     int        // The preferred width of the output lines.
+	unicode        bool       // Allow unescaped non-ASCII characters?
+	line_break     LineBreak  // The preferred line break.
+	requiredQuotes QuoteStyle // Quote style when quoting is required.
 
 	state  EmitterState   // The current emitter state.
 	states []EmitterState // The stack of states.

@@ -1051,13 +1051,25 @@ func (emitter *Emitter) selectScalarStyle(event *Event) error {
 	if style == PLAIN_SCALAR_STYLE {
 		if emitter.flow_level > 0 && !emitter.scalar_data.flow_plain_allowed ||
 			emitter.flow_level == 0 && !emitter.scalar_data.block_plain_allowed {
-			style = SINGLE_QUOTED_SCALAR_STYLE
+			if emitter.requiredQuotes == QuoteDouble {
+				style = DOUBLE_QUOTED_SCALAR_STYLE
+			} else {
+				style = SINGLE_QUOTED_SCALAR_STYLE
+			}
 		}
 		if len(emitter.scalar_data.value) == 0 && (emitter.flow_level > 0 || emitter.simple_key_context) {
-			style = SINGLE_QUOTED_SCALAR_STYLE
+			if emitter.requiredQuotes == QuoteDouble {
+				style = DOUBLE_QUOTED_SCALAR_STYLE
+			} else {
+				style = SINGLE_QUOTED_SCALAR_STYLE
+			}
 		}
 		if no_tag && !event.Implicit {
-			style = SINGLE_QUOTED_SCALAR_STYLE
+			if emitter.requiredQuotes == QuoteDouble {
+				style = DOUBLE_QUOTED_SCALAR_STYLE
+			} else {
+				style = SINGLE_QUOTED_SCALAR_STYLE
+			}
 		}
 	}
 	if style == SINGLE_QUOTED_SCALAR_STYLE {

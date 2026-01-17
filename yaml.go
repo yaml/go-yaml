@@ -47,6 +47,7 @@ var V2 = Options(
 	WithLineWidth(80),
 	WithUnicode(true),
 	WithUniqueKeys(true),
+	WithRequiredQuotes(QuoteLegacy),
 )
 
 // V3 defaults:
@@ -56,6 +57,7 @@ var V3 = Options(
 	WithLineWidth(80),
 	WithUnicode(true),
 	WithUniqueKeys(true),
+	WithRequiredQuotes(QuoteLegacy),
 )
 
 // V4 defaults:
@@ -65,6 +67,7 @@ var V4 = Options(
 	WithLineWidth(80),
 	WithUnicode(true),
 	WithUniqueKeys(true),
+	WithRequiredQuotes(QuoteSingle),
 )
 
 //-----------------------------------------------------------------------------
@@ -118,6 +121,9 @@ var (
 	// WithFlowSimpleCollections controls flow style for simple collections.
 	// See internal/libyaml.WithFlowSimpleCollections.
 	WithFlowSimpleCollections = libyaml.WithFlowSimpleCollections
+	// WithRequiredQuotes sets quote style when quoting is required.
+	// See internal/libyaml.WithRequiredQuotes.
+	WithRequiredQuotes = libyaml.WithRequiredQuotes
 )
 
 // Options combines multiple options into a single Option.
@@ -322,6 +328,16 @@ const (
 	LineBreakLN   = libyaml.LN_BREAK   // Unix-style \n (default)
 	LineBreakCR   = libyaml.CR_BREAK   // Old Mac-style \r
 	LineBreakCRLN = libyaml.CRLN_BREAK // Windows-style \r\n
+)
+
+// QuoteStyle represents the quote style to use when quoting is required.
+type QuoteStyle = libyaml.QuoteStyle
+
+// Quote style constants for required quoting.
+const (
+	QuoteSingle = libyaml.QuoteSingle // Prefer single quotes (v4 default)
+	QuoteDouble = libyaml.QuoteDouble // Prefer double quotes
+	QuoteLegacy = libyaml.QuoteLegacy // Legacy v2/v3 behavior
 )
 
 //-----------------------------------------------------------------------------
