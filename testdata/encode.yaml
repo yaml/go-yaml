@@ -720,3 +720,248 @@
     want: |
       "hello\n  "
 
+# WithRequiredQuotes tests - QuoteSingle (v4 default)
+- encode-opts:
+    name: QuoteSingle - string "true"
+    data:
+      v: 'true'
+    type: map[string]string
+    opts:
+      required-quotes: single
+    want: |
+      v: 'true'
+
+- encode-opts:
+    name: QuoteSingle - string "false"
+    data:
+      v: 'false'
+    type: map[string]string
+    opts:
+      required-quotes: single
+    want: |
+      v: 'false'
+
+- encode-opts:
+    name: QuoteSingle - string "null"
+    data:
+      v: 'null'
+    type: map[string]string
+    opts:
+      required-quotes: single
+    want: |
+      v: 'null'
+
+- encode-opts:
+    name: QuoteSingle - string "123"
+    data:
+      v: '123'
+    type: map[string]string
+    opts:
+      required-quotes: single
+    want: |
+      v: '123'
+
+- encode-opts:
+    name: QuoteSingle - leading whitespace
+    data:
+      v: ' hello'
+    type: map[string]string
+    opts:
+      required-quotes: single
+    want: |
+      v: ' hello'
+
+- encode-opts:
+    name: QuoteSingle - trailing whitespace
+    data:
+      v: 'hello '
+    type: map[string]string
+    opts:
+      required-quotes: single
+    want: |
+      v: 'hello '
+
+- encode-opts:
+    name: QuoteSingle - syntax character (colon-space)
+    data:
+      v: ': hello'
+    type: map[string]string
+    opts:
+      required-quotes: single
+    want: |
+      v: ': hello'
+
+- encode-opts:
+    name: QuoteSingle - dash string
+    data:
+      v: '-'
+    type: map[string]string
+    opts:
+      required-quotes: single
+    want: |
+      v: '-'
+
+# WithRequiredQuotes tests - QuoteDouble
+- encode-opts:
+    name: QuoteDouble - string "true"
+    data:
+      v: 'true'
+    type: map[string]string
+    opts:
+      required-quotes: double
+    want: |
+      v: "true"
+
+- encode-opts:
+    name: QuoteDouble - string "false"
+    data:
+      v: 'false'
+    type: map[string]string
+    opts:
+      required-quotes: double
+    want: |
+      v: "false"
+
+- encode-opts:
+    name: QuoteDouble - string "null"
+    data:
+      v: 'null'
+    type: map[string]string
+    opts:
+      required-quotes: double
+    want: |
+      v: "null"
+
+- encode-opts:
+    name: QuoteDouble - string "123"
+    data:
+      v: '123'
+    type: map[string]string
+    opts:
+      required-quotes: double
+    want: |
+      v: "123"
+
+- encode-opts:
+    name: QuoteDouble - leading whitespace
+    data:
+      v: ' hello'
+    type: map[string]string
+    opts:
+      required-quotes: double
+    want: |
+      v: " hello"
+
+- encode-opts:
+    name: QuoteDouble - trailing whitespace
+    data:
+      v: 'hello '
+    type: map[string]string
+    opts:
+      required-quotes: double
+    want: |
+      v: "hello "
+
+- encode-opts:
+    name: QuoteDouble - syntax character (colon-space)
+    data:
+      v: ': hello'
+    type: map[string]string
+    opts:
+      required-quotes: double
+    want: |
+      v: ": hello"
+
+- encode-opts:
+    name: QuoteDouble - dash string
+    data:
+      v: '-'
+    type: map[string]string
+    opts:
+      required-quotes: double
+    want: |
+      v: "-"
+
+# WithRequiredQuotes tests - QuoteLegacy (v3 behavior)
+# Legacy: bool-like strings (representer) → double quotes
+# Legacy: whitespace strings (emitter) → single quotes
+- encode-opts:
+    name: QuoteLegacy - string "true" (double from representer)
+    data:
+      v: 'true'
+    type: map[string]string
+    opts:
+      required-quotes: legacy
+    want: |
+      v: "true"
+
+- encode-opts:
+    name: QuoteLegacy - string "false" (double from representer)
+    data:
+      v: 'false'
+    type: map[string]string
+    opts:
+      required-quotes: legacy
+    want: |
+      v: "false"
+
+- encode-opts:
+    name: QuoteLegacy - string "null" (double from representer)
+    data:
+      v: 'null'
+    type: map[string]string
+    opts:
+      required-quotes: legacy
+    want: |
+      v: "null"
+
+- encode-opts:
+    name: QuoteLegacy - string "123" (double from representer)
+    data:
+      v: '123'
+    type: map[string]string
+    opts:
+      required-quotes: legacy
+    want: |
+      v: "123"
+
+- encode-opts:
+    name: QuoteLegacy - leading whitespace (single from emitter)
+    data:
+      v: ' hello'
+    type: map[string]string
+    opts:
+      required-quotes: legacy
+    want: |
+      v: ' hello'
+
+- encode-opts:
+    name: QuoteLegacy - trailing whitespace (single from emitter)
+    data:
+      v: 'hello '
+    type: map[string]string
+    opts:
+      required-quotes: legacy
+    want: |
+      v: 'hello '
+
+- encode-opts:
+    name: QuoteLegacy - syntax character (single from emitter)
+    data:
+      v: ': hello'
+    type: map[string]string
+    opts:
+      required-quotes: legacy
+    want: |
+      v: ': hello'
+
+- encode-opts:
+    name: QuoteLegacy - dash string (single from emitter)
+    data:
+      v: '-'
+    type: map[string]string
+    opts:
+      required-quotes: legacy
+    want: |
+      v: '-'
+
