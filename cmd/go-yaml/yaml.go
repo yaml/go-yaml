@@ -65,19 +65,19 @@ func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []ya
 
 			if marshal {
 				// Use Marshal for output (no options)
-				output, err := yaml.Marshal(outNode) //nolint:staticcheck // Intentionally using deprecated API for --marshal flag
+				output, err := yaml.Marshal(outNode)
 				if err != nil {
 					return fmt.Errorf("failed to marshal YAML: %w", err)
 				}
 				fmt.Print(string(output))
 			} else if encode {
 				// Use Encoder for output (no options)
-				enc := yaml.NewEncoder(os.Stdout)           //nolint:staticcheck // Intentionally using deprecated API for --encode flag
-				if err := enc.Encode(outNode); err != nil { //nolint:staticcheck // Deprecated API for --encode
-					enc.Close() //nolint:staticcheck // Deprecated API for --encode
+				enc := yaml.NewEncoder(os.Stdout)
+				if err := enc.Encode(outNode); err != nil {
+					enc.Close()
 					return fmt.Errorf("failed to encode YAML: %w", err)
 				}
-				enc.Close() //nolint:staticcheck // Deprecated API for --encode
+				enc.Close()
 			} else {
 				// Use Dumper for output with options
 				dumper, err := yaml.NewDumper(os.Stdout, opts...)
@@ -117,19 +117,19 @@ func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []ya
 
 			if marshal {
 				// Use Marshal for output (no options)
-				output, err := yaml.Marshal(data) //nolint:staticcheck // Intentionally using deprecated API for --marshal flag
+				output, err := yaml.Marshal(data)
 				if err != nil {
 					return fmt.Errorf("failed to marshal YAML: %w", err)
 				}
 				fmt.Print(string(output))
 			} else if encode {
 				// Use Encoder for output (no options)
-				enc := yaml.NewEncoder(os.Stdout)        //nolint:staticcheck // Intentionally using deprecated API for --encode flag
-				if err := enc.Encode(data); err != nil { //nolint:staticcheck // Deprecated API for --encode
-					enc.Close() //nolint:staticcheck // Deprecated API for --encode
+				enc := yaml.NewEncoder(os.Stdout)
+				if err := enc.Encode(data); err != nil {
+					enc.Close()
 					return fmt.Errorf("failed to encode YAML: %w", err)
 				}
-				enc.Close() //nolint:staticcheck // Deprecated API for --encode
+				enc.Close()
 			} else {
 				// Use Dumper for output with options
 				dumper, err := yaml.NewDumper(os.Stdout, opts...)
@@ -150,13 +150,13 @@ func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []ya
 
 // processYAMLDecode uses deprecated Decoder.Decode for YAML processing (no options support)
 func processYAMLDecode(reader io.Reader, preserve, encode bool, opts []yaml.Option) error {
-	decoder := yaml.NewDecoder(reader) //nolint:staticcheck // Intentionally using deprecated API for --decode flag
+	decoder := yaml.NewDecoder(reader)
 	firstDoc := true
 
 	for {
 		if preserve {
 			var node yaml.Node
-			err := decoder.Decode(&node) //nolint:staticcheck // Deprecated API for --decode
+			err := decoder.Decode(&node)
 			if err != nil {
 				if err == io.EOF {
 					break
@@ -183,15 +183,15 @@ func processYAMLDecode(reader io.Reader, preserve, encode bool, opts []yaml.Opti
 
 			if encode {
 				// Use Encoder for output
-				enc := yaml.NewEncoder(os.Stdout)           //nolint:staticcheck // Intentionally using deprecated API for --encode flag
-				if err := enc.Encode(outNode); err != nil { //nolint:staticcheck // Deprecated API for --encode
-					enc.Close() //nolint:staticcheck // Deprecated API for --encode
+				enc := yaml.NewEncoder(os.Stdout)
+				if err := enc.Encode(outNode); err != nil {
+					enc.Close()
 					return fmt.Errorf("failed to encode YAML: %w", err)
 				}
-				enc.Close() //nolint:staticcheck // Deprecated API for --encode
+				enc.Close()
 			} else {
 				// Default output (no options for deprecated Decode API)
-				output, err := yaml.Marshal(outNode) //nolint:staticcheck // Deprecated API for --decode
+				output, err := yaml.Marshal(outNode)
 				if err != nil {
 					return fmt.Errorf("failed to marshal YAML: %w", err)
 				}
@@ -199,7 +199,7 @@ func processYAMLDecode(reader io.Reader, preserve, encode bool, opts []yaml.Opti
 			}
 		} else {
 			var data any
-			err := decoder.Decode(&data) //nolint:staticcheck // Deprecated API for --decode
+			err := decoder.Decode(&data)
 			if err != nil {
 				if err == io.EOF || err.Error() == "EOF" {
 					break
@@ -215,15 +215,15 @@ func processYAMLDecode(reader io.Reader, preserve, encode bool, opts []yaml.Opti
 
 			if encode {
 				// Use Encoder for output
-				enc := yaml.NewEncoder(os.Stdout)        //nolint:staticcheck // Intentionally using deprecated API for --encode flag
-				if err := enc.Encode(data); err != nil { //nolint:staticcheck // Deprecated API for --encode
-					enc.Close() //nolint:staticcheck // Deprecated API for --encode
+				enc := yaml.NewEncoder(os.Stdout)
+				if err := enc.Encode(data); err != nil {
+					enc.Close()
 					return fmt.Errorf("failed to encode YAML: %w", err)
 				}
-				enc.Close() //nolint:staticcheck // Deprecated API for --encode
+				enc.Close()
 			} else {
 				// Default output (no options for deprecated Decode API)
-				output, err := yaml.Marshal(data) //nolint:staticcheck // Deprecated API for --decode
+				output, err := yaml.Marshal(data)
 				if err != nil {
 					return fmt.Errorf("failed to marshal YAML: %w", err)
 				}

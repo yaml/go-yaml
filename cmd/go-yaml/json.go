@@ -60,12 +60,12 @@ func processJSONLoad(reader io.Reader, pretty bool, opts []yaml.Option) error {
 
 // processJSONDecode uses deprecated Decoder.Decode for YAML processing (no options support)
 func processJSONDecode(reader io.Reader, pretty bool, opts []yaml.Option) error {
-	decoder := yaml.NewDecoder(reader) //nolint:staticcheck // Intentionally using deprecated API for --decode flag
+	decoder := yaml.NewDecoder(reader)
 
 	for {
 		// Read each document
 		var data any
-		err := decoder.Decode(&data) //nolint:staticcheck // Deprecated API for --decode
+		err := decoder.Decode(&data)
 		if err != nil {
 			if err == io.EOF || err.Error() == "EOF" {
 				break

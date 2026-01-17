@@ -26,13 +26,19 @@ type TestCase struct {
 	YAML  string `yaml:"YAML,omitempty"`
 	Json  string `yaml:"json,omitempty"`
 	JSON  string `yaml:"JSON,omitempty"`
-	// New option flags
-	V2Yaml      string `yaml:"v2-yaml,omitempty"`
-	V3Yaml      string `yaml:"v3-yaml,omitempty"`
-	Indent3Yaml string `yaml:"indent3-yaml,omitempty"`
-	Width40Yaml string `yaml:"width40-yaml,omitempty"`
-	CompactYaml string `yaml:"compact-yaml,omitempty"`
-	V3Indent2   string `yaml:"v3-indent2-yaml,omitempty"`
+	// Option flags
+	V2Yaml                string `yaml:"v2-yaml,omitempty"`
+	V3Yaml                string `yaml:"v3-yaml,omitempty"`
+	Indent3Yaml           string `yaml:"indent3-yaml,omitempty"`
+	Width40Yaml           string `yaml:"width40-yaml,omitempty"`
+	CompactYaml           string `yaml:"compact-yaml,omitempty"`
+	V3Indent2             string `yaml:"v3-indent2-yaml,omitempty"`
+	CanonicalYaml         string `yaml:"canonical-yaml,omitempty"`
+	ExplicitYaml          string `yaml:"explicit-yaml,omitempty"`
+	ExplicitStartYaml     string `yaml:"explicit-start-yaml,omitempty"`
+	NoUnicodeYaml         string `yaml:"no-unicode-yaml,omitempty"`
+	CanonicalExplicitYaml string `yaml:"canonical-explicit-yaml,omitempty"`
+	V2Indent4Yaml         string `yaml:"v2-indent4-yaml,omitempty"`
 }
 
 // TestSuite is a sequence of test cases
@@ -40,22 +46,28 @@ type TestSuite []TestCase
 
 // flagMapping maps test file field names to CLI flags
 var flagMapping = map[string]string{
-	"token":           "-t",
-	"TOKEN":           "-T",
-	"event":           "-e",
-	"EVENT":           "-E",
-	"node":            "-n",
-	"NODE":            "-N",
-	"yaml":            "-y",
-	"YAML":            "-Y",
-	"json":            "-j",
-	"JSON":            "-J",
-	"v2-yaml":         "--v2 -y",
-	"v3-yaml":         "--v3 -y",
-	"indent3-yaml":    "--indent=3 -y",
-	"width40-yaml":    "--width=40 -y",
-	"compact-yaml":    "--compact -y",
-	"v3-indent2-yaml": "--v3 --indent=2 -y",
+	"token":                   "-t",
+	"TOKEN":                   "-T",
+	"event":                   "-e",
+	"EVENT":                   "-E",
+	"node":                    "-n",
+	"NODE":                    "-N",
+	"yaml":                    "-y",
+	"YAML":                    "-Y",
+	"json":                    "-j",
+	"JSON":                    "-J",
+	"v2-yaml":                 "-o v2 -y",
+	"v3-yaml":                 "-o v3 -y",
+	"indent3-yaml":            "-o indent=3 -y",
+	"width40-yaml":            "-o width=40 -y",
+	"compact-yaml":            "-o compact -y",
+	"v3-indent2-yaml":         "-o v3,indent=2 -y",
+	"canonical-yaml":          "-o canonical -y",
+	"explicit-yaml":           "-o explicit -y",
+	"explicit-start-yaml":     "-o explicit-start -y",
+	"no-unicode-yaml":         "-o no-unicode -y",
+	"canonical-explicit-yaml": "-o canonical,explicit -y",
+	"v2-indent4-yaml":         "-o v2,indent=4 -y",
 }
 
 func TestCLI(t *testing.T) {
@@ -79,6 +91,7 @@ func TestCLI(t *testing.T) {
 }
 
 func runTestFile(t *testing.T, testFile string) {
+	t.Helper()
 	// Read and parse the test file
 	data, err := os.ReadFile(testFile)
 	if err != nil {
@@ -99,6 +112,7 @@ func runTestFile(t *testing.T, testFile string) {
 }
 
 func runTestCase(t *testing.T, tc TestCase) {
+	t.Helper()
 	// Test each output format that has an expected value
 	tests := []struct {
 		field    string
@@ -121,6 +135,12 @@ func runTestCase(t *testing.T, tc TestCase) {
 		{"width40-yaml", flagMapping["width40-yaml"], tc.Width40Yaml},
 		{"compact-yaml", flagMapping["compact-yaml"], tc.CompactYaml},
 		{"v3-indent2-yaml", flagMapping["v3-indent2-yaml"], tc.V3Indent2},
+		{"canonical-yaml", flagMapping["canonical-yaml"], tc.CanonicalYaml},
+		{"explicit-yaml", flagMapping["explicit-yaml"], tc.ExplicitYaml},
+		{"explicit-start-yaml", flagMapping["explicit-start-yaml"], tc.ExplicitStartYaml},
+		{"no-unicode-yaml", flagMapping["no-unicode-yaml"], tc.NoUnicodeYaml},
+		{"canonical-explicit-yaml", flagMapping["canonical-explicit-yaml"], tc.CanonicalExplicitYaml},
+		{"v2-indent4-yaml", flagMapping["v2-indent4-yaml"], tc.V2Indent4Yaml},
 	}
 
 	for _, test := range tests {

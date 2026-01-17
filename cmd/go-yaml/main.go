@@ -15,11 +15,277 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 
 	"go.yaml.in/yaml/v4"
 )
 
 const version = "4.0.0.1"
+
+// stringSlice is a custom flag type for collecting multiple -o flags
+type stringSlice []string
+
+func (s *stringSlice) String() string {
+	if s == nil {
+		return ""
+	}
+	return fmt.Sprintf("%v", *s)
+}
+
+func (s *stringSlice) Set(value string) error {
+	// Special case: empty value or explicit help request
+	if value == "" || value == "help" || value == "?" {
+		printAvailableOptions()
+		os.Exit(0)
+	}
+	*s = append(*s, value)
+	return nil
+}
+
+// optionSpec defines metadata for an option
+type optionSpec struct {
+	typ     string // "bool", "int", "string", "multi"
+	handler func(value string) ([]yaml.Option, error)
+}
+
+// optionRegistry maps option names (including short aliases) to their specs
+var optionRegistry map[string]optionSpec
+
+// initOptionRegistry initializes the option registry
+func initOptionRegistry() {
+	optionRegistry = map[string]optionSpec{
+		// Version presets
+		"v2": {typ: "preset", handler: func(string) ([]yaml.Option, error) {
+			return []yaml.Option{yaml.V2}, nil
+		}},
+		"v3": {typ: "preset", handler: func(string) ([]yaml.Option, error) {
+			return []yaml.Option{yaml.V3}, nil
+		}},
+		"v4": {typ: "preset", handler: func(string) ([]yaml.Option, error) {
+			return []yaml.Option{yaml.V4}, nil
+		}},
+
+		// Formatting options
+		"indent": {typ: "int", handler: func(value string) ([]yaml.Option, error) {
+			var val int
+			if _, err := fmt.Sscanf(value, "%d", &val); err != nil {
+				return nil, fmt.Errorf("indent requires integer value (2-9)")
+			}
+			if val < 2 || val > 9 {
+				return nil, fmt.Errorf("indent must be between 2 and 9")
+			}
+			return []yaml.Option{yaml.WithIndent(val)}, nil
+		}},
+		"compact-seq-indent": {typ: "bool", handler: func(value string) ([]yaml.Option, error) {
+			val := value == "true"
+			return []yaml.Option{yaml.WithCompactSeqIndent(val)}, nil
+		}},
+		"compact": {typ: "bool", handler: func(value string) ([]yaml.Option, error) {
+			val := value == "true"
+			return []yaml.Option{yaml.WithCompactSeqIndent(val)}, nil
+		}},
+		"line-width": {typ: "int", handler: func(value string) ([]yaml.Option, error) {
+			var val int
+			if _, err := fmt.Sscanf(value, "%d", &val); err != nil {
+				return nil, fmt.Errorf("line-width requires integer value")
+			}
+			return []yaml.Option{yaml.WithLineWidth(val)}, nil
+		}},
+		"width": {typ: "int", handler: func(value string) ([]yaml.Option, error) {
+			var val int
+			if _, err := fmt.Sscanf(value, "%d", &val); err != nil {
+				return nil, fmt.Errorf("width requires integer value")
+			}
+			return []yaml.Option{yaml.WithLineWidth(val)}, nil
+		}},
+		"unicode": {typ: "bool", handler: func(value string) ([]yaml.Option, error) {
+			val := value == "true"
+			return []yaml.Option{yaml.WithUnicode(val)}, nil
+		}},
+		"unique-keys": {typ: "bool", handler: func(value string) ([]yaml.Option, error) {
+			val := value == "true"
+			return []yaml.Option{yaml.WithUniqueKeys(val)}, nil
+		}},
+		"unique": {typ: "bool", handler: func(value string) ([]yaml.Option, error) {
+			val := value == "true"
+			return []yaml.Option{yaml.WithUniqueKeys(val)}, nil
+		}},
+		"canonical": {typ: "bool", handler: func(value string) ([]yaml.Option, error) {
+			val := value == "true"
+			return []yaml.Option{yaml.WithCanonical(val)}, nil
+		}},
+		"line-break": {typ: "string", handler: func(value string) ([]yaml.Option, error) {
+			var lb yaml.LineBreak
+			switch value {
+			case "ln":
+				lb = yaml.LineBreakLN
+			case "cr":
+				lb = yaml.LineBreakCR
+			case "crln":
+				lb = yaml.LineBreakCRLN
+			default:
+				return nil, fmt.Errorf("line-break must be ln, cr, or crln")
+			}
+			return []yaml.Option{yaml.WithLineBreak(lb)}, nil
+		}},
+		"explicit-start": {typ: "bool", handler: func(value string) ([]yaml.Option, error) {
+			val := value == "true"
+			return []yaml.Option{yaml.WithExplicitStart(val)}, nil
+		}},
+		"explicit-end": {typ: "bool", handler: func(value string) ([]yaml.Option, error) {
+			val := value == "true"
+			return []yaml.Option{yaml.WithExplicitEnd(val)}, nil
+		}},
+		"explicit": {typ: "multi", handler: func(value string) ([]yaml.Option, error) {
+			val := value == "true"
+			return []yaml.Option{yaml.WithExplicitStart(val), yaml.WithExplicitEnd(val)}, nil
+		}},
+		"flow-simple-coll": {typ: "bool", handler: func(value string) ([]yaml.Option, error) {
+			val := value == "true"
+			return []yaml.Option{yaml.WithFlowSimpleCollections(val)}, nil
+		}},
+		"known-fields": {typ: "bool", handler: func(value string) ([]yaml.Option, error) {
+			val := value == "true"
+			return []yaml.Option{yaml.WithKnownFields(val)}, nil
+		}},
+		"single-document": {typ: "bool", handler: func(value string) ([]yaml.Option, error) {
+			val := value == "true"
+			return []yaml.Option{yaml.WithSingleDocument(val)}, nil
+		}},
+		"single": {typ: "bool", handler: func(value string) ([]yaml.Option, error) {
+			val := value == "true"
+			return []yaml.Option{yaml.WithSingleDocument(val)}, nil
+		}},
+		"all-documents": {typ: "bool", handler: func(value string) ([]yaml.Option, error) {
+			val := value == "true"
+			return []yaml.Option{yaml.WithAllDocuments(val)}, nil
+		}},
+		"all": {typ: "bool", handler: func(value string) ([]yaml.Option, error) {
+			val := value == "true"
+			return []yaml.Option{yaml.WithAllDocuments(val)}, nil
+		}},
+		"stream-nodes": {typ: "bool", handler: func(value string) ([]yaml.Option, error) {
+			val := value == "true"
+			return []yaml.Option{yaml.WithStreamNodes(val)}, nil
+		}},
+		"stream": {typ: "bool", handler: func(value string) ([]yaml.Option, error) {
+			val := value == "true"
+			return []yaml.Option{yaml.WithStreamNodes(val)}, nil
+		}},
+	}
+}
+
+// parseOneOption parses a single option (name=value, name, no-name, or v2/v3/v4)
+func parseOneOption(s string) ([]yaml.Option, error) {
+	// Special case: help
+	if s == "help" || s == "?" {
+		printAvailableOptions()
+		os.Exit(0)
+	}
+
+	// Check for version presets first
+	if s == "v2" || s == "v3" || s == "v4" {
+		spec, ok := optionRegistry[s]
+		if !ok {
+			return nil, fmt.Errorf("unknown option: %s", s)
+		}
+		return spec.handler("")
+	}
+
+	// Check for "no-" prefix for boolean false
+	if len(s) > 3 && s[:3] == "no-" {
+		name := s[3:]
+		spec, ok := optionRegistry[name]
+		if !ok {
+			return nil, fmt.Errorf("unknown option: %s", name)
+		}
+		if spec.typ != "bool" && spec.typ != "multi" {
+			return nil, fmt.Errorf("option %s is not boolean, cannot use no- prefix", name)
+		}
+		return spec.handler("false")
+	}
+
+	// Check for "name=value" format
+	if name, value, found := strings.Cut(s, "="); found {
+		spec, ok := optionRegistry[name]
+		if !ok {
+			return nil, fmt.Errorf("unknown option: %s", name)
+		}
+		if spec.typ == "bool" || spec.typ == "multi" {
+			// For boolean options with explicit value
+			if value != "true" && value != "false" {
+				return nil, fmt.Errorf("option %s requires true or false value", name)
+			}
+		}
+		return spec.handler(value)
+	}
+
+	// Must be "name" alone (boolean true)
+	spec, ok := optionRegistry[s]
+	if !ok {
+		return nil, fmt.Errorf("unknown option: %s", s)
+	}
+	if spec.typ != "bool" && spec.typ != "multi" && spec.typ != "preset" {
+		return nil, fmt.Errorf("option %s requires a value (use %s=value)", s, s)
+	}
+	return spec.handler("true")
+}
+
+// parseOptionFlags parses comma-separated options string into individual options
+func parseOptionFlags(s string) ([]yaml.Option, error) {
+	parts := bytes.Split([]byte(s), []byte(","))
+	var opts []yaml.Option
+	for _, part := range parts {
+		trimmed := string(bytes.TrimSpace(part))
+		if trimmed == "" {
+			continue
+		}
+		opt, err := parseOneOption(trimmed)
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, opt...)
+	}
+	return opts, nil
+}
+
+// printAvailableOptions prints the list of available options for -o flag
+func printAvailableOptions() {
+	fmt.Print(`Available options for -o/--option:
+
+Version presets:
+  v2                    V2 defaults (indent:2, no compact-seq-indent)
+  v3                    V3 defaults (indent:4, no compact-seq-indent)
+  v4                    V4 defaults (indent:2, compact-seq-indent) [default]
+
+Formatting options:
+  indent=NUM            Indentation spaces (2-9)
+  compact-seq-indent    '- ' counts as indentation (short: compact)
+  line-width=NUM        Preferred line width, -1=unlimited (short: width)
+  unicode               Allow non-ASCII in output
+  canonical             Canonical YAML output format
+  line-break=TYPE       Line ending: ln, cr, or crln
+  explicit-start        Always emit '---' marker
+  explicit-end          Always emit '...' marker
+  explicit              Both explicit-start and explicit-end
+  flow-simple-coll      Flow style for simple collections
+
+Loading options:
+  unique-keys           Duplicate key detection (short: unique)
+  known-fields          Strict field checking
+  single-document       Only process first document (short: single)
+  all-documents         Multi-document mode (short: all)
+  stream-nodes          Enable stream boundary nodes (short: stream)
+
+Boolean options: use 'name' for true, 'no-name' for false
+Multiple options: comma-separated or repeat -o flag
+
+Examples:
+  go-yaml -y -o indent=4,canonical
+  go-yaml -y -o v3,width=120,explicit
+  go-yaml -y -o no-unicode,no-compact
+`)
+}
 
 // hasUsefulContent checks if a StreamNode has meaningful content to display.
 // For non-StreamNodes, always returns true.
@@ -31,19 +297,12 @@ func hasUsefulContent(n *yaml.Node) bool {
 	return n.Version != nil || len(n.TagDirectives) > 0
 }
 
-// buildOptions creates the yaml.Option slice based on flags
-func buildOptions(v2Mode, v3Mode bool, configFile string, indentLevel, lineWidth int, compactSeq bool) ([]yaml.Option, error) {
+// buildOptions creates the yaml.Option slice based on config file and -o flags
+func buildOptions(configFile string, optionFlags []string) ([]yaml.Option, error) {
 	var opts []yaml.Option
 
-	// Apply version preset (if not using explicit API flags)
-	if v2Mode {
-		opts = append(opts, yaml.V2)
-	} else if v3Mode {
-		opts = append(opts, yaml.V3)
-	} else {
-		// V4 is the default, no need to explicitly add it
-		opts = append(opts, yaml.V4)
-	}
+	// Default to V4 preset
+	opts = append(opts, yaml.V4)
 
 	// Load config file if specified
 	if configFile != "" {
@@ -58,18 +317,13 @@ func buildOptions(v2Mode, v3Mode bool, configFile string, indentLevel, lineWidth
 		opts = append(opts, configOpts)
 	}
 
-	// Apply individual formatting options (these override version presets and config)
-	if indentLevel > 0 {
-		if indentLevel < 2 || indentLevel > 9 {
-			return nil, fmt.Errorf("indent level must be between 2 and 9")
+	// Process -o flags (can override default preset and config)
+	for _, optStr := range optionFlags {
+		parsedOpts, err := parseOptionFlags(optStr)
+		if err != nil {
+			return nil, err
 		}
-		opts = append(opts, yaml.WithIndent(indentLevel))
-	}
-	if lineWidth > 0 {
-		opts = append(opts, yaml.WithLineWidth(lineWidth))
-	}
-	if compactSeq {
-		opts = append(opts, yaml.WithCompactSeqIndent(true))
+		opts = append(opts, parsedOpts...)
 	}
 
 	return opts, nil
@@ -77,6 +331,9 @@ func buildOptions(v2Mode, v3Mode bool, configFile string, indentLevel, lineWidth
 
 // main reads YAML from stdin, parses it, and outputs the node structure
 func main() {
+	// Initialize option registry
+	initOptionRegistry()
+
 	// Parse command line flags
 	showHelp := flag.Bool("h", false, "Show this help information")
 
@@ -99,27 +356,18 @@ func main() {
 	// Node modes
 	nodeMode := flag.Bool("n", false, "Node representation output")
 	nodeProfuseMode := flag.Bool("N", false, "Node with tag and style for all scalars")
-	streamMode := flag.Bool("S", false, "Show all stream nodes (use with -n)")
+	streamMode := flag.Bool("s", false, "Show all stream nodes (use with -n)")
 
 	// Shared flags
 	longMode := flag.Bool("l", false, "Long (block) formatted output")
 
-	// Version flags (long form only)
-	var v2Mode bool
-	var v3Mode bool
-	flag.BoolVar(&v2Mode, "v2", false, "Use V2 option preset")
-	flag.BoolVar(&v3Mode, "v3", false, "Use V3 option preset")
-
 	// Config file flag
 	configFile := flag.String("C", "", "Load options from YAML config file")
 
-	// Formatting option flags (long form only)
-	var indentLevel int
-	var lineWidth int
-	var compactSeq bool
-	flag.IntVar(&indentLevel, "indent", 0, "Set indentation level (2-9, 0=use default)")
-	flag.IntVar(&lineWidth, "width", 0, "Set line width (0=use default)")
-	flag.BoolVar(&compactSeq, "compact", false, "Enable compact sequence indentation")
+	// Option flags (-o/--option)
+	var optionFlags stringSlice
+	flag.Var(&optionFlags, "o", "Set option (name=value, name, no-name)")
+	flag.Var(&optionFlags, "option", "Set option (name=value, name, no-name)")
 
 	// API selection flags (long form only)
 	var unmarshalMode bool
@@ -149,20 +397,27 @@ func main() {
 	flag.BoolVar(&marshalMode, "marshal", false, "Use Marshal API for output")
 	flag.BoolVar(&encodeMode, "encode", false, "Use Encode API for output")
 
+	// Custom usage function to provide helpful message when -o is used without value
+	flag.Usage = func() {
+		// Check if the error is about -o needing an argument
+		if len(os.Args) > 1 {
+			for i, arg := range os.Args[1:] {
+				if (arg == "-o" || arg == "--option") && (i+2 >= len(os.Args) || os.Args[i+2][0] == '-') {
+					fmt.Fprintf(os.Stderr, "The -o flag requires a value.\n")
+					fmt.Fprintf(os.Stderr, "Use '-o help' or '-o ?' to see available options.\n\n")
+					printAvailableOptions()
+					return
+				}
+			}
+		}
+		// Default usage
+		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+		flag.PrintDefaults()
+	}
+
 	flag.Parse()
 
 	// Validate flag combinations
-
-	// Check that --v2 and --v3 are mutually exclusive
-	if v2Mode && v3Mode {
-		fmt.Fprintf(os.Stderr, "Error: --v2 and --v3 flags are mutually exclusive\n")
-		os.Exit(1)
-	}
-
-	// Warn if version flags are used with explicit API flags
-	if (v2Mode || v3Mode) && (unmarshalMode || decodeMode || marshalMode || encodeMode) {
-		fmt.Fprintf(os.Stderr, "Warning: version flags (--v2/--v3) are ignored when using explicit API flags (--unmarshal/--decode/--marshal/--encode)\n")
-	}
 
 	// Check that marshal/encode flags only work with YAML output modes
 	if (marshalMode || encodeMode) && !*yamlMode && !*yamlPreserveMode {
@@ -180,9 +435,11 @@ func main() {
 	var opts []yaml.Option
 	if !unmarshalMode && !decodeMode {
 		var err error
-		opts, err = buildOptions(v2Mode, v3Mode, *configFile, indentLevel, lineWidth, compactSeq)
+		opts, err = buildOptions(*configFile, optionFlags)
 		if err != nil {
-			log.Fatal("Failed to build options:", err)
+			fmt.Fprintf(os.Stderr, "Error: %v\n\n", err)
+			printAvailableOptions()
+			os.Exit(1)
 		}
 	}
 
@@ -443,18 +700,15 @@ Output Mode Options:
 
   -n, --node       Node representation output
   -N, --NODE       Node with tag and style for all scalars
+  -s, --stream     Show all stream nodes (use with -n)
 
   -l, --long       Long (block) formatted output
 
-Formatting Options (override version presets and config):
-  --indent=NUM     Set indentation level (2-9)
-  --width=NUM      Set line width
-  --compact        Enable compact sequence indentation
-
-Version Preset Options (only apply to default Load/Dump API):
-  --v2             Use V2 option preset (indent:2, no compact-seq-indent)
-  --v3             Use V3 option preset (indent:4, no compact-seq-indent)
-                   (V4 is default: indent:2, compact-seq-indent enabled)
+Formatting Options:
+  -o, --option OPT Set option (use without value to see all options)
+                   Multiple: -o opt1,opt2 or -o opt1 -o opt2
+                   Booleans: name (true) or no-name (false)
+                   Presets: v2, v3, v4 (default: v4)
 
 API Selection Options:
   --unmarshal      Use Unmarshal API for input (deprecated, v3 defaults)
