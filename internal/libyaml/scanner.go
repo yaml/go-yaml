@@ -662,12 +662,25 @@ func (parser *Parser) fetchMoreTokens() error {
 		if parser.tokens_head < len(parser.tokens)-2 {
 			// If a potential simple key is at the head position, we need to fetch
 			// the next token to disambiguate it.
-			head_tok_idx, ok := parser.simple_keys_by_tok[parser.tokens_parsed]
-			if !ok {
+
+			var first_key int
+			found_potential_key := false
+
+			if len(parser.simple_key_stack) > 0 {
+				// Found a simple key on the stack
+				first_key = parser.simple_key_stack[0].token_number
+				found_potential_key = true
+			} else if parser.simple_key_possible {
+				// Found a 'current' simple key (which was not pushed to the stack yet)
+				first_key = parser.simple_key.token_number
+				found_potential_key = true
+			}
+
+			if !found_potential_key {
+				// We don't have any potential simple keys
 				break
-			} else if valid, err := parser.simpleKeyIsValid(&parser.simple_keys[head_tok_idx]); err != nil {
-				return err
-			} else if !valid {
+			} else if parser.tokens_parsed != first_key {
+				// We have not reached the potential simple key yet.
 				break
 			}
 		}
@@ -886,32 +899,6 @@ func (parser *Parser) isFlowSequence() bool {
 	return previousToken.Type == FLOW_ENTRY_TOKEN || previousToken.Type == FLOW_SEQUENCE_START_TOKEN
 }
 
-func (parser *Parser) simpleKeyIsValid(simple_key *SimpleKey) (valid bool, err error) {
-	if !simple_key.possible {
-		return false, nil
-	}
-
-	// The 1.2 specification says:
-	//
-	//     "If the ? indicator is omitted, parsing needs to see past the
-	//     implicit key to recognize it as such. To limit the amount of
-	//     lookahead required, the “:” indicator must appear at most 1024
-	//     Unicode characters beyond the start of the key. In addition, the key
-	//     is restricted to a single line."
-	//
-	if simple_key.mark.Line < parser.mark.Line || simple_key.mark.Index+1024 < parser.mark.Index {
-		// Check if the potential simple key to be removed is required.
-		if simple_key.required {
-			return false, formatScannerErrorContext(
-				"while scanning a simple key", simple_key.mark,
-				"could not find expected ':'", parser.mark)
-		}
-		simple_key.possible = false
-		return false, nil
-	}
-	return true, nil
-}
-
 // Check if a simple key may start at the current position and add it if
 // needed.
 func (parser *Parser) saveSimpleKey() error {
@@ -925,36 +912,31 @@ func (parser *Parser) saveSimpleKey() error {
 	// If the current position may start a simple key, save it.
 	//
 	if parser.simple_key_allowed {
-		simple_key := SimpleKey{
-			possible:     true,
-			required:     required,
-			token_number: parser.tokens_parsed + (len(parser.tokens) - parser.tokens_head),
-			mark:         parser.mark,
-		}
-
 		if err := parser.removeSimpleKey(); err != nil {
 			return err
 		}
-		parser.simple_keys[len(parser.simple_keys)-1] = simple_key
-		parser.simple_keys_by_tok[simple_key.token_number] = len(parser.simple_keys) - 1
+
+		parser.simple_key_possible = true
+		parser.simple_key = SimpleKey{
+			required:     required,
+			flow_level:   parser.flow_level,
+			token_number: parser.tokens_parsed + (len(parser.tokens) - parser.tokens_head),
+			mark:         parser.mark,
+		}
 	}
 	return nil
 }
 
 // Remove a potential simple key at the current flow level.
 func (parser *Parser) removeSimpleKey() error {
-	i := len(parser.simple_keys) - 1
-	if parser.simple_keys[i].possible {
-		// If the key is required, it is an error.
-		if parser.simple_keys[i].required {
-			return formatScannerErrorContext(
-				"while scanning a simple key", parser.simple_keys[i].mark,
-				"could not find expected ':'", parser.mark)
-		}
-		// Remove the key from the stack.
-		parser.simple_keys[i].possible = false
-		delete(parser.simple_keys_by_tok, parser.simple_keys[i].token_number)
+	// If the key is required, it is an error.
+	if parser.simple_key.required {
+		return formatScannerErrorContext(
+			"while scanning a simple key", parser.simple_key.mark,
+			"could not find expected ':'", parser.mark)
 	}
+
+	parser.simple_key_possible = false // disable the key
 	return nil
 }
 
@@ -963,21 +945,22 @@ const max_flow_level = 10000
 
 // Increase the flow level and resize the simple key list if needed.
 func (parser *Parser) increaseFlowLevel() error {
-	// Reset the simple key on the next level.
-	parser.simple_keys = append(parser.simple_keys, SimpleKey{
-		possible:     false,
-		required:     false,
-		token_number: parser.tokens_parsed + (len(parser.tokens) - parser.tokens_head),
-		mark:         parser.mark,
-	})
-
 	// Increase the flow level.
 	parser.flow_level++
 	if parser.flow_level > max_flow_level {
 		return formatScannerErrorContext(
-			"while increasing flow level", parser.simple_keys[len(parser.simple_keys)-1].mark,
+			"while increasing flow level", parser.simple_key.mark,
 			fmt.Sprintf("exceeded max depth of %d", max_flow_level), parser.mark)
 	}
+
+	// If a simple key was possible, push it to the stack before resetting the key.
+	if parser.simple_key_possible {
+		parser.simple_key_stack = append(parser.simple_key_stack, parser.simple_key)
+	}
+
+	// Reset the simple key for the new flow level.
+	parser.simple_key = SimpleKey{}
+
 	return nil
 }
 
@@ -985,9 +968,17 @@ func (parser *Parser) increaseFlowLevel() error {
 func (parser *Parser) decreaseFlowLevel() error {
 	if parser.flow_level > 0 {
 		parser.flow_level--
-		last := len(parser.simple_keys) - 1
-		delete(parser.simple_keys_by_tok, parser.simple_keys[last].token_number)
-		parser.simple_keys = parser.simple_keys[:last]
+
+		if len(parser.simple_key_stack) == 0 {
+			return nil
+		}
+
+		last := len(parser.simple_key_stack) - 1
+		if parser.simple_key_stack[last].flow_level == parser.flow_level {
+			parser.simple_key = parser.simple_key_stack[last]        // use last item
+			parser.simple_key_stack = parser.simple_key_stack[:last] // remove last item
+			parser.simple_key_possible = true                        // enable the key
+		}
 	}
 	return nil
 }
@@ -1011,7 +1002,7 @@ func (parser *Parser) rollIndent(column, number int, typ TokenType, mark Mark) e
 		parser.indent = column
 		if len(parser.indents) > max_indents {
 			return formatScannerErrorContext(
-				"while increasing indent level", parser.simple_keys[len(parser.simple_keys)-1].mark,
+				"while increasing indent level", parser.simple_key.mark,
 				fmt.Sprintf("exceeded max depth of %d", max_indents), parser.mark)
 		}
 
@@ -1091,9 +1082,8 @@ func (parser *Parser) fetchStreamStart() error {
 	parser.indent = -1
 
 	// Initialize the simple key stack.
-	parser.simple_keys = append(parser.simple_keys, SimpleKey{})
-
-	parser.simple_keys_by_tok = make(map[int]int)
+	parser.simple_key = SimpleKey{}
+	parser.simple_key_stack = []SimpleKey{}
 
 	// A simple key is allowed at the beginning of the stream.
 	parser.simple_key_allowed = true
@@ -1129,7 +1119,8 @@ func (parser *Parser) fetchStreamEnd() error {
 	if err := parser.removeSimpleKey(); err != nil {
 		return err
 	}
-
+	parser.simple_key = SimpleKey{}
+	parser.simple_key_stack = []SimpleKey{}
 	parser.simple_key_allowed = false
 
 	// Create the STREAM-END token and append it to the queue.
@@ -1369,13 +1360,10 @@ func (parser *Parser) fetchKey() error {
 
 // Produce the VALUE token.
 func (parser *Parser) fetchValue() error {
-	simple_key := &parser.simple_keys[len(parser.simple_keys)-1]
+	simple_key := &parser.simple_key
 
 	// Have we found a simple key?
-	if valid, err := parser.simpleKeyIsValid(simple_key); err != nil {
-		return err
-	} else if valid {
-
+	if parser.simple_key_possible && simple_key.mark.Line == parser.mark.Line {
 		// Create the KEY token and insert it into the queue.
 		token := Token{
 			Type:      KEY_TOKEN,
@@ -1392,8 +1380,8 @@ func (parser *Parser) fetchValue() error {
 		}
 
 		// Remove the simple key.
-		simple_key.possible = false
-		delete(parser.simple_keys_by_tok, simple_key.token_number)
+		parser.simple_key_possible = false
+		simple_key.required = false
 
 		// A simple key cannot follow another simple key.
 		parser.simple_key_allowed = false
