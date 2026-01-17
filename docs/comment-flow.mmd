@@ -1,0 +1,33 @@
+---
+title: Comment Flow Through Load Stack
+---
+flowchart TB
+    subgraph SCANNER ["Scanner"]
+        S1[scanLineComment<br/>same-line comments]
+        S2[scanComments<br/>classify head/foot/line]
+        S3[Comment struct<br/>head, line, foot fields]
+        S1 --> S3
+        S2 --> S3
+    end
+
+    subgraph PARSER ["Parser"]
+        P1[UnfoldComments<br/>join to tokens by position]
+        P2[Parser fields<br/>HeadComment, LineComment, FootComment]
+        P3[setEventComments<br/>transfer to Event]
+        P4[TAIL_COMMENT_EVENT<br/>block-end foot comments]
+        P1 --> P2
+        P2 --> P3
+        P2 --> P4
+    end
+
+    subgraph COMPOSER ["Composer"]
+        C1[node<br/>basic transfer]
+        C2[mapping<br/>reassignment logic]
+        C3[Node fields<br/>HeadComment, LineComment, FootComment]
+        C1 --> C3
+        C2 --> C3
+    end
+
+    S3 --> P1
+    P3 --> C1
+    P4 --> C2

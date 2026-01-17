@@ -1,0 +1,64 @@
+---
+title: go-yaml Processing Pipeline Overview
+---
+flowchart TB
+    subgraph LOAD ["LOAD STACK (YAML to Go)"]
+        direction TB
+        L_bytes[/Raw Bytes/]
+        L_reader[Reader]
+        L_codepoints[/Code Points UTF-8/]
+        L_scanner[Scanner]
+        L_tokens[/Tokens/]
+        L_parser[Parser]
+        L_events[/Events/]
+        L_composer[Composer]
+        L_nodes[/Nodes/]
+        L_constructor[Constructor]
+        L_native[/Native Go Values/]
+
+        L_bytes --> L_reader
+        L_reader --> L_codepoints
+        L_codepoints --> L_scanner
+        L_scanner --> L_tokens
+        L_tokens --> L_parser
+        L_parser --> L_events
+        L_events --> L_composer
+        L_composer --> L_nodes
+        L_nodes --> L_constructor
+        L_constructor --> L_native
+    end
+
+    subgraph DUMP ["DUMP STACK (Go to YAML)"]
+        direction TB
+        D_native[/Native Go Values/]
+        D_representer[Representer]
+        D_nodes[/Nodes - optional/]
+        D_serializer[Serializer]
+        D_events[/Events/]
+        D_emitter[Emitter]
+        D_codepoints[/Code Points UTF-8/]
+        D_writer[Writer]
+        D_bytes[/Raw Bytes/]
+
+        D_native --> D_representer
+        D_representer --> D_events
+        D_nodes --> D_serializer
+        D_serializer --> D_events
+        D_events --> D_emitter
+        D_emitter --> D_codepoints
+        D_codepoints --> D_writer
+        D_writer --> D_bytes
+    end
+
+    RESOLVER{{Resolver<br/>resolve function<br/>NOT a stage}}
+
+    L_composer -.->|"calls for<br/>untagged scalars"| RESOLVER
+    L_constructor -.->|"calls for<br/>typed values"| RESOLVER
+    D_representer -.->|"calls to check<br/>quoting needed"| RESOLVER
+    D_serializer -.->|"calls to check<br/>tag elision"| RESOLVER
+
+    L_native <--> D_native
+    L_nodes <-.-> D_nodes
+    L_events <-.-> D_events
+    L_codepoints <-.-> D_codepoints
+    L_bytes <-.-> D_bytes

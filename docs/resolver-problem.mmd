@@ -1,0 +1,25 @@
+---
+title: resolve Called From 4 Places
+---
+flowchart TB
+    subgraph LOAD ["LOAD STACK calls resolve()"]
+        direction LR
+        L_composer[Composer<br/>composer.go line 182<br/>Sets Node.Tag] --> L_resolve1[resolve - 1st call]
+        L_constructor[Constructor<br/>constructor.go line 702<br/>Gets typed value] --> L_resolve2[resolve - 2nd call<br/>DUPLICATE WORK]
+    end
+
+    subgraph DUMP ["DUMP STACK calls resolve()"]
+        direction LR
+        D_representer[Representer<br/>representer.go line 477<br/>Checks if quoting needed] --> D_resolve3[resolve - 3rd call]
+        D_serializer[Serializer<br/>serializer.go line 34<br/>Checks if tag can be elided] --> D_resolve4[resolve - 4th call]
+    end
+
+    subgraph PROBLEMS ["PROBLEMS"]
+        direction LR
+        P1[Duplicate resolution on Load]
+        P2[Dump depends on Load logic]
+        P3[No caching of resolved values]
+    end
+
+    LOAD --> DUMP
+    DUMP --> PROBLEMS
