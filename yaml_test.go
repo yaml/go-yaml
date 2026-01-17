@@ -2174,7 +2174,8 @@ func TestEncodeToYAML(t *testing.T) {
 	datatest.RunTestCases(t, func() ([]map[string]any, error) {
 		return datatest.LoadTestCasesFromFile("testdata/encode.yaml", libyaml.LoadYAML)
 	}, map[string]datatest.TestHandler{
-		"encode": runEncodeTest,
+		"encode":      runEncodeTest,
+		"encode-opts": runEncodeOptsTest,
 	})
 }
 
@@ -2211,6 +2212,63 @@ func runEncodeTest(t *testing.T, tc map[string]any) {
 	output, err := yaml.Marshal(targetPtr)
 	if err != nil {
 		t.Fatalf("Marshal failed: %v", err)
+	}
+
+	// Compare with expected output
+	want := tc["want"].(string)
+	assert.Equal(t, want, string(output))
+}
+
+func runEncodeOptsTest(t *testing.T, tc map[string]any) {
+	t.Helper()
+
+	// Get type and create instance
+	// Note: "type" field in YAML is renamed to "output_type" during normalization
+	// to avoid conflict with the test type ("encode-opts")
+	typeName := tc["output_type"].(string)
+	data := tc["data"]
+
+	// Parse options
+	var opts []yaml.Option
+	if optsMap, ok := tc["opts"].(map[string]any); ok {
+		if rq, ok := optsMap["required-quotes"].(string); ok {
+			switch rq {
+			case "single":
+				opts = append(opts, yaml.WithRequiredQuotes(yaml.QuoteSingle))
+			case "double":
+				opts = append(opts, yaml.WithRequiredQuotes(yaml.QuoteDouble))
+			case "legacy":
+				opts = append(opts, yaml.WithRequiredQuotes(yaml.QuoteLegacy))
+			default:
+				t.Fatalf("Unknown required-quotes value: %s", rq)
+			}
+		}
+	}
+
+	// Create pointer target of the specified type (for addressability)
+	targetPtr, err := encodeTypeRegistry.NewPointerInstance(typeName)
+	if err != nil {
+		t.Fatalf("Failed to create instance of type %s: %v", typeName, err)
+	}
+
+	// Resolve value constants (like +Inf, -Inf, NaN, -0)
+	resolvedData := encodeValueRegistry.Resolve(data)
+
+	// Unmarshal the data into the target to populate it
+	dataBytes, err := yaml.Marshal(resolvedData)
+	if err != nil {
+		t.Fatalf("Failed to marshal data: %v", err)
+	}
+
+	err = yaml.Unmarshal(dataBytes, targetPtr)
+	if err != nil {
+		t.Fatalf("Failed to unmarshal data into target: %v", err)
+	}
+
+	// Dump the target to YAML with options
+	output, err := yaml.Dump(targetPtr, opts...)
+	if err != nil {
+		t.Fatalf("Dump failed: %v", err)
 	}
 
 	// Compare with expected output
