@@ -23,15 +23,16 @@ type Options struct {
 	AllDocuments   bool // Load/Dump all documents in multi-document streams
 
 	// Dumping options
-	Indent                int       // Indentation spaces (2-9)
-	CompactSeqIndent      bool      // Whether '- ' counts as indentation
-	LineWidth             int       // Preferred line width (-1 for unlimited)
-	Unicode               bool      // Allow non-ASCII characters
-	Canonical             bool      // Canonical YAML output
-	LineBreak             LineBreak // Line ending style
-	ExplicitStart         bool      // Always emit ---
-	ExplicitEnd           bool      // Always emit ...
-	FlowSimpleCollections bool      // Use flow style for simple collections
+	Indent                int        // Indentation spaces (2-9)
+	CompactSeqIndent      bool       // Whether '- ' counts as indentation
+	LineWidth             int        // Preferred line width (-1 for unlimited)
+	Unicode               bool       // Allow non-ASCII characters
+	Canonical             bool       // Canonical YAML output
+	LineBreak             LineBreak  // Line ending style
+	ExplicitStart         bool       // Always emit ---
+	ExplicitEnd           bool       // Always emit ...
+	FlowSimpleCollections bool       // Use flow style for simple collections
+	RequiredQuotes        QuoteStyle // Quote style when quoting is required
 }
 
 // Option allows configuring YAML loading and dumping operations.
@@ -315,6 +316,19 @@ func WithFlowSimpleCollections(flow ...bool) Option {
 	}
 }
 
+// WithRequiredQuotes sets the quote style to use when quoting is required.
+//
+// Quote styles:
+//   - QuoteSingle: Use single quotes when quoting is required (v4 default)
+//   - QuoteDouble: Use double quotes when quoting is required
+//   - QuoteLegacy: Use legacy behavior (double in representer, single in emitter)
+func WithRequiredQuotes(style QuoteStyle) Option {
+	return func(o *Options) error {
+		o.RequiredQuotes = style
+		return nil
+	}
+}
+
 // CombineOptions combines multiple options into a single Option.
 // This is useful for creating option presets or combining version defaults
 // with custom options.
@@ -353,8 +367,9 @@ func ApplyOptions(opts ...Option) (*Options, error) {
 
 // DefaultOptions holds the default options for APIs that don't accept options.
 var DefaultOptions = &Options{
-	Indent:     4,
-	LineWidth:  -1,
-	Unicode:    true,
-	UniqueKeys: true,
+	Indent:         4,
+	LineWidth:      -1,
+	Unicode:        true,
+	UniqueKeys:     true,
+	RequiredQuotes: QuoteLegacy,
 }
