@@ -22,6 +22,9 @@ func TestScanner(t *testing.T) {
 	})
 }
 
+// runScanTokensTest tests the scanTokens function.
+//
+//nolint:thelper // because this function is the real test
 func runScanTokensTest(t *testing.T, tc TestCase) {
 	types, ok := scanTokens(tc.Yaml)
 	assert.Truef(t, ok, "scanTokens() failed")
@@ -43,6 +46,9 @@ func runScanTokensTest(t *testing.T, tc TestCase) {
 	}
 }
 
+// runScanTokensDetailedTest tests the scanTokensDetailed function.
+//
+//nolint:thelper // because this function is the real test
 func runScanTokensDetailedTest(t *testing.T, tc TestCase) {
 	tokens, ok := scanTokensDetailed(tc.Yaml)
 	assert.Truef(t, ok, "scanTokensDetailed() failed")
@@ -68,6 +74,9 @@ func runScanTokensDetailedTest(t *testing.T, tc TestCase) {
 	}
 }
 
+// runScanErrorTest tests the scanner error handling.
+//
+//nolint:thelper // because this function is the real test
 func runScanErrorTest(t *testing.T, tc TestCase) {
 	parser := NewParser()
 	parser.SetInputString([]byte(tc.Yaml))

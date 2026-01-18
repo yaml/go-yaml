@@ -40,6 +40,8 @@ func loadKnownFailingTests() map[string]bool {
 }
 
 func shouldSkipTest(t *testing.T) {
+	t.Helper()
+
 	if os.Getenv("RUNALL") == "1" {
 		return
 	}
@@ -67,6 +69,8 @@ or just run the tests with 'make test'.`, testDir)
 }
 
 func runTestsInDir(t *testing.T, dirPath string) {
+	t.Helper()
+
 	entries, err := os.ReadDir(dirPath)
 	if err != nil {
 		t.Fatalf("Failed to read directory %s: %v", dirPath, err)
