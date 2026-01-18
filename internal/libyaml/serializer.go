@@ -32,7 +32,7 @@ func (r *Representer) node(node *Node, tail string) {
 				tag = ""
 			} else {
 				rtag, _ := resolve("", node.Value)
-				if rtag == stag {
+				if rtag == stag && stag != mergeTag {
 					tag = ""
 				} else if stag == strTag {
 					tag = ""
