@@ -22,6 +22,9 @@ func TestParser(t *testing.T) {
 	})
 }
 
+// runParseEventsTest tests the parseEvents function.
+//
+//nolint:thelper // because this function is the real test
 func runParseEventsTest(t *testing.T, tc TestCase) {
 	types, ok := parseEvents(tc.Yaml)
 	assert.Truef(t, ok, "parseEvents() = %v, want true", ok)
@@ -43,6 +46,9 @@ func runParseEventsTest(t *testing.T, tc TestCase) {
 	}
 }
 
+// runParseEventsDetailedTest tests the parseEventsDetailed function.
+//
+//nolint:thelper // because this function is the real test
 func runParseEventsDetailedTest(t *testing.T, tc TestCase) {
 	events, ok := parseEventsDetailed(tc.Yaml)
 	assert.Truef(t, ok, "parseEventsDetailed() = %v, want true", ok)
@@ -92,6 +98,9 @@ func runParseEventsDetailedTest(t *testing.T, tc TestCase) {
 	}
 }
 
+// runParseErrorTest tests the parser error handling.
+//
+//nolint:thelper // because this function is the real test
 func runParseErrorTest(t *testing.T, tc TestCase) {
 	parser := NewParser()
 	parser.SetInputString([]byte(tc.Yaml))

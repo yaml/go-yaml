@@ -12,6 +12,7 @@ linters:
   - staticcheck
   - modernize
   - nilnesserr
+  - thelper
   disable:
   - errcheck
   - ineffassign
