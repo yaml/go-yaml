@@ -14,6 +14,7 @@ linters:
   - modernize
   - nilnesserr
   - thelper
+  - unconvert
   disable:
   - errcheck
   - ineffassign
