@@ -340,7 +340,7 @@ func NewConstructor(opts *Options) *Constructor {
 
 // Construct decodes YAML input into the provided output value.
 // The out parameter must be a pointer to the value to decode into.
-// Returns a TypeError if type mismatches occur during decoding.
+// Returns a [LoadErrors] if type mismatches occur during decoding.
 func Construct(in []byte, out any, opts *Options) error {
 	d := NewConstructor(opts)
 	p := NewComposer(in)
@@ -354,7 +354,7 @@ func Construct(in []byte, out any, opts *Options) error {
 		d.Construct(node, v)
 	}
 	if len(d.TypeErrors) > 0 {
-		return &TypeError{Errors: d.TypeErrors}
+		return &LoadErrors{Errors: d.TypeErrors}
 	}
 	return nil
 }
@@ -383,7 +383,7 @@ func (c *Constructor) callConstructor(n *Node, u constructor) (good bool) {
 	switch e := err.(type) {
 	case nil:
 		return true
-	case *TypeError:
+	case *LoadErrors:
 		c.TypeErrors = append(c.TypeErrors, e.Errors...)
 		return false
 	default:
@@ -404,14 +404,14 @@ func (c *Constructor) callObsoleteConstructor(n *Node, u obsoleteConstructor) (g
 		if len(c.TypeErrors) > terrlen {
 			issues := c.TypeErrors[terrlen:]
 			c.TypeErrors = c.TypeErrors[:terrlen]
-			return &TypeError{issues}
+			return &LoadErrors{issues}
 		}
 		return nil
 	})
 	switch e := err.(type) {
 	case nil:
 		return true
-	case *TypeError:
+	case *LoadErrors:
 		c.TypeErrors = append(c.TypeErrors, e.Errors...)
 		return false
 	default:
@@ -590,7 +590,7 @@ func (c *Constructor) tryCallYAMLConstructor(n *Node, out reflect.Value) (called
 	}
 
 	switch e := err.(type) {
-	case *TypeError:
+	case *LoadErrors:
 		c.TypeErrors = append(c.TypeErrors, e.Errors...)
 		return true, false
 	default:

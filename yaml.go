@@ -274,7 +274,23 @@ const (
 
 // Re-export error types
 type (
+
+	// LoadError represents an error encountered while decoding a YAML document.
+	//
+	// It contains details about the location in the document where the error
+	// occurred, as well as a descriptive message.
 	LoadError = libyaml.ConstructError
+
+	// LoadErrors is returned when one or more fields cannot be properly decoded.
+	//
+	// It contains multiple *[LoadError] instances with details about each error.
+	LoadErrors = libyaml.LoadErrors
+
+	// TypeError is an obsolete error type retained for compatibility.
+	//
+	// Deprecated: Use [LoadErrors] instead.
+	//
+	//nolint:staticcheck // we are using deprecated TypeError for compatibility
 	TypeError = libyaml.TypeError
 )
 
@@ -530,7 +546,7 @@ func (dec *Decoder) Decode(v any) (err error) {
 	}
 	d.Construct(node, out)
 	if len(d.TypeErrors) > 0 {
-		return &TypeError{Errors: d.TypeErrors}
+		return &LoadErrors{Errors: d.TypeErrors}
 	}
 	return nil
 }
@@ -599,7 +615,7 @@ func (e *Encoder) Close() (err error) {
 // The type of the decoded values should be compatible with the respective
 // values in out. If one or more values cannot be decoded due to a type
 // mismatches, decoding continues partially until the end of the YAML
-// content, and a *yaml.TypeError is returned with details for all
+// content, and a *yaml.LoadErrors is returned with details for all
 // missed values.
 //
 // Struct fields are only unmarshalled if they are exported (have an

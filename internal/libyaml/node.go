@@ -282,7 +282,7 @@ func (n *Node) Decode(v any) (err error) {
 	}
 	d.Construct(n, out)
 	if len(d.TypeErrors) > 0 {
-		return &TypeError{Errors: d.TypeErrors}
+		return &LoadErrors{Errors: d.TypeErrors}
 	}
 	return nil
 }
@@ -313,7 +313,7 @@ func (n *Node) Load(v any, opts ...Option) (err error) {
 	}
 	d.Construct(n, out)
 	if len(d.TypeErrors) > 0 {
-		return &TypeError{Errors: d.TypeErrors}
+		return &LoadErrors{Errors: d.TypeErrors}
 	}
 	return nil
 }
