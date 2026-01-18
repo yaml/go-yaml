@@ -41,7 +41,7 @@ import (
 // The type of the decoded values should be compatible with the respective
 // values in out. If one or more values cannot be decoded due to type
 // mismatches, decoding continues partially until the end of the YAML
-// content, and a *yaml.TypeError is returned with details for all
+// content, and a *yaml.LoadErrors is returned with details for all
 // missed values.
 //
 // Struct fields are only loaded if they are exported (have an upper case
@@ -80,14 +80,14 @@ func Load(in []byte, out any, opts ...Option) error {
 func loadAll(in []byte, out any, opts *libyaml.Options) error {
 	outVal := reflect.ValueOf(out)
 	if outVal.Kind() != reflect.Pointer || outVal.IsNil() {
-		return &TypeError{Errors: []*libyaml.ConstructError{{
+		return &LoadErrors{Errors: []*libyaml.ConstructError{{
 			Err: errors.New("yaml: WithAllDocuments requires a non-nil pointer to a slice"),
 		}}}
 	}
 
 	sliceVal := outVal.Elem()
 	if sliceVal.Kind() != reflect.Slice {
-		return &TypeError{Errors: []*libyaml.ConstructError{{
+		return &LoadErrors{Errors: []*libyaml.ConstructError{{
 			Err: errors.New("yaml: WithAllDocuments requires a pointer to a slice"),
 		}}}
 	}
@@ -134,7 +134,7 @@ func loadSingle(in []byte, out any, opts *libyaml.Options) error {
 	// Load first document
 	err = l.Load(out)
 	if err == io.EOF {
-		return &TypeError{Errors: []*libyaml.ConstructError{{
+		return &LoadErrors{Errors: []*libyaml.ConstructError{{
 			Err: errors.New("yaml: no documents in stream"),
 		}}}
 	}
@@ -151,7 +151,7 @@ func loadSingle(in []byte, out any, opts *libyaml.Options) error {
 			return err
 		}
 		// Successfully loaded a second document - this is an error in strict mode
-		return &TypeError{Errors: []*libyaml.ConstructError{{
+		return &LoadErrors{Errors: []*libyaml.ConstructError{{
 			Err: errors.New("yaml: expected single document, found multiple"),
 		}}}
 	}
@@ -225,7 +225,7 @@ func (l *Loader) Load(v any) (err error) {
 	if len(l.decoder.TypeErrors) > 0 {
 		typeErrors := l.decoder.TypeErrors
 		l.decoder.TypeErrors = nil
-		return &TypeError{Errors: typeErrors}
+		return &LoadErrors{Errors: typeErrors}
 	}
 	return nil
 }

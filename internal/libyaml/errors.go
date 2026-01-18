@@ -96,12 +96,12 @@ func (e *ConstructError) Unwrap() error {
 	return e.Err
 }
 
-// TypeError is returned when one or more fields cannot be properly decoded.
-type TypeError struct {
+// LoadErrors is returned when one or more fields cannot be properly decoded.
+type LoadErrors struct {
 	Errors []*ConstructError
 }
 
-func (e *TypeError) Error() string {
+func (e *LoadErrors) Error() string {
 	var b strings.Builder
 	b.WriteString("yaml: construct errors:")
 	for _, err := range e.Errors {
@@ -112,14 +112,22 @@ func (e *TypeError) Error() string {
 }
 
 // As implements errors.As for Go versions prior to 1.20 that don't support
-// the Unwrap() []error interface. It allows TypeError to match against
+// the Unwrap() []error interface. It allows [LoadErrors] to match against
 // *ConstructError targets by returning the first error in the list.
-func (e *TypeError) As(target any) bool {
-	if len(e.Errors) == 0 {
-		return false
-	}
-	if t, ok := target.(**ConstructError); ok {
+func (e *LoadErrors) As(target any) bool {
+	switch t := target.(type) {
+	case **ConstructError:
+		if len(e.Errors) == 0 {
+			return false
+		}
 		*t = e.Errors[0]
+		return true
+	case **TypeError:
+		var msgs []string
+		for _, err := range e.Errors {
+			msgs = append(msgs, err.Error())
+		}
+		*t = &TypeError{Errors: msgs}
 		return true
 	}
 	return false
@@ -128,13 +136,29 @@ func (e *TypeError) As(target any) bool {
 // Is implements errors.Is for Go versions prior to 1.20 that don't support
 // the Unwrap() []error interface. It checks if any wrapped error matches
 // the target error.
-func (e *TypeError) Is(target error) bool {
+func (e *LoadErrors) Is(target error) bool {
 	for _, err := range e.Errors {
 		if errors.Is(err, target) {
 			return true
 		}
 	}
 	return false
+}
+
+// TypeError is an obsolete error type retained for compatibility.
+//
+// A TypeError is returned by Unmarshal when one or more fields in
+// the YAML document cannot be properly decoded into the requested
+// types. When this error is returned, the value is still
+// unmarshaled partially.
+//
+// Deprecated: Use [LoadErrors] instead.
+type TypeError struct {
+	Errors []string
+}
+
+func (e *TypeError) Error() string {
+	return fmt.Sprintf("yaml: unmarshal errors:\n  %s", strings.Join(e.Errors, "\n  "))
 }
 
 // YAMLError is an internal error wrapper type.

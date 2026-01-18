@@ -7,7 +7,6 @@ This guide will help you migrate your code from `go.yaml.in/yaml/v3`
 
 - [ ] Update import path
 - [ ] Optionally migrate to new API (Load/Dump, Loader/Dumper)
-- [ ] Handle TypeError.Errors type change (if you use it directly)
 - [ ] Adjust formatting expectations or use yaml.V3 preset
 - [ ] Update tests
 
@@ -85,55 +84,6 @@ encoder.Close()
 dumper := yaml.NewDumper(writer)
 err := dumper.Dump(&config)
 dumper.Close()
-```
-
-## Breaking Changes
-
-### TypeError.Errors Field Type
-
-This is the **only breaking change** in v4.
-
-**v3:**
-```go
-type TypeError struct {
-    Errors []string  // Simple error strings
-}
-```
-
-**v4:**
-```go
-type TypeError struct {
-    Errors []*UnmarshalError  // Structured errors with location info
-}
-
-type UnmarshalError struct {
-    Line    int
-    Column  int
-    Problem string
-    // ... other fields
-}
-```
-
-**Migration:**
-
-If you directly access `TypeError.Errors` expecting `[]string`,
-you'll need to update your code:
-
-```go
-// v3 code
-if typeErr, ok := err.(*yaml.TypeError); ok {
-    for _, errStr := range typeErr.Errors {
-        fmt.Println(errStr)
-    }
-}
-
-// v4 code
-if typeErr, ok := err.(*yaml.TypeError); ok {
-    for _, unmarshalErr := range typeErr.Errors {
-        fmt.Printf("Line %d, Column %d: %s\n",
-            unmarshalErr.Line, unmarshalErr.Column, unmarshalErr.Problem)
-    }
-}
 ```
 
 ## New Features in v4
@@ -281,8 +231,7 @@ data, err := yaml.Dump(&config, yaml.V3)
 1. Update import path
 2. Replace `Unmarshal` → `Load`, `Marshal` → `Dump`
 3. Replace `NewDecoder` → `NewLoader`, `NewEncoder` → `NewDumper`
-4. Update TypeError.Errors handling
-5. Test with v4 defaults or choose formatting explicitly
+4. Test with v4 defaults or choose formatting explicitly
 
 ### Strategy 3: Feature Adoption (Maximum Value)
 
@@ -310,15 +259,6 @@ go install go.yaml.in/yaml/v4/cmd/go-yaml@latest
 **Solution:** Use `yaml.V3` preset to maintain v3 formatting:
 ```go
 yaml.Dump(&data, yaml.V3)
-```
-
-### Issue: TypeError.Errors type mismatch
-
-**Solution:** Update code to handle `[]*UnmarshalError`:
-```go
-for _, e := range typeErr.Errors {
-    fmt.Println(e.Problem)  // Or use e.Line, e.Column
-}
 ```
 
 ### Issue: Want more flexibility from classic API

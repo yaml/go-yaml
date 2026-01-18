@@ -551,7 +551,7 @@ func TestUnmarshal(t *testing.T) {
 			typ := reflect.ValueOf(item.value).Type()
 			value := reflect.New(typ)
 			err := yaml.Unmarshal([]byte(item.data), value.Interface())
-			if _, ok := err.(*yaml.TypeError); !ok {
+			if _, ok := err.(*yaml.LoadErrors); !ok {
 				assert.NoError(t, err)
 			}
 			assert.DeepEqualf(t, item.value, value.Elem().Interface(), "error: %v", err)
@@ -602,11 +602,11 @@ func runDecodeTest(t *testing.T, tc map[string]any) {
 
 	// Handle construct errors - if error occurred, check if want is empty/nil
 	if err != nil {
-		// For TypeError, values that can't be converted are skipped
-		if _, ok := err.(*yaml.TypeError); !ok {
+		// For LoadErrors, values that can't be converted are skipped
+		if _, ok := err.(*yaml.LoadErrors); !ok {
 			t.Fatalf("unmarshal failed with unexpected error: %v", err)
 		}
-		// TypeError is expected for invalid conversions - compare with want
+		// LoadErrors is expected for invalid conversions - compare with want
 	}
 
 	// Compare by marshaling both to YAML and comparing the output
@@ -651,7 +651,7 @@ func TestDecoderSingleDocument(t *testing.T) {
 			typ := reflect.ValueOf(item.value).Type()
 			value := reflect.New(typ)
 			err := yaml.NewDecoder(strings.NewReader(item.data)).Decode(value.Interface())
-			if _, ok := err.(*yaml.TypeError); !ok {
+			if _, ok := err.(*yaml.LoadErrors); !ok {
 				assert.NoError(t, err)
 			}
 			assert.DeepEqual(t, item.value, value.Elem().Interface())
@@ -962,9 +962,9 @@ func TestUnmarshalerWholeDocument(t *testing.T) {
 	assert.DeepEqual(t, unmarshalerTests[0].value, value["_"])
 }
 
-func TestUnmarshalerTypeError(t *testing.T) {
-	unmarshalerResult[2] = &yaml.TypeError{Errors: []*yaml.LoadError{{Err: errors.New("foo"), Line: 1, Column: 1}}}
-	unmarshalerResult[4] = &yaml.TypeError{Errors: []*yaml.LoadError{{Err: errors.New("bar"), Line: 1, Column: 1}}}
+func TestUnmarshalerLoadErrors(t *testing.T) {
+	unmarshalerResult[2] = &yaml.LoadErrors{Errors: []*yaml.LoadError{{Err: errors.New("foo"), Line: 1, Column: 1}}}
+	unmarshalerResult[4] = &yaml.LoadErrors{Errors: []*yaml.LoadError{{Err: errors.New("bar"), Line: 1, Column: 1}}}
 	defer func() {
 		delete(unmarshalerResult, 2)
 		delete(unmarshalerResult, 4)
@@ -994,9 +994,9 @@ func TestUnmarshalerTypeError(t *testing.T) {
 	assert.Equal(t, 3, v.M["ghi"].value)
 }
 
-func TestObsoleteUnmarshalerTypeError(t *testing.T) {
-	unmarshalerResult[2] = &yaml.TypeError{Errors: []*yaml.LoadError{{Err: errors.New("foo"), Line: 1, Column: 1}}}
-	unmarshalerResult[4] = &yaml.TypeError{Errors: []*yaml.LoadError{{Err: errors.New("bar"), Line: 1, Column: 1}}}
+func TestObsoleteUnmarshalerLoadErrors(t *testing.T) {
+	unmarshalerResult[2] = &yaml.LoadErrors{Errors: []*yaml.LoadError{{Err: errors.New("foo"), Line: 1, Column: 1}}}
+	unmarshalerResult[4] = &yaml.LoadErrors{Errors: []*yaml.LoadError{{Err: errors.New("bar"), Line: 1, Column: 1}}}
 	defer func() {
 		delete(unmarshalerResult, 2)
 		delete(unmarshalerResult, 4)
@@ -1027,7 +1027,7 @@ func TestObsoleteUnmarshalerTypeError(t *testing.T) {
 	assert.Equal(t, 3, v.M["ghi"].value)
 }
 
-func TestTypeError_Unwrapping(t *testing.T) {
+func TestLoadErrors_Unwrapping(t *testing.T) {
 	errSentinel := errors.New("foo")
 	errSentinel2 := errors.New("bar")
 
@@ -1043,8 +1043,8 @@ func TestTypeError_Unwrapping(t *testing.T) {
 		Err:    errSentinel2,
 	}
 
-	// Simulate a TypeError
-	err := &yaml.TypeError{
+	// Simulate a LoadErrors
+	err := &yaml.LoadErrors{
 		Errors: []*yaml.LoadError{
 			errUnmarshal,
 			errUnmarshal2,
@@ -1061,9 +1061,13 @@ func TestTypeError_Unwrapping(t *testing.T) {
 	// check we can unwrap any sentinel error wrapped in any UnmarshalError
 	assert.ErrorIs(t, err, errSentinel)
 	assert.ErrorIs(t, err, errSentinel2)
+
+	var errTargetLegacy *yaml.TypeError
+	// check we can unwrap to legacy TypeError
+	assert.ErrorAs(t, err, &errTargetLegacy)
 }
 
-func TestTypeError_Unwrapping_Failures(t *testing.T) {
+func TestLoadErrors_Unwrapping_Failures(t *testing.T) {
 	errSentinel := errors.New("foo")
 
 	errUnmarshal := &yaml.LoadError{
@@ -1078,8 +1082,8 @@ func TestTypeError_Unwrapping_Failures(t *testing.T) {
 		Err:    errors.New("bar"),
 	}
 
-	// Simulate a TypeError
-	err := &yaml.TypeError{
+	// Simulate a LoadErrors
+	err := &yaml.LoadErrors{
 		Errors: []*yaml.LoadError{
 			errUnmarshal,
 			errUnmarshal2,
@@ -1118,7 +1122,7 @@ func (v *proxyTypeError) UnmarshalYAML(node *yaml.Node) error {
 	return node.Load(&b)
 }
 
-func TestUnmarshalerTypeErrorProxying(t *testing.T) {
+func TestUnmarshalerLoadErrorsProxying(t *testing.T) {
 	type T struct {
 		Before int
 		After  int
@@ -1157,7 +1161,7 @@ func (v *obsoleteProxyTypeError) UnmarshalYAML(unmarshal func(any) error) error 
 	return unmarshal(&b)
 }
 
-func TestObsoleteUnmarshalerTypeErrorProxying(t *testing.T) {
+func TestObsoleteUnmarshalerLoadErrorsProxying(t *testing.T) {
 	type T struct {
 		Before int
 		After  int
@@ -1191,7 +1195,7 @@ func TestUnmarshalerError(t *testing.T) {
 		Spam string
 	}{}
 	err := yaml.Unmarshal([]byte(data), &dst)
-	expectedErr := &yaml.TypeError{
+	expectedErr := &yaml.LoadErrors{
 		Errors: []*yaml.LoadError{
 			{Line: 1, Column: 17, Err: errFailing},
 		},
@@ -1217,7 +1221,7 @@ func TestObsoleteUnmarshalerError(t *testing.T) {
 		Spam string
 	}{}
 	err := yaml.Unmarshal([]byte(data), &dst)
-	expectedErr := &yaml.TypeError{
+	expectedErr := &yaml.LoadErrors{
 		Errors: []*yaml.LoadError{
 			{Line: 1, Column: 17, Err: errFailing},
 		},
@@ -1245,7 +1249,7 @@ func TestTextUnmarshalerError(t *testing.T) {
 		Spam string
 	}{}
 	err := yaml.Unmarshal([]byte(data), &dst)
-	expectedErr := &yaml.TypeError{
+	expectedErr := &yaml.LoadErrors{
 		Errors: []*yaml.LoadError{
 			{Line: 1, Column: 17, Err: errFailing},
 		},
@@ -1281,7 +1285,7 @@ func TestTextUnmarshalerNonScalar(t *testing.T) {
 	for _, input := range inputs {
 		err := yaml.Unmarshal([]byte(input), &dst)
 		t.Logf("%s -> err=%v", input, err)
-		var target *yaml.TypeError
+		var target *yaml.LoadErrors
 		if !errors.As(err, &target) {
 			t.Errorf("expected yaml.TypeError, got %v", err)
 		}
