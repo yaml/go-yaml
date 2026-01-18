@@ -818,8 +818,8 @@ func (c *Constructor) scalar(n *Node, out reflect.Value) bool {
 				return true
 			}
 		case uint64:
-			if !out.OverflowUint(uint64(resolved)) {
-				out.SetUint(uint64(resolved))
+			if !out.OverflowUint(resolved) {
+				out.SetUint(resolved)
 				return true
 			}
 		case float64:

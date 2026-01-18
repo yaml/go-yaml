@@ -44,7 +44,7 @@ func archSafeInt(v int64) any {
 	}
 
 	// on 32-bit systems, and v overflows int, we need to return an int64
-	return int64(v)
+	return v
 }
 
 // Named struct types for data-driven tests
@@ -1760,7 +1760,7 @@ a:
 `)
 
 	x := map[string]any{}
-	err := yaml.Unmarshal([]byte(data), &x)
+	err := yaml.Unmarshal(data, &x)
 	if err == nil {
 		t.Errorf("expected error, got none")
 	}
@@ -2321,12 +2321,12 @@ type marshalerValue struct {
 
 func TestMarshaler(t *testing.T) {
 	for _, item := range marshalerTests {
-		t.Run(string(item.data), func(t *testing.T) {
+		t.Run(item.data, func(t *testing.T) {
 			obj := &marshalerValue{}
 			obj.Field.value = item.value
 			data, err := yaml.Marshal(obj)
 			assert.NoError(t, err)
-			assert.Equal(t, string(item.data), string(data))
+			assert.Equal(t, item.data, string(data))
 		})
 	}
 }
