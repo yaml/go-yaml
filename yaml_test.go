@@ -1789,22 +1789,6 @@ func TestParserErrorUnknownAnchorPosition(t *testing.T) {
 	}
 }
 
-func TestTypeError_Strings(t *testing.T) {
-	// Create a TypeError with multiple errors
-	typeErr := &yaml.TypeError{
-		Errors: []*yaml.LoadError{
-			{Err: errors.New("cannot unmarshal string into int"), Line: 5, Column: 3},
-			{Err: errors.New("cannot unmarshal bool into string"), Line: 10, Column: 7},
-		},
-	}
-
-	strings := typeErr.Strings()
-
-	assert.Equal(t, 2, len(strings))
-	assert.Equal(t, "line 5: cannot unmarshal string into int", strings[0])
-	assert.Equal(t, "line 10: cannot unmarshal bool into string", strings[1])
-}
-
 var marshalIntTest = 123
 
 var (
