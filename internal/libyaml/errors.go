@@ -111,17 +111,6 @@ func (e *TypeError) Error() string {
 	return b.String()
 }
 
-// Unwrap returns all errors for compatibility with errors.As/Is.
-// This allows callers to unwrap TypeError and examine individual ConstructErrors.
-// Implements the Go 1.20+ multiple error unwrapping interface.
-func (e *TypeError) Unwrap() []error {
-	errs := make([]error, len(e.Errors))
-	for i, err := range e.Errors {
-		errs[i] = err
-	}
-	return errs
-}
-
 // As implements errors.As for Go versions prior to 1.20 that don't support
 // the Unwrap() []error interface. It allows TypeError to match against
 // *ConstructError targets by returning the first error in the list.
