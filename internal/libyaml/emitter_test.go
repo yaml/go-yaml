@@ -8,6 +8,7 @@ package libyaml
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"go.yaml.in/yaml/v4/internal/testutil/assert"
@@ -41,7 +42,7 @@ func runEmitWriterTest(t *testing.T, tc TestCase) {
 
 	result := buf.String()
 	for _, expected := range tc.WantContains {
-		assert.Truef(t, bytes.Contains([]byte(result), []byte(expected)),
+		assert.Truef(t, strings.Contains(result, expected),
 			"output should contain %q, got %q", expected, result)
 	}
 }

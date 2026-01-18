@@ -7,6 +7,7 @@ linters:
   enable:
   - dupword
   - govet
+  - mirror
   - misspell
   - nolintlint
   - staticcheck
