@@ -137,20 +137,6 @@ func (e *TypeError) Is(target error) bool {
 	return false
 }
 
-// Strings returns the error messages as a string slice.
-//
-// This method is provided for compatibility with code migrating from v3,
-// where TypeError.Errors was []string. New code should access the Errors
-// field directly to get structured error information including line and
-// column numbers.
-func (e *TypeError) Strings() []string {
-	result := make([]string, len(e.Errors))
-	for i, err := range e.Errors {
-		result[i] = err.Error()
-	}
-	return result
-}
-
 // YAMLError is an internal error wrapper type.
 type YAMLError struct {
 	Err error
