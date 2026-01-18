@@ -2473,3 +2473,44 @@
         - kind: Mapping
           style: Flow
           content: [{kind: Scalar, text: qux}, {kind: Scalar, tag: '!!int', text: '1'}]
+
+# Merge key encoding tests - verifies !!merge tag is preserved in output
+- node-test:
+    name: merge key with flow mapping value
+    yaml: "!!merge <<: {a: 1}\n"
+    decode: false
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          tag: '!!merge'
+          text: '<<'
+        - kind: Mapping
+          style: Flow
+          content:
+          - {kind: Scalar, text: a}
+          - {kind: Scalar, tag: '!!int', text: '1'}
+
+- node-test:
+    name: merge key in nested mapping
+    yaml: "foo:\n  !!merge <<: {a: 1}\n"
+    decode: false
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          text: foo
+        - kind: Mapping
+          content:
+          - kind: Scalar
+            tag: '!!merge'
+            text: '<<'
+          - kind: Mapping
+            style: Flow
+            content:
+            - {kind: Scalar, text: a}
+            - {kind: Scalar, tag: '!!int', text: '1'}
