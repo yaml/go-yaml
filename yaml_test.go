@@ -1716,7 +1716,7 @@ func TestUnmarshalKnownFields(t *testing.T) {
 		// Then test that it fails on the same thing with KnownFields on.
 		typ := reflect.ValueOf(item.value).Type()
 		value := reflect.New(typ)
-		dec := yaml.NewDecoder(bytes.NewBuffer([]byte(item.data)))
+		dec := yaml.NewDecoder(bytes.NewBufferString(item.data))
 		dec.KnownFields(item.known)
 		err := dec.Decode(value.Interface())
 		assert.ErrorMatches(t, item.error, err)
