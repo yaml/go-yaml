@@ -50,7 +50,7 @@ endif
 include $(MAKES)/go.mk
 
 # Set this from the `make` command to override:
-GOLANGCI-LINT-VERSION ?= v2.6.0
+GOLANGCI-LINT-VERSION ?= v2.8.0
 GOLANGCI-LINT-INSTALLER := \
   https://github.com/golangci/golangci-lint/raw/main/install.sh
 GOLANGCI-LINT := $(LOCAL-BIN)/golangci-lint
