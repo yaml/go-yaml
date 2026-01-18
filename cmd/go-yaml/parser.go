@@ -45,10 +45,10 @@ func (p *Parser) Next() (*Token, error) {
 	}
 
 	token := &Token{
-		StartLine:   int(yamlToken.StartMark.Line) + 1,
-		StartColumn: int(yamlToken.StartMark.Column),
-		EndLine:     int(yamlToken.EndMark.Line) + 1,
-		EndColumn:   int(yamlToken.EndMark.Column),
+		StartLine:   yamlToken.StartMark.Line + 1,
+		StartColumn: yamlToken.StartMark.Column,
+		EndLine:     yamlToken.EndMark.Line + 1,
+		EndColumn:   yamlToken.EndMark.Column,
 	}
 
 	// Call unfoldComments to process comment information from the parser
