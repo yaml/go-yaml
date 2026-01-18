@@ -751,6 +751,9 @@ func (parser *Parser) fetchNextToken() (err error) {
 		if err != nil {
 			return
 		}
+		if parser.skip_comments {
+			return
+		}
 		if len(parser.tokens) > 0 && parser.tokens[len(parser.tokens)-1].Type == BLOCK_ENTRY_TOKEN {
 			// Sequence indicators alone have no line comments. It becomes
 			// a head comment for whatever follows.
@@ -1590,8 +1593,20 @@ func (parser *Parser) scanToNextToken() error {
 
 		// Eat a comment until a line break.
 		if parser.buffer[parser.buffer_pos] == '#' {
-			if err := parser.scanComments(scan_mark); err != nil {
-				return err
+			if parser.skip_comments {
+				// Skip comment without storing it
+				for !isLineBreak(parser.buffer, parser.buffer_pos) && !isZeroChar(parser.buffer, parser.buffer_pos) {
+					parser.skip()
+					if parser.unread < 1 {
+						if err := parser.updateBuffer(1); err != nil {
+							return err
+						}
+					}
+				}
+			} else {
+				if err := parser.scanComments(scan_mark); err != nil {
+					return err
+				}
 			}
 		}
 

@@ -491,6 +491,19 @@ func formatTagForTest(tag string, style yaml.Style) string {
 	return tag
 }
 
+// nodeInfoHasComments recursively checks if a NodeInfo expects any comments
+func nodeInfoHasComments(info *NodeInfo) bool {
+	if info.Head != "" || info.Line != "" || info.Foot != "" {
+		return true
+	}
+	for _, child := range info.Content {
+		if nodeInfoHasComments(child) {
+			return true
+		}
+	}
+	return false
+}
+
 // runNodeTestCase executes a single node test case
 func runNodeTestCase(t *testing.T, tc map[string]any) {
 	t.Helper()
@@ -527,8 +540,16 @@ func runNodeTestCase(t *testing.T, tc map[string]any) {
 
 	if decodeTest {
 		var actualNode yaml.Node
-		err := yaml.Unmarshal([]byte(yamlInput), &actualNode)
-		assert.NoError(t, err)
+		// If the test expects comments, use Loader with WithLegacyComments
+		if nodeInfoHasComments(&expectedInfo) {
+			loader, err := yaml.NewLoader(bytes.NewReader([]byte(yamlInput)), yaml.WithLegacyComments())
+			assert.NoError(t, err)
+			err = loader.Load(&actualNode)
+			assert.NoError(t, err)
+		} else {
+			err := yaml.Unmarshal([]byte(yamlInput), &actualNode)
+			assert.NoError(t, err)
+		}
 
 		// Compare using NodeInfo for better error messages
 		actualInfo := formatNodeInfo(actualNode)

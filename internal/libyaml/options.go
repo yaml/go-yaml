@@ -13,6 +13,20 @@ import (
 	"errors"
 )
 
+// CommentContext provides comment data to comment processors.
+type CommentContext struct {
+	HeadComment []byte
+	LineComment []byte
+	FootComment []byte
+	TailComment []byte
+	StemComment []byte
+}
+
+// CommentProcessor is a callback for processing comments on nodes.
+// It receives the node and comment context, and should populate the node's
+// HeadComment, LineComment, and FootComment fields as appropriate.
+type CommentProcessor func(node *Node, ctx *CommentContext) error
+
 // Options holds configuration for both loading and dumping YAML.
 type Options struct {
 	// Loading options
@@ -32,6 +46,11 @@ type Options struct {
 	ExplicitStart         bool      // Always emit ---
 	ExplicitEnd           bool      // Always emit ...
 	FlowSimpleCollections bool      // Use flow style for simple collections
+
+	// Plugin callbacks
+	CommentProcessor CommentProcessor // Callback for processing comments
+	LegacyComments   bool             // Enable V3-style comment handling
+	SkipComments     bool             // Skip comment scanning for performance
 }
 
 // Option allows configuring YAML loading and dumping operations.
@@ -315,6 +334,32 @@ func WithFlowSimpleCollections(flow ...bool) Option {
 	}
 }
 
+// WithLegacyComments enables V3-style comment handling for backward compatibility.
+//
+// When enabled, comments are populated in Node.HeadComment, Node.LineComment,
+// and Node.FootComment fields during loading. This provides compatibility with
+// go-yaml v3 behavior.
+//
+// When called without arguments, defaults to true.
+//
+// The default is false (comments are not loaded unless using a comment plugin).
+// For new code, consider using comment plugins via WithPlugin() instead.
+func WithLegacyComments(enable ...bool) Option {
+	if len(enable) > 1 {
+		return func(o *Options) error {
+			return errors.New("yaml: WithLegacyComments accepts at most one argument")
+		}
+	}
+	val := len(enable) == 0 || enable[0]
+	return func(o *Options) error {
+		o.LegacyComments = val
+		if val {
+			o.SkipComments = false
+		}
+		return nil
+	}
+}
+
 // CombineOptions combines multiple options into a single Option.
 // This is useful for creating option presets or combining version defaults
 // with custom options.
@@ -353,9 +398,15 @@ func ApplyOptions(opts ...Option) (*Options, error) {
 
 // LegacyOptions holds the default options for legacy APIs like
 // Marshal/Unmarshal.
+//
+// Users can modify this to change defaults for Unmarshal/Marshal:
+//
+//	yaml.LegacyOptions.LegacyComments = true  // Enable comments in Unmarshal
+//	yaml.Unmarshal(data, &node)  // Now includes comments
 var LegacyOptions = &Options{
-	Indent:     4,
-	LineWidth:  -1,
-	Unicode:    true,
-	UniqueKeys: true,
+	Indent:         4,
+	LineWidth:      -1,
+	Unicode:        true,
+	UniqueKeys:     true,
+	LegacyComments: false, // Node comments are opt-in in v4
 }

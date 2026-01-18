@@ -1260,7 +1260,7 @@ func (parser *Parser) appendTagDirective(value TagDirective, allow_duplicates bo
 
 // ParserGetEvents parses the YAML input and returns the generated event stream.
 func ParserGetEvents(in []byte) (string, error) {
-	p := NewComposer(in)
+	p := NewComposer(in, nil)
 	defer p.Destroy()
 	var events strings.Builder
 	var event Event

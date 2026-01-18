@@ -118,7 +118,105 @@ var (
 	// WithFlowSimpleCollections controls flow style for simple collections.
 	// See internal/libyaml.WithFlowSimpleCollections.
 	WithFlowSimpleCollections = libyaml.WithFlowSimpleCollections
+	// WithLegacyComments enables V3-style comment handling.
+	// See internal/libyaml.WithLegacyComments.
+	WithLegacyComments = libyaml.WithLegacyComments
 )
+
+// Plugin options
+
+// validPluginKinds defines the only acceptable plugin kinds.
+// Third parties cannot invent new kinds.
+var validPluginKinds = map[string]bool{
+	"comment": true,
+	"resolve": true,
+}
+
+// WithPlugin adds plugins for YAML processing.
+//
+// Example:
+//
+//	import "go.yaml.in/yaml/v4/plugin/comment/v3"
+//	yaml.Load(data, &out, yaml.V3, yaml.WithPlugin(v3.New()))
+//
+// Add multiple plugins:
+//
+//	yaml.Load(data, &out, yaml.WithPlugin(v3.New(), someOtherPlugin))
+func WithPlugin(plugins ...Plugin) Option {
+	return func(o *libyaml.Options) error {
+		for _, p := range plugins {
+			if p == nil {
+				return errors.New("yaml: plugin cannot be nil")
+			}
+			kind := p.Kind()
+			if !validPluginKinds[kind] {
+				return fmt.Errorf("yaml: unknown plugin kind %q", kind)
+			}
+
+			// Set plugin based on kind
+			switch kind {
+			case "comment":
+				if cp, ok := p.(CommentPlugin); ok {
+					o.CommentProcessor = func(node *libyaml.Node, ctx *libyaml.CommentContext) error {
+						// Convert internal context to public API
+						pubCtx := &CommentContext{
+							HeadComment: ctx.HeadComment,
+							LineComment: ctx.LineComment,
+							FootComment: ctx.FootComment,
+							TailComment: ctx.TailComment,
+							StemComment: ctx.StemComment,
+						}
+						return cp.ProcessNodeComments(node, pubCtx)
+					}
+					o.SkipComments = false
+				}
+			case "resolve":
+				// TODO: implement resolve plugin
+			}
+		}
+		return nil
+	}
+}
+
+// WithoutPlugin removes plugins by kind.
+// Use "*" to remove all plugins.
+//
+// Example:
+//
+//	yaml.Load(data, &out, yaml.V3, yaml.WithoutPlugin("comment"))
+//
+// Remove all plugins:
+//
+//	yaml.Load(data, &out, yaml.V3, yaml.WithoutPlugin("*"))
+func WithoutPlugin(kinds ...string) Option {
+	return func(o *libyaml.Options) error {
+		for _, kind := range kinds {
+			if kind == "*" {
+				o.CommentProcessor = nil
+				o.SkipComments = true
+				return nil
+			}
+			switch kind {
+			case "comment":
+				o.CommentProcessor = nil
+				if !o.LegacyComments {
+					o.SkipComments = true
+				}
+			}
+		}
+		return nil
+	}
+}
+
+// withLegacyComments enables V3 default comment behavior for deprecated functions.
+// This is an internal option not exposed to users.
+func withLegacyComments() Option {
+	return func(o *libyaml.Options) error {
+		o.LegacyComments = true
+		o.SkipComments = false
+		return nil
+	}
+}
 
 // Options combines multiple options into a single Option.
 // This is useful for creating option presets or combining version defaults
@@ -505,7 +603,7 @@ type Decoder struct {
 // Deprecated: Use NewLoader instead. Will be removed in v5.
 func NewDecoder(r io.Reader) *Decoder {
 	return &Decoder{
-		composer: libyaml.NewComposerFromReader(r),
+		composer: libyaml.NewComposerFromReader(r, libyaml.LegacyOptions),
 	}
 }
 
@@ -659,7 +757,7 @@ func unmarshal(in []byte, out any, opts ...Option) (err error) {
 
 	// Check if out implements yaml.Unmarshaler
 	if u, ok := out.(Unmarshaler); ok {
-		p := libyaml.NewComposer(in)
+		p := libyaml.NewComposer(in, o)
 		defer p.Destroy()
 		node := p.Parse()
 		if node != nil {

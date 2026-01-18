@@ -87,6 +87,12 @@ func (parser *Parser) SetEncoding(encoding Encoding) {
 	parser.encoding = encoding
 }
 
+// SetSkipComments enables or disables comment scanning.
+// When enabled, the scanner skips comment tokens for better performance.
+func (parser *Parser) SetSkipComments(skip bool) {
+	parser.skip_comments = skip
+}
+
 // NewEmitter creates a new emitter object.
 func NewEmitter() Emitter {
 	return Emitter{

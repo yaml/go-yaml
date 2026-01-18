@@ -332,7 +332,7 @@ func (n *Node) Encode(v any) (err error) {
 	defer e.Destroy()
 	e.MarshalDoc("", reflect.ValueOf(v))
 	e.Finish()
-	p := NewComposer(e.Out)
+	p := NewComposer(e.Out, nil)
 	p.Textless = true
 	defer p.Destroy()
 	doc := p.Parse()
@@ -358,7 +358,7 @@ func (n *Node) Dump(v any, opts ...Option) (err error) {
 	defer e.Destroy()
 	e.MarshalDoc("", reflect.ValueOf(v))
 	e.Finish()
-	p := NewComposer(e.Out)
+	p := NewComposer(e.Out, nil)
 	p.Textless = true
 	defer p.Destroy()
 	doc := p.Parse()

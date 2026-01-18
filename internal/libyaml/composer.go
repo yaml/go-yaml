@@ -24,26 +24,39 @@ type Composer struct {
 	returnStream bool     // flag to return stream node next
 	atStreamEnd  bool     // at stream end
 	encoding     Encoding // stream encoding from STREAM_START
+	opts         *Options // options for comment handling
 }
 
 // NewComposer creates a new composer from a byte slice.
-func NewComposer(b []byte) *Composer {
+func NewComposer(b []byte, opts *Options) *Composer {
 	p := Composer{
 		Parser: NewParser(),
+		opts:   opts,
 	}
 	if len(b) == 0 {
 		b = []byte{'\n'}
 	}
 	p.Parser.SetInputString(b)
+
+	// Configure comment scanning
+	if opts != nil && opts.SkipComments {
+		p.Parser.SetSkipComments(true)
+	}
 	return &p
 }
 
 // NewComposerFromReader creates a new composer from an io.Reader.
-func NewComposerFromReader(r io.Reader) *Composer {
+func NewComposerFromReader(r io.Reader, opts *Options) *Composer {
 	p := Composer{
 		Parser: NewParser(),
+		opts:   opts,
 	}
 	p.Parser.SetInputReader(r)
+
+	// Configure comment scanning
+	if opts != nil && opts.SkipComments {
+		p.Parser.SetSkipComments(true)
+	}
 	return &p
 }
 
@@ -190,9 +203,28 @@ func (c *Composer) node(kind Kind, defaultTag, tag, value string) *Node {
 	if !c.Textless {
 		n.Line = c.event.StartMark.Line + 1
 		n.Column = c.event.StartMark.Column + 1
-		n.HeadComment = string(c.event.HeadComment)
-		n.LineComment = string(c.event.LineComment)
-		n.FootComment = string(c.event.FootComment)
+
+		// Handle comments based on configuration
+		if c.opts != nil && c.opts.CommentProcessor != nil {
+			// Use comment plugin to process comments
+			ctx := &CommentContext{
+				HeadComment: c.event.HeadComment,
+				LineComment: c.event.LineComment,
+				FootComment: c.event.FootComment,
+				TailComment: c.event.TailComment,
+			}
+			if err := c.opts.CommentProcessor(n, ctx); err != nil {
+				// For now, ignore errors in comment processing
+				// TODO: Consider how to handle comment plugin errors
+				_ = err
+			}
+		} else if c.opts != nil && c.opts.LegacyComments {
+			// V3 default behavior (backward compatible for deprecated functions)
+			n.HeadComment = string(c.event.HeadComment)
+			n.LineComment = string(c.event.LineComment)
+			n.FootComment = string(c.event.FootComment)
+		}
+		// else: no comments (new API default)
 	}
 	return n
 }
