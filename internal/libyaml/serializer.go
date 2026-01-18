@@ -33,8 +33,6 @@ func (r *Representer) node(node *Node, tail string) {
 			} else {
 				rtag, _ := resolve("", node.Value)
 				if rtag == stag && stag != mergeTag {
-					// Don't strip the merge tag - it should be preserved in output
-					// to maintain backward compatibility with tools like yq
 					tag = ""
 				} else if stag == strTag {
 					tag = ""
