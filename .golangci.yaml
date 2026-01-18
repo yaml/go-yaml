@@ -7,11 +7,14 @@ linters:
   enable:
   - dupword
   - govet
+  - mirror
   - misspell
   - nolintlint
   - staticcheck
   - modernize
   - nilnesserr
+  - thelper
+  - unconvert
   disable:
   - errcheck
   - ineffassign

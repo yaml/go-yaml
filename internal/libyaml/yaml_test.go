@@ -19,6 +19,9 @@ func TestYAML(t *testing.T) {
 	})
 }
 
+// runEnumStringTest tests the String() method of various enum types.
+//
+//nolint:thelper // because this function is the real test
 func runEnumStringTest(t *testing.T, tc TestCase) {
 	// Parse enum array: [Type, Value]
 	if len(tc.Enum) != 2 {
@@ -76,6 +79,9 @@ func runEnumStringTest(t *testing.T, tc TestCase) {
 	assert.Equalf(t, want, got, "%s(%d).String() = %q, want %q", enumType, enumValue, got, want)
 }
 
+// runStyleAccessorTest tests the style accessor methods of Event.
+//
+//nolint:thelper // because this function is the real test
 func runStyleAccessorTest(t *testing.T, tc TestCase) {
 	// Parse test array: [Method, STYLE]
 	if len(tc.StyleTest) != 2 {
