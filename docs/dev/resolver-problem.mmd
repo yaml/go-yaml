@@ -5,7 +5,7 @@ flowchart TB
     subgraph LOAD ["LOAD STACK calls resolve()"]
         direction LR
         L_composer[Composer<br/>composer.go line 182<br/>Sets Node.Tag] --> L_resolve1[resolve - 1st call]
-        L_constructor[Constructor<br/>constructor.go line 702<br/>Gets typed value] --> L_resolve2[resolve - 2nd call<br/>DUPLICATE WORK]
+        L_constructor[Constructor<br/>constructor.go line 702<br/>Gets typed value] --> L_resolve2[resolve - 2nd call<br/>Duplicate work]
     end
 
     subgraph DUMP ["DUMP STACK calls resolve()"]
