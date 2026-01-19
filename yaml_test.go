@@ -2173,7 +2173,10 @@ func runEncodeTest(t *testing.T, tc map[string]any) {
 	// Get type and create instance
 	// Note: "type" field in YAML is renamed to "output_type" during normalization
 	// to avoid conflict with the test type ("encode")
-	typeName := tc["output_type"].(string)
+	typeName, ok := tc["output_type"].(string)
+	if !ok {
+		t.Fatalf("output_type must be a string")
+	}
 	data := tc["data"]
 
 	// Create pointer target of the specified type (for addressability)
@@ -2203,7 +2206,10 @@ func runEncodeTest(t *testing.T, tc map[string]any) {
 	}
 
 	// Compare with expected output
-	want := tc["want"].(string)
+	want, ok := tc["want"].(string)
+	if !ok {
+		t.Fatalf("want must be a string")
+	}
 	assert.Equal(t, want, string(output))
 }
 
@@ -2213,7 +2219,10 @@ func runEncodeOptsTest(t *testing.T, tc map[string]any) {
 	// Get type and create instance
 	// Note: "type" field in YAML is renamed to "output_type" during normalization
 	// to avoid conflict with the test type ("encode-opts")
-	typeName := tc["output_type"].(string)
+	typeName, ok := tc["output_type"].(string)
+	if !ok {
+		t.Fatalf("output_type must be a string")
+	}
 	data := tc["data"]
 
 	// Parse options
@@ -2260,7 +2269,10 @@ func runEncodeOptsTest(t *testing.T, tc map[string]any) {
 	}
 
 	// Compare with expected output
-	want := tc["want"].(string)
+	want, ok := tc["want"].(string)
+	if !ok {
+		t.Fatalf("want must be a string")
+	}
 	assert.Equal(t, want, string(output))
 }
 
