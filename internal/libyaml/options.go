@@ -11,6 +11,7 @@ package libyaml
 
 import (
 	"errors"
+	"fmt"
 )
 
 // Options holds configuration for both loading and dumping YAML.
@@ -333,8 +334,13 @@ func WithFlowSimpleCollections(flow ...bool) Option {
 //   - QuoteLegacy: Legacy v2/v3 behavior (mixed quoting)
 func WithQuotePreference(style QuoteStyle) Option {
 	return func(o *Options) error {
-		o.QuotePreference = style
-		return nil
+		switch style {
+		case QuoteSingle, QuoteDouble, QuoteLegacy:
+			o.QuotePreference = style
+			return nil
+		default:
+			return fmt.Errorf("invalid QuoteStyle value: %d", style)
+		}
 	}
 }
 

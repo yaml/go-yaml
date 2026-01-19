@@ -2227,8 +2227,16 @@ func runEncodeOptsTest(t *testing.T, tc map[string]any) {
 
 	// Parse options
 	var opts []yaml.Option
-	if optsMap, ok := tc["opts"].(map[string]any); ok {
-		if rq, ok := optsMap["required-quotes"].(string); ok {
+	if optsRaw, exists := tc["opts"]; exists {
+		optsMap, ok := optsRaw.(map[string]any)
+		if !ok {
+			t.Fatalf("opts must be a map, got %T", optsRaw)
+		}
+		if rqRaw, exists := optsMap["required-quotes"]; exists {
+			rq, ok := rqRaw.(string)
+			if !ok {
+				t.Fatalf("required-quotes must be a string, got %T", rqRaw)
+			}
 			switch rq {
 			case "single":
 				opts = append(opts, yaml.WithQuotePreference(yaml.QuoteSingle))
