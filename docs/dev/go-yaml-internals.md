@@ -69,7 +69,7 @@ Info:
 - Input: `[]byte` or `io.Reader`
 - Output: UTF-8 normalized bytes in `parser.buffer`
 - Called From:
-  * Scanner (`scanner.go / fetchNextToken / 688`)
+  * Scanner ([`scanner.go`](../../internal/libyaml/scanner.go) / `fetchNextToken()`)
 - Important Processes:
   * `reader.go / determineEncoding       - Detects UTF-8/UTF-16 from BOM`
   * `reader.go / updateRawBuffer         - Reads more bytes from input source`
@@ -97,7 +97,7 @@ Info:
 - Input: UTF-8 bytes from reader buffer
 - Output: `Token` struct
 - Called From:
-  * Parser (`parser.go / peekToken / 56`)
+  * Parser ([`parser.go`](../../internal/libyaml/parser.go) / `peekToken()`)
 - Important Processes:
   * `scanner.go / fetchMoreTokens        - Ensures token queue has enough tokens`
   * `scanner.go / fetchNextToken         - Dispatches to token fetchers by character`
@@ -106,7 +106,7 @@ Info:
   * `reader.go / updateBuffer            - Refills input buffer (calls Reader)`
 
 Transforms:
-* **Character classification and dispatch** (`fetchNextToken()` line 722)
+* **Character classification and dispatch** ([`fetchNextToken()`](../../internal/libyaml/scanner.go))
 * **Flow level tracking** (`flow_level` field)
 * **Indentation stack management** (`indent`, `indents` fields)
 * **Simple key candidate tracking** (`simple_keys` stack)
@@ -161,8 +161,8 @@ Info:
 - Input: `Token` stream from Scanner (via internal `peekToken()`/`skipToken()`)
 - Output: `Event` struct
 - Called From:
-  * Composer (`composer.go / Composer.peek / 84`)
-  * Composer (`composer.go / Composer.expect / 92`)
+  * Composer ([`composer.go / Composer.peek()`](../../internal/libyaml/composer.go))
+  * Composer ([`composer.go / Composer.expect()`](../../internal/libyaml/composer.go))
 - Important Processes:
   * `parser.go / stateMachine            - Dispatches to parser state handlers`
   * `parser.go / peekToken               - Looks at next token (calls Scanner)`
@@ -222,9 +222,9 @@ Info:
 - Input: `Event` stream from owned Parser (via internal `peek()`/`expect()`)
 - Output: `*Node` tree
 - Called From:
-  * Entry point `yaml.go / unmarshal / 664`
-  * Entry point `yaml.go / Decoder.Decode / 532`
-  * Entry point `constructor.go / Construct / 348`
+  * Entry point [`yaml.go / unmarshal()`](../../yaml.go)
+  * Entry point [`yaml.go / Decoder.Decode()`](../../yaml.go)
+  * Entry point [`constructor.go / Construct()`](../../internal/libyaml/constructor.go)
 - Important Processes:
   * `composer.go / peek                  - Peeks at next event type (calls Parser)`
   * `composer.go / expect                - Consumes event of expected type (calls Parser)`
@@ -263,10 +263,10 @@ Info:
 - Input: Tag string + scalar value
 - Output: Resolved tag + typed Go value
 - Called From:
-  * Composer (`composer.go:182`)
-  * Constructor (`constructor.go:702`)
-  * Representer (`representer.go:477`)
-  * Serializer (`serializer.go:34`)
+  * Composer ([`composer.go`](../../internal/libyaml/composer.go) / `scalar()`)
+  * Constructor ([`constructor.go`](../../internal/libyaml/constructor.go) / `scalar()`)
+  * Representer ([`representer.go`](../../internal/libyaml/representer.go) / `stringv()`)
+  * Serializer ([`serializer.go`](../../internal/libyaml/serializer.go) / `node()`)
 - Important Processes:
   * `resolver.go / parseTimestamp        - Parses ISO 8601 timestamps`
   * `strconv / ParseInt                  - Parses signed integers`
@@ -295,9 +295,9 @@ Info:
 - Input: `*Node` tree (received from Composer via entry point)
 - Output: `reflect.Value` (Go values modified in place)
 - Called From:
-  * Entry point `yaml.go / unmarshal / 671`
-  * Entry point `yaml.go / Decoder.Decode / 540`
-  * Entry point `node.go / Node.Decode / 285`
+  * Entry point [`yaml.go / unmarshal()`](../../yaml.go)
+  * Entry point [`yaml.go / Decoder.Decode()`](../../yaml.go)
+  * Entry point [`node.go / Node.Decode()`](../../internal/libyaml/node.go)
 - Important Processes:
   * `constructor.go / prepare            - Checks for Unmarshaler interface`
   * `constructor.go / scalar             - Converts ScalarNode to Go value`
@@ -328,7 +328,7 @@ Transforms:
 Notes:
 * `resolve()` is called again here - duplicates work done in Composer
 * Aliases are fully reconstructed each time (not shared)
-* Duplicate key detection (lines 926-944) compares all keys in mappings when enabled
+* Duplicate key detection (in [`mapping()`](../../internal/libyaml/constructor.go) function) compares all keys in mappings when enabled
 * Merge key rules: explicit keys take precedence over merged keys, can merge a single mapping or a sequence of mappings
 * Inline rules: only one inline map allowed per struct, requires string keys, unknown keys are stored in the inline map field
 * Indicated strings (quoted or literal style) skip tag resolution via `indicatedString()` check
@@ -365,10 +365,10 @@ The scanner identifies and classifies comments as it processes tokens:
   - Indentation relative to `next_indent`
   - Flow context (all remaining comments become foot comments in `[...]` or `{...}`)
   - Empty line boundaries (blank lines separate head from foot)
-- **2-token lookahead requirement** (lines 658-662 in scanner.go) - Scanner needs to peek ahead to properly associate comments
+- **2-token lookahead requirement** ([`scanLineComment()`](../../internal/libyaml/scanner.go)) - Scanner needs to peek ahead to properly associate comments
 - **Special case**: Sequence entry line comments are transformed to head comments
 
-Location: `internal/libyaml/scanner.go:1815` (`scanComments`), `scanner.go:658` (`scanLineComment`)
+Location: [`scanner.go`](../../internal/libyaml/scanner.go) / `scanComments()` and `scanLineComment()`
 
 ### Parser: Comment Attachment
 
@@ -381,7 +381,7 @@ The parser accumulates comments from tokens and attaches them to events:
 - **`splitStemComment()`** - Handles comments on entries preceding nested structures (splits into head comment for the nested item)
 - **Document header splitting** - HeadComment is split at empty lines; content after blank goes to FootComment
 
-Location: `internal/libyaml/parser.go:109` (`UnfoldComments`), `parser.go:136` (`setEventComments`), `parser.go:193` (`splitStemComment`)
+Location: [`parser.go`](../../internal/libyaml/parser.go) / `UnfoldComments()`, `setEventComments()`, and `splitStemComment()`
 
 ### Composer: Comment Transfer and Reassignment
 
@@ -394,7 +394,7 @@ The composer transfers comments from events to nodes and applies reassignment lo
   3. **TAIL_COMMENT_EVENT FootComment goes to Key** - Tail comments (from block-end events) are assigned to the key's FootComment
   4. **Final mapping FootComment moves to last key** - At the end of a mapping, if the mapping has a FootComment, it's moved to the last key's FootComment
 
-Location: `internal/libyaml/composer.go:177` (`mapping` function)
+Location: [`composer.go`](../../internal/libyaml/composer.go) / `mapping()` function
 
 ### Edge Cases
 
@@ -416,7 +416,7 @@ The scanner enforces maximum nesting depth to prevent stack overflow:
 - `max_flow_level = 10000` - Maximum nesting in flow style `[[[...]]]` or `{{{...}}}`
 - `max_indents = 10000` - Maximum nesting via indentation (block style)
 
-Location: `internal/libyaml/scanner.go:961-1015`
+Location: [`scanner.go`](../../internal/libyaml/scanner.go) / flow level and indent tracking
 
 ### Alias Expansion Ratio (Constructor)
 
@@ -427,7 +427,7 @@ Prevents "billion laughs" style attacks via nested alias expansion:
 
 Error: `"document contains excessive aliasing"`
 
-Location: `internal/libyaml/constructor.go:507-534`
+Location: [`constructor.go`](../../internal/libyaml/constructor.go) / `allowedAliasRatio()` function and expansion check in `sequence()`
 
 ### Self-Referential Alias Detection (Constructor)
 
@@ -435,7 +435,7 @@ Detects and prevents infinite loops from aliases referencing themselves:
 - Tracks nodes being expanded in `c.aliases` map
 - Error: `"anchor '%s' value contains itself"`
 
-Location: `internal/libyaml/constructor.go:671-681`
+Location: [`constructor.go`](../../internal/libyaml/constructor.go) / `alias()` function
 
 
 ## Dump Stack
@@ -465,9 +465,9 @@ Info:
 - Input: `reflect.Value` + `Options`
 - Output: Events pushed to owned Emitter
 - Called From:
-  * Entry point `yaml.go / Marshal / 723`
-  * Entry point `yaml.go / Encoder.Encode / 586`
-  * Entry point `node.go / Node.Encode / 333`
+  * Entry point [`yaml.go / Marshal()`](../../yaml.go)
+  * Entry point [`yaml.go / Encoder.Encode()`](../../yaml.go)
+  * Entry point [`node.go / Node.Encode()`](../../internal/libyaml/node.go)
 - Important Processes:
   * `representer.go / marshal            - Dispatches by Go type`
   * `representer.go / emit               - Sends event to owned Emitter`
@@ -480,7 +480,7 @@ Info:
   * `resolver.go / resolve               - Checks if quoting needed`
 
 Transforms:
-* **Go type dispatch** (type switch at line 247)
+* **Go type dispatch** ([`marshal()`](../../internal/libyaml/representer.go) type switch)
 * **Custom Marshaler interface detection and dispatch**
 * **TextMarshaler support** - detects and calls TextMarshaler interface methods
 * **Struct field ordering and filtering** (exported, by tag, omitempty)
@@ -507,8 +507,8 @@ Info:
 - Input: `*Node` tree
 - Output: Events pushed to Emitter (via Representer)
 - Called From:
-  * Representer (`representer.go / Representer.nodev / 567`)
-  * Representer (`representer.go / marshal / 260`)
+  * Representer ([`representer.go / Representer.nodev()`](../../internal/libyaml/representer.go))
+  * Representer ([`representer.go / marshal()`](../../internal/libyaml/representer.go))
 - Important Processes:
   * `representer.go / emit               - Sends event to Emitter (via Representer)`
   * `representer.go / nilv               - Emits null scalar`
@@ -541,8 +541,8 @@ Info:
 - Input: `Event` stream (queued in `emitter.events`)
 - Output: UTF-8 bytes to `emitter.buffer`
 - Called From:
-  * Representer (`representer.go / Representer.must / 210`)
-  * Representer (`representer.go / Representer.emit / 201`)
+  * Representer ([`representer.go / Representer.must()`](../../internal/libyaml/representer.go))
+  * Representer ([`representer.go / Representer.emit()`](../../internal/libyaml/representer.go))
 - Important Processes:
   * `emitter.go / needMoreEvents         - Checks if more events needed for lookahead`
   * `emitter.go / analyzeEvent           - Analyzes scalar/tag for style decisions`
@@ -577,7 +577,7 @@ Info:
 - Input: `emitter.buffer`
 - Output: bytes to `write_handler` callback
 - Called From:
-  * Emitter (`emitter.go / put / 19`)
+  * Emitter ([`emitter.go / put()`](../../internal/libyaml/emitter.go))
 - Important Processes:
   * `write_handler callback              - Configured output destination`
 
@@ -620,7 +620,7 @@ type Token struct {
 }
 ```
 
-Location: `internal/libyaml/yaml.go:249`
+Location: [`yaml.go`](../../internal/libyaml/yaml.go) / `Token` struct definition
 
 Notes:
 * Tag handle and suffix are still separate here
@@ -653,7 +653,7 @@ type Event struct {
 }
 ```
 
-Location: `internal/libyaml/yaml.go:321`
+Location: [`yaml.go`](../../internal/libyaml/yaml.go) / `Event` struct definition
 
 Notes:
 * Tag is now full URI - handle/suffix split is lost
@@ -696,7 +696,7 @@ type Node struct {
 }
 ```
 
-Location: `internal/libyaml/node.go:129`
+Location: [`node.go`](../../internal/libyaml/node.go) / `Node` struct definition
 
 Notes:
 * Tag is short form - full URI is lost
@@ -744,10 +744,10 @@ See also:
 
 | Location | Stage | Purpose |
 |----------|-------|---------|
-| `composer.go:182` | Load | Set Node.Tag for untagged scalars |
-| `constructor.go:702` | Load | Get actual Go value |
-| `representer.go:473` | Dump | Check if quoting needed |
-| `serializer.go:34` | Dump | Check if tag can be elided |
+| [`composer.go`](../../internal/libyaml/composer.go) / `scalar()` | Load | Set Node.Tag for untagged scalars |
+| [`constructor.go`](../../internal/libyaml/constructor.go) / `scalar()` | Load | Get actual Go value |
+| [`representer.go`](../../internal/libyaml/representer.go) / `stringv()` | Dump | Check if quoting needed |
+| [`serializer.go`](../../internal/libyaml/serializer.go) / `node()` | Dump | Check if tag can be elided |
 
 **Problem:** Same expensive resolution logic runs multiple times. Tags are resolved but values aren't stored.
 
@@ -811,7 +811,7 @@ Different entry points use different default settings, which can cause inconsist
 
 `Load/Dump` use v4 defaults; `Marshal/Unmarshal` use Legacy defaults.
 
-Location: `internal/libyaml/options.go:334-361`
+Location: [`options.go`](../../internal/libyaml/options.go) / `Options` struct v4 defaults and `LegacyOptions` variable
 
 **Problem:** Users may see different formatting depending on which API they use, even with identical data.
 
