@@ -72,6 +72,16 @@ const (
 	QuoteLegacy                   // Legacy behavior: double in representer, single in emitter.
 )
 
+// ScalarStyle returns the scalar style for this quote preference in the
+// representer/serializer context.
+// In this context, both QuoteDouble and QuoteLegacy use double quotes.
+func (q QuoteStyle) ScalarStyle() ScalarStyle {
+	if q == QuoteDouble || q == QuoteLegacy {
+		return DOUBLE_QUOTED_SCALAR_STYLE
+	}
+	return SINGLE_QUOTED_SCALAR_STYLE
+}
+
 type ErrorType int
 
 // Many bad things could happen with the parser and emitter.

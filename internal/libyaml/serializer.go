@@ -158,11 +158,7 @@ func (r *Representer) node(node *Node, tail string) {
 		case strings.Contains(value, "\n"):
 			style = LITERAL_SCALAR_STYLE
 		case forceQuoting:
-			if r.quotePreference == QuoteDouble || r.quotePreference == QuoteLegacy {
-				style = DOUBLE_QUOTED_SCALAR_STYLE
-			} else {
-				style = SINGLE_QUOTED_SCALAR_STYLE
-			}
+			style = r.quotePreference.ScalarStyle()
 		}
 
 		r.emitScalar(value, node.Anchor, tag, style, []byte(node.HeadComment), []byte(node.LineComment), []byte(node.FootComment), []byte(tail))

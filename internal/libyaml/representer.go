@@ -496,11 +496,7 @@ func (r *Representer) stringv(tag string, in reflect.Value) {
 	case canUsePlain:
 		style = PLAIN_SCALAR_STYLE
 	default:
-		if r.quotePreference == QuoteDouble || r.quotePreference == QuoteLegacy {
-			style = DOUBLE_QUOTED_SCALAR_STYLE
-		} else {
-			style = SINGLE_QUOTED_SCALAR_STYLE
-		}
+		style = r.quotePreference.ScalarStyle()
 	}
 	r.emitScalar(s, "", tag, style, nil, nil, nil, nil)
 }
