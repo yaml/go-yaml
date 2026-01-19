@@ -965,3 +965,24 @@
     want: |
       v: '-'
 
+# Plain strings should remain unquoted regardless of quote preference
+- encode-opts:
+    name: QuoteSingle - plain string stays plain
+    data:
+      v: hello
+    type: map[string]string
+    opts:
+      required-quotes: single
+    want: |
+      v: hello
+
+- encode-opts:
+    name: QuoteDouble - plain string stays plain
+    data:
+      v: hello
+    type: map[string]string
+    opts:
+      required-quotes: double
+    want: |
+      v: hello
+
