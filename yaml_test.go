@@ -2231,11 +2231,11 @@ func runEncodeOptsTest(t *testing.T, tc map[string]any) {
 		if rq, ok := optsMap["required-quotes"].(string); ok {
 			switch rq {
 			case "single":
-				opts = append(opts, yaml.WithRequiredQuotes(yaml.QuoteSingle))
+				opts = append(opts, yaml.WithQuotePreference(yaml.QuoteSingle))
 			case "double":
-				opts = append(opts, yaml.WithRequiredQuotes(yaml.QuoteDouble))
+				opts = append(opts, yaml.WithQuotePreference(yaml.QuoteDouble))
 			case "legacy":
-				opts = append(opts, yaml.WithRequiredQuotes(yaml.QuoteLegacy))
+				opts = append(opts, yaml.WithQuotePreference(yaml.QuoteLegacy))
 			default:
 				t.Fatalf("Unknown required-quotes value: %s", rq)
 			}

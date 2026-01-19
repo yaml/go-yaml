@@ -296,6 +296,60 @@ config:
 
 **Default:** false
 
+##### `yaml.WithQuotePreference(style yaml.QuoteStyle)`
+
+Controls which type of quotes to use when quoting is required by the YAML spec.
+
+**Important:** This option only affects strings that *require* quoting. Plain strings that don't need quoting remain unquoted regardless of this setting.
+
+Quoting is required for:
+- Strings that look like other YAML types (true, false, null, 123, etc.)
+- Strings with leading/trailing whitespace
+- Strings containing special YAML syntax characters
+- Empty strings in certain contexts
+
+```go
+// Use single quotes when quoting is required (v4 default)
+yaml.NewDumper(w, yaml.WithQuotePreference(yaml.QuoteSingle))
+
+// Use double quotes when quoting is required
+yaml.NewDumper(w, yaml.WithQuotePreference(yaml.QuoteDouble))
+
+// Use legacy v2/v3 behavior (mixed quoting)
+yaml.NewDumper(w, yaml.WithQuotePreference(yaml.QuoteLegacy))
+```
+
+**Example:**
+
+```yaml
+# WithQuotePreference(yaml.QuoteSingle) - v4 default
+plain: hello       # Plain string stays plain
+bool: 'true'       # Looks like bool, gets single quotes
+number: '123'      # Looks like number, gets single quotes
+spaces: ' hello'   # Leading space, gets single quotes
+
+# WithQuotePreference(yaml.QuoteDouble)
+plain: hello       # Plain string stays plain
+bool: "true"       # Looks like bool, gets double quotes
+number: "123"      # Looks like number, gets double quotes
+spaces: " hello"   # Leading space, gets double quotes
+
+# WithQuotePreference(yaml.QuoteLegacy) - v2/v3 behavior
+plain: hello       # Plain string stays plain
+bool: "true"       # Looks like bool, gets double quotes
+number: "123"      # Looks like number, gets double quotes
+spaces: ' hello'   # Leading space, gets single quotes
+```
+
+**Use case:**
+- `QuoteSingle`: Modern YAML style with single quotes (cleaner, less escaping)
+- `QuoteDouble`: When you prefer double quotes or need consistency with JSON-style
+- `QuoteLegacy`: Backward compatibility with go-yaml v2/v3 output
+
+**Default:**
+- v4: `QuoteSingle`
+- v2/v3: `QuoteLegacy`
+
 #### Loader (Decoding) Options
 
 **Boolean Options:** All boolean options support variadic arguments.
@@ -393,13 +447,14 @@ go-yaml v2, v3, or v4 behavior.
 
 ### What's the difference?
 
-| Option                | v2  | v3  | v4  |
-|-----------------------|-----|-----|-----|
-| Indent                | 2   | 4   | 2   |
-| Compact Sequences     | No  | No  | Yes |
-| Line Width            | 80  | 80  | 80  |
-| Unicode               | Yes | Yes | Yes |
-| Unique Keys           | Yes | Yes | Yes |
+| Option                | v2      | v3      | v4     |
+|-----------------------|---------|---------|--------|
+| Indent                | 2       | 4       | 2      |
+| Compact Sequences     | No      | No      | Yes    |
+| Line Width            | 80      | 80      | 80     |
+| Unicode               | Yes     | Yes     | Yes    |
+| Unique Keys           | Yes     | Yes     | Yes    |
+| Quote Preference      | Legacy  | Legacy  | Single |
 
 **Note:** v4 uses compact sequences (modern YAML standard) while v2/v3 preserve
 the historical non-compact behavior for backward compatibility.
@@ -491,6 +546,7 @@ dumper, _ := yaml.NewDumper(writer, opts)
 - `explicit-start` - Boolean
 - `explicit-end` - Boolean
 - `flow-simple-coll` - Boolean
+- `quote-preference` - String (single, double, legacy)
 - `known-fields` - Boolean
 - `single-document` - Boolean
 - `unique-keys` - Boolean

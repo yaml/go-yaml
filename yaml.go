@@ -47,7 +47,7 @@ var V2 = Options(
 	WithLineWidth(80),
 	WithUnicode(true),
 	WithUniqueKeys(true),
-	WithRequiredQuotes(QuoteLegacy),
+	WithQuotePreference(QuoteLegacy),
 )
 
 // V3 defaults:
@@ -57,7 +57,7 @@ var V3 = Options(
 	WithLineWidth(80),
 	WithUnicode(true),
 	WithUniqueKeys(true),
-	WithRequiredQuotes(QuoteLegacy),
+	WithQuotePreference(QuoteLegacy),
 )
 
 // V4 defaults:
@@ -67,7 +67,7 @@ var V4 = Options(
 	WithLineWidth(80),
 	WithUnicode(true),
 	WithUniqueKeys(true),
-	WithRequiredQuotes(QuoteSingle),
+	WithQuotePreference(QuoteSingle),
 )
 
 //-----------------------------------------------------------------------------
@@ -121,9 +121,9 @@ var (
 	// WithFlowSimpleCollections controls flow style for simple collections.
 	// See internal/libyaml.WithFlowSimpleCollections.
 	WithFlowSimpleCollections = libyaml.WithFlowSimpleCollections
-	// WithRequiredQuotes sets quote style when quoting is required.
-	// See internal/libyaml.WithRequiredQuotes.
-	WithRequiredQuotes = libyaml.WithRequiredQuotes
+	// WithQuotePreference sets preferred quote style when quoting is required.
+	// See internal/libyaml.WithQuotePreference.
+	WithQuotePreference = libyaml.WithQuotePreference
 )
 
 // Options combines multiple options into a single Option.
