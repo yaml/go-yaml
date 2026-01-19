@@ -913,6 +913,15 @@ func (emitter *Emitter) emitAlias(event *Event) error {
 	return nil
 }
 
+// requiredQuoteStyle returns the appropriate quote style based on the
+// emitter's requiredQuotes setting.
+func (emitter *Emitter) requiredQuoteStyle() ScalarStyle {
+	if emitter.requiredQuotes == QuoteDouble {
+		return DOUBLE_QUOTED_SCALAR_STYLE
+	}
+	return SINGLE_QUOTED_SCALAR_STYLE
+}
+
 // Expect SCALAR.
 func (emitter *Emitter) emitScalar(event *Event) error {
 	if err := emitter.selectScalarStyle(event); err != nil {
@@ -1051,25 +1060,13 @@ func (emitter *Emitter) selectScalarStyle(event *Event) error {
 	if style == PLAIN_SCALAR_STYLE {
 		if emitter.flow_level > 0 && !emitter.scalar_data.flow_plain_allowed ||
 			emitter.flow_level == 0 && !emitter.scalar_data.block_plain_allowed {
-			if emitter.requiredQuotes == QuoteDouble {
-				style = DOUBLE_QUOTED_SCALAR_STYLE
-			} else {
-				style = SINGLE_QUOTED_SCALAR_STYLE
-			}
+			style = emitter.requiredQuoteStyle()
 		}
 		if len(emitter.scalar_data.value) == 0 && (emitter.flow_level > 0 || emitter.simple_key_context) {
-			if emitter.requiredQuotes == QuoteDouble {
-				style = DOUBLE_QUOTED_SCALAR_STYLE
-			} else {
-				style = SINGLE_QUOTED_SCALAR_STYLE
-			}
+			style = emitter.requiredQuoteStyle()
 		}
 		if no_tag && !event.Implicit {
-			if emitter.requiredQuotes == QuoteDouble {
-				style = DOUBLE_QUOTED_SCALAR_STYLE
-			} else {
-				style = SINGLE_QUOTED_SCALAR_STYLE
-			}
+			style = emitter.requiredQuoteStyle()
 		}
 	}
 	if style == SINGLE_QUOTED_SCALAR_STYLE {
