@@ -914,9 +914,9 @@ func (emitter *Emitter) emitAlias(event *Event) error {
 }
 
 // requiredQuoteStyle returns the appropriate quote style based on the
-// emitter's requiredQuotes setting.
+// emitter's quotePreference setting.
 func (emitter *Emitter) requiredQuoteStyle() ScalarStyle {
-	if emitter.requiredQuotes == QuoteDouble {
+	if emitter.quotePreference == QuoteDouble {
 		return DOUBLE_QUOTED_SCALAR_STYLE
 	}
 	return SINGLE_QUOTED_SCALAR_STYLE

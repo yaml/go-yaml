@@ -734,12 +734,12 @@ type Emitter struct {
 
 	// Emitter stuff
 
-	canonical      bool       // If the output is in the canonical style?
-	BestIndent     int        // The number of indentation spaces.
-	best_width     int        // The preferred width of the output lines.
-	unicode        bool       // Allow unescaped non-ASCII characters?
-	line_break     LineBreak  // The preferred line break.
-	requiredQuotes QuoteStyle // Quote style when quoting is required.
+	canonical       bool       // If the output is in the canonical style?
+	BestIndent      int        // The number of indentation spaces.
+	best_width      int        // The preferred width of the output lines.
+	unicode         bool       // Allow unescaped non-ASCII characters?
+	line_break      LineBreak  // The preferred line break.
+	quotePreference QuoteStyle // Preferred quote style when quoting is required.
 
 	state  EmitterState   // The current emitter state.
 	states []EmitterState // The stack of states.

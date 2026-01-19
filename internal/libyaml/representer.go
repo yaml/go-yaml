@@ -152,7 +152,7 @@ type Representer struct {
 	explicitStart         bool
 	explicitEnd           bool
 	flowSimpleCollections bool
-	requiredQuotes        QuoteStyle
+	quotePreference       QuoteStyle
 }
 
 // NewRepresenter creates a new YAML representr with the given options.
@@ -162,7 +162,7 @@ type Representer struct {
 func NewRepresenter(writer io.Writer, opts *Options) *Representer {
 	emitter := NewEmitter()
 	emitter.CompactSequenceIndent = opts.CompactSeqIndent
-	emitter.requiredQuotes = opts.RequiredQuotes
+	emitter.quotePreference = opts.QuotePreference
 	emitter.SetWidth(opts.LineWidth)
 	emitter.SetUnicode(opts.Unicode)
 	emitter.SetCanonical(opts.Canonical)
@@ -175,7 +175,7 @@ func NewRepresenter(writer io.Writer, opts *Options) *Representer {
 		explicitStart:         opts.ExplicitStart,
 		explicitEnd:           opts.ExplicitEnd,
 		flowSimpleCollections: opts.FlowSimpleCollections,
-		requiredQuotes:        opts.RequiredQuotes,
+		quotePreference:       opts.QuotePreference,
 	}
 
 	if writer != nil {
@@ -496,7 +496,7 @@ func (r *Representer) stringv(tag string, in reflect.Value) {
 	case canUsePlain:
 		style = PLAIN_SCALAR_STYLE
 	default:
-		if r.requiredQuotes == QuoteDouble || r.requiredQuotes == QuoteLegacy {
+		if r.quotePreference == QuoteDouble || r.quotePreference == QuoteLegacy {
 			style = DOUBLE_QUOTED_SCALAR_STYLE
 		} else {
 			style = SINGLE_QUOTED_SCALAR_STYLE

@@ -32,7 +32,7 @@ type Options struct {
 	ExplicitStart         bool       // Always emit ---
 	ExplicitEnd           bool       // Always emit ...
 	FlowSimpleCollections bool       // Use flow style for simple collections
-	RequiredQuotes        QuoteStyle // Quote style when quoting is required
+	QuotePreference       QuoteStyle // Preferred quote style when quoting is required
 }
 
 // Option allows configuring YAML loading and dumping operations.
@@ -316,15 +316,24 @@ func WithFlowSimpleCollections(flow ...bool) Option {
 	}
 }
 
-// WithRequiredQuotes sets the quote style to use when quoting is required.
+// WithQuotePreference sets the preferred quote style for strings that require
+// quoting.
+//
+// This option only affects strings that require quoting per the YAML spec.
+// Plain strings that don't need quoting remain unquoted regardless of this
+// setting. Quoting is required for:
+//   - Strings that look like other YAML types (true, false, null, 123, etc.)
+//   - Strings with leading/trailing whitespace
+//   - Strings containing special YAML syntax characters
+//   - Empty strings in certain contexts
 //
 // Quote styles:
-//   - QuoteSingle: Use single quotes when quoting is required (v4 default)
-//   - QuoteDouble: Use double quotes when quoting is required
-//   - QuoteLegacy: Use legacy behavior (double in representer, single in emitter)
-func WithRequiredQuotes(style QuoteStyle) Option {
+//   - QuoteSingle: Use single quotes (v4 default)
+//   - QuoteDouble: Use double quotes
+//   - QuoteLegacy: Legacy v2/v3 behavior (mixed quoting)
+func WithQuotePreference(style QuoteStyle) Option {
 	return func(o *Options) error {
-		o.RequiredQuotes = style
+		o.QuotePreference = style
 		return nil
 	}
 }
@@ -367,9 +376,9 @@ func ApplyOptions(opts ...Option) (*Options, error) {
 
 // DefaultOptions holds the default options for APIs that don't accept options.
 var DefaultOptions = &Options{
-	Indent:         4,
-	LineWidth:      -1,
-	Unicode:        true,
-	UniqueKeys:     true,
-	RequiredQuotes: QuoteLegacy,
+	Indent:          4,
+	LineWidth:       -1,
+	Unicode:         true,
+	UniqueKeys:      true,
+	QuotePreference: QuoteLegacy,
 }

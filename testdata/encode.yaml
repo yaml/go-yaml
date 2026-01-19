@@ -720,7 +720,7 @@
     want: |
       "hello\n  "
 
-# WithRequiredQuotes tests - QuoteSingle (v4 default)
+# WithQuotePreference tests - QuoteSingle (v4 default)
 - encode-opts:
     name: QuoteSingle - string "true"
     data:
@@ -801,7 +801,7 @@
     want: |
       v: '-'
 
-# WithRequiredQuotes tests - QuoteDouble
+# WithQuotePreference tests - QuoteDouble
 - encode-opts:
     name: QuoteDouble - string "true"
     data:
@@ -882,7 +882,7 @@
     want: |
       v: "-"
 
-# WithRequiredQuotes tests - QuoteLegacy (v3 behavior)
+# WithQuotePreference tests - QuoteLegacy (v3 behavior)
 # Legacy: bool-like strings (representer) → double quotes
 # Legacy: whitespace strings (emitter) → single quotes
 - encode-opts:
