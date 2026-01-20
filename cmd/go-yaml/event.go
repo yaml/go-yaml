@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"strings"
 
 	"go.yaml.in/yaml/v4"
 	"go.yaml.in/yaml/v4/internal/libyaml"
@@ -68,7 +67,7 @@ func ProcessEvents(reader io.Reader, profuse, compact, unmarshal bool) error {
 	return processEventsDecode(reader, profuse, compact)
 }
 
-// processEventsDecode uses Loader.Load for YAML processing
+// processEventsDecode uses libyaml.Parser.Parse for YAML processing
 func processEventsDecode(reader io.Reader, profuse, compact bool) error {
 	// Read all input from reader
 	input, err := io.ReadAll(reader)
@@ -76,50 +75,11 @@ func processEventsDecode(reader io.Reader, profuse, compact bool) error {
 		return fmt.Errorf("failed to read input: %w", err)
 	}
 
-	// Get implicit flags from libyaml parser
-	implicitFlags, err := getDocumentImplicitFlags(input)
+	// Get events from parser directly
+	events, err := getEventsFromParser(input, profuse)
 	if err != nil {
 		return err
 	}
-
-	// Use yaml.Loader to get events with comments
-	loader, err := yaml.NewLoader(bytes.NewReader(input))
-	if err != nil {
-		return fmt.Errorf("failed to create loader: %w", err)
-	}
-	docIndex := 0
-	var allEvents []*Event
-
-	for {
-		var node yaml.Node
-		err := loader.Load(&node)
-		if err != nil {
-			if err.Error() == "EOF" {
-				break
-			}
-			return fmt.Errorf("failed to load YAML: %w", err)
-		}
-
-		// Get events from node (includes comments)
-		events := processNodeToEvents(&node, profuse)
-
-		// Augment document start/end events with implicit flags
-		if docIndex < len(implicitFlags) {
-			for _, event := range events {
-				switch event.Type {
-				case "DOCUMENT-START":
-					event.Implicit = implicitFlags[docIndex].StartImplicit
-				case "DOCUMENT-END":
-					event.Implicit = implicitFlags[docIndex].EndImplicit
-				}
-			}
-		}
-
-		allEvents = append(allEvents, events...)
-		docIndex++
-	}
-
-	events := allEvents
 
 	if compact {
 		// For compact mode, output each event as a flow style mapping in a sequence
@@ -227,7 +187,7 @@ func processEventsDecode(reader io.Reader, profuse, compact bool) error {
 	return nil
 }
 
-// processEventsUnmarshal uses yaml.Unmarshal for YAML processing with implicit field augmentation
+// processEventsUnmarshal uses libyaml.Parser.Parse for YAML processing
 func processEventsUnmarshal(reader io.Reader, profuse, compact bool) error {
 	// Read all input from reader
 	input, err := io.ReadAll(reader)
@@ -235,49 +195,11 @@ func processEventsUnmarshal(reader io.Reader, profuse, compact bool) error {
 		return fmt.Errorf("failed to read input: %w", err)
 	}
 
-	// Get implicit flags from libyaml parser
-	implicitFlags, err := getDocumentImplicitFlags(input)
+	// Get events from parser directly
+	events, err := getEventsFromParser(input, profuse)
 	if err != nil {
 		return err
 	}
-
-	// Split input into documents
-	documents := bytes.Split(input, []byte("---"))
-	docIndex := 0
-	var allEvents []*Event
-
-	for _, doc := range documents {
-		// Skip empty documents
-		if len(bytes.TrimSpace(doc)) == 0 {
-			continue
-		}
-
-		// Convert to yaml.Node for event processing
-		var node yaml.Node
-		if err := yaml.Load(doc, &node); err != nil {
-			return fmt.Errorf("failed to load YAML to node: %w", err)
-		}
-
-		// Get events from node (includes comments)
-		events := processNodeToEvents(&node, profuse)
-
-		// Augment document start/end events with implicit flags
-		if docIndex < len(implicitFlags) {
-			for _, event := range events {
-				switch event.Type {
-				case "DOCUMENT-START":
-					event.Implicit = implicitFlags[docIndex].StartImplicit
-				case "DOCUMENT-END":
-					event.Implicit = implicitFlags[docIndex].EndImplicit
-				}
-			}
-		}
-
-		allEvents = append(allEvents, events...)
-		docIndex++
-	}
-
-	events := allEvents
 
 	if compact {
 		// For compact mode, output each event as a flow style mapping in a sequence
@@ -383,166 +305,6 @@ func processEventsUnmarshal(reader io.Reader, profuse, compact bool) error {
 	}
 
 	return nil
-}
-
-// adjustColumn converts yaml.Node 1-based column to 0-based (libyaml format)
-func adjustColumn(col int) int {
-	if col > 0 {
-		return col - 1
-	}
-	return 0
-}
-
-// processNodeToEvents converts a node to a slice of events for compact output
-func processNodeToEvents(node *yaml.Node, profuse bool) []*Event {
-	var events []*Event
-
-	// Add document start event
-	// yaml.Node uses 1-based columns, but we need 0-based (libyaml format)
-	startCol := adjustColumn(node.Column)
-	events = append(events, &Event{
-		Type:        "DOCUMENT-START",
-		StartLine:   node.Line,
-		StartColumn: startCol,
-		EndLine:     node.Line,
-		EndColumn:   startCol,
-	})
-
-	// Process the node content
-	events = append(events, processNodeToEventsRecursive(node, profuse)...)
-
-	// Add document end event
-	events = append(events, &Event{
-		Type:        "DOCUMENT-END",
-		StartLine:   node.Line,
-		StartColumn: startCol,
-		EndLine:     node.Line,
-		EndColumn:   startCol,
-	})
-
-	return events
-}
-
-// processNodeToEventsRecursive recursively converts a node to events
-func processNodeToEventsRecursive(node *yaml.Node, profuse bool) []*Event {
-	var events []*Event
-
-	switch node.Kind {
-	case yaml.DocumentNode:
-		for _, child := range node.Content {
-			events = append(events, processNodeToEventsRecursive(child, profuse)...)
-		}
-	case yaml.MappingNode:
-		startCol := adjustColumn(node.Column)
-		events = append(events, &Event{
-			Type:        "MAPPING-START",
-			StartLine:   node.Line,
-			StartColumn: startCol,
-			EndLine:     node.Line,
-			EndColumn:   startCol,
-			Style:       formatStyle(node.Style, profuse),
-			HeadComment: node.HeadComment,
-			LineComment: node.LineComment,
-			FootComment: node.FootComment,
-		})
-		for i := 0; i < len(node.Content); i += 2 {
-			if i+1 < len(node.Content) {
-				// Key
-				keyEvents := processNodeToEventsRecursive(node.Content[i], profuse)
-				events = append(events, keyEvents...)
-				// Value
-				valueEvents := processNodeToEventsRecursive(node.Content[i+1], profuse)
-				events = append(events, valueEvents...)
-			}
-		}
-		events = append(events, &Event{
-			Type:        "MAPPING-END",
-			StartLine:   node.Line,
-			StartColumn: startCol,
-			EndLine:     node.Line,
-			EndColumn:   startCol,
-		})
-	case yaml.SequenceNode:
-		startCol := adjustColumn(node.Column)
-		events = append(events, &Event{
-			Type:        "SEQUENCE-START",
-			StartLine:   node.Line,
-			StartColumn: startCol,
-			EndLine:     node.Line,
-			EndColumn:   startCol,
-			Style:       formatStyle(node.Style, profuse),
-			HeadComment: node.HeadComment,
-			LineComment: node.LineComment,
-			FootComment: node.FootComment,
-		})
-		for _, child := range node.Content {
-			childEvents := processNodeToEventsRecursive(child, profuse)
-			events = append(events, childEvents...)
-		}
-		events = append(events, &Event{
-			Type:        "SEQUENCE-END",
-			StartLine:   node.Line,
-			StartColumn: startCol,
-			EndLine:     node.Line,
-			EndColumn:   startCol,
-		})
-	case yaml.ScalarNode:
-		// Calculate end position for scalars based on value length
-		// yaml.Node uses 1-based columns, adjust to 0-based
-		startCol := adjustColumn(node.Column)
-		endLine := node.Line
-		endColumn := startCol
-		if node.Value != "" {
-			// For single-line values, add the length to the column
-			if !strings.Contains(node.Value, "\n") {
-				endColumn = startCol + len(node.Value)
-			}
-		}
-
-		// Filter out default YAML tags
-		tag := node.Tag
-		// Check if the tag was explicit in the input
-		tagWasExplicit := node.Style&yaml.TaggedStyle != 0
-
-		// Show !!str only if it was explicit in the input
-		if tag == "!!str" {
-			if !tagWasExplicit {
-				tag = ""
-			}
-		}
-		// Show all other tags (no filtering)
-
-		events = append(events, &Event{
-			Type:        "SCALAR",
-			Value:       node.Value,
-			Anchor:      node.Anchor,
-			Tag:         tag,
-			StartLine:   node.Line,
-			StartColumn: startCol,
-			EndLine:     endLine,
-			EndColumn:   endColumn,
-			Style:       formatStyle(node.Style, profuse),
-			HeadComment: node.HeadComment,
-			LineComment: node.LineComment,
-			FootComment: node.FootComment,
-		})
-	case yaml.AliasNode:
-		// Generate ALIAS event for alias nodes
-		startCol := adjustColumn(node.Column)
-		events = append(events, &Event{
-			Type:        "ALIAS",
-			Value:       node.Value,
-			StartLine:   node.Line,
-			StartColumn: startCol,
-			EndLine:     node.Line,
-			EndColumn:   startCol,
-			HeadComment: node.HeadComment,
-			LineComment: node.LineComment,
-			FootComment: node.FootComment,
-		})
-	}
-
-	return events
 }
 
 // formatEventInfo converts an Event to an EventInfo struct for YAML encoding
@@ -605,48 +367,6 @@ func formatEventInfo(event *Event, profuse bool) *EventInfo {
 	return info
 }
 
-// DocumentImplicitFlags holds implicit flags for document start and end events
-type DocumentImplicitFlags struct {
-	StartImplicit bool
-	EndImplicit   bool
-}
-
-// getDocumentImplicitFlags extracts implicit flags for all documents
-func getDocumentImplicitFlags(input []byte) ([]*DocumentImplicitFlags, error) {
-	p := libyaml.NewParser()
-	if len(input) == 0 {
-		input = []byte{'\n'}
-	}
-	p.SetInputString(input)
-
-	var flags []*DocumentImplicitFlags
-	var currentDoc *DocumentImplicitFlags
-	var ev libyaml.Event
-
-	for {
-		if err := p.Parse(&ev); err != nil {
-			return nil, fmt.Errorf("failed to parse YAML: %w", err)
-		}
-
-		switch ev.Type {
-		case libyaml.DOCUMENT_START_EVENT:
-			currentDoc = &DocumentImplicitFlags{
-				StartImplicit: ev.Implicit,
-			}
-			flags = append(flags, currentDoc)
-		case libyaml.DOCUMENT_END_EVENT:
-			if currentDoc != nil {
-				currentDoc.EndImplicit = ev.Implicit
-			}
-		case libyaml.STREAM_END_EVENT:
-			ev.Delete()
-			return flags, nil
-		}
-
-		ev.Delete()
-	}
-}
-
 // getEventsFromParser parses YAML input and extracts events with implicit field information
 func getEventsFromParser(input []byte, profuse bool) ([]*Event, error) {
 	p := libyaml.NewParser()
@@ -690,6 +410,9 @@ func convertLibyamlEvent(ev *libyaml.Event, profuse bool) *Event {
 		StartColumn: ev.StartMark.Column,
 		EndLine:     ev.EndMark.Line + 1,
 		EndColumn:   ev.EndMark.Column,
+		HeadComment: string(ev.HeadComment),
+		LineComment: string(ev.LineComment),
+		FootComment: string(ev.FootComment),
 	}
 
 	switch ev.Type {
