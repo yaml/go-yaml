@@ -589,7 +589,9 @@ func main() {
 			if err := enc.Dump(output); err != nil {
 				log.Fatal("Failed to dump node info:", err)
 			}
-			enc.Close()
+			if err := enc.Close(); err != nil {
+				log.Fatal("Failed to close dumper:", err)
+			}
 			fmt.Print(buf.String())
 		}
 	}
@@ -654,7 +656,9 @@ func ProcessNodeUnmarshal(reader io.Reader, profuse bool) error {
 		enc.Close()
 		return fmt.Errorf("failed to dump node info: %w", err)
 	}
-	enc.Close()
+	if err := enc.Close(); err != nil {
+		return fmt.Errorf("failed to close dumper: %w", err)
+	}
 	fmt.Print(buf.String())
 
 	return nil

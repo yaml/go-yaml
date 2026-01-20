@@ -24,7 +24,7 @@ func ProcessJSON(reader io.Reader, pretty, unmarshalMode, decodeMode bool, opts 
 		return processJSONDecode(reader, pretty, nil) // Decode API doesn't support options
 	}
 	// Default: use Load API with options
-	return processJSONLoad(reader, pretty, opts)
+	return processJSONLoad(reader, pretty, opts...)
 }
 
 // processJSONLoad uses Loader.Load for YAML processing with options

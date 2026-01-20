@@ -198,7 +198,9 @@ func processEventsDecode(reader io.Reader, profuse, compact bool) error {
 				enc.Close()
 				return fmt.Errorf("failed to dump compact event info: %w", err)
 			}
-			enc.Close()
+			if err := enc.Close(); err != nil {
+				return fmt.Errorf("failed to close dumper: %w", err)
+			}
 			fmt.Print(buf.String())
 		}
 	} else {
@@ -215,7 +217,9 @@ func processEventsDecode(reader io.Reader, profuse, compact bool) error {
 				enc.Close()
 				return fmt.Errorf("failed to dump event info: %w", err)
 			}
-			enc.Close()
+			if err := enc.Close(); err != nil {
+				return fmt.Errorf("failed to close dumper: %w", err)
+			}
 			fmt.Print(buf.String())
 		}
 	}
@@ -352,7 +356,9 @@ func processEventsUnmarshal(reader io.Reader, profuse, compact bool) error {
 				enc.Close()
 				return fmt.Errorf("failed to dump compact event info: %w", err)
 			}
-			enc.Close()
+			if err := enc.Close(); err != nil {
+				return fmt.Errorf("failed to close dumper: %w", err)
+			}
 			fmt.Print(buf.String())
 		}
 	} else {
@@ -369,7 +375,9 @@ func processEventsUnmarshal(reader io.Reader, profuse, compact bool) error {
 				enc.Close()
 				return fmt.Errorf("failed to dump event info: %w", err)
 			}
-			enc.Close()
+			if err := enc.Close(); err != nil {
+				return fmt.Errorf("failed to close dumper: %w", err)
+			}
 			fmt.Print(buf.String())
 		}
 	}

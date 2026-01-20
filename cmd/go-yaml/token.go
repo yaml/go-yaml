@@ -132,7 +132,9 @@ func processTokensDecode(profuse, compact bool) error {
 					dumper.Close()
 					return fmt.Errorf("failed to dump compact token info: %w", err)
 				}
-				dumper.Close()
+				if err := dumper.Close(); err != nil {
+					return fmt.Errorf("failed to close dumper: %w", err)
+				}
 				fmt.Print(buf.String())
 			}
 		} else {
@@ -149,7 +151,9 @@ func processTokensDecode(profuse, compact bool) error {
 					dumper.Close()
 					return fmt.Errorf("failed to dump token info: %w", err)
 				}
-				dumper.Close()
+				if err := dumper.Close(); err != nil {
+					return fmt.Errorf("failed to close dumper: %w", err)
+				}
 				fmt.Print(buf.String())
 			}
 		}
@@ -230,7 +234,9 @@ func processTokensWithParser(reader io.Reader, profuse, compact bool) error {
 				dumper.Close()
 				return fmt.Errorf("failed to dump compact token info: %w", err)
 			}
-			dumper.Close()
+			if err := dumper.Close(); err != nil {
+				return fmt.Errorf("failed to close dumper: %w", err)
+			}
 			fmt.Print(buf.String())
 		} else {
 			// For non-compact mode, output each token as a separate mapping
@@ -243,7 +249,9 @@ func processTokensWithParser(reader io.Reader, profuse, compact bool) error {
 				dumper.Close()
 				return fmt.Errorf("failed to dump token info: %w", err)
 			}
-			dumper.Close()
+			if err := dumper.Close(); err != nil {
+				return fmt.Errorf("failed to close dumper: %w", err)
+			}
 			fmt.Print(buf.String())
 		}
 	}
@@ -346,7 +354,9 @@ func processTokensUnmarshal(reader io.Reader, profuse, compact bool) error {
 					dumper.Close()
 					return fmt.Errorf("failed to dump compact token info: %w", err)
 				}
-				dumper.Close()
+				if err := dumper.Close(); err != nil {
+					return fmt.Errorf("failed to close dumper: %w", err)
+				}
 				fmt.Print(buf.String())
 			}
 		} else {
@@ -363,7 +373,9 @@ func processTokensUnmarshal(reader io.Reader, profuse, compact bool) error {
 					dumper.Close()
 					return fmt.Errorf("failed to dump token info: %w", err)
 				}
-				dumper.Close()
+				if err := dumper.Close(); err != nil {
+					return fmt.Errorf("failed to close dumper: %w", err)
+				}
 				fmt.Print(buf.String())
 			}
 		}
