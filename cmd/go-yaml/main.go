@@ -29,7 +29,7 @@ func (s *stringSlice) String() string {
 	if s == nil {
 		return ""
 	}
-	return fmt.Sprintf("%v", *s)
+	return fmt.Sprint(*s)
 }
 
 func (s *stringSlice) Set(value string) error {
