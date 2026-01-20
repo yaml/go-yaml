@@ -103,7 +103,7 @@ var flagMapping = map[string]string{
 
 func TestCLI(t *testing.T) {
 	// Find all test files in testdata/
-	testFiles, err := filepath.Glob("testdata/*.yaml")
+	testFiles, err := filepath.Glob(filepath.Join("testdata", "*.yaml"))
 	if err != nil {
 		t.Fatalf("Failed to find test files: %v", err)
 	}
@@ -227,7 +227,7 @@ type CmdTestSuite []CmdTestCase
 // TestCLICommands runs command-based tests from testdata/cmd/*.yaml
 func TestCLICommands(t *testing.T) {
 	// Find all test files in testdata/cmd/
-	testFiles, err := filepath.Glob("testdata/cmd/*.yaml")
+	testFiles, err := filepath.Glob(filepath.Join("testdata", "cmd", "*.yaml"))
 	if err != nil {
 		t.Fatalf("Failed to find test files: %v", err)
 	}
