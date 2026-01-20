@@ -177,3 +177,57 @@
     foo:
         - bar
         - baz
+
+- name: Stream option with mapping
+  text: |
+    a: b
+  stream-node: |
+    - stream:
+        encoding: UTF-8
+    - mapping:
+      - plain: a
+      - plain: b
+    - stream:
+        encoding: UTF-8
+  stream-NODE: |
+    - kind: Stream
+      encoding: UTF-8
+    - kind: Document
+      content:
+      - kind: Mapping
+        style: Plain
+        tag: '!!map'
+        content:
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: a
+        - kind: Scalar
+          style: Plain
+          tag: '!!str'
+          text: b
+    - kind: Stream
+      encoding: UTF-8
+
+- name: Stream option with scalar
+  text: |
+    hello
+  stream-node: |
+    - stream:
+        encoding: UTF-8
+    - plain: hello
+    - stream:
+        encoding: UTF-8
+
+- name: Stream option with sequence
+  text: |
+    - item1
+    - item2
+  stream-node: |
+    - stream:
+        encoding: UTF-8
+    - sequence:
+      - plain: item1
+      - plain: item2
+    - stream:
+        encoding: UTF-8

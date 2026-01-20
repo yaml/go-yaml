@@ -65,6 +65,9 @@ type TestCase struct {
 	NoUnicodeYaml         string `yaml:"no-unicode-yaml,omitempty"`
 	CanonicalExplicitYaml string `yaml:"canonical-explicit-yaml,omitempty"`
 	V2Indent4Yaml         string `yaml:"v2-indent4-yaml,omitempty"`
+	// Stream option flags
+	StreamNode string `yaml:"stream-node,omitempty"`
+	StreamNODE string `yaml:"stream-NODE,omitempty"`
 }
 
 // TestSuite is a sequence of test cases
@@ -94,6 +97,8 @@ var flagMapping = map[string]string{
 	"no-unicode-yaml":         "-o no-unicode -y",
 	"canonical-explicit-yaml": "-o canonical,explicit -y",
 	"v2-indent4-yaml":         "-o v2,indent=4 -y",
+	"stream-node":             "-o stream -n",
+	"stream-NODE":             "-o stream -N",
 }
 
 func TestCLI(t *testing.T) {
@@ -167,6 +172,8 @@ func runTestCase(t *testing.T, tc TestCase) {
 		{"no-unicode-yaml", flagMapping["no-unicode-yaml"], tc.NoUnicodeYaml},
 		{"canonical-explicit-yaml", flagMapping["canonical-explicit-yaml"], tc.CanonicalExplicitYaml},
 		{"v2-indent4-yaml", flagMapping["v2-indent4-yaml"], tc.V2Indent4Yaml},
+		{"stream-node", flagMapping["stream-node"], tc.StreamNode},
+		{"stream-NODE", flagMapping["stream-NODE"], tc.StreamNODE},
 	}
 
 	for _, test := range tests {

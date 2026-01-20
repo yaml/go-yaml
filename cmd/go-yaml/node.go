@@ -71,8 +71,8 @@ func FormatNode(n yaml.Node, profuse bool) *NodeInfo {
 		Kind: formatKind(n.Kind),
 	}
 
-	// Don't set style for Document nodes
-	if n.Kind != yaml.DocumentNode {
+	// Don't set style for Document or Stream nodes
+	if n.Kind != yaml.DocumentNode && n.Kind != yaml.StreamNode {
 		if style := formatStyle(n.Style, profuse); style != "" {
 			info.Style = style
 		}
@@ -376,6 +376,43 @@ func FormatNodeCompact(n yaml.Node) any {
 	case yaml.AliasNode:
 		result := MapSlice{}
 		result = append(result, MapItem{Key: "alias", Value: n.Value})
+		return result
+
+	case yaml.StreamNode:
+		result := MapSlice{}
+
+		// Build stream content
+		content := MapSlice{}
+
+		// Add encoding if present
+		if n.Encoding != 0 {
+			content = append(content, MapItem{Key: "encoding", Value: formatEncoding(n.Encoding)})
+		}
+
+		// Add version if present
+		if n.Version != nil {
+			content = append(content, MapItem{Key: "version", Value: formatVersion(n.Version)})
+		}
+
+		// Add tag directives if present
+		if len(n.TagDirectives) > 0 {
+			var directives []TagDirectiveInfo
+			for _, td := range n.TagDirectives {
+				directives = append(directives, TagDirectiveInfo{
+					Handle: td.Handle,
+					Prefix: td.Prefix,
+				})
+			}
+			content = append(content, MapItem{Key: "tag-directives", Value: directives})
+		}
+
+		// Use content as value, or null if empty
+		if len(content) > 0 {
+			result = append(result, MapItem{Key: "stream", Value: content})
+		} else {
+			result = append(result, MapItem{Key: "stream", Value: nil})
+		}
+
 		return result
 
 	default:
