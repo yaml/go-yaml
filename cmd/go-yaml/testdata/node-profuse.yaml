@@ -30,27 +30,27 @@
   text: |
     42
   node: |
-    plain: "42"
+    plain: '42'
   NODE: |
     kind: Document
     content:
     - kind: Scalar
       style: Plain
       tag: '!!int'
-      text: "42"
+      text: '42'
 
 - name: Explicit tag
   text: |
     !!str 42
   node: |
-    plain: "42"
+    plain: '42'
   NODE: |
     kind: Document
     content:
     - kind: Scalar
       style: Plain
       tag: '!!str'
-      text: "42"
+      text: '42'
 
 - name: Mapping with plain scalars
   text: |

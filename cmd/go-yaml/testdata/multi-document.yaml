@@ -506,35 +506,35 @@
     ---
     null
   node: |
-    - plain: "42"
-    - plain: "3.14"
-    - plain: "true"
-    - plain: "null"
+    - plain: '42'
+    - plain: '3.14'
+    - plain: 'true'
+    - plain: 'null'
   NODE: |
     - kind: Document
       content:
       - kind: Scalar
         style: Plain
         tag: '!!int'
-        text: "42"
+        text: '42'
     - kind: Document
       content:
       - kind: Scalar
         style: Plain
         tag: '!!float'
-        text: "3.14"
+        text: '3.14'
     - kind: Document
       content:
       - kind: Scalar
         style: Plain
         tag: '!!bool'
-        text: "true"
+        text: 'true'
     - kind: Document
       content:
       - kind: Scalar
         style: Plain
         tag: '!!null'
-        text: "null"
+        text: 'null'
 
 - name: Documents with flow style
   text: |
