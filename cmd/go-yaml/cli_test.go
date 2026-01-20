@@ -214,6 +214,85 @@ func normalizeOutput(s string) string {
 	return s
 }
 
+// CmdTestCase represents a command-based test case
+type CmdTestCase struct {
+	Name string `yaml:"name"`
+	Cmd  string `yaml:"cmd"`
+	Out  string `yaml:"out"`
+}
+
+// CmdTestSuite is a sequence of command test cases
+type CmdTestSuite []CmdTestCase
+
+// TestCLICommands runs command-based tests from testdata/cmd/*.yaml
+func TestCLICommands(t *testing.T) {
+	// Find all test files in testdata/cmd/
+	testFiles, err := filepath.Glob("testdata/cmd/*.yaml")
+	if err != nil {
+		t.Fatalf("Failed to find test files: %v", err)
+	}
+
+	if len(testFiles) == 0 {
+		t.Skip("No command test files found in testdata/cmd/")
+	}
+
+	// Process each test file
+	for _, testFile := range testFiles {
+		testFileName := filepath.Base(testFile)
+		t.Run(testFileName, func(t *testing.T) {
+			runCmdTestFile(t, testFile)
+		})
+	}
+}
+
+func runCmdTestFile(t *testing.T, testFile string) {
+	t.Helper()
+	// Read and parse the test file
+	data, err := os.ReadFile(testFile)
+	if err != nil {
+		t.Fatalf("Failed to read test file %s: %v", testFile, err)
+	}
+
+	var suite CmdTestSuite
+	if err := yaml.Load(data, &suite); err != nil {
+		t.Fatalf("Failed to parse test file %s: %v", testFile, err)
+	}
+
+	// Run each test case
+	for _, tc := range suite {
+		t.Run(tc.Name, func(t *testing.T) {
+			runCmdTestCase(t, tc)
+		})
+	}
+}
+
+func runCmdTestCase(t *testing.T, tc CmdTestCase) {
+	t.Helper()
+
+	// Replace "go-yaml" with actual test binary path in the command
+	cmdStr := strings.Replace(tc.Cmd, "go-yaml", testBinary, 1)
+
+	// Run the command through bash to handle pipes, heredocs, etc.
+	cmd := exec.Command("bash", "-c", cmdStr)
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Command failed: %v\nCommand: %s\nStderr: %s", err, tc.Cmd, stderr.String())
+	}
+
+	// Normalize output for comparison
+	actual := normalizeOutput(stdout.String())
+	expected := normalizeOutput(tc.Out)
+
+	if actual != expected {
+		t.Errorf("Output mismatch\nCommand: %s\nExpected:\n%s\n\nActual:\n%s\n\nDiff:\n%s",
+			tc.Cmd, expected, actual, diff(expected, actual))
+	}
+}
+
 // diff provides a simple diff output for debugging
 func diff(expected, actual string) string {
 	expLines := strings.Split(expected, "\n")
