@@ -34,6 +34,17 @@ func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []ya
 		if err != nil {
 			return fmt.Errorf("failed to create loader: %w", err)
 		}
+
+		// For Dumper mode, create a single Dumper for all documents
+		var dumper *yaml.Dumper
+		if !marshal && !encode {
+			dumper, err = yaml.NewDumper(os.Stdout, opts...)
+			if err != nil {
+				return fmt.Errorf("failed to create dumper: %w", err)
+			}
+			defer dumper.Close()
+		}
+
 		firstDoc := true
 
 		for {
@@ -45,12 +56,6 @@ func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []ya
 				}
 				return fmt.Errorf("failed to decode YAML: %w", err)
 			}
-
-			// Add document separator for all documents except the first
-			if !firstDoc {
-				fmt.Println("---")
-			}
-			firstDoc = false
 
 			// If the node is not a DocumentNode, wrap it in one
 			var outNode *yaml.Node
@@ -64,6 +69,12 @@ func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []ya
 			}
 
 			if marshal {
+				// Add document separator for all documents except the first
+				if !firstDoc {
+					fmt.Println("---")
+				}
+				firstDoc = false
+
 				// Use Marshal for output (no options)
 				output, err := yaml.Marshal(outNode)
 				if err != nil {
@@ -71,6 +82,12 @@ func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []ya
 				}
 				fmt.Print(string(output))
 			} else if encode {
+				// Add document separator for all documents except the first
+				if !firstDoc {
+					fmt.Println("---")
+				}
+				firstDoc = false
+
 				// Use Encoder for output (no options)
 				enc := yaml.NewEncoder(os.Stdout)
 				if err := enc.Encode(outNode); err != nil {
@@ -82,25 +99,30 @@ func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []ya
 				}
 			} else {
 				// Use Dumper for output with options
-				dumper, err := yaml.NewDumper(os.Stdout, opts...)
-				if err != nil {
-					return fmt.Errorf("failed to create dumper: %w", err)
-				}
+				// Dumper handles document separators automatically
 				if err := dumper.Dump(outNode); err != nil {
-					dumper.Close()
 					return fmt.Errorf("failed to dump YAML: %w", err)
-				}
-				if err := dumper.Close(); err != nil {
-					return fmt.Errorf("failed to close dumper: %w", err)
 				}
 			}
 		}
+
 	} else {
 		// Don't preserve comments and styles - use `any` for clean output
 		loader, err := yaml.NewLoader(reader, opts...)
 		if err != nil {
 			return fmt.Errorf("failed to create loader: %w", err)
 		}
+
+		// For Dumper mode, create a single Dumper for all documents
+		var dumper *yaml.Dumper
+		if !marshal && !encode {
+			dumper, err = yaml.NewDumper(os.Stdout, opts...)
+			if err != nil {
+				return fmt.Errorf("failed to create dumper: %w", err)
+			}
+			defer dumper.Close()
+		}
+
 		firstDoc := true
 
 		for {
@@ -113,13 +135,13 @@ func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []ya
 				return fmt.Errorf("failed to decode YAML: %w", err)
 			}
 
-			// Add document separator for all documents except the first
-			if !firstDoc {
-				fmt.Println("---")
-			}
-			firstDoc = false
-
 			if marshal {
+				// Add document separator for all documents except the first
+				if !firstDoc {
+					fmt.Println("---")
+				}
+				firstDoc = false
+
 				// Use Marshal for output (no options)
 				output, err := yaml.Marshal(data)
 				if err != nil {
@@ -127,6 +149,12 @@ func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []ya
 				}
 				fmt.Print(string(output))
 			} else if encode {
+				// Add document separator for all documents except the first
+				if !firstDoc {
+					fmt.Println("---")
+				}
+				firstDoc = false
+
 				// Use Encoder for output (no options)
 				enc := yaml.NewEncoder(os.Stdout)
 				if err := enc.Encode(data); err != nil {
@@ -138,19 +166,13 @@ func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []ya
 				}
 			} else {
 				// Use Dumper for output with options
-				dumper, err := yaml.NewDumper(os.Stdout, opts...)
-				if err != nil {
-					return fmt.Errorf("failed to create dumper: %w", err)
-				}
+				// Dumper handles document separators automatically
 				if err := dumper.Dump(data); err != nil {
-					dumper.Close()
 					return fmt.Errorf("failed to dump YAML: %w", err)
-				}
-				if err := dumper.Close(); err != nil {
-					return fmt.Errorf("failed to close dumper: %w", err)
 				}
 			}
 		}
+
 	}
 
 	return nil

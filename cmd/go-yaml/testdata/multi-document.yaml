@@ -577,3 +577,16 @@
           style: Plain
           tag: '!!str'
           text: item2
+
+- name: Multiple sequences with explicit markers (no duplicates)
+  text: |
+    - 1
+    ---
+    - 2
+  explicit-yaml: |
+    ---
+    - 1
+    ...
+    ---
+    - 2
+    ...
