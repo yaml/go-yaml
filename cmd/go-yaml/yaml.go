@@ -77,7 +77,9 @@ func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []ya
 					enc.Close()
 					return fmt.Errorf("failed to encode YAML: %w", err)
 				}
-				enc.Close()
+				if err := enc.Close(); err != nil {
+					return fmt.Errorf("failed to close encoder: %w", err)
+				}
 			} else {
 				// Use Dumper for output with options
 				dumper, err := yaml.NewDumper(os.Stdout, opts...)
@@ -88,7 +90,9 @@ func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []ya
 					dumper.Close()
 					return fmt.Errorf("failed to dump YAML: %w", err)
 				}
-				dumper.Close()
+				if err := dumper.Close(); err != nil {
+					return fmt.Errorf("failed to close dumper: %w", err)
+				}
 			}
 		}
 	} else {
@@ -129,7 +133,9 @@ func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []ya
 					enc.Close()
 					return fmt.Errorf("failed to encode YAML: %w", err)
 				}
-				enc.Close()
+				if err := enc.Close(); err != nil {
+					return fmt.Errorf("failed to close encoder: %w", err)
+				}
 			} else {
 				// Use Dumper for output with options
 				dumper, err := yaml.NewDumper(os.Stdout, opts...)
@@ -140,7 +146,9 @@ func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []ya
 					dumper.Close()
 					return fmt.Errorf("failed to dump YAML: %w", err)
 				}
-				dumper.Close()
+				if err := dumper.Close(); err != nil {
+					return fmt.Errorf("failed to close dumper: %w", err)
+				}
 			}
 		}
 	}
@@ -188,7 +196,9 @@ func processYAMLDecode(reader io.Reader, preserve, encode bool, opts []yaml.Opti
 					enc.Close()
 					return fmt.Errorf("failed to encode YAML: %w", err)
 				}
-				enc.Close()
+				if err := enc.Close(); err != nil {
+					return fmt.Errorf("failed to close encoder: %w", err)
+				}
 			} else {
 				// Default output (no options for deprecated Decode API)
 				output, err := yaml.Marshal(outNode)
@@ -220,7 +230,9 @@ func processYAMLDecode(reader io.Reader, preserve, encode bool, opts []yaml.Opti
 					enc.Close()
 					return fmt.Errorf("failed to encode YAML: %w", err)
 				}
-				enc.Close()
+				if err := enc.Close(); err != nil {
+					return fmt.Errorf("failed to close encoder: %w", err)
+				}
 			} else {
 				// Default output (no options for deprecated Decode API)
 				output, err := yaml.Marshal(data)
@@ -294,7 +306,9 @@ func processYAMLUnmarshal(reader io.Reader, preserve, marshal bool) error {
 					dumper.Close()
 					return fmt.Errorf("failed to dump YAML: %w", err)
 				}
-				dumper.Close()
+				if err := dumper.Close(); err != nil {
+					return fmt.Errorf("failed to close dumper: %w", err)
+				}
 			}
 		} else {
 			// For unmarshal mode with -y (not -Y), always use `any` to avoid preserving comments
@@ -320,7 +334,9 @@ func processYAMLUnmarshal(reader io.Reader, preserve, marshal bool) error {
 					dumper.Close()
 					return fmt.Errorf("failed to dump YAML: %w", err)
 				}
-				dumper.Close()
+				if err := dumper.Close(); err != nil {
+					return fmt.Errorf("failed to close dumper: %w", err)
+				}
 			}
 		}
 	}
