@@ -233,10 +233,10 @@ func parseOneOption(s string) ([]yaml.Option, error) {
 
 // parseOptionFlags parses comma-separated options string into individual options
 func parseOptionFlags(s string) ([]yaml.Option, error) {
-	parts := bytes.Split([]byte(s), []byte(","))
+	parts := strings.Split(s, ",")
 	var opts []yaml.Option
 	for _, part := range parts {
-		trimmed := string(bytes.TrimSpace(part))
+		trimmed := strings.TrimSpace(part)
 		if trimmed == "" {
 			continue
 		}
