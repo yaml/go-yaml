@@ -287,13 +287,6 @@ Examples:
 `)
 }
 
-// hasUsefulContent checks if a node has meaningful content to display.
-// Stream nodes are only returned when explicitly requested via -o stream,
-// so we always show them when present.
-func hasUsefulContent(n *yaml.Node) bool {
-	return true
-}
-
 // buildOptions creates the yaml.Option slice based on config file and -o flags
 func buildOptions(configFile string, optionFlags []string) ([]yaml.Option, error) {
 	var opts []yaml.Option
@@ -556,11 +549,6 @@ func main() {
 				}
 				if err != nil {
 					log.Fatal("Failed to load YAML node:", err)
-				}
-
-				// Skip stream nodes without useful content (use -o stream to show all)
-				if !hasUsefulContent(&node) {
-					continue
 				}
 
 				var info any
