@@ -512,12 +512,12 @@ func main() {
 		}
 	} else if *jsonMode {
 		// Use JSON formatting mode (compact by default)
-		if err := ProcessJSON(input, false, unmarshalMode, decodeMode, opts); err != nil {
+		if err := ProcessJSON(input, false, unmarshalMode, decodeMode, opts...); err != nil {
 			log.Fatal("Failed to process JSON:", err)
 		}
 	} else if *jsonPrettyMode {
 		// Use pretty JSON formatting mode
-		if err := ProcessJSON(input, true, unmarshalMode, decodeMode, opts); err != nil {
+		if err := ProcessJSON(input, true, unmarshalMode, decodeMode, opts...); err != nil {
 			log.Fatal("Failed to process JSON:", err)
 		}
 	} else if *yamlMode {
