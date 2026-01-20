@@ -12,6 +12,32 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
+// testBinary holds the path to the pre-built CLI binary for testing
+var testBinary string
+
+// TestMain builds the CLI binary once before running tests
+func TestMain(m *testing.M) {
+	// Create a temporary directory for the test binary
+	tmpDir, err := os.MkdirTemp("", "go-yaml-test")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to create temp dir: %v\n", err)
+		os.Exit(1)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Build the binary once
+	testBinary = filepath.Join(tmpDir, "go-yaml")
+	cmd := exec.Command("go", "build", "-o", testBinary, ".")
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to build test binary: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Run tests
+	os.Exit(m.Run())
+}
+
 // TestCase represents a single test case from a test file
 type TestCase struct {
 	Name  string `yaml:"name"`
@@ -149,10 +175,9 @@ func runTestCase(t *testing.T, tc TestCase) {
 		}
 
 		t.Run(test.field, func(t *testing.T) {
-			// Run the CLI command - split flags on spaces
-			args := []string{"run", "."}
-			args = append(args, strings.Fields(test.flag)...)
-			cmd := exec.Command("go", args...)
+			// Run the pre-built CLI binary
+			args := strings.Fields(test.flag)
+			cmd := exec.Command(testBinary, args...)
 			cmd.Stdin = strings.NewReader(tc.Text)
 
 			var stdout, stderr bytes.Buffer
