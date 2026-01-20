@@ -287,14 +287,11 @@ Examples:
 `)
 }
 
-// hasUsefulContent checks if a StreamNode has meaningful content to display.
-// For non-StreamNodes, always returns true.
+// hasUsefulContent checks if a node has meaningful content to display.
+// Stream nodes are only returned when explicitly requested via -o stream,
+// so we always show them when present.
 func hasUsefulContent(n *yaml.Node) bool {
-	if n.Kind != yaml.StreamNode {
-		return true
-	}
-	// For now, only directives count as useful (comments not yet on StreamNodes)
-	return n.Version != nil || len(n.TagDirectives) > 0
+	return true
 }
 
 // buildOptions creates the yaml.Option slice based on config file and -o flags
@@ -356,7 +353,6 @@ func main() {
 	// Node modes
 	nodeMode := flag.Bool("n", false, "Node representation output")
 	nodeProfuseMode := flag.Bool("N", false, "Node with tag and style for all scalars")
-	streamMode := flag.Bool("s", false, "Show all stream nodes (use with -n)")
 
 	// Shared flags
 	longMode := flag.Bool("l", false, "Long (block) formatted output")
@@ -387,7 +383,6 @@ func main() {
 	flag.BoolVar(eventProfuseMode, "EVENT", false, "Event with line info")
 	flag.BoolVar(nodeMode, "node", false, "Node representation output")
 	flag.BoolVar(nodeProfuseMode, "NODE", false, "Node with tag and style for all scalars")
-	flag.BoolVar(streamMode, "stream", false, "Show all stream nodes (use with -n)")
 	flag.BoolVar(longMode, "long", false, "Long (block) formatted output")
 	flag.StringVar(configFile, "config", "", "Load options from YAML config file")
 
@@ -544,9 +539,8 @@ func main() {
 				log.Fatal("Failed to process YAML node:", err)
 			}
 		} else {
-			// Use Loader mode with options - always get stream nodes internally
-			optsWithStream := append(opts, yaml.WithStreamNodes())
-			loader, err := yaml.NewLoader(input, optsWithStream...)
+			// Use Loader mode with options
+			loader, err := yaml.NewLoader(input, opts...)
 			if err != nil {
 				log.Fatal("Failed to create loader:", err)
 			}
@@ -564,9 +558,8 @@ func main() {
 					log.Fatal("Failed to load YAML node:", err)
 				}
 
-				// For -n flag: skip stream nodes without useful content
-				// For -S flag: show all nodes including empty stream nodes
-				if !*streamMode && !hasUsefulContent(&node) {
+				// Skip stream nodes without useful content (use -o stream to show all)
+				if !hasUsefulContent(&node) {
 					continue
 				}
 
@@ -700,7 +693,6 @@ Output Mode Options:
 
   -n, --node       Node representation output
   -N, --NODE       Node with tag and style for all scalars
-  -s, --stream     Show all stream nodes (use with -n)
 
   -l, --long       Long (block) formatted output
 
