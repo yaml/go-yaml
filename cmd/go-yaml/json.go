@@ -16,7 +16,7 @@ import (
 )
 
 // ProcessJSON reads YAML from reader and outputs JSON encoding
-func ProcessJSON(reader io.Reader, pretty, unmarshalMode, decodeMode bool, opts []yaml.Option) error {
+func ProcessJSON(reader io.Reader, pretty, unmarshalMode, decodeMode bool, opts ...yaml.Option) error {
 	if unmarshalMode {
 		return processJSONUnmarshal(reader, pretty)
 	}
@@ -28,7 +28,7 @@ func ProcessJSON(reader io.Reader, pretty, unmarshalMode, decodeMode bool, opts 
 }
 
 // processJSONLoad uses Loader.Load for YAML processing with options
-func processJSONLoad(reader io.Reader, pretty bool, opts []yaml.Option) error {
+func processJSONLoad(reader io.Reader, pretty bool, opts ...yaml.Option) error {
 	loader, err := yaml.NewLoader(reader, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to create loader: %w", err)
