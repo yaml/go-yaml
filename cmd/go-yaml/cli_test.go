@@ -316,7 +316,7 @@ func diff(expected, actual string) string {
 		}
 
 		if expLine != actLine {
-			result.WriteString(fmt.Sprintf("Line %d:\n", i+1))
+			fmt.Fprintf(&result, "Line %d:\n", i+1)
 			if expLine != "" {
 				result.WriteString("- ")
 				result.WriteString(expLine)
