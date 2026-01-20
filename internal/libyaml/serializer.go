@@ -55,13 +55,13 @@ func (r *Representer) node(node *Node, tail string) {
 
 	switch node.Kind {
 	case DocumentNode:
-		event := NewDocumentStartEvent(noVersionDirective, noTagDirective, true)
+		event := NewDocumentStartEvent(noVersionDirective, noTagDirective, !r.explicitStart)
 		event.HeadComment = []byte(node.HeadComment)
 		r.emit(event)
 		for _, node := range node.Content {
 			r.node(node, "")
 		}
-		event = NewDocumentEndEvent(true)
+		event = NewDocumentEndEvent(!r.explicitEnd)
 		event.FootComment = []byte(node.FootComment)
 		r.emit(event)
 
