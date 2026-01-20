@@ -51,8 +51,8 @@
   event: |
     - {event: DOCUMENT-START}
     - {event: MAPPING-START}
-    - {event: SCALAR, value: key, head: '# head comment', foot: '# foot comment'}
-    - {event: SCALAR, value: value, line: '# line comment'}
+    - {event: SCALAR, value: key, head: '# head comment'}
+    - {event: SCALAR, value: value, line: '# line comment', foot: '# foot comment'}
     - {event: MAPPING-END}
     - {event: DOCUMENT-END}
 
