@@ -109,7 +109,7 @@ func TestCLI(t *testing.T) {
 	}
 
 	if len(testFiles) == 0 {
-		t.Skip("No test files found in testdata/")
+		t.Fatal("No test files found in testdata/")
 	}
 
 	// Process each test file
@@ -233,7 +233,7 @@ func TestCLICommands(t *testing.T) {
 	}
 
 	if len(testFiles) == 0 {
-		t.Skip("No command test files found in testdata/cmd/")
+		t.Fatal("No command test files found in testdata/cmd/")
 	}
 
 	// Process each test file
