@@ -23,7 +23,6 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "Failed to create temp dir: %v\n", err)
 		os.Exit(1)
 	}
-	defer os.RemoveAll(tmpDir)
 
 	// Build the binary once
 	testBinary = filepath.Join(tmpDir, "go-yaml")
@@ -31,11 +30,16 @@ func TestMain(m *testing.M) {
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to build test binary: %v\n", err)
+		os.RemoveAll(tmpDir)
 		os.Exit(1)
 	}
 
 	// Run tests
-	os.Exit(m.Run())
+	code := m.Run()
+
+	// Cleanup before exit (defer won't run with os.Exit)
+	os.RemoveAll(tmpDir)
+	os.Exit(code)
 }
 
 // TestCase represents a single test case from a test file
