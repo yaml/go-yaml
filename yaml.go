@@ -651,16 +651,16 @@ func (dec *Decoder) Decode(v any) error {
 
 // An Encoder writes YAML values to an output stream.
 type Encoder struct {
-	encoder *libyaml.Representer
+	dumper *Dumper
 }
 
 // NewEncoder returns a new encoder that writes to w.
 // The Encoder should be closed after use to flush all data
 // to w.
 func NewEncoder(w io.Writer) *Encoder {
-	return &Encoder{
-		encoder: libyaml.NewRepresenter(w, libyaml.DefaultOptions),
-	}
+	// NewDumper won't return error with V3 preset
+	dumper, _ := NewDumper(w, V3)
+	return &Encoder{dumper: dumper}
 }
 
 // Encode writes the YAML encoding of v to the stream.
@@ -670,36 +670,29 @@ func NewEncoder(w io.Writer) *Encoder {
 //
 // See the documentation for Marshal for details about the conversion of Go
 // values to YAML.
-func (e *Encoder) Encode(v any) (err error) {
-	defer handleErr(&err)
-	e.encoder.MarshalDoc("", reflect.ValueOf(v))
-	return nil
+func (e *Encoder) Encode(v any) error {
+	return e.dumper.Dump(v)
 }
 
 // SetIndent changes the used indentation used when encoding.
 func (e *Encoder) SetIndent(spaces int) {
-	if spaces < 0 {
-		panic("yaml: cannot indent to a negative number of spaces")
-	}
-	e.encoder.Indent = spaces
+	e.dumper.SetIndent(spaces)
 }
 
 // CompactSeqIndent makes it so that '- ' is considered part of the indentation.
 func (e *Encoder) CompactSeqIndent() {
-	e.encoder.Emitter.CompactSequenceIndent = true
+	e.dumper.SetCompactSeqIndent(true)
 }
 
 // DefaultSeqIndent makes it so that '- ' is not considered part of the indentation.
 func (e *Encoder) DefaultSeqIndent() {
-	e.encoder.Emitter.CompactSequenceIndent = false
+	e.dumper.SetCompactSeqIndent(false)
 }
 
 // Close closes the encoder by writing any remaining data.
 // It does not write a stream terminating string "...".
-func (e *Encoder) Close() (err error) {
-	defer handleErr(&err)
-	e.encoder.Finish()
-	return nil
+func (e *Encoder) Close() error {
+	return e.dumper.Close()
 }
 
 // Unmarshal decodes the first document found within the in byte slice
@@ -793,11 +786,6 @@ func withFromLegacy() Option {
 //	yaml.Marshal(&T{B: 2}) // Returns "b: 2\n"
 //	yaml.Marshal(&T{F: 1}} // Returns "a: 1\nb: 0\n"
 func Marshal(in any) (out []byte, err error) {
-	defer handleErr(&err)
-	e := libyaml.NewRepresenter(noWriter, libyaml.DefaultOptions)
-	defer e.Destroy()
-	e.MarshalDoc("", reflect.ValueOf(in))
-	e.Finish()
-	out = e.Out
-	return out, err
+	// Use V3 preset with unlimited line width to match legacy DefaultOptions
+	return Dump(in, V3, WithLineWidth(-1))
 }
