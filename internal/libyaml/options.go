@@ -53,6 +53,9 @@ type Options struct {
 	CommentProcessor CommentProcessor // Callback for processing comments
 	V3Comments       bool             // Enable V3-style comment handling
 	SkipComments     bool             // Skip comment scanning for performance
+
+	// Private options (not exported, used internally)
+	FromLegacy bool // Indicates legacy Unmarshal()/Decoder path (check Unmarshaler, allow trailing content)
 }
 
 // Option allows configuring YAML loading and dumping operations.
