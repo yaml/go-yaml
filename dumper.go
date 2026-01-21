@@ -116,3 +116,18 @@ func (d *Dumper) Close() (err error) {
 	d.encoder.Finish()
 	return nil
 }
+
+// SetIndent changes the indentation used when encoding.
+// This is used by the legacy Encoder.SetIndent() method.
+func (d *Dumper) SetIndent(spaces int) {
+	if spaces < 0 {
+		panic("yaml: cannot indent to a negative number of spaces")
+	}
+	d.encoder.Indent = spaces
+}
+
+// SetCompactSeqIndent controls whether '- ' is considered part of the indentation.
+// This is used by the legacy Encoder methods.
+func (d *Dumper) SetCompactSeqIndent(compact bool) {
+	d.encoder.Emitter.CompactSequenceIndent = compact
+}
