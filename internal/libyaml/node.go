@@ -332,6 +332,7 @@ func (n *Node) Encode(v any) (err error) {
 	p.Textless = true
 	defer p.Destroy()
 	doc := p.Parse()
+	ResolveNode(doc)
 	*n = *doc.Content[0]
 	return nil
 }
@@ -358,6 +359,7 @@ func (n *Node) Dump(v any, opts ...Option) (err error) {
 	p.Textless = true
 	defer p.Destroy()
 	doc := p.Parse()
+	ResolveNode(doc)
 	*n = *doc.Content[0]
 	return nil
 }

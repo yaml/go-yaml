@@ -177,10 +177,9 @@ func (c *Composer) node(kind Kind, defaultTag, tag, value string) *Node {
 		style = TaggedStyle
 	} else if defaultTag != "" {
 		tag = defaultTag
-	} else if kind == ScalarNode {
-		// Delegate to resolver to determine tag from value
-		tag, _ = resolve("", value)
 	}
+	// Note: Scalars without explicit tags are left unresolved.
+	// Resolution happens in a separate stage via ResolveNode().
 	n := &Node{
 		Kind:  kind,
 		Tag:   tag,
