@@ -255,6 +255,15 @@ configuration, dependencies, and limitations of each processing path.
 | [Examples](example/README.md) | Run complete Go programs |
 | [Contributor guide](CONTRIBUTING.md) | Build, test, and contribute |
 
+## Compatibility
+
+When migrating from [go-yaml](https://github.com/go-yaml/yaml/) ensure that
+YAML module imports are updated in all dependent projects transitively, because
+unmarshaler interface types `gopkg.in/yaml.v{version}.Unmarshaler` and
+`go.yaml.in/yaml/v{version}.Unmarshaler` are different types and thus are
+incompatible. Custom unmarshalers would not be called if executed with the
+parser from the different library.
+
 The library supports most of YAML 1.2 and retains selected YAML 1.1 behavior
 for compatibility, including legacy octal notation and `yes`/`no` booleans
 when loading into typed Go bools.
