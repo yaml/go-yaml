@@ -222,11 +222,16 @@ func (l *Loader) Load(v any) (err error) {
 	if l.opts.SingleDocument && l.docCount > 0 {
 		return io.EOF
 	}
+
+	// Stage 1: Compose - parse events into node tree (unresolved tags)
 	node := l.composer.Parse() // *libyaml.Node
 	if node == nil {
 		return io.EOF
 	}
 	l.docCount++
+
+	// Stage 2: Resolve - determine implicit types for untagged scalars
+	libyaml.ResolveNode(node)
 
 	// Check for Unmarshaler interface if requested (used by Unmarshal())
 	if l.opts.FromLegacy {
@@ -235,11 +240,12 @@ func (l *Loader) Load(v any) (err error) {
 		}
 	}
 
+	// Stage 3: Construct - convert node tree to Go values
 	out := reflect.ValueOf(v)
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
 		out = out.Elem()
 	}
-	l.decoder.Construct(node, out) // Pass libyaml.Node directly
+	l.decoder.Construct(node, out)
 	if len(l.decoder.TypeErrors) > 0 {
 		typeErrors := l.decoder.TypeErrors
 		l.decoder.TypeErrors = nil
