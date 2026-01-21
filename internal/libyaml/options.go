@@ -34,6 +34,9 @@ type Options struct {
 	ExplicitEnd           bool       // Always emit ...
 	FlowSimpleCollections bool       // Use flow style for simple collections
 	QuotePreference       QuoteStyle // Preferred quote style when quoting is required
+
+	// Private options (not exported, used internally)
+	FromLegacy bool // Indicates legacy Unmarshal()/Decoder path (check Unmarshaler, allow trailing content)
 }
 
 // Option allows configuring YAML loading and dumping operations.
