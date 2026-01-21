@@ -229,3 +229,27 @@ func parseTimestamp(s string) (time.Time, bool) {
 	}
 	return time.Time{}, false
 }
+
+// ResolveNode walks the node tree and resolves tags for untagged scalars.
+// This is called after composition to determine implicit types (int, float,
+// bool, null, timestamp) from scalar values.
+func ResolveNode(n *Node) {
+	if n == nil {
+		return
+	}
+
+	switch n.Kind {
+	case ScalarNode:
+		// Only resolve if tag is empty (not explicitly tagged)
+		if n.Tag == "" {
+			n.Tag, _ = resolve("", n.Value)
+		}
+	case DocumentNode, SequenceNode, MappingNode:
+		// Recursively resolve children
+		for _, child := range n.Content {
+			ResolveNode(child)
+		}
+	case AliasNode:
+		// Alias nodes point to already-resolved nodes, nothing to do
+	}
+}
