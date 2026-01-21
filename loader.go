@@ -142,6 +142,11 @@ func loadSingle(in []byte, out any, opts *libyaml.Options) error {
 		return err
 	}
 
+	// Skip trailing document check for legacy Unmarshal() compatibility
+	if opts.FromLegacy {
+		return nil
+	}
+
 	// Check for additional documents
 	var dummy any
 	err = l.Load(&dummy)
@@ -186,6 +191,12 @@ func NewLoader(r io.Reader, opts ...Option) (*Loader, error) {
 	}, nil
 }
 
+// SetKnownFields enables or disables strict field checking for subsequent Load calls.
+// This is used by the legacy Decoder.KnownFields() method.
+func (l *Loader) SetKnownFields(enable bool) {
+	l.decoder.KnownFields = enable
+}
+
 // Load reads the next YAML-encoded document from its input and stores it
 // in the value pointed to by v.
 //
@@ -216,6 +227,13 @@ func (l *Loader) Load(v any) (err error) {
 		return io.EOF
 	}
 	l.docCount++
+
+	// Check for Unmarshaler interface if requested (used by Unmarshal())
+	if l.opts.FromLegacy {
+		if u, ok := v.(Unmarshaler); ok {
+			return u.UnmarshalYAML(node)
+		}
+	}
 
 	out := reflect.ValueOf(v)
 	if out.Kind() == reflect.Pointer && !out.IsNil() {

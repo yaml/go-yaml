@@ -621,8 +621,7 @@ func handleErr(err *error) {
 
 // A Decoder reads and decodes YAML values from an input stream.
 type Decoder struct {
-	composer    *libyaml.Composer
-	knownFields bool
+	loader *Loader
 }
 
 // NewDecoder returns a new decoder that reads from r.
@@ -630,15 +629,15 @@ type Decoder struct {
 // The decoder introduces its own buffering and may read
 // data from r beyond the YAML values requested.
 func NewDecoder(r io.Reader) *Decoder {
-	return &Decoder{
-		composer: libyaml.NewComposerFromReader(r, libyaml.DefaultOptions),
-	}
+	// NewLoader won't return error with V3 preset and withFromLegacy
+	loader, _ := NewLoader(r, V3, withFromLegacy())
+	return &Decoder{loader: loader}
 }
 
 // KnownFields ensures that the keys in decoded mappings to
 // exist as fields in the struct being decoded into.
 func (dec *Decoder) KnownFields(enable bool) {
-	dec.knownFields = enable
+	dec.loader.SetKnownFields(enable)
 }
 
 // Decode reads the next YAML-encoded value from its input
@@ -646,23 +645,8 @@ func (dec *Decoder) KnownFields(enable bool) {
 //
 // See the documentation for Unmarshal for details about the
 // conversion of YAML into a Go value.
-func (dec *Decoder) Decode(v any) (err error) {
-	d := libyaml.NewConstructor(libyaml.DefaultOptions)
-	d.KnownFields = dec.knownFields
-	defer handleErr(&err)
-	node := dec.composer.Parse()
-	if node == nil {
-		return io.EOF
-	}
-	out := reflect.ValueOf(v)
-	if out.Kind() == reflect.Pointer && !out.IsNil() {
-		out = out.Elem()
-	}
-	d.Construct(node, out)
-	if len(d.TypeErrors) > 0 {
-		return &LoadErrors{Errors: d.TypeErrors}
-	}
-	return nil
+func (dec *Decoder) Decode(v any) error {
+	return dec.loader.Load(v)
 }
 
 // An Encoder writes YAML values to an output stream.
@@ -752,28 +736,17 @@ func (e *Encoder) Close() (err error) {
 // See the documentation of Marshal for the format of tags and a list of
 // supported tag options.
 func Unmarshal(in []byte, out any) (err error) {
-	return unmarshal(in, out, V3)
+	return Load(in, out, V3, withFromLegacy())
 }
 
-func unmarshal(in []byte, out any, opts ...Option) (err error) {
-	defer handleErr(&err)
-	o, err := libyaml.ApplyOptions(opts...)
-	if err != nil {
-		return err
-	}
-
-	// Check if out implements yaml.Unmarshaler
-	if u, ok := out.(Unmarshaler); ok {
-		p := libyaml.NewComposer(in, o)
-		defer p.Destroy()
-		node := p.Parse()
-		if node != nil {
-			return u.UnmarshalYAML(node)
-		}
+// withFromLegacy is a private option that indicates this call is from
+// a legacy API (Unmarshal/Decoder). It enables Unmarshaler interface
+// checking and allows trailing content for backward compatibility.
+func withFromLegacy() Option {
+	return func(o *libyaml.Options) error {
+		o.FromLegacy = true
 		return nil
 	}
-
-	return libyaml.Construct(in, out, o)
 }
 
 // Marshal serializes the value provided into a YAML document. The structure
