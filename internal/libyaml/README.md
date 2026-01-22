@@ -23,7 +23,7 @@ The `internal/libyaml` package implements the core YAML processing stages:
 - **yaml.go** - Core types and constants (Event, Token, enums)
 - **reader.go** - Input handling and encoding detection
 - **writer.go** - Output handling
-- **yamlprivate.go** - Internal types and helper functions
+- **util.go** - Internal types and helper functions
 
 ### Test Files
 
@@ -34,7 +34,7 @@ The `internal/libyaml` package implements the core YAML processing stages:
 - **yaml_test.go** - Utility function tests
 - **reader_test.go** - Reader tests
 - **writer_test.go** - Writer tests
-- **yamlprivate_test.go** - Character classification tests
+- **util_test.go** - Character classification tests
 - **loader_test.go** - Data loader scalar resolution tests
 - **yamldatatest_test.go** - YAML test data loading framework
 - **yamldatatest_loader.go** - YAML test data loader with scalar type resolution (exported for reuse)
@@ -48,7 +48,7 @@ The `internal/libyaml` package implements the core YAML processing stages:
 - **yaml.yaml** - Utility function test cases
 - **reader.yaml** - Reader test cases
 - **writer.yaml** - Writer test cases
-- **yamlprivate.yaml** - Character classification test cases
+- **util.yaml** - Character classification test cases
 - **loader.yaml** - Data loader scalar resolution test cases
 
 ## Processing Pipeline
@@ -175,7 +175,7 @@ Each YAML file contains test cases for a specific component:
   - Output handlers (string, io.Writer)
   - Error conditions
 
-- **yamlprivate.yaml** - Character classification tests
+- **util.yaml** - Character classification tests
   - Character type predicates (isAlpha, isDigit, isHex, etc.)
   - Character conversion functions (asDigit, asHex, width)
   - Unicode handling
