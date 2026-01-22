@@ -1,0 +1,141 @@
+# Copyright 2025 The go-yaml Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+# Desolver stage test cases
+#
+# Purpose: Tests the Desolver's ability to remove inferrable tags from nodes
+# while preserving custom and special tags.
+#
+# Test Types:
+#   desolve-inferrable - Tests removing tags that can be inferred
+#   desolve-preserve - Tests preserving tags that must be kept
+#   desolve-string-quoting - Tests string quoting for type preservation
+#
+# Field Descriptions:
+#   name: Human-readable test name
+#   node: Input node to desolve
+#     tag: YAML tag (e.g., "!!int", "!!str", "!custom")
+#     value: Scalar value
+#     kind: Node kind (Scalar, Mapping, Sequence) - defaults to Scalar
+#     style: Node style (Tagged, SingleQuoted, etc.)
+#   want: Expected results after desolving
+#     kind: Node kind (if checking collection type)
+#     tag: Expected tag after desolving (empty string means tag removed)
+#     style: Scalar style (Plain, Single, Double, etc.)
+
+- desolve-inferrable:
+    name: Remove inferrable int tag
+    node:
+      tag: '!!int'
+      value: '123'
+    want:
+      tag: ''
+      style: Plain
+
+- desolve-inferrable:
+    name: Remove inferrable bool tag
+    node:
+      tag: '!!bool'
+      value: 'true'
+    want:
+      tag: ''
+      style: Plain
+
+- desolve-inferrable:
+    name: Remove inferrable float tag
+    node:
+      tag: '!!float'
+      value: '3.14'
+    want:
+      tag: ''
+      style: Plain
+
+- desolve-inferrable:
+    name: Remove inferrable str tag
+    node:
+      tag: '!!str'
+      value: 'hello'
+    want:
+      tag: ''
+      style: Plain
+
+- desolve-preserve:
+    name: Preserve custom tag
+    node:
+      tag: '!tag:something'
+      value: '123'
+    want:
+      tag: '!tag:something'
+      style: Plain
+
+- desolve-preserve:
+    name: Preserve merge tag
+    node:
+      tag: '!!merge'
+      value: '<<'
+    want:
+      tag: '!!merge'
+      style: Plain
+
+- desolve-preserve:
+    name: Preserve binary tag
+    node:
+      tag: '!!binary'
+      value: 'SGVsbG8='
+    want:
+      tag: '!!binary'
+      style: Plain
+
+- desolve-preserve:
+    name: Preserve omap tag on collection
+    node:
+      tag: '!!omap'
+      kind: Mapping
+    want:
+      kind: Mapping
+      tag: '!!omap'
+
+- desolve-string-quoting:
+    name: Quote string that looks like int
+    node:
+      tag: '!!str'
+      value: '123'
+    want:
+      tag: ''
+      style: Single
+
+- desolve-string-quoting:
+    name: Quote string that looks like bool
+    node:
+      tag: '!!str'
+      value: 'true'
+    want:
+      tag: ''
+      style: Single
+
+- desolve-string-quoting:
+    name: Quote string that looks like float
+    node:
+      tag: '!!str'
+      value: '3.14'
+    want:
+      tag: ''
+      style: Single
+
+- desolve-inferrable:
+    name: Remove float tag when value is integer
+    node:
+      tag: '!!float'
+      value: '1'
+    want:
+      tag: ''
+      style: Plain
+
+- desolve-preserve:
+    name: Preserve tag with TaggedStyle
+    node:
+      tag: '!!int'
+      value: '123'
+      style: Tagged
+    want:
+      tag: '!!int'

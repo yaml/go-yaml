@@ -192,7 +192,7 @@ func (r *Representer) init() {
 		return
 	}
 	if r.Indent == 0 {
-		r.Indent = 4
+		r.Indent = 2
 	}
 	r.Emitter.BestIndent = r.Indent
 	r.emit(NewStreamStartEvent(UTF8_ENCODING))
@@ -223,62 +223,95 @@ func (r *Representer) must(err error) {
 	}
 }
 
-func (r *Representer) MarshalDoc(tag string, in reflect.Value) {
-	r.init()
+// Represent converts a Go value to a YAML node tree.
+// This is the primary method for the Representer stage in the dump pipeline.
+func (r *Representer) Represent(tag string, in reflect.Value) *Node {
 	var node *Node
 	if in.IsValid() {
 		node, _ = in.Interface().(*Node)
 	}
 	if node != nil && node.Kind == DocumentNode {
-		r.nodev(in)
+		// Already a document node, return as-is
+		return node
 	} else {
-		// Use !explicitStart for implicit flag (true = implicit/no marker)
-		r.emit(NewDocumentStartEvent(noVersionDirective, noTagDirective, !r.explicitStart))
-		r.represent(tag, in)
-		// Use !explicitEnd for implicit flag
-		r.emit(NewDocumentEndEvent(!r.explicitEnd))
+		// Wrap the represented value in a document node
+		contentNode := r.represent(tag, in)
+		return &Node{
+			Kind:    DocumentNode,
+			Content: []*Node{contentNode},
+		}
 	}
 }
 
-func (r *Representer) represent(tag string, in reflect.Value) {
+// MarshalDoc is deprecated - use Represent() and Serialize() instead.
+// This method is kept for backward compatibility with the old API (Node.Encode).
+func (r *Representer) MarshalDoc(tag string, in reflect.Value) {
+	opts := &Options{
+		Indent:                r.Indent,
+		LineWidth:             r.lineWidth,
+		ExplicitStart:         r.explicitStart,
+		ExplicitEnd:           r.explicitEnd,
+		FlowSimpleCollections: r.flowSimpleCollections,
+		QuotePreference:       r.quotePreference,
+	}
+
+	// Create serializer writing to internal buffer (same as r.Out)
+	serializer := NewSerializer(nil, opts)
+	serializer.Emitter.SetOutputString(&r.Out)
+
+	// Build node tree (Stage 1: Represent)
+	var node *Node
+	if in.IsValid() {
+		existingNode, ok := in.Interface().(*Node)
+		if ok && existingNode.Kind == DocumentNode {
+			node = existingNode
+		} else {
+			node = r.Represent(tag, in)
+		}
+	} else {
+		node = r.Represent(tag, in)
+	}
+
+	// Stage 2: Desolve - Remove inferrable tags
+	desolver := NewDesolver(opts)
+	desolver.Desolve(node)
+
+	// Stage 3: Serialize
+	serializer.Serialize(node)
+	serializer.Finish()
+}
+
+func (r *Representer) represent(tag string, in reflect.Value) *Node {
 	tag = shortTag(tag)
 	if !in.IsValid() || in.Kind() == reflect.Pointer && in.IsNil() {
-		r.nilv()
-		return
+		return r.nilv()
 	}
 	iface := in.Interface()
 	switch value := iface.(type) {
 	case *Node:
-		r.nodev(in)
-		return
+		return r.nodev(in)
 	case Node:
 		if !in.CanAddr() {
 			n := reflect.New(in.Type()).Elem()
 			n.Set(in)
 			in = n
 		}
-		r.nodev(in.Addr())
-		return
+		return r.nodev(in.Addr())
 	case time.Time:
-		r.timev(tag, in)
-		return
+		return r.timev(tag, in)
 	case *time.Time:
-		r.timev(tag, in.Elem())
-		return
+		return r.timev(tag, in.Elem())
 	case time.Duration:
-		r.stringv(tag, reflect.ValueOf(value.String()))
-		return
+		return r.stringv(tag, reflect.ValueOf(value.String()))
 	case Marshaler:
 		v, err := value.MarshalYAML()
 		if err != nil {
 			Fail(err)
 		}
 		if v == nil {
-			r.nilv()
-			return
+			return r.nilv()
 		}
-		r.represent(tag, reflect.ValueOf(v))
-		return
+		return r.represent(tag, reflect.ValueOf(v))
 	case encoding.TextMarshaler:
 		text, err := value.MarshalText()
 		if err != nil {
@@ -286,44 +319,58 @@ func (r *Representer) represent(tag string, in reflect.Value) {
 		}
 		in = reflect.ValueOf(string(text))
 	case nil:
-		r.nilv()
-		return
+		return r.nilv()
 	}
 	switch in.Kind() {
 	case reflect.Interface:
-		r.represent(tag, in.Elem())
+		return r.represent(tag, in.Elem())
 	case reflect.Map:
-		r.mapv(tag, in)
+		return r.mapv(tag, in)
 	case reflect.Pointer:
-		r.represent(tag, in.Elem())
+		return r.represent(tag, in.Elem())
 	case reflect.Struct:
-		r.structv(tag, in)
+		return r.structv(tag, in)
 	case reflect.Slice, reflect.Array:
-		r.slicev(tag, in)
+		return r.slicev(tag, in)
 	case reflect.String:
-		r.stringv(tag, in)
+		return r.stringv(tag, in)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		r.intv(tag, in)
+		return r.intv(tag, in)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		r.uintv(tag, in)
+		return r.uintv(tag, in)
 	case reflect.Float32, reflect.Float64:
-		r.floatv(tag, in)
+		return r.floatv(tag, in)
 	case reflect.Bool:
-		r.boolv(tag, in)
+		return r.boolv(tag, in)
 	default:
 		panic("cannot represent type: " + in.Type().String())
 	}
 }
 
-func (r *Representer) mapv(tag string, in reflect.Value) {
-	r.mappingv(tag, func() {
-		keys := keyList(in.MapKeys())
-		sort.Sort(keys)
-		for _, k := range keys {
-			r.represent("", k)
-			r.represent("", in.MapIndex(k))
-		}
-	})
+func (r *Representer) mapv(tag string, in reflect.Value) *Node {
+	if tag == "" {
+		tag = mapTag
+	}
+	var style Style
+	if r.flow {
+		r.flow = false
+		style = FlowStyle
+	}
+
+	keys := keyList(in.MapKeys())
+	sort.Sort(keys)
+	content := make([]*Node, 0, len(keys)*2)
+	for _, k := range keys {
+		content = append(content, r.represent("", k))
+		content = append(content, r.represent("", in.MapIndex(k)))
+	}
+
+	return &Node{
+		Kind:    MappingNode,
+		Tag:     tag,
+		Content: content,
+		Style:   style,
+	}
 }
 
 func (r *Representer) fieldByIndex(v reflect.Value, index []int) (field reflect.Value) {
@@ -343,73 +390,86 @@ func (r *Representer) fieldByIndex(v reflect.Value, index []int) (field reflect.
 	return v
 }
 
-func (r *Representer) structv(tag string, in reflect.Value) {
+func (r *Representer) structv(tag string, in reflect.Value) *Node {
 	sinfo, err := getStructInfo(in.Type())
 	if err != nil {
 		panic(err)
 	}
-	r.mappingv(tag, func() {
-		for _, info := range sinfo.FieldsList {
-			var value reflect.Value
-			if info.Inline == nil {
-				value = in.Field(info.Num)
-			} else {
-				value = r.fieldByIndex(in, info.Inline)
-				if !value.IsValid() {
-					continue
-				}
-			}
-			if info.OmitEmpty && isZero(value) {
+
+	if tag == "" {
+		tag = mapTag
+	}
+	var style Style
+	if r.flow {
+		r.flow = false
+		style = FlowStyle
+	}
+
+	content := make([]*Node, 0)
+	for _, info := range sinfo.FieldsList {
+		var value reflect.Value
+		if info.Inline == nil {
+			value = in.Field(info.Num)
+		} else {
+			value = r.fieldByIndex(in, info.Inline)
+			if !value.IsValid() {
 				continue
 			}
-			r.represent("", reflect.ValueOf(info.Key))
-			r.flow = info.Flow
-			r.represent("", value)
 		}
-		if sinfo.InlineMap >= 0 {
-			m := in.Field(sinfo.InlineMap)
-			if m.Len() > 0 {
-				r.flow = false
-				keys := keyList(m.MapKeys())
-				sort.Sort(keys)
-				for _, k := range keys {
-					if _, found := sinfo.FieldsMap[k.String()]; found {
-						panic(fmt.Sprintf("cannot have key %q in inlined map: conflicts with struct field", k.String()))
-					}
-					r.represent("", k)
-					r.flow = false
-					r.represent("", m.MapIndex(k))
+		if info.OmitEmpty && isZero(value) {
+			continue
+		}
+		content = append(content, r.represent("", reflect.ValueOf(info.Key)))
+		r.flow = info.Flow
+		content = append(content, r.represent("", value))
+	}
+	if sinfo.InlineMap >= 0 {
+		m := in.Field(sinfo.InlineMap)
+		if m.Len() > 0 {
+			r.flow = false
+			keys := keyList(m.MapKeys())
+			sort.Sort(keys)
+			for _, k := range keys {
+				if _, found := sinfo.FieldsMap[k.String()]; found {
+					panic(fmt.Sprintf("cannot have key %q in inlined map: conflicts with struct field", k.String()))
 				}
+				content = append(content, r.represent("", k))
+				r.flow = false
+				content = append(content, r.represent("", m.MapIndex(k)))
 			}
 		}
-	})
+	}
+
+	return &Node{
+		Kind:    MappingNode,
+		Tag:     tag,
+		Content: content,
+		Style:   style,
+	}
 }
 
-func (r *Representer) mappingv(tag string, f func()) {
-	implicit := tag == ""
-	style := BLOCK_MAPPING_STYLE
+func (r *Representer) slicev(tag string, in reflect.Value) *Node {
+	if tag == "" {
+		tag = seqTag
+	}
+	var style Style
 	if r.flow {
 		r.flow = false
-		style = FLOW_MAPPING_STYLE
+		style = FlowStyle
 	}
-	r.emit(NewMappingStartEvent(nil, []byte(tag), implicit, style))
-	f()
-	r.emit(NewMappingEndEvent())
-}
 
-func (r *Representer) slicev(tag string, in reflect.Value) {
-	implicit := tag == ""
-	style := BLOCK_SEQUENCE_STYLE
-	if r.flow {
-		r.flow = false
-		style = FLOW_SEQUENCE_STYLE
-	}
-	r.emit(NewSequenceStartEvent(nil, []byte(tag), implicit, style))
 	n := in.Len()
+	content := make([]*Node, n)
 	for i := 0; i < n; i++ {
-		r.represent("", in.Index(i))
+		content[i] = r.represent("", in.Index(i))
 	}
-	r.emit(NewSequenceEndEvent())
+
+	return &Node{
+		Kind:    SequenceNode,
+		Tag:     tag,
+		Content: content,
+		Style:   style,
+	}
 }
 
 // isBase60 returns whether s is in base 60 notation as defined in YAML 1.1.
@@ -457,10 +517,11 @@ func looksLikeMerge(s string) (result bool) {
 	return s == "<<"
 }
 
-func (r *Representer) stringv(tag string, in reflect.Value) {
-	var style ScalarStyle
+func (r *Representer) stringv(tag string, in reflect.Value) *Node {
+	var style Style
 	s := in.String()
-	canUsePlain := true
+	needsQuoting := false
+
 	switch {
 	case !utf8.ValidString(s):
 		if tag == binaryTag {
@@ -474,60 +535,91 @@ func (r *Representer) stringv(tag string, in reflect.Value) {
 		tag = binaryTag
 		s = encodeBase64(s)
 	case tag == "":
-		// Check to see if it would resolve to a specific
-		// tag when represented unquoted. If it doesn't,
-		// there's no need to quote it.
-		rtag, _ := resolve("", s)
-		canUsePlain = rtag == strTag &&
-			!(isBase60Float(s) ||
-				isOldBool(s) ||
-				looksLikeMerge(s))
+		tag = strTag
+		// Check if this string needs quoting for compatibility
+		// even though it would resolve as !!str
+		needsQuoting = isBase60Float(s) || isOldBool(s) || looksLikeMerge(s)
 	}
-	// Note: it's possible for user code to emit invalid YAML
-	// if they explicitly specify a tag and a string containing
-	// text that's incompatible with that tag.
+
+	// Set the style based on content
 	switch {
 	case strings.Contains(s, "\n"):
 		if r.flow || !shouldUseLiteralStyle(s) {
-			style = DOUBLE_QUOTED_SCALAR_STYLE
+			style = DoubleQuotedStyle
 		} else {
-			style = LITERAL_SCALAR_STYLE
+			style = LiteralStyle
 		}
-	case canUsePlain:
-		style = PLAIN_SCALAR_STYLE
+	case needsQuoting:
+		// Force quoting for YAML 1.1 compatibility values
+		style = SingleQuotedStyle
 	default:
-		style = r.quotePreference.ScalarStyle()
+		// Plain style by default - Desolver will add quotes if type mismatch
+		style = 0
 	}
-	r.emitScalar(s, "", tag, style, nil, nil, nil, nil)
+
+	return &Node{
+		Kind:  ScalarNode,
+		Tag:   tag,
+		Value: s,
+		Style: style,
+	}
 }
 
-func (r *Representer) boolv(tag string, in reflect.Value) {
+func (r *Representer) boolv(tag string, in reflect.Value) *Node {
 	var s string
 	if in.Bool() {
 		s = "true"
 	} else {
 		s = "false"
 	}
-	r.emitScalar(s, "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
+	if tag == "" {
+		tag = boolTag
+	}
+	return &Node{
+		Kind:  ScalarNode,
+		Tag:   tag,
+		Value: s,
+	}
 }
 
-func (r *Representer) intv(tag string, in reflect.Value) {
+func (r *Representer) intv(tag string, in reflect.Value) *Node {
 	s := strconv.FormatInt(in.Int(), 10)
-	r.emitScalar(s, "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
+	if tag == "" {
+		tag = intTag
+	}
+	return &Node{
+		Kind:  ScalarNode,
+		Tag:   tag,
+		Value: s,
+	}
 }
 
-func (r *Representer) uintv(tag string, in reflect.Value) {
+func (r *Representer) uintv(tag string, in reflect.Value) *Node {
 	s := strconv.FormatUint(in.Uint(), 10)
-	r.emitScalar(s, "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
+	if tag == "" {
+		tag = intTag
+	}
+	return &Node{
+		Kind:  ScalarNode,
+		Tag:   tag,
+		Value: s,
+	}
 }
 
-func (r *Representer) timev(tag string, in reflect.Value) {
+func (r *Representer) timev(tag string, in reflect.Value) *Node {
 	t := in.Interface().(time.Time)
 	s := t.Format(time.RFC3339Nano)
-	r.emitScalar(s, "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
+	if tag == "" {
+		tag = timestampTag
+	}
+	return &Node{
+		Kind:  ScalarNode,
+		Tag:   tag,
+		Value: s,
+	}
 }
 
-func (r *Representer) floatv(tag string, in reflect.Value) {
+func (r *Representer) floatv(tag string, in reflect.Value) *Node {
 	// Issue #352: When formatting, use the precision of the underlying value
 	precision := 64
 	if in.Kind() == reflect.Float32 {
@@ -543,11 +635,22 @@ func (r *Representer) floatv(tag string, in reflect.Value) {
 	case "NaN":
 		s = ".nan"
 	}
-	r.emitScalar(s, "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
+	if tag == "" {
+		tag = floatTag
+	}
+	return &Node{
+		Kind:  ScalarNode,
+		Tag:   tag,
+		Value: s,
+	}
 }
 
-func (r *Representer) nilv() {
-	r.emitScalar("null", "", "", PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
+func (r *Representer) nilv() *Node {
+	return &Node{
+		Kind:  ScalarNode,
+		Tag:   nullTag,
+		Value: "null",
+	}
 }
 
 func (r *Representer) emitScalar(
@@ -566,6 +669,7 @@ func (r *Representer) emitScalar(
 	r.emit(event)
 }
 
-func (r *Representer) nodev(in reflect.Value) {
-	r.node(in.Interface().(*Node), "")
+func (r *Representer) nodev(in reflect.Value) *Node {
+	// Return the node as-is - no conversion needed
+	return in.Interface().(*Node)
 }
