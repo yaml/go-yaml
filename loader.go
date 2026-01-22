@@ -168,6 +168,7 @@ func loadSingle(in []byte, out any, opts *libyaml.Options) error {
 // options.
 type Loader struct {
 	composer    *libyaml.Composer
+	resolver    *libyaml.Resolver
 	constructor *libyaml.Constructor
 	opts        *libyaml.Options
 	docCount    int
@@ -185,9 +186,10 @@ func NewLoader(r io.Reader, opts ...Option) (*Loader, error) {
 	c := libyaml.NewComposerFromReader(r, o)
 	c.SetStreamNodes(o.StreamNodes)
 	return &Loader{
-		composer:     c,
-		constructor:  libyaml.NewConstructor(o),
-		opts:         o,
+		composer:    c,
+		resolver:    libyaml.NewResolver(o),
+		constructor: libyaml.NewConstructor(o),
+		opts:        o,
 	}, nil
 }
 
@@ -224,14 +226,14 @@ func (l *Loader) Load(v any) (err error) {
 	}
 
 	// Stage 1: Compose - parse events into node tree (unresolved tags)
-	node := l.composer.Parse() // *libyaml.Node
+	node := l.composer.Compose() // *libyaml.Node
 	if node == nil {
 		return io.EOF
 	}
 	l.docCount++
 
 	// Stage 2: Resolve - determine implicit types for untagged scalars
-	libyaml.ResolveNode(node)
+	l.resolver.Resolve(node)
 
 	// Check for Unmarshaler interface if requested (used by Unmarshal())
 	if l.opts.FromLegacy {
