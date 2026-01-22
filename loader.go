@@ -170,7 +170,7 @@ type Loader struct {
 	composer    *libyaml.Composer
 	resolver    *libyaml.Resolver
 	constructor *libyaml.Constructor
-	opts        *libyaml.Options
+	options     *libyaml.Options
 	docCount    int
 }
 
@@ -189,7 +189,7 @@ func NewLoader(r io.Reader, opts ...Option) (*Loader, error) {
 		composer:    c,
 		resolver:    libyaml.NewResolver(o),
 		constructor: libyaml.NewConstructor(o),
-		opts:        o,
+		options:     o,
 	}, nil
 }
 
@@ -221,7 +221,7 @@ func (l *Loader) SetKnownFields(enable bool) {
 // about YAML to Go conversion and tag options.
 func (l *Loader) Load(v any) (err error) {
 	defer handleErr(&err)
-	if l.opts.SingleDocument && l.docCount > 0 {
+	if l.options.SingleDocument && l.docCount > 0 {
 		return io.EOF
 	}
 
@@ -236,7 +236,7 @@ func (l *Loader) Load(v any) (err error) {
 	l.resolver.Resolve(node)
 
 	// Check for Unmarshaler interface if requested (used by Unmarshal())
-	if l.opts.FromLegacy {
+	if l.options.FromLegacy {
 		if u, ok := v.(Unmarshaler); ok {
 			return u.UnmarshalYAML(node)
 		}

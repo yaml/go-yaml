@@ -79,7 +79,7 @@ func Dump(in any, opts ...Option) (out []byte, err error) {
 // A Dumper writes YAML values to an output stream with configurable options.
 type Dumper struct {
 	serializer *libyaml.Representer
-	opts       *libyaml.Options
+	options    *libyaml.Options
 }
 
 // NewDumper returns a new Dumper that writes to w with the given options.
@@ -92,7 +92,7 @@ func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
 	}
 	return &Dumper{
 		serializer: libyaml.NewRepresenter(w, o),
-		opts:       o,
+		options:    o,
 	}, nil
 }
 
