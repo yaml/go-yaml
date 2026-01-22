@@ -134,7 +134,7 @@ func (c *Composer) anchor(n *Node, anchor []byte) {
 	}
 }
 
-// Parse parses the next YAML node from the event stream.
+// Compose composes the next YAML node from the event stream.
 func (c *Composer) Compose() *Node {
 	c.init()
 
