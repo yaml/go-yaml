@@ -188,13 +188,12 @@ Each YAML file contains test cases for a specific component:
 
 ### Test Framework Implementation
 
-The test framework is implemented in `yamldatatest_loader.go` and `yamldatatest_test.go`:
+The test framework is implemented in `testdata_test.go`:
 
 **Core functions**:
-- `LoadYAML(data []byte) (interface{}, error)` - Parses YAML using libyaml parser with scalar type resolution (exported)
+- `LoadAny(data []byte) (interface{}, error)` - Parses YAML using production loader with scalar type resolution (exported from loader.go)
 - `UnmarshalStruct(target interface{}, data map[string]interface{}) error` - Populates structs (exported)
 - `LoadTestCases(filename string) ([]TestCase, error)` - Loads and parses test YAML files
-- `coerceScalar(value string) interface{}` - Resolves scalar strings to appropriate Go types (int, float64, bool, nil, string)
 
 **Core types**:
 - `TestCase` struct - Umbrella structure containing fields for all test types
@@ -503,7 +502,7 @@ Test cases use a **type-as-key** format where the test type is the map key:
 - **test** - For style-accessor tests: array of [Method, STYLE] where Method is the accessor method (e.g., ScalarStyle) and STYLE is the style constant (e.g., DOUBLE_QUOTED_SCALAR_STYLE).
 - **enum** - For enum tests: array of [Type, Value] where Type is the enum type (e.g., ScalarStyle) and Value is the constant (e.g., PLAIN_SCALAR_STYLE)
 
-**Note on scalar type resolution**: Unquoted scalar values in test data are automatically resolved to appropriate Go types (int, float64, bool, nil) by the `LoadYAML` function. Quoted scalars remain as strings.
+**Note on scalar type resolution**: Unquoted scalar values in test data are automatically resolved to appropriate Go types (int, float64, bool, nil) by the `LoadAny` function. Quoted scalars remain as strings.
 
 ### Running Tests
 
