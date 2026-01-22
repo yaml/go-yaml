@@ -1,0 +1,165 @@
+# Copyright 2025 The go-yaml Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+# Composer stage test cases
+#
+# Purpose: Tests the Composer's ability to parse YAML and build node trees
+#
+# Test Types:
+#   compose-scalar - Tests parsing scalar values
+#   compose-collection - Tests parsing sequences and mappings
+#   compose-style - Tests style detection (flow, literal, folded, quoted)
+#
+# Field Descriptions:
+#   name: Human-readable test name
+#   from: Input YAML text to parse (literal block scalar)
+#   want: Expected node structure after parsing
+#     kind: Expected node kind (Scalar, Sequence, Mapping)
+#     tag: Expected YAML tag (default tags applied by composer)
+#     value: Expected scalar value (for Scalar nodes)
+#     style: Expected style flags
+#     content: Expected child nodes (array of node objects)
+
+- compose-scalar:
+    name: Plain string
+    from: |
+      hello
+    want:
+      kind: Scalar
+      value: hello
+
+- compose-scalar:
+    name: Integer
+    from: |
+      42
+    want:
+      kind: Scalar
+      value: '42'
+
+- compose-scalar:
+    name: Single quoted string
+    from: |
+      '123'
+    want:
+      kind: Scalar
+      tag: '!!str'
+      value: '123'
+      style: Single
+
+- compose-scalar:
+    name: Double quoted string
+    from: |
+      "hello"
+    want:
+      kind: Scalar
+      tag: '!!str'
+      value: hello
+      style: Double
+
+- compose-scalar:
+    name: Literal block scalar
+    from: |
+      |
+        line 1
+        line 2
+    want:
+      kind: Scalar
+      tag: '!!str'
+      value: "line 1\nline 2\n"
+      style: Literal
+
+- compose-scalar:
+    name: Folded block scalar
+    from: |
+      >
+        line 1
+        line 2
+    want:
+      kind: Scalar
+      tag: '!!str'
+      value: "line 1 line 2\n"
+      style: Folded
+
+- compose-collection:
+    name: Block sequence
+    from: |
+      - a
+      - b
+      - c
+    want:
+      kind: Sequence
+      tag: '!!seq'
+      content:
+      - kind: Scalar
+        value: a
+      - kind: Scalar
+        value: b
+      - kind: Scalar
+        value: c
+
+- compose-collection:
+    name: Block mapping
+    from: |
+      key1: value1
+      key2: value2
+    want:
+      kind: Mapping
+      tag: '!!map'
+      content:
+      - kind: Scalar
+        value: key1
+      - kind: Scalar
+        value: value1
+      - kind: Scalar
+        value: key2
+      - kind: Scalar
+        value: value2
+
+- compose-style:
+    name: Flow sequence
+    from: |
+      [a, b, c]
+    want:
+      kind: Sequence
+      tag: '!!seq'
+      style: Flow
+      content:
+      - kind: Scalar
+        value: a
+      - kind: Scalar
+        value: b
+      - kind: Scalar
+        value: c
+
+- compose-style:
+    name: Flow mapping
+    from: |
+      {key: value}
+    want:
+      kind: Mapping
+      tag: '!!map'
+      style: Flow
+      content:
+      - kind: Scalar
+        value: key
+      - kind: Scalar
+        value: value
+
+- compose-collection:
+    name: Nested mapping
+    from: |
+      outer:
+        inner: value
+    want:
+      kind: Mapping
+      tag: '!!map'
+      content:
+      - kind: Scalar
+        value: outer
+      - kind: Mapping
+        tag: '!!map'
+        content:
+        - kind: Scalar
+          value: inner
+        - kind: Scalar
+          value: value
