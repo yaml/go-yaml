@@ -75,9 +75,15 @@ func Dump(in any, opts ...Option) (out []byte, err error) {
 }
 
 // A Dumper writes YAML values to an output stream with configurable options.
+// It uses a 3-stage pipeline mirroring the Loader:
+//  1. Representer: Go values → Tagged Node tree
+//  2. Desolver: Remove inferrable tags
+//  3. Serializer: Node tree → Events → YAML
 type Dumper struct {
-	serializer *Representer
-	options    *Options
+	representer *Representer
+	desolver    *Desolver
+	serializer  *Serializer
+	options     *Options
 }
 
 // NewDumper returns a new Dumper that writes to w with the given options.
@@ -89,8 +95,10 @@ func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
 		return nil, err
 	}
 	return &Dumper{
-		serializer: NewRepresenter(w, o),
-		options:    o,
+		representer: NewRepresenter(nil, o), // No writer - builds nodes
+		desolver:    NewDesolver(o),
+		serializer:  NewSerializer(w, o), // Writer here - emits YAML
+		options:     o,
 	}, nil
 }
 
@@ -103,7 +111,16 @@ func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
 // values to YAML.
 func (d *Dumper) Dump(v any) (err error) {
 	defer handleErr(&err)
-	d.serializer.MarshalDoc("", reflect.ValueOf(v))
+
+	// Stage 1: Represent - Go values → Tagged Node tree
+	node := d.representer.Represent("", reflect.ValueOf(v))
+
+	// Stage 2: Desolve - Remove inferrable tags
+	d.desolver.Desolve(node)
+
+	// Stage 3: Serialize - Node tree → Events → YAML
+	d.serializer.Serialize(node)
+
 	return nil
 }
 
@@ -121,7 +138,8 @@ func (d *Dumper) SetIndent(spaces int) {
 	if spaces < 0 {
 		panic("yaml: cannot indent to a negative number of spaces")
 	}
-	d.serializer.Indent = spaces
+	// Set on serializer's emitter
+	d.serializer.Emitter.BestIndent = spaces
 }
 
 // SetCompactSeqIndent controls whether '- ' is considered part of the indentation.

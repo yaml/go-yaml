@@ -15,108 +15,146 @@ import (
 
 // Serializer handles serialization of YAML nodes to event stream.
 type Serializer struct {
-	*Representer // Embed for now, can separate later
+	Emitter               Emitter
+	out                   []byte
+	lineWidth             int
+	explicitStart         bool
+	explicitEnd           bool
+	flowSimpleCollections bool
+	quotePreference       QuoteStyle
+	doneInit              bool
 }
 
 // NewSerializer creates a new Serializer with the given options.
 func NewSerializer(w io.Writer, opts *Options) *Serializer {
-	return &Serializer{NewRepresenter(w, opts)}
+	emitter := NewEmitter()
+	emitter.CompactSequenceIndent = opts.CompactSeqIndent
+	emitter.quotePreference = opts.QuotePreference
+	emitter.SetWidth(opts.LineWidth)
+	emitter.SetUnicode(opts.Unicode)
+	emitter.SetCanonical(opts.Canonical)
+	emitter.SetLineBreak(opts.LineBreak)
+
+	// Set indentation (defaults to 2 if not specified)
+	indent := opts.Indent
+	if indent == 0 {
+		indent = 2
+	}
+	emitter.BestIndent = indent
+
+	if w != nil {
+		emitter.SetOutputWriter(w)
+	}
+
+	return &Serializer{
+		Emitter:               emitter,
+		lineWidth:             opts.LineWidth,
+		explicitStart:         opts.ExplicitStart,
+		explicitEnd:           opts.ExplicitEnd,
+		flowSimpleCollections: opts.FlowSimpleCollections,
+		quotePreference:       opts.QuotePreference,
+	}
+}
+
+func (s *Serializer) init() {
+	if s.doneInit {
+		return
+	}
+	s.emit(NewStreamStartEvent(UTF8_ENCODING))
+	s.doneInit = true
+}
+
+func (s *Serializer) Finish() {
+	s.Emitter.OpenEnded = false
+	s.emit(NewStreamEndEvent())
+}
+
+func (s *Serializer) emit(event Event) {
+	s.must(s.Emitter.Emit(&event))
+}
+
+func (s *Serializer) must(err error) {
+	if err != nil {
+		msg := err.Error()
+		if msg == "" {
+			msg = "unknown problem generating YAML content"
+		}
+		failf("%s", msg)
+	}
 }
 
 // Serialize walks a Node tree and emits events to produce YAML output.
 // This is the primary method for the Serializer stage.
 func (s *Serializer) Serialize(node *Node) {
 	s.init()
-	// TODO: When represent() is refactored to build Node trees,
-	// this will serialize complete documents with proper headers/footers.
-	// For now, serialize individual nodes.
 	s.node(node, "")
 }
 
 // node serializes a Node tree into YAML events.
 // This is the core of the serializer stage - it walks the tree and produces events.
-func (r *Representer) node(node *Node, tail string) {
+func (s *Serializer) node(node *Node, tail string) {
 	// Zero nodes behave as nil.
 	if node.Kind == 0 && node.IsZero() {
-		r.nilv()
+		s.emitScalar("null", "", "", PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 		return
 	}
 
-	// If the tag was not explicitly requested, and dropping it won't change the
-	// implicit tag of the value, don't include it in the presentation.
+	// Tags have been processed by Desolver:
+	// - Empty tag = can be inferred or style handles it
+	// - Non-empty tag = emit explicitly
+	// Style has also been set by Desolver for quoting needs
 	tag := node.Tag
-	stag := shortTag(tag)
 	var forceQuoting bool
-	if tag != "" && node.Style&TaggedStyle == 0 {
-		if node.Kind == ScalarNode {
-			if stag == strTag && node.Style&(SingleQuotedStyle|DoubleQuotedStyle|LiteralStyle|FoldedStyle) != 0 {
-				tag = ""
-			} else {
-				rtag, _ := resolve("", node.Value)
-				if rtag == stag && stag != mergeTag {
-					tag = ""
-				} else if stag == strTag {
-					tag = ""
-					forceQuoting = true
-				}
-			}
-		} else {
-			var rtag string
-			switch node.Kind {
-			case MappingNode:
-				rtag = mapTag
-			case SequenceNode:
-				rtag = seqTag
-			}
-			if rtag == stag {
-				tag = ""
-			}
+	if tag == "" && node.Kind == ScalarNode {
+		// Empty tag with quoting style means the string type needs to be preserved
+		if node.Style&(SingleQuotedStyle|DoubleQuotedStyle|LiteralStyle|FoldedStyle) != 0 {
+			forceQuoting = true
 		}
 	}
 
 	switch node.Kind {
 	case DocumentNode:
-		event := NewDocumentStartEvent(noVersionDirective, noTagDirective, !r.explicitStart)
+		event := NewDocumentStartEvent(noVersionDirective, noTagDirective, !s.explicitStart)
 		event.HeadComment = []byte(node.HeadComment)
-		r.emit(event)
+		s.emit(event)
 		for _, node := range node.Content {
-			r.node(node, "")
+			s.node(node, "")
 		}
-		event = NewDocumentEndEvent(!r.explicitEnd)
+		event = NewDocumentEndEvent(!s.explicitEnd)
 		event.FootComment = []byte(node.FootComment)
-		r.emit(event)
+		s.emit(event)
 
 	case SequenceNode:
 		style := BLOCK_SEQUENCE_STYLE
 		// Use flow style if explicitly requested or if it's a simple
 		// collection (scalar-only contents that fit within line width,
 		// enabled via WithFlowSimpleCollections)
-		if node.Style&FlowStyle != 0 || r.isSimpleCollection(node) {
+		if node.Style&FlowStyle != 0 || s.isSimpleCollection(node) {
 			style = FLOW_SEQUENCE_STYLE
 		}
 		event := NewSequenceStartEvent([]byte(node.Anchor), []byte(longTag(tag)), tag == "", style)
 		event.HeadComment = []byte(node.HeadComment)
-		r.emit(event)
+		s.emit(event)
 		for _, node := range node.Content {
-			r.node(node, "")
+			s.node(node, "")
 		}
 		event = NewSequenceEndEvent()
 		event.LineComment = []byte(node.LineComment)
 		event.FootComment = []byte(node.FootComment)
-		r.emit(event)
+		s.emit(event)
 
 	case MappingNode:
 		style := BLOCK_MAPPING_STYLE
 		// Use flow style if explicitly requested or if it's a simple
 		// collection (scalar-only contents that fit within line width,
 		// enabled via WithFlowSimpleCollections)
-		if node.Style&FlowStyle != 0 || r.isSimpleCollection(node) {
+		if node.Style&FlowStyle != 0 || s.isSimpleCollection(node) {
 			style = FLOW_MAPPING_STYLE
 		}
 		event := NewMappingStartEvent([]byte(node.Anchor), []byte(longTag(tag)), tag == "", style)
 		event.TailComment = []byte(tail)
 		event.HeadComment = []byte(node.HeadComment)
-		r.emit(event)
+		s.emit(event)
 
 		// The tail logic below moves the foot comment of prior keys to the following key,
 		// since the value for each key may be a nested structure and the foot needs to be
@@ -131,29 +169,30 @@ func (r *Representer) node(node *Node, tail string) {
 				kopy.FootComment = ""
 				k = &kopy
 			}
-			r.node(k, tail)
+			s.node(k, tail)
 			tail = foot
 
 			v := node.Content[i+1]
-			r.node(v, "")
+			s.node(v, "")
 		}
 
 		event = NewMappingEndEvent()
 		event.TailComment = []byte(tail)
 		event.LineComment = []byte(node.LineComment)
 		event.FootComment = []byte(node.FootComment)
-		r.emit(event)
+		s.emit(event)
 
 	case AliasNode:
 		event := NewAliasEvent([]byte(node.Value))
 		event.HeadComment = []byte(node.HeadComment)
 		event.LineComment = []byte(node.LineComment)
 		event.FootComment = []byte(node.FootComment)
-		r.emit(event)
+		s.emit(event)
 
 	case ScalarNode:
 		value := node.Value
 		if !utf8.ValidString(value) {
+			stag := shortTag(tag)
 			if stag == binaryTag {
 				failf("explicitly tagged !!binary data must be base64-encoded")
 			}
@@ -179,19 +218,34 @@ func (r *Representer) node(node *Node, tail string) {
 		case strings.Contains(value, "\n"):
 			style = LITERAL_SCALAR_STYLE
 		case forceQuoting:
-			style = r.quotePreference.ScalarStyle()
+			style = s.quotePreference.ScalarStyle()
 		}
 
-		r.emitScalar(value, node.Anchor, tag, style, []byte(node.HeadComment), []byte(node.LineComment), []byte(node.FootComment), []byte(tail))
+		s.emitScalar(value, node.Anchor, tag, style, []byte(node.HeadComment), []byte(node.LineComment), []byte(node.FootComment), []byte(tail))
 	default:
 		failf("cannot represent node with unknown kind %d", node.Kind)
 	}
 }
 
+func (s *Serializer) emitScalar(
+	value, anchor, tag string, style ScalarStyle, head, line, foot, tail []byte,
+) {
+	implicit := tag == ""
+	if !implicit {
+		tag = longTag(tag)
+	}
+	event := NewScalarEvent([]byte(anchor), []byte(tag), []byte(value), implicit, implicit, style)
+	event.HeadComment = head
+	event.LineComment = line
+	event.FootComment = foot
+	event.TailComment = tail
+	s.emit(event)
+}
+
 // isSimpleCollection checks if a node contains only scalar values and would
 // fit within the line width when rendered in flow style.
-func (r *Representer) isSimpleCollection(node *Node) bool {
-	if !r.flowSimpleCollections {
+func (s *Serializer) isSimpleCollection(node *Node) bool {
+	if !s.flowSimpleCollections {
 		return false
 	}
 	if node.Kind != SequenceNode && node.Kind != MappingNode {
@@ -204,8 +258,8 @@ func (r *Representer) isSimpleCollection(node *Node) bool {
 		}
 	}
 	// Estimate flow style length
-	estimatedLen := r.estimateFlowLength(node)
-	width := r.lineWidth
+	estimatedLen := s.estimateFlowLength(node)
+	width := s.lineWidth
 	if width <= 0 {
 		width = 80 // Default width if not set
 	}
@@ -213,7 +267,7 @@ func (r *Representer) isSimpleCollection(node *Node) bool {
 }
 
 // estimateFlowLength estimates the character length of a node in flow style.
-func (r *Representer) estimateFlowLength(node *Node) int {
+func (s *Serializer) estimateFlowLength(node *Node) int {
 	if node.Kind == SequenceNode {
 		// [item1, item2, ...] = 2 + sum(len(items)) + 2*(len-1)
 		length := 2 // []
