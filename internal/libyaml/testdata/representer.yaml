@@ -1,0 +1,98 @@
+# Copyright 2025 The go-yaml Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+# Representer stage test cases
+#
+# Purpose: Tests the Representer's ability to convert Go values to YAML nodes
+# with proper tags and structure.
+#
+# Test Types:
+#   represent-scalar - Tests representing basic scalar types
+#   represent-collection - Tests representing maps and sequences
+#
+# Field Descriptions:
+#   name: Human-readable test name
+#   from: Input Go value to represent (int, string, bool, float, null, array, map, binary string)
+#   want: Expected node structure after representation
+#     kind: Expected node kind (Scalar, Sequence, Mapping)
+#     tag: Expected YAML tag (e.g., "!!int", "!!str", "!!binary")
+#     value: Expected scalar value (for Scalar nodes)
+#     content: Expected child nodes (array of node objects for Sequence/Mapping nodes)
+
+- represent-scalar:
+    name: Integer to node
+    from: 42
+    want:
+      kind: Scalar
+      tag: '!!int'
+      value: '42'
+
+- represent-scalar:
+    name: String to node
+    from: hello
+    want:
+      kind: Scalar
+      tag: '!!str'
+      value: hello
+
+- represent-scalar:
+    name: Boolean true to node
+    from: true
+    want:
+      kind: Scalar
+      tag: '!!bool'
+      value: 'true'
+
+- represent-scalar:
+    name: Float to node
+    from: 3.14
+    want:
+      kind: Scalar
+      tag: '!!float'
+      value: '3.14'
+
+- represent-scalar:
+    name: Null to node
+    from: null
+    want:
+      kind: Scalar
+      tag: '!!null'
+      value: 'null'
+
+# - represent-scalar:
+#     name: Binary data gets binary tag
+#     from: "\xFF\xFE"
+#     want:
+#       kind: Scalar
+#       tag: '!!binary'
+
+- represent-collection:
+    name: Slice to sequence node
+    from: [1, 2, 3]
+    want:
+      kind: Sequence
+      tag: '!!seq'
+      content:
+      - kind: Scalar
+        tag: '!!int'
+        value: '1'
+      - kind: Scalar
+        tag: '!!int'
+        value: '2'
+      - kind: Scalar
+        tag: '!!int'
+        value: '3'
+
+- represent-collection:
+    name: Map to mapping node
+    from: {a: 1}
+    want:
+      kind: Mapping
+      tag: '!!map'
+      content:
+      - kind: Scalar
+        tag: '!!str'
+        value: a
+      - kind: Scalar
+        tag: '!!int'
+        value: '1'
