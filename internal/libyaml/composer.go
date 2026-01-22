@@ -135,7 +135,7 @@ func (c *Composer) anchor(n *Node, anchor []byte) {
 }
 
 // Parse parses the next YAML node from the event stream.
-func (c *Composer) Parse() *Node {
+func (c *Composer) Compose() *Node {
 	c.init()
 
 	// Handle stream nodes if enabled
@@ -229,7 +229,7 @@ func (c *Composer) node(kind Kind, defaultTag, tag, value string) *Node {
 }
 
 func (c *Composer) parseChild(parent *Node) *Node {
-	child := c.Parse()
+	child := c.Compose()
 	parent.Content = append(parent.Content, child)
 	return child
 }
