@@ -74,6 +74,18 @@ func Load(in []byte, out any, opts ...Option) error {
 	return loadSingle(in, out, o)
 }
 
+// LoadAny parses YAML data into generic Go structures (map[string]any, []any).
+//
+// Useful for test data loading where the structure is unknown at compile time.
+// This is a convenience wrapper around Load with an any target.
+func LoadAny(data []byte) (any, error) {
+	var result any
+	if err := Load(data, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 // loadAll loads all documents into a slice
 func loadAll(in []byte, out any, opts *Options) error {
 	outVal := reflect.ValueOf(out)

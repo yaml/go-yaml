@@ -340,8 +340,8 @@ func LoadTestCases(filename string) ([]TestCase, error) {
 		return nil, fmt.Errorf("failed to read %s: %w", filename, err)
 	}
 
-	// Load YAML using local LoadYAML from yamldatatest_loader.go
-	rawData, err := LoadYAML(data)
+	// Load YAML using LoadAny from loader.go
+	rawData, err := LoadAny(data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse %s: %w", filename, err)
 	}

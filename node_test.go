@@ -609,7 +609,7 @@ func assertNodeInfoEqual(t *testing.T, expected, actual *NodeInfo, context strin
 func TestNodeFromYAML(t *testing.T) {
 	t.Setenv("TZ", "UTC")
 	datatest.RunTestCases(t, func() ([]map[string]any, error) {
-		return datatest.LoadTestCasesFromFile("testdata/node.yaml", libyaml.LoadYAML)
+		return datatest.LoadTestCasesFromFile("testdata/node.yaml", libyaml.LoadAny)
 	}, map[string]datatest.TestHandler{
 		"node-test": runNodeTestCase,
 	})
