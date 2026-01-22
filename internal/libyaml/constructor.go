@@ -345,7 +345,7 @@ func Construct(in []byte, out any, opts *Options) error {
 	d := NewConstructor(opts)
 	p := NewComposer(in)
 	defer p.Destroy()
-	node := p.Parse()
+	node := p.Compose()
 	if node != nil {
 		v := reflect.ValueOf(out)
 		if v.Kind() == reflect.Pointer && !v.IsNil() {
