@@ -28,7 +28,10 @@ type constructor interface {
 	UnmarshalYAML(value *Node) error
 }
 
-type obsoleteConstructor interface {
+// ObsoleteConstructor interface was the one used by yaml v2 lib
+//
+// it is still supported for backward compatibility.
+type ObsoleteConstructor interface {
 	UnmarshalYAML(construct func(any) error) error
 }
 
@@ -396,7 +399,10 @@ func (c *Constructor) callConstructor(n *Node, u constructor) (good bool) {
 	}
 }
 
-func (c *Constructor) callObsoleteConstructor(n *Node, u obsoleteConstructor) (good bool) {
+// callObsoleteConstructor calls the go-yaml v2-style UnmarshalYAML method
+//
+// the obsolete UnmarshalYAML signature is: func(func(any) error) error
+func (c *Constructor) callObsoleteConstructor(n *Node, u ObsoleteConstructor) (good bool) {
 	terrlen := len(c.TypeErrors)
 	err := u.UnmarshalYAML(func(v any) (err error) {
 		defer handleErr(&err)
@@ -475,10 +481,11 @@ func (c *Constructor) prepare(n *Node, out reflect.Value) (newout reflect.Value,
 				good = c.callConstructor(n, u)
 				return out, true, good
 			}
-			if u, ok := outi.(obsoleteConstructor); ok {
+			if u, ok := outi.(ObsoleteConstructor); ok {
 				good = c.callObsoleteConstructor(n, u)
 				return out, true, good
 			}
+
 		}
 	}
 	return out, false, false

@@ -929,6 +929,54 @@ func TestUnmarshalerPointerField(t *testing.T) {
 	}
 }
 
+type legacyNode struct{}
+
+type incompatibleParamUnmarshaler struct{}
+
+func (*incompatibleParamUnmarshaler) UnmarshalYAML(_ *legacyNode) error { return nil }
+
+type incompatibleReturnUnmarshaler struct{}
+
+func (*incompatibleReturnUnmarshaler) UnmarshalYAML(_ *yaml.Node) int { return 0 }
+
+type incompatibleArityUnmarshaler struct{}
+
+func (*incompatibleArityUnmarshaler) UnmarshalYAML() error { return nil }
+
+func TestUnmarshalRejectsIncompatibleUnmarshalYAMLSignature(t *testing.T) {
+	tests := []struct {
+		name string
+		out  any
+		want string
+	}{
+		{
+			name: "wrong-param-type",
+			out:  &incompatibleParamUnmarshaler{},
+			want: "implement UnmarshalYAML(*go.yaml.in/yaml/v4.Node) error",
+		},
+		{
+			name: "wrong-return-type",
+			out:  &incompatibleReturnUnmarshaler{},
+			want: "UnmarshalYAML must return an error, got int",
+		},
+		{
+			name: "wrong-arity",
+			out:  &incompatibleArityUnmarshaler{},
+			want: "expected 1 parameter and 1 returned value, got 0 and 1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := yaml.Unmarshal([]byte("a: 1"), tt.out)
+			assert.ErrorIs(t, err, yaml.ErrIncompatibleUnmarshaler)
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("unexpected error: %v\nwant substring: %q", err, tt.want)
+			}
+		})
+	}
+}
+
 func TestUnmarshalerValueField(t *testing.T) {
 	for _, item := range unmarshalerTests {
 		obj := &obsoleteUnmarshalerValue{}
