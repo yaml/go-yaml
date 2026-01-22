@@ -327,7 +327,7 @@ func (n *Node) Encode(v any) (err error) {
 	e := NewRepresenter(noWriter, DefaultOptions)
 	defer e.Destroy()
 	e.MarshalDoc("", reflect.ValueOf(v))
-	e.Finish()
+	// Note: MarshalDoc now handles Finish() internally
 	p := NewComposer(e.Out, nil)
 	p.Textless = true
 	defer p.Destroy()
@@ -354,7 +354,7 @@ func (n *Node) Dump(v any, opts ...Option) (err error) {
 	e := NewRepresenter(noWriter, o)
 	defer e.Destroy()
 	e.MarshalDoc("", reflect.ValueOf(v))
-	e.Finish()
+	// Note: MarshalDoc now handles Finish() internally
 	p := NewComposer(e.Out, nil)
 	p.Textless = true
 	defer p.Destroy()

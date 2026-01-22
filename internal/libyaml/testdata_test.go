@@ -20,6 +20,27 @@ import (
 	"go.yaml.in/yaml/v4/internal/testutil/datatest"
 )
 
+// NodeSpec describes an input node for pipeline stage tests.
+// Used in nested test format for representer, desolver, and serializer tests.
+type NodeSpec struct {
+	Tag     string `yaml:"tag"`     // YAML tag (e.g., "!!int", "!!str")
+	Value   string `yaml:"value"`   // Scalar value
+	Kind    string `yaml:"kind"`    // Node kind: Scalar, Mapping, Sequence, Document
+	Style   string `yaml:"style"`   // Style: Tagged, SingleQuoted, DoubleQuoted, Flow
+	Content any    `yaml:"content"` // Nested content for collections
+}
+
+// WantSpec describes expected test results for pipeline stage tests.
+// Used in nested test format for representer, desolver, and serializer tests.
+type WantSpec struct {
+	Tag          string `yaml:"tag"`           // Expected tag
+	Value        string `yaml:"value"`         // Expected scalar value
+	Kind         string `yaml:"kind"`          // Expected node kind
+	Quoted       bool   `yaml:"quoted"`        // Whether scalar should be quoted
+	ContentCount int    `yaml:"content_count"` // Expected number of content children
+	Yaml         string `yaml:"yaml"`          // Expected YAML output
+}
+
 // TestCase represents a single test case loaded from YAML
 type TestCase struct {
 	Name string `yaml:"name"`
@@ -79,6 +100,15 @@ type TestCase struct {
 	Bytes  bool  `yaml:"byte"`
 	Method []any `yaml:"call"`
 	Setup  any   `yaml:"init"` // Can be []interface{} (api tests) or map[string]interface{} (reader tests)
+
+	// Pipeline stage tests (representer, desolver, serializer) - nested format
+	// For representer: use From for input value
+	// For desolver: use Node for input node to desolve
+	// For serializer: use Node for input node to serialize, Yaml for expected output
+	// Note: Want field (type any) is used - cast to map in test handlers for representer/desolver
+	From   any      `yaml:"from"`   // Input value for representer tests
+	Node   NodeSpec `yaml:"node"`   // Input/expected node specification
+	Indent int      `yaml:"indent"` // Indentation setting for serializer tests
 }
 
 // constantRegistry holds libyaml-specific constants
