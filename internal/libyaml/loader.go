@@ -7,15 +7,13 @@
 // - Load: Decode YAML document(s) into a value (use WithAll for multi-doc)
 // - NewLoader: Create a streaming loader from io.Reader
 
-package yaml
+package libyaml
 
 import (
 	"bytes"
 	"errors"
 	"io"
 	"reflect"
-
-	"go.yaml.in/yaml/v4/internal/libyaml"
 )
 
 // Load loads YAML document(s) with the given options.
@@ -62,7 +60,7 @@ import (
 // See the documentation of Dump for the format of tags and a list of
 // supported tag options.
 func Load(in []byte, out any, opts ...Option) error {
-	o, err := libyaml.ApplyOptions(opts...)
+	o, err := ApplyOptions(opts...)
 	if err != nil {
 		return err
 	}
@@ -77,17 +75,17 @@ func Load(in []byte, out any, opts ...Option) error {
 }
 
 // loadAll loads all documents into a slice
-func loadAll(in []byte, out any, opts *libyaml.Options) error {
+func loadAll(in []byte, out any, opts *Options) error {
 	outVal := reflect.ValueOf(out)
 	if outVal.Kind() != reflect.Pointer || outVal.IsNil() {
-		return &LoadErrors{Errors: []*libyaml.ConstructError{{
+		return &LoadErrors{Errors: []*ConstructError{{
 			Err: errors.New("yaml: WithAllDocuments requires a non-nil pointer to a slice"),
 		}}}
 	}
 
 	sliceVal := outVal.Elem()
 	if sliceVal.Kind() != reflect.Slice {
-		return &LoadErrors{Errors: []*libyaml.ConstructError{{
+		return &LoadErrors{Errors: []*ConstructError{{
 			Err: errors.New("yaml: WithAllDocuments requires a pointer to a slice"),
 		}}}
 	}
@@ -95,7 +93,7 @@ func loadAll(in []byte, out any, opts *libyaml.Options) error {
 	// Create a new slice (clear existing content)
 	sliceVal.Set(reflect.MakeSlice(sliceVal.Type(), 0, 0))
 
-	l, err := NewLoader(bytes.NewReader(in), func(o *libyaml.Options) error {
+	l, err := NewLoader(bytes.NewReader(in), func(o *Options) error {
 		*o = *opts // Copy options
 		return nil
 	})
@@ -122,8 +120,8 @@ func loadAll(in []byte, out any, opts *libyaml.Options) error {
 }
 
 // loadSingle loads exactly one document (strict)
-func loadSingle(in []byte, out any, opts *libyaml.Options) error {
-	l, err := NewLoader(bytes.NewReader(in), func(o *libyaml.Options) error {
+func loadSingle(in []byte, out any, opts *Options) error {
+	l, err := NewLoader(bytes.NewReader(in), func(o *Options) error {
 		*o = *opts // Copy options
 		return nil
 	})
@@ -134,7 +132,7 @@ func loadSingle(in []byte, out any, opts *libyaml.Options) error {
 	// Load first document
 	err = l.Load(out)
 	if err == io.EOF {
-		return &LoadErrors{Errors: []*libyaml.ConstructError{{
+		return &LoadErrors{Errors: []*ConstructError{{
 			Err: errors.New("yaml: no documents in stream"),
 		}}}
 	}
@@ -156,7 +154,7 @@ func loadSingle(in []byte, out any, opts *libyaml.Options) error {
 			return err
 		}
 		// Successfully loaded a second document - this is an error in strict mode
-		return &LoadErrors{Errors: []*libyaml.ConstructError{{
+		return &LoadErrors{Errors: []*ConstructError{{
 			Err: errors.New("yaml: expected single document, found multiple"),
 		}}}
 	}
@@ -167,10 +165,10 @@ func loadSingle(in []byte, out any, opts *libyaml.Options) error {
 // A Loader reads and loads YAML values from an input stream with configurable
 // options.
 type Loader struct {
-	composer    *libyaml.Composer
-	resolver    *libyaml.Resolver
-	constructor *libyaml.Constructor
-	options     *libyaml.Options
+	composer    *Composer
+	resolver    *Resolver
+	constructor *Constructor
+	options     *Options
 	docCount    int
 }
 
@@ -179,16 +177,16 @@ type Loader struct {
 // The Loader introduces its own buffering and may read data from r beyond the
 // YAML values requested.
 func NewLoader(r io.Reader, opts ...Option) (*Loader, error) {
-	o, err := libyaml.ApplyOptions(opts...)
+	o, err := ApplyOptions(opts...)
 	if err != nil {
 		return nil, err
 	}
-	c := libyaml.NewComposerFromReader(r)
+	c := NewComposerFromReader(r, o)
 	c.SetStreamNodes(o.StreamNodes)
 	return &Loader{
 		composer:    c,
-		resolver:    libyaml.NewResolver(o),
-		constructor: libyaml.NewConstructor(o),
+		resolver:    NewResolver(o),
+		constructor: NewConstructor(o),
 		options:     o,
 	}, nil
 }
@@ -197,6 +195,27 @@ func NewLoader(r io.Reader, opts ...Option) (*Loader, error) {
 // This is used by the legacy Decoder.KnownFields() method.
 func (l *Loader) SetKnownFields(enable bool) {
 	l.constructor.KnownFields = enable
+}
+
+// ComposeAndResolve composes and resolves the next document from the input
+// and returns the node without constructing Go values. This is used by
+// Unmarshal() to support the Unmarshaler interface.
+func (l *Loader) ComposeAndResolve() *Node {
+	if l.options.SingleDocument && l.docCount > 0 {
+		return nil
+	}
+
+	// Stage 1: Compose - parse events into node tree (unresolved tags)
+	node := l.composer.Compose()
+	if node == nil {
+		return nil
+	}
+	l.docCount++
+
+	// Stage 2: Resolve - determine implicit types for untagged scalars
+	l.resolver.Resolve(node)
+
+	return node
 }
 
 // Load reads the next YAML-encoded document from its input and stores it
@@ -226,7 +245,7 @@ func (l *Loader) Load(v any) (err error) {
 	}
 
 	// Stage 1: Compose - parse events into node tree (unresolved tags)
-	node := l.composer.Compose() // *libyaml.Node
+	node := l.composer.Compose() // *Node
 	if node == nil {
 		return io.EOF
 	}
@@ -234,13 +253,6 @@ func (l *Loader) Load(v any) (err error) {
 
 	// Stage 2: Resolve - determine implicit types for untagged scalars
 	l.resolver.Resolve(node)
-
-	// Check for Unmarshaler interface if requested (used by Unmarshal())
-	if l.options.FromLegacy {
-		if u, ok := v.(Unmarshaler); ok {
-			return u.UnmarshalYAML(node)
-		}
-	}
 
 	// Stage 3: Construct - convert node tree to Go values
 	out := reflect.ValueOf(v)

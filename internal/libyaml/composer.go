@@ -24,12 +24,14 @@ type Composer struct {
 	returnStream bool     // flag to return stream node next
 	atStreamEnd  bool     // at stream end
 	encoding     Encoding // stream encoding from STREAM_START
+	opts         *Options // options for loading
 }
 
 // NewComposer creates a new composer from a byte slice.
-func NewComposer(b []byte) *Composer {
+func NewComposer(b []byte, opts *Options) *Composer {
 	p := Composer{
 		Parser: NewParser(),
+		opts:   opts,
 	}
 	if len(b) == 0 {
 		b = []byte{'\n'}
@@ -39,9 +41,10 @@ func NewComposer(b []byte) *Composer {
 }
 
 // NewComposerFromReader creates a new composer from an io.Reader.
-func NewComposerFromReader(r io.Reader) *Composer {
+func NewComposerFromReader(r io.Reader, opts *Options) *Composer {
 	p := Composer{
 		Parser: NewParser(),
+		opts:   opts,
 	}
 	p.Parser.SetInputReader(r)
 	return &p
