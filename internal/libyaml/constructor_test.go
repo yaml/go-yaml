@@ -19,12 +19,12 @@ func TestConstructor(t *testing.T) {
 			t.Helper()
 
 			// Load the YAML
-			result, err := LoadYAML([]byte(tc.Yaml))
-			assert.NoErrorf(t, err, "LoadYAML() error: %v", err)
+			result, err := LoadAny([]byte(tc.Yaml))
+			assert.NoErrorf(t, err, "LoadAny() error: %v", err)
 
 			// Compare the result with expected value
 			if !reflect.DeepEqual(result, tc.Want) {
-				t.Errorf("LoadYAML() = %v (type: %T), want %v (type: %T)",
+				t.Errorf("LoadAny() = %v (type: %T), want %v (type: %T)",
 					result, result, tc.Want, tc.Want)
 			}
 		},
