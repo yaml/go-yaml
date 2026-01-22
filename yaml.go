@@ -13,15 +13,13 @@
 // - Options API (WithIndent, WithKnownFields, etc.)
 // - Type and constant re-exports from internal/libyaml
 // - Helper functions for struct field handling
+// - Load/Dump API (Load, Dump, Loader, Dumper)
 // - Classic APIs (Decoder, Encoder, Unmarshal, Marshal)
-//
-// For the main API, see:
-// - loader.go: Load, Loader
-// - dumper.go: Dump, Dumper
 
 package yaml
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -616,6 +614,36 @@ func handleErr(err *error) {
 }
 
 //-----------------------------------------------------------------------------
+// Load/Dump API
+//-----------------------------------------------------------------------------
+
+// Loader and Dumper are re-exported from internal/libyaml for advanced use.
+type (
+	Loader = libyaml.Loader
+	Dumper = libyaml.Dumper
+)
+
+// NewLoader returns a new Loader that reads from r with the given options.
+func NewLoader(r io.Reader, opts ...Option) (*Loader, error) {
+	return libyaml.NewLoader(r, opts...)
+}
+
+// NewDumper returns a new Dumper that writes to w with the given options.
+func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
+	return libyaml.NewDumper(w, opts...)
+}
+
+// Load loads YAML document(s) with the given options.
+func Load(in []byte, out any, opts ...Option) error {
+	return libyaml.Load(in, out, opts...)
+}
+
+// Dump encodes a value to YAML with the given options.
+func Dump(in any, opts ...Option) (out []byte, err error) {
+	return libyaml.Dump(in, opts...)
+}
+
+//-----------------------------------------------------------------------------
 // Classic APIs
 //-----------------------------------------------------------------------------
 
@@ -729,6 +757,22 @@ func (e *Encoder) Close() error {
 // See the documentation of Marshal for the format of tags and a list of
 // supported tag options.
 func Unmarshal(in []byte, out any) (err error) {
+	// Check for Unmarshaler interface first
+	if u, ok := out.(Unmarshaler); ok {
+		l, err := libyaml.NewLoader(bytes.NewReader(in), V3, withFromLegacy())
+		if err != nil {
+			return err
+		}
+		// Compose and resolve to get the node
+		node := l.ComposeAndResolve()
+		if node == nil {
+			return &libyaml.LoadErrors{Errors: []*libyaml.ConstructError{{
+				Err: errors.New("yaml: no documents in stream"),
+			}}}
+		}
+		return u.UnmarshalYAML(node)
+	}
+	// Normal path
 	return Load(in, out, V3, withFromLegacy())
 }
 
