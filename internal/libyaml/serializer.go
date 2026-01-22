@@ -8,9 +8,30 @@
 package libyaml
 
 import (
+	"io"
 	"strings"
 	"unicode/utf8"
 )
+
+// Serializer handles serialization of YAML nodes to event stream.
+type Serializer struct {
+	*Representer // Embed for now, can separate later
+}
+
+// NewSerializer creates a new Serializer with the given options.
+func NewSerializer(w io.Writer, opts *Options) *Serializer {
+	return &Serializer{NewRepresenter(w, opts)}
+}
+
+// Serialize walks a Node tree and emits events to produce YAML output.
+// This is the primary method for the Serializer stage.
+func (s *Serializer) Serialize(node *Node) {
+	s.init()
+	// TODO: When represent() is refactored to build Node trees,
+	// this will serialize complete documents with proper headers/footers.
+	// For now, serialize individual nodes.
+	s.node(node, "")
+}
 
 // node serializes a Node tree into YAML events.
 // This is the core of the serializer stage - it walks the tree and produces events.

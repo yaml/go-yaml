@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Representer stage: Converts Go values to YAML nodes.
-// Handles marshaling from Go types to the intermediate node representation.
+// Handles representing from Go types to the intermediate node representation.
 
 package libyaml
 
@@ -234,13 +234,13 @@ func (r *Representer) MarshalDoc(tag string, in reflect.Value) {
 	} else {
 		// Use !explicitStart for implicit flag (true = implicit/no marker)
 		r.emit(NewDocumentStartEvent(noVersionDirective, noTagDirective, !r.explicitStart))
-		r.marshal(tag, in)
+		r.represent(tag, in)
 		// Use !explicitEnd for implicit flag
 		r.emit(NewDocumentEndEvent(!r.explicitEnd))
 	}
 }
 
-func (r *Representer) marshal(tag string, in reflect.Value) {
+func (r *Representer) represent(tag string, in reflect.Value) {
 	tag = shortTag(tag)
 	if !in.IsValid() || in.Kind() == reflect.Pointer && in.IsNil() {
 		r.nilv()
@@ -277,7 +277,7 @@ func (r *Representer) marshal(tag string, in reflect.Value) {
 			r.nilv()
 			return
 		}
-		r.marshal(tag, reflect.ValueOf(v))
+		r.represent(tag, reflect.ValueOf(v))
 		return
 	case encoding.TextMarshaler:
 		text, err := value.MarshalText()
@@ -291,11 +291,11 @@ func (r *Representer) marshal(tag string, in reflect.Value) {
 	}
 	switch in.Kind() {
 	case reflect.Interface:
-		r.marshal(tag, in.Elem())
+		r.represent(tag, in.Elem())
 	case reflect.Map:
 		r.mapv(tag, in)
 	case reflect.Pointer:
-		r.marshal(tag, in.Elem())
+		r.represent(tag, in.Elem())
 	case reflect.Struct:
 		r.structv(tag, in)
 	case reflect.Slice, reflect.Array:
@@ -311,7 +311,7 @@ func (r *Representer) marshal(tag string, in reflect.Value) {
 	case reflect.Bool:
 		r.boolv(tag, in)
 	default:
-		panic("cannot marshal type: " + in.Type().String())
+		panic("cannot represent type: " + in.Type().String())
 	}
 }
 
@@ -320,8 +320,8 @@ func (r *Representer) mapv(tag string, in reflect.Value) {
 		keys := keyList(in.MapKeys())
 		sort.Sort(keys)
 		for _, k := range keys {
-			r.marshal("", k)
-			r.marshal("", in.MapIndex(k))
+			r.represent("", k)
+			r.represent("", in.MapIndex(k))
 		}
 	})
 }
@@ -362,9 +362,9 @@ func (r *Representer) structv(tag string, in reflect.Value) {
 			if info.OmitEmpty && isZero(value) {
 				continue
 			}
-			r.marshal("", reflect.ValueOf(info.Key))
+			r.represent("", reflect.ValueOf(info.Key))
 			r.flow = info.Flow
-			r.marshal("", value)
+			r.represent("", value)
 		}
 		if sinfo.InlineMap >= 0 {
 			m := in.Field(sinfo.InlineMap)
@@ -376,9 +376,9 @@ func (r *Representer) structv(tag string, in reflect.Value) {
 					if _, found := sinfo.FieldsMap[k.String()]; found {
 						panic(fmt.Sprintf("cannot have key %q in inlined map: conflicts with struct field", k.String()))
 					}
-					r.marshal("", k)
+					r.represent("", k)
 					r.flow = false
-					r.marshal("", m.MapIndex(k))
+					r.represent("", m.MapIndex(k))
 				}
 			}
 		}
@@ -407,7 +407,7 @@ func (r *Representer) slicev(tag string, in reflect.Value) {
 	r.emit(NewSequenceStartEvent(nil, []byte(tag), implicit, style))
 	n := in.Len()
 	for i := 0; i < n; i++ {
-		r.marshal("", in.Index(i))
+		r.represent("", in.Index(i))
 	}
 	r.emit(NewSequenceEndEvent())
 }
@@ -415,7 +415,7 @@ func (r *Representer) slicev(tag string, in reflect.Value) {
 // isBase60 returns whether s is in base 60 notation as defined in YAML 1.1.
 //
 // The base 60 float notation in YAML 1.1 is a terrible idea and is unsupported
-// in YAML 1.2 and by this package, but these should be marshaled quoted for
+// in YAML 1.2 and by this package, but these should be represented quoted for
 // the time being for compatibility with other parsers.
 func isBase60Float(s string) (result bool) {
 	// Fast path.
@@ -437,7 +437,7 @@ var base60float = regexp.MustCompile(`^[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+(?:\.[0
 // isOldBool returns whether s is bool notation as defined in YAML 1.1.
 //
 // We continue to force strings that YAML 1.1 would interpret as booleans to be
-// rendered as quotes strings so that the marshaled output valid for YAML 1.1
+// rendered as quotes strings so that the represented output valid for YAML 1.1
 // parsing.
 func isOldBool(s string) (result bool) {
 	switch s {
@@ -467,7 +467,7 @@ func (r *Representer) stringv(tag string, in reflect.Value) {
 			failf("explicitly tagged !!binary data must be base64-encoded")
 		}
 		if tag != "" {
-			failf("cannot marshal invalid UTF-8 data as %s", shortTag(tag))
+			failf("cannot represent invalid UTF-8 data as %s", shortTag(tag))
 		}
 		// It can't be represented directly as YAML so use a binary tag
 		// and represent it as base64.

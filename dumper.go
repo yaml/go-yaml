@@ -78,8 +78,8 @@ func Dump(in any, opts ...Option) (out []byte, err error) {
 
 // A Dumper writes YAML values to an output stream with configurable options.
 type Dumper struct {
-	encoder *libyaml.Representer
-	opts    *libyaml.Options
+	serializer *libyaml.Representer
+	options    *libyaml.Options
 }
 
 // NewDumper returns a new Dumper that writes to w with the given options.
@@ -91,8 +91,8 @@ func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
 		return nil, err
 	}
 	return &Dumper{
-		encoder: libyaml.NewRepresenter(w, o),
-		opts:    o,
+		serializer: libyaml.NewRepresenter(w, o),
+		options:    o,
 	}, nil
 }
 
@@ -105,7 +105,7 @@ func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
 // values to YAML.
 func (d *Dumper) Dump(v any) (err error) {
 	defer handleErr(&err)
-	d.encoder.MarshalDoc("", reflect.ValueOf(v))
+	d.serializer.MarshalDoc("", reflect.ValueOf(v))
 	return nil
 }
 
@@ -113,7 +113,7 @@ func (d *Dumper) Dump(v any) (err error) {
 // It does not write a stream terminating string "...".
 func (d *Dumper) Close() (err error) {
 	defer handleErr(&err)
-	d.encoder.Finish()
+	d.serializer.Finish()
 	return nil
 }
 
@@ -123,11 +123,11 @@ func (d *Dumper) SetIndent(spaces int) {
 	if spaces < 0 {
 		panic("yaml: cannot indent to a negative number of spaces")
 	}
-	d.encoder.Indent = spaces
+	d.serializer.Indent = spaces
 }
 
 // SetCompactSeqIndent controls whether '- ' is considered part of the indentation.
 // This is used by the legacy Encoder methods.
 func (d *Dumper) SetCompactSeqIndent(compact bool) {
-	d.encoder.Emitter.CompactSequenceIndent = compact
+	d.serializer.Emitter.CompactSequenceIndent = compact
 }

@@ -18,7 +18,7 @@ import (
 	"go.yaml.in/yaml/v4/internal/libyaml"
 )
 
-// Load decodes YAML document(s) with the given options.
+// Load loads YAML document(s) with the given options.
 //
 // By default, Load requires exactly one document in the input.
 // If zero documents are found, it returns an error.
@@ -30,7 +30,7 @@ import (
 //	yaml.Load(multiDocYAML, &configs, yaml.WithAllDocuments())
 //
 // When WithAllDocuments is used, out must be a pointer to a slice.
-// Each document is decoded into the slice element type.
+// Each document is loaded into the slice element type.
 // Zero documents results in an empty slice (no error).
 //
 // Maps and pointers (to a struct, string, int, etc) are accepted as out
@@ -38,8 +38,8 @@ import (
 // the yaml package will initialize it if necessary. The out parameter
 // must not be nil.
 //
-// The type of the decoded values should be compatible with the respective
-// values in out. If one or more values cannot be decoded due to type
+// The type of the loaded values should be compatible with the respective
+// values in out. If one or more values cannot be loaded due to type
 // mismatches, decoding continues partially until the end of the YAML
 // content, and a *yaml.LoadErrors is returned with details for all
 // missed values.
@@ -114,7 +114,7 @@ func loadAll(in []byte, out any, opts *libyaml.Options) error {
 		if err != nil {
 			return err
 		}
-		// Append decoded element to slice
+		// Append loaded element to slice
 		sliceVal.Set(reflect.Append(sliceVal, elemPtr.Elem()))
 	}
 
@@ -164,13 +164,14 @@ func loadSingle(in []byte, out any, opts *libyaml.Options) error {
 	return nil
 }
 
-// A Loader reads and decodes YAML values from an input stream with configurable
+// A Loader reads and loads YAML values from an input stream with configurable
 // options.
 type Loader struct {
-	composer *libyaml.Composer
-	decoder  *libyaml.Constructor
-	opts     *libyaml.Options
-	docCount int
+	composer    *libyaml.Composer
+	resolver    *libyaml.Resolver
+	constructor *libyaml.Constructor
+	options     *libyaml.Options
+	docCount    int
 }
 
 // NewLoader returns a new Loader that reads from r with the given options.
@@ -185,16 +186,17 @@ func NewLoader(r io.Reader, opts ...Option) (*Loader, error) {
 	c := libyaml.NewComposerFromReader(r)
 	c.SetStreamNodes(o.StreamNodes)
 	return &Loader{
-		composer: c,
-		decoder:  libyaml.NewConstructor(o),
-		opts:     o,
+		composer:    c,
+		resolver:    libyaml.NewResolver(o),
+		constructor: libyaml.NewConstructor(o),
+		options:     o,
 	}, nil
 }
 
 // SetKnownFields enables or disables strict field checking for subsequent Load calls.
 // This is used by the legacy Decoder.KnownFields() method.
 func (l *Loader) SetKnownFields(enable bool) {
-	l.decoder.KnownFields = enable
+	l.constructor.KnownFields = enable
 }
 
 // Load reads the next YAML-encoded document from its input and stores it
@@ -219,22 +221,22 @@ func (l *Loader) SetKnownFields(enable bool) {
 // about YAML to Go conversion and tag options.
 func (l *Loader) Load(v any) (err error) {
 	defer handleErr(&err)
-	if l.opts.SingleDocument && l.docCount > 0 {
+	if l.options.SingleDocument && l.docCount > 0 {
 		return io.EOF
 	}
 
 	// Stage 1: Compose - parse events into node tree (unresolved tags)
-	node := l.composer.Parse() // *libyaml.Node
+	node := l.composer.Compose() // *libyaml.Node
 	if node == nil {
 		return io.EOF
 	}
 	l.docCount++
 
 	// Stage 2: Resolve - determine implicit types for untagged scalars
-	libyaml.ResolveNode(node)
+	l.resolver.Resolve(node)
 
 	// Check for Unmarshaler interface if requested (used by Unmarshal())
-	if l.opts.FromLegacy {
+	if l.options.FromLegacy {
 		if u, ok := v.(Unmarshaler); ok {
 			return u.UnmarshalYAML(node)
 		}
@@ -245,10 +247,10 @@ func (l *Loader) Load(v any) (err error) {
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
 		out = out.Elem()
 	}
-	l.decoder.Construct(node, out)
-	if len(l.decoder.TypeErrors) > 0 {
-		typeErrors := l.decoder.TypeErrors
-		l.decoder.TypeErrors = nil
+	l.constructor.Construct(node, out)
+	if len(l.constructor.TypeErrors) > 0 {
+		typeErrors := l.constructor.TypeErrors
+		l.constructor.TypeErrors = nil
 		return &LoadErrors{Errors: typeErrors}
 	}
 	return nil
