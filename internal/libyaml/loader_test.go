@@ -1,14 +1,13 @@
 // Tests for the streaming Loader API, including StreamNode functionality
 // and multi-document streaming.
 
-package yaml_test
+package libyaml
 
 import (
 	"bytes"
 	"io"
 	"testing"
 
-	"go.yaml.in/yaml/v4"
 	"go.yaml.in/yaml/v4/internal/testutil/assert"
 )
 
@@ -16,12 +15,12 @@ import (
 func TestStreamNodeEmptyStream(t *testing.T) {
 	input := []byte("")
 
-	loader, err := yaml.NewLoader(bytes.NewReader(input), yaml.WithStreamNodes())
+	loader, err := NewLoader(bytes.NewReader(input), WithStreamNodes())
 	assert.NoError(t, err)
 
-	var nodes []yaml.Node
+	var nodes []Node
 	for {
-		var node yaml.Node
+		var node Node
 		err := loader.Load(&node)
 		if err == io.EOF {
 			break
@@ -32,19 +31,19 @@ func TestStreamNodeEmptyStream(t *testing.T) {
 
 	// Empty stream should return exactly one StreamNode
 	assert.Equal(t, 1, len(nodes))
-	assert.Equal(t, yaml.StreamNode, nodes[0].Kind)
+	assert.Equal(t, StreamNode, nodes[0].Kind)
 }
 
 // TestStreamNodeSingleDocument tests the pattern [Stream, Doc, Stream] for single document
 func TestStreamNodeSingleDocument(t *testing.T) {
 	input := []byte("key: value\n")
 
-	loader, err := yaml.NewLoader(bytes.NewReader(input), yaml.WithStreamNodes())
+	loader, err := NewLoader(bytes.NewReader(input), WithStreamNodes())
 	assert.NoError(t, err)
 
-	var nodes []yaml.Node
+	var nodes []Node
 	for {
-		var node yaml.Node
+		var node Node
 		err := loader.Load(&node)
 		if err == io.EOF {
 			break
@@ -55,21 +54,21 @@ func TestStreamNodeSingleDocument(t *testing.T) {
 
 	// Single document should return [Stream, Doc, Stream]
 	assert.Equal(t, 3, len(nodes))
-	assert.Equal(t, yaml.StreamNode, nodes[0].Kind)
-	assert.Equal(t, yaml.DocumentNode, nodes[1].Kind)
-	assert.Equal(t, yaml.StreamNode, nodes[2].Kind)
+	assert.Equal(t, StreamNode, nodes[0].Kind)
+	assert.Equal(t, DocumentNode, nodes[1].Kind)
+	assert.Equal(t, StreamNode, nodes[2].Kind)
 }
 
 // TestStreamNodeMultiDocument tests interleaved pattern for multi-document stream
 func TestStreamNodeMultiDocument(t *testing.T) {
 	input := []byte("---\nkey1: value1\n---\nkey2: value2\n")
 
-	loader, err := yaml.NewLoader(bytes.NewReader(input), yaml.WithStreamNodes())
+	loader, err := NewLoader(bytes.NewReader(input), WithStreamNodes())
 	assert.NoError(t, err)
 
-	var nodes []yaml.Node
+	var nodes []Node
 	for {
-		var node yaml.Node
+		var node Node
 		err := loader.Load(&node)
 		if err == io.EOF {
 			break
@@ -80,23 +79,23 @@ func TestStreamNodeMultiDocument(t *testing.T) {
 
 	// Two documents should return [Stream, Doc, Stream, Doc, Stream]
 	assert.Equal(t, 5, len(nodes))
-	assert.Equal(t, yaml.StreamNode, nodes[0].Kind)
-	assert.Equal(t, yaml.DocumentNode, nodes[1].Kind)
-	assert.Equal(t, yaml.StreamNode, nodes[2].Kind)
-	assert.Equal(t, yaml.DocumentNode, nodes[3].Kind)
-	assert.Equal(t, yaml.StreamNode, nodes[4].Kind)
+	assert.Equal(t, StreamNode, nodes[0].Kind)
+	assert.Equal(t, DocumentNode, nodes[1].Kind)
+	assert.Equal(t, StreamNode, nodes[2].Kind)
+	assert.Equal(t, DocumentNode, nodes[3].Kind)
+	assert.Equal(t, StreamNode, nodes[4].Kind)
 }
 
 // TestStreamNodeDirectives tests that directives are captured on StreamNodes
 func TestStreamNodeDirectives(t *testing.T) {
 	input := []byte("%YAML 1.1\n%TAG ! tag:example.com,2000:app/\n---\nkey: value\n")
 
-	loader, err := yaml.NewLoader(bytes.NewReader(input), yaml.WithStreamNodes())
+	loader, err := NewLoader(bytes.NewReader(input), WithStreamNodes())
 	assert.NoError(t, err)
 
-	var nodes []yaml.Node
+	var nodes []Node
 	for {
-		var node yaml.Node
+		var node Node
 		err := loader.Load(&node)
 		if err == io.EOF {
 			break
@@ -109,7 +108,7 @@ func TestStreamNodeDirectives(t *testing.T) {
 	assert.Equal(t, 3, len(nodes))
 
 	// First StreamNode should have encoding
-	assert.Equal(t, yaml.StreamNode, nodes[0].Kind)
+	assert.Equal(t, StreamNode, nodes[0].Kind)
 	// Encoding should be set (non-zero)
 	if nodes[0].Encoding == 0 {
 		t.Fatal("first stream node should have encoding set")
@@ -139,15 +138,15 @@ func TestStreamNodeDirectives(t *testing.T) {
 func TestStreamNodeEncoding(t *testing.T) {
 	input := []byte("key: value\n")
 
-	loader, err := yaml.NewLoader(bytes.NewReader(input), yaml.WithStreamNodes())
+	loader, err := NewLoader(bytes.NewReader(input), WithStreamNodes())
 	assert.NoError(t, err)
 
-	var node yaml.Node
+	var node Node
 	err = loader.Load(&node)
 	assert.NoError(t, err)
 
 	// First node should be a StreamNode with encoding
-	assert.Equal(t, yaml.StreamNode, node.Kind)
+	assert.Equal(t, StreamNode, node.Kind)
 	// Encoding should be set (non-zero)
 	if node.Encoding == 0 {
 		t.Fatal("stream node should have encoding set")
@@ -158,12 +157,12 @@ func TestStreamNodeEncoding(t *testing.T) {
 func TestWithoutStreamNodes(t *testing.T) {
 	input := []byte("---\nkey1: value1\n---\nkey2: value2\n")
 
-	loader, err := yaml.NewLoader(bytes.NewReader(input))
+	loader, err := NewLoader(bytes.NewReader(input))
 	assert.NoError(t, err)
 
-	var nodes []yaml.Node
+	var nodes []Node
 	for {
-		var node yaml.Node
+		var node Node
 		err := loader.Load(&node)
 		if err == io.EOF {
 			break
@@ -174,23 +173,23 @@ func TestWithoutStreamNodes(t *testing.T) {
 
 	// Without stream nodes, should only return DocumentNodes
 	assert.Equal(t, 2, len(nodes))
-	assert.Equal(t, yaml.DocumentNode, nodes[0].Kind)
-	assert.Equal(t, yaml.DocumentNode, nodes[1].Kind)
+	assert.Equal(t, DocumentNode, nodes[0].Kind)
+	assert.Equal(t, DocumentNode, nodes[1].Kind)
 }
 
 // TestStreamNodeDisabled tests explicitly disabling stream nodes
 func TestStreamNodeDisabled(t *testing.T) {
 	input := []byte("key: value\n")
 
-	loader, err := yaml.NewLoader(bytes.NewReader(input), yaml.WithStreamNodes(false))
+	loader, err := NewLoader(bytes.NewReader(input), WithStreamNodes(false))
 	assert.NoError(t, err)
 
-	var node yaml.Node
+	var node Node
 	err = loader.Load(&node)
 	assert.NoError(t, err)
 
 	// Should get a DocumentNode, not a StreamNode
-	assert.Equal(t, yaml.DocumentNode, node.Kind)
+	assert.Equal(t, DocumentNode, node.Kind)
 }
 
 // TestLoadWithAllDocuments_TypedSlice tests loading multiple documents into a typed slice
@@ -202,7 +201,7 @@ func TestLoadWithAllDocuments_TypedSlice(t *testing.T) {
 	input := []byte("---\nname: first\n---\nname: second\n---\nname: third\n")
 
 	var configs []Config
-	err := yaml.Load(input, &configs, yaml.WithAllDocuments())
+	err := Load(input, &configs, WithAllDocuments())
 	assert.NoError(t, err)
 
 	assert.Equal(t, 3, len(configs))
@@ -216,7 +215,7 @@ func TestLoadWithAllDocuments_UntypedSlice(t *testing.T) {
 	input := []byte("---\nname: first\n---\nname: second\n")
 
 	var docs []any
-	err := yaml.Load(input, &docs, yaml.WithAllDocuments())
+	err := Load(input, &docs, WithAllDocuments())
 	assert.NoError(t, err)
 
 	assert.Equal(t, 2, len(docs))
@@ -227,7 +226,7 @@ func TestLoadWithAllDocuments_EmptyInput(t *testing.T) {
 	input := []byte("")
 
 	var docs []any
-	err := yaml.Load(input, &docs, yaml.WithAllDocuments())
+	err := Load(input, &docs, WithAllDocuments())
 	assert.NoError(t, err)
 
 	assert.Equal(t, 0, len(docs))
@@ -238,7 +237,7 @@ func TestLoadWithAllDocuments_NonSlice(t *testing.T) {
 	input := []byte("---\nname: first\n---\nname: second\n")
 
 	var single map[string]any
-	err := yaml.Load(input, &single, yaml.WithAllDocuments())
+	err := Load(input, &single, WithAllDocuments())
 	assert.NotNil(t, err)
 	assert.ErrorMatches(t, ".*WithAllDocuments requires a pointer to a slice.*", err)
 }
@@ -252,7 +251,7 @@ func TestLoad_SingleDocument(t *testing.T) {
 	input := []byte("name: myconfig\n")
 
 	var config Config
-	err := yaml.Load(input, &config)
+	err := Load(input, &config)
 	assert.NoError(t, err)
 
 	assert.Equal(t, "myconfig", config.Name)
@@ -263,7 +262,7 @@ func TestLoad_ZeroDocuments(t *testing.T) {
 	input := []byte("")
 
 	var config map[string]any
-	err := yaml.Load(input, &config)
+	err := Load(input, &config)
 	assert.NotNil(t, err)
 	assert.ErrorMatches(t, ".*no documents in stream.*", err)
 }
@@ -273,7 +272,7 @@ func TestLoad_MultipleDocuments(t *testing.T) {
 	input := []byte("---\nname: first\n---\nname: second\n")
 
 	var config map[string]any
-	err := yaml.Load(input, &config)
+	err := Load(input, &config)
 	assert.NotNil(t, err)
 	assert.ErrorMatches(t, ".*expected single document, found multiple.*", err)
 }

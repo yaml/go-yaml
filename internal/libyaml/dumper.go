@@ -7,15 +7,13 @@
 // - Dump: Encode value(s) to YAML (use WithAll for multi-doc)
 // - NewDumper: Create a streaming dumper to io.Writer
 
-package yaml
+package libyaml
 
 import (
 	"bytes"
 	"errors"
 	"io"
 	"reflect"
-
-	"go.yaml.in/yaml/v4/internal/libyaml"
 )
 
 // Dump encodes a value to YAML with the given options.
@@ -34,13 +32,13 @@ import (
 func Dump(in any, opts ...Option) (out []byte, err error) {
 	defer handleErr(&err)
 
-	o, err := libyaml.ApplyOptions(opts...)
+	o, err := ApplyOptions(opts...)
 	if err != nil {
 		return nil, err
 	}
 
 	var buf bytes.Buffer
-	d, err := NewDumper(&buf, func(opts *libyaml.Options) error {
+	d, err := NewDumper(&buf, func(opts *Options) error {
 		*opts = *o // Copy options
 		return nil
 	})
@@ -52,7 +50,7 @@ func Dump(in any, opts ...Option) (out []byte, err error) {
 		// Multi-document mode: in must be a slice
 		inVal := reflect.ValueOf(in)
 		if inVal.Kind() != reflect.Slice {
-			return nil, &LoadErrors{Errors: []*libyaml.ConstructError{{
+			return nil, &LoadErrors{Errors: []*ConstructError{{
 				Err: errors.New("yaml: WithAllDocuments requires a slice input"),
 			}}}
 		}
@@ -78,20 +76,20 @@ func Dump(in any, opts ...Option) (out []byte, err error) {
 
 // A Dumper writes YAML values to an output stream with configurable options.
 type Dumper struct {
-	serializer *libyaml.Representer
-	options    *libyaml.Options
+	serializer *Representer
+	options    *Options
 }
 
 // NewDumper returns a new Dumper that writes to w with the given options.
 //
 // The Dumper should be closed after use to flush all data to w.
 func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
-	o, err := libyaml.ApplyOptions(opts...)
+	o, err := ApplyOptions(opts...)
 	if err != nil {
 		return nil, err
 	}
 	return &Dumper{
-		serializer: libyaml.NewRepresenter(w, o),
+		serializer: NewRepresenter(w, o),
 		options:    o,
 	}, nil
 }
