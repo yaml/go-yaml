@@ -95,7 +95,7 @@ func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
 		return nil, err
 	}
 	return &Dumper{
-		representer: NewRepresenter(nil, o), // No writer - builds nodes
+		representer: NewRepresenter(o), // No writer - builds nodes
 		desolver:    NewDesolver(o),
 		serializer:  NewSerializer(w, o), // Writer here - emits YAML
 		options:     o,

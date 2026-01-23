@@ -13,6 +13,13 @@ import (
 	"unicode/utf8"
 )
 
+// Sentinel values for event creation.
+// These provide clarity at call sites, similar to http.NoBody.
+var (
+	noVersionDirective *VersionDirective = nil
+	noTagDirective     []TagDirective    = nil
+)
+
 // Serializer handles serialization of YAML nodes to event stream.
 type Serializer struct {
 	Emitter               Emitter

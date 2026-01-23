@@ -10,7 +10,6 @@ package libyaml
 import (
 	"encoding"
 	"fmt"
-	"io"
 	"reflect"
 	"regexp"
 	"sort"
@@ -134,92 +133,25 @@ func numLess(a, b reflect.Value) bool {
 	panic("not a number")
 }
 
-// Sentinel values for newRepresenter parameters.
-// These provide clarity at call sites, similar to http.NoBody.
-var (
-	noWriter           io.Writer         = nil
-	noVersionDirective *VersionDirective = nil
-	noTagDirective     []TagDirective    = nil
-)
-
 type Representer struct {
-	Emitter               Emitter
-	Out                   []byte
 	flow                  bool
 	Indent                int
 	lineWidth             int
-	doneInit              bool
 	explicitStart         bool
 	explicitEnd           bool
 	flowSimpleCollections bool
 	quotePreference       QuoteStyle
 }
 
-// NewRepresenter creates a new YAML representr with the given options.
-//
-// The writer parameter specifies the output destination for the representr.
-// If writer is nil, the representr will write to an internal buffer.
-func NewRepresenter(writer io.Writer, opts *Options) *Representer {
-	emitter := NewEmitter()
-	emitter.CompactSequenceIndent = opts.CompactSeqIndent
-	emitter.quotePreference = opts.QuotePreference
-	emitter.SetWidth(opts.LineWidth)
-	emitter.SetUnicode(opts.Unicode)
-	emitter.SetCanonical(opts.Canonical)
-	emitter.SetLineBreak(opts.LineBreak)
-
-	r := &Representer{
-		Emitter:               emitter,
+// NewRepresenter creates a new YAML representer with the given options.
+func NewRepresenter(opts *Options) *Representer {
+	return &Representer{
 		Indent:                opts.Indent,
 		lineWidth:             opts.LineWidth,
 		explicitStart:         opts.ExplicitStart,
 		explicitEnd:           opts.ExplicitEnd,
 		flowSimpleCollections: opts.FlowSimpleCollections,
 		quotePreference:       opts.QuotePreference,
-	}
-
-	if writer != nil {
-		r.Emitter.SetOutputWriter(writer)
-	} else {
-		r.Emitter.SetOutputString(&r.Out)
-	}
-
-	return r
-}
-
-func (r *Representer) init() {
-	if r.doneInit {
-		return
-	}
-	if r.Indent == 0 {
-		r.Indent = 2
-	}
-	r.Emitter.BestIndent = r.Indent
-	r.emit(NewStreamStartEvent(UTF8_ENCODING))
-	r.doneInit = true
-}
-
-func (r *Representer) Finish() {
-	r.Emitter.OpenEnded = false
-	r.emit(NewStreamEndEvent())
-}
-
-func (r *Representer) Destroy() {
-	r.Emitter.Delete()
-}
-
-func (r *Representer) emit(event Event) {
-	// This will internally delete the event value.
-	r.must(r.Emitter.Emit(&event))
-}
-
-func (r *Representer) must(err error) {
-	if err != nil {
-		msg := err.Error()
-		if msg == "" {
-			msg = "unknown problem generating YAML content"
-		}
-		failf("%s", msg)
 	}
 }
 
@@ -241,44 +173,6 @@ func (r *Representer) Represent(tag string, in reflect.Value) *Node {
 			Content: []*Node{contentNode},
 		}
 	}
-}
-
-// MarshalDoc is deprecated - use Represent() and Serialize() instead.
-// This method is kept for backward compatibility with the old API (Node.Encode).
-func (r *Representer) MarshalDoc(tag string, in reflect.Value) {
-	opts := &Options{
-		Indent:                r.Indent,
-		LineWidth:             r.lineWidth,
-		ExplicitStart:         r.explicitStart,
-		ExplicitEnd:           r.explicitEnd,
-		FlowSimpleCollections: r.flowSimpleCollections,
-		QuotePreference:       r.quotePreference,
-	}
-
-	// Create serializer writing to internal buffer (same as r.Out)
-	serializer := NewSerializer(nil, opts)
-	serializer.Emitter.SetOutputString(&r.Out)
-
-	// Build node tree (Stage 1: Represent)
-	var node *Node
-	if in.IsValid() {
-		existingNode, ok := in.Interface().(*Node)
-		if ok && existingNode.Kind == DocumentNode {
-			node = existingNode
-		} else {
-			node = r.Represent(tag, in)
-		}
-	} else {
-		node = r.Represent(tag, in)
-	}
-
-	// Stage 2: Desolve - Remove inferable tags
-	desolver := NewDesolver(opts)
-	desolver.Desolve(node)
-
-	// Stage 3: Serialize
-	serializer.Serialize(node)
-	serializer.Finish()
 }
 
 func (r *Representer) represent(tag string, in reflect.Value) *Node {
@@ -651,22 +545,6 @@ func (r *Representer) nilv() *Node {
 		Tag:   nullTag,
 		Value: "null",
 	}
-}
-
-func (r *Representer) emitScalar(
-	value, anchor, tag string, style ScalarStyle, head, line, foot, tail []byte,
-) {
-	// TODO Kill this function. Replace all initialize calls by their underlining Go literals.
-	implicit := tag == ""
-	if !implicit {
-		tag = longTag(tag)
-	}
-	event := NewScalarEvent([]byte(anchor), []byte(tag), []byte(value), implicit, implicit, style)
-	event.HeadComment = head
-	event.LineComment = line
-	event.FootComment = foot
-	event.TailComment = tail
-	r.emit(event)
 }
 
 func (r *Representer) nodev(in reflect.Value) *Node {

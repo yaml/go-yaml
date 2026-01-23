@@ -64,7 +64,7 @@ func TestRepresenter(t *testing.T) {
 		"represent-scalar": func(t *testing.T, tc TestCase) {
 			t.Helper()
 
-			r := NewRepresenter(nil, DefaultOptions)
+			r := NewRepresenter(DefaultOptions)
 			doc := r.Represent("", reflect.ValueOf(tc.From))
 
 			if doc == nil || doc.Kind != DocumentNode {
@@ -83,7 +83,7 @@ func TestRepresenter(t *testing.T) {
 		"represent-collection": func(t *testing.T, tc TestCase) {
 			t.Helper()
 
-			r := NewRepresenter(nil, DefaultOptions)
+			r := NewRepresenter(DefaultOptions)
 			doc := r.Represent("", reflect.ValueOf(tc.From))
 
 			if doc == nil || doc.Kind != DocumentNode {
