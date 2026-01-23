@@ -84,7 +84,7 @@ func runTestsInDir(t *testing.T, rootDir string, relPath string) {
 		if entry.IsDir() {
 			// Check if it's a test case directory (contains in.yaml)
 			if _, err := os.Stat(filepath.Join(entryFullPath, "in.yaml")); err == nil {
-				t.Run(filepath.ToSlash(entryRelPath), func(t *testing.T) {
+				t.Run(strings.ReplaceAll(entryRelPath, string(filepath.Separator), "-"), func(t *testing.T) {
 					runTest(t, entryFullPath)
 				})
 			} else {
