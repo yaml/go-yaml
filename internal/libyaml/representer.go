@@ -272,7 +272,7 @@ func (r *Representer) MarshalDoc(tag string, in reflect.Value) {
 		node = r.Represent(tag, in)
 	}
 
-	// Stage 2: Desolve - Remove inferrable tags
+	// Stage 2: Desolve - Remove inferable tags
 	desolver := NewDesolver(opts)
 	desolver.Desolve(node)
 
