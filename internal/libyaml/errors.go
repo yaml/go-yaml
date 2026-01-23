@@ -169,3 +169,15 @@ type YAMLError struct {
 func (e *YAMLError) Error() string {
 	return e.Err.Error()
 }
+
+// handleErr recovers from panics caused by yaml errors.
+// It's used in defer statements to convert YAMLError panics into regular errors.
+func handleErr(err *error) {
+	if v := recover(); v != nil {
+		if e, ok := v.(*YAMLError); ok {
+			*err = e.Err
+		} else {
+			panic(v)
+		}
+	}
+}
