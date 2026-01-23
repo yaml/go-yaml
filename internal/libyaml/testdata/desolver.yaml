@@ -3,11 +3,11 @@
 
 # Desolver stage test cases
 #
-# Purpose: Tests the Desolver's ability to remove inferrable tags from nodes
+# Purpose: Tests the Desolver's ability to remove inferable tags from nodes
 # while preserving custom and special tags.
 #
 # Test Types:
-#   desolve-inferrable - Tests removing tags that can be inferred
+#   desolve-inferable - Tests removing tags that can be inferred
 #   desolve-preserve - Tests preserving tags that must be kept
 #   desolve-string-quoting - Tests string quoting for type preservation
 #
@@ -23,8 +23,8 @@
 #     tag: Expected tag after desolving (empty string means tag removed)
 #     style: Scalar style (Plain, Single, Double, etc.)
 
-- desolve-inferrable:
-    name: Remove inferrable int tag
+- desolve-inferable:
+    name: Remove inferable int tag
     node:
       tag: '!!int'
       value: '123'
@@ -32,8 +32,8 @@
       tag: ''
       style: Plain
 
-- desolve-inferrable:
-    name: Remove inferrable bool tag
+- desolve-inferable:
+    name: Remove inferable bool tag
     node:
       tag: '!!bool'
       value: 'true'
@@ -41,8 +41,8 @@
       tag: ''
       style: Plain
 
-- desolve-inferrable:
-    name: Remove inferrable float tag
+- desolve-inferable:
+    name: Remove inferable float tag
     node:
       tag: '!!float'
       value: '3.14'
@@ -50,8 +50,8 @@
       tag: ''
       style: Plain
 
-- desolve-inferrable:
-    name: Remove inferrable str tag
+- desolve-inferable:
+    name: Remove inferable str tag
     node:
       tag: '!!str'
       value: 'hello'
@@ -122,7 +122,7 @@
       tag: ''
       style: Single
 
-- desolve-inferrable:
+- desolve-inferable:
     name: Remove float tag when value is integer
     node:
       tag: '!!float'

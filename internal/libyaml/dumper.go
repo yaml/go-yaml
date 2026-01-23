@@ -77,7 +77,7 @@ func Dump(in any, opts ...Option) (out []byte, err error) {
 // A Dumper writes YAML values to an output stream with configurable options.
 // It uses a 3-stage pipeline mirroring the Loader:
 //  1. Representer: Go values → Tagged Node tree
-//  2. Desolver: Remove inferrable tags
+//  2. Desolver: Remove inferable tags
 //  3. Serializer: Node tree → Events → YAML
 type Dumper struct {
 	representer *Representer
@@ -115,7 +115,7 @@ func (d *Dumper) Dump(v any) (err error) {
 	// Stage 1: Represent - Go values → Tagged Node tree
 	node := d.representer.Represent("", reflect.ValueOf(v))
 
-	// Stage 2: Desolve - Remove inferrable tags
+	// Stage 2: Desolve - Remove inferable tags
 	d.desolver.Desolve(node)
 
 	// Stage 3: Serialize - Node tree → Events → YAML
