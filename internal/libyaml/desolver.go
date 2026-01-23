@@ -1,7 +1,7 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-// Desolver stage: Removes inferrable tags from YAML nodes.
+// Desolver stage: Removes inferable tags from YAML nodes.
 // This is the inverse of the Resolver - it walks a tagged node tree and
 // removes tags that can be inferred during parsing, producing cleaner YAML
 // output without unnecessary type annotations.

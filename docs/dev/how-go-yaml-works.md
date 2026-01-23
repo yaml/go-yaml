@@ -75,7 +75,7 @@ The v4 refactor has made the stacks more symmetric:
    - **Dump:** Representer → Desolver → Serializer
 2. **Symmetric Tag Handling**:
    - **Resolver** (Load) infers tags from content
-   - **Desolver** (Dump) removes inferrable tags - NEW in v4
+   - **Desolver** (Dump) removes inferable tags - NEW in v4
 3. **Node Trees on Both Sides**: Both stacks work with Node trees as intermediate representation
 4. **Remaining Asymmetry**: Scanner+Parser on Load vs single Emitter on Dump (due to YAML's complex indentation-based syntax)
 
@@ -245,7 +245,7 @@ The Representer converts Go values to a tagged Node tree:
 
 **File**: `internal/libyaml/desolver.go`
 
-The Desolver removes inferrable tags (NEW in v4, inverse of Resolver):
+The Desolver removes inferable tags (NEW in v4, inverse of Resolver):
 - Walks the tagged node tree from Representer
 - Removes tags that can be inferred during parsing
 - Preserves explicit tags when content would be misresolved

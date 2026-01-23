@@ -448,7 +448,7 @@ process by creating and coordinating the stages:
 - **Entry points** create a **Dumper** which owns **Representer**, **Desolver**, and **Serializer**
 - **Entry points** call **Dumper.Dump()** which executes the 3-stage pipeline:
   1. **Representer.Represent()** converts Go values to tagged Node tree
-  2. **Desolver.Desolve()** removes inferrable tags to minimize output
+  2. **Desolver.Desolve()** removes inferable tags to minimize output
   3. **Serializer.Serialize()** converts Node tree to Events and pushes to Emitter
 - **Serializer** owns an **Emitter** and calls emit() to push Events
 - **Emitter** accumulates Events, formats output, and calls **Writer** to flush bytes
@@ -488,14 +488,14 @@ Transforms:
 
 Notes:
 * Now returns `*Node` instead of emitting events directly
-* All output nodes have explicit tags - Desolver stage removes inferrable ones
+* All output nodes have explicit tags - Desolver stage removes inferable ones
 * Map key sorting ensures deterministic output by using natural sort with numeric awareness
 * This stage is now symmetric with Constructor on the Load side
 
 
 ### Desolver
 
-Removes inferrable tags from Node tree (Stage 2 of Dump pipeline, inverse of Resolver).
+Removes inferable tags from Node tree (Stage 2 of Dump pipeline, inverse of Resolver).
 
 Info:
 - File: internal/libyaml/desolver.go (150+ lines)
@@ -505,7 +505,7 @@ Info:
 - Called From:
   * Dumper ([`dumper.go:119`](../../internal/libyaml/dumper.go) / `Dumper.Dump()`)
 - Important Processes:
-  * `desolver.go / Desolve              - Walks node tree, removes inferrable tags`
+  * `desolver.go / Desolve              - Walks node tree, removes inferable tags`
   * `desolver.go / desolveScalar        - Checks if tag can be inferred`
   * `desolver.go / canInferTag          - Tests if value would resolve to same tag`
 
@@ -517,7 +517,7 @@ Transforms:
 
 Notes:
 * NEW stage in v4, makes Dump symmetric with Load (mirrors Resolver)
-* Modifies the Node tree in-place (clears Tag field when inferrable)
+* Modifies the Node tree in-place (clears Tag field when inferable)
 * This is the inverse operation of Resolver - while Resolver adds tags based on content, Desolver removes tags that can be inferred
 * Results in cleaner YAML output without unnecessary type annotations
 * Called between Representer and Serializer in the dump pipeline
@@ -819,7 +819,7 @@ These checks appear in multiple files:
 
 **Old Problem:** The Representer called `resolve()` to check if strings would be misresolved - this was parser-era logic living in the dump stack.
 
-**Solution Implemented:** The Desolver stage now handles tag removal using the same resolution logic, but as a proper inverse operation of the Resolver. The Representer no longer needs to call resolution functions - it simply creates a fully-tagged Node tree, and the Desolver removes inferrable tags in a separate stage.
+**Solution Implemented:** The Desolver stage now handles tag removal using the same resolution logic, but as a proper inverse operation of the Resolver. The Representer no longer needs to call resolution functions - it simply creates a fully-tagged Node tree, and the Desolver removes inferable tags in a separate stage.
 
 **Result:** Clean separation of concerns - Representer focuses on Go→Node conversion, Desolver handles tag optimization.
 
