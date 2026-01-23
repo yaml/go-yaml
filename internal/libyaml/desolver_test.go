@@ -13,7 +13,7 @@ import (
 
 func TestDesolver(t *testing.T) {
 	RunTestCases(t, "desolver.yaml", map[string]TestHandler{
-		"desolve-inferrable": func(t *testing.T, tc TestCase) {
+		"desolve-inferable": func(t *testing.T, tc TestCase) {
 			t.Helper()
 
 			node := &Node{
