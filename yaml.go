@@ -361,6 +361,7 @@ type Unmarshaler interface {
 
 // Re-export stream-related types
 type (
+	Stream           = libyaml.Stream
 	VersionDirective = libyaml.StreamVersionDirective
 	TagDirective     = libyaml.StreamTagDirective
 	Encoding         = libyaml.Encoding
