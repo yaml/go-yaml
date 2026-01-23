@@ -50,7 +50,9 @@ type TestCase struct {
 	Yaml       string      `yaml:"yaml"`
 	InputHex   string      `yaml:"input_hex"`
 	InputBytes string      `yaml:"input_bytes"`
-	Want       any         `yaml:"want"`
+	From       any         `yaml:"from"` // Input data for tests
+	Want       any         `yaml:"want"` // Expected output
+	Also       string      `yaml:"also"` // Test modifiers (e.g., "unwrap")
 	Like       string      `yaml:"like"` // Regex pattern to match error message
 	WantSpecs  []EventSpec // Populated from Want for detailed tests
 
@@ -106,9 +108,17 @@ type TestCase struct {
 	// For desolver: use Node for input node to desolve
 	// For serializer: use Node for input node to serialize, Yaml for expected output
 	// Note: Want field (type any) is used - cast to map in test handlers for representer/desolver
-	From   any      `yaml:"from"`   // Input value for representer tests
 	Node   NodeSpec `yaml:"node"`   // Input/expected node specification
 	Indent int      `yaml:"indent"` // Indentation setting for serializer tests
+
+	// Error test specific fields
+	As           string `yaml:"as"`            // Type name for errors.As tests
+	Is           string `yaml:"is"`            // Error message for errors.Is tests
+	WantAs       bool   `yaml:"want_as"`       // Expected result for errors.As
+	WantIs       bool   `yaml:"want_is"`       // Expected result for errors.Is
+	WantLine     int    `yaml:"want_line"`     // Expected line for ConstructError
+	WantMessage  string `yaml:"want_message"`  // Expected message for ConstructError
+	WantMessages []any  `yaml:"want_messages"` // Expected messages for TypeError
 }
 
 // constantRegistry holds libyaml-specific constants
