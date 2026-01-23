@@ -148,7 +148,7 @@ func runTest(t *testing.T, testPath string) {
 	var unmarshaledValue any
 	var unmarshalErr error
 
-	t.Run("UnmarshalTest", func(t *testing.T) {
+	t.Run("LoadTest", func(t *testing.T) {
 		shouldSkipTest(t)
 		unmarshalErr = loadFirstDocument(inYAML, &unmarshaledValue)
 
