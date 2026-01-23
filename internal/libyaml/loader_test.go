@@ -110,21 +110,21 @@ func TestStreamNodeDirectives(t *testing.T) {
 	// First StreamNode should have encoding
 	assert.Equal(t, StreamNode, nodes[0].Kind)
 	// Encoding should be set (non-zero)
-	if nodes[0].Encoding == 0 {
+	if nodes[0].Stream.Encoding == 0 {
 		t.Fatal("first stream node should have encoding set")
 	}
 
 	// Second node is the StreamNode before the document with directives
 	// Note: directives appear on the StreamNode BEFORE the document
 	streamNode := nodes[0]
-	if streamNode.Version != nil {
-		assert.Equal(t, 1, streamNode.Version.Major)
-		assert.Equal(t, 1, streamNode.Version.Minor)
+	if streamNode.Stream.Version != nil {
+		assert.Equal(t, 1, streamNode.Stream.Version.Major)
+		assert.Equal(t, 1, streamNode.Stream.Version.Minor)
 	}
 
-	if len(streamNode.TagDirectives) > 0 {
+	if len(streamNode.Stream.TagDirectives) > 0 {
 		found := false
-		for _, td := range streamNode.TagDirectives {
+		for _, td := range streamNode.Stream.TagDirectives {
 			if td.Handle == "!" && td.Prefix == "tag:example.com,2000:app/" {
 				found = true
 				break
@@ -148,7 +148,7 @@ func TestStreamNodeEncoding(t *testing.T) {
 	// First node should be a StreamNode with encoding
 	assert.Equal(t, StreamNode, node.Kind)
 	// Encoding should be set (non-zero)
-	if node.Encoding == 0 {
+	if node.Stream.Encoding == 0 {
 		t.Fatal("stream node should have encoding set")
 	}
 }
