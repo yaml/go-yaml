@@ -324,11 +324,18 @@ func (n *Node) Load(v any, opts ...Option) (err error) {
 // conversion of Go values into YAML.
 func (n *Node) Encode(v any) (err error) {
 	defer handleErr(&err)
-	e := NewRepresenter(noWriter, DefaultOptions)
-	defer e.Destroy()
-	e.MarshalDoc("", reflect.ValueOf(v))
-	// Note: MarshalDoc now handles Finish() internally
-	p := NewComposer(e.Out, nil)
+	// Use the 3-stage dump pipeline with round-trip to preserve styles
+	r := NewRepresenter(DefaultOptions)
+	node := r.Represent("", reflect.ValueOf(v))
+	d := NewDesolver(DefaultOptions)
+	d.Desolve(node)
+	s := NewSerializer(nil, DefaultOptions)
+	var out []byte
+	s.Emitter.SetOutputString(&out)
+	s.Serialize(node)
+	s.Finish()
+	// Parse back to get styles
+	p := NewComposer(out, nil)
 	p.Textless = true
 	defer p.Destroy()
 	doc := p.Compose()
@@ -351,11 +358,18 @@ func (n *Node) Dump(v any, opts ...Option) (err error) {
 	if err != nil {
 		return err
 	}
-	e := NewRepresenter(noWriter, o)
-	defer e.Destroy()
-	e.MarshalDoc("", reflect.ValueOf(v))
-	// Note: MarshalDoc now handles Finish() internally
-	p := NewComposer(e.Out, nil)
+	// Use the 3-stage dump pipeline with round-trip to preserve styles
+	r := NewRepresenter(o)
+	node := r.Represent("", reflect.ValueOf(v))
+	d := NewDesolver(o)
+	d.Desolve(node)
+	s := NewSerializer(nil, o)
+	var out []byte
+	s.Emitter.SetOutputString(&out)
+	s.Serialize(node)
+	s.Finish()
+	// Parse back to get styles
+	p := NewComposer(out, nil)
 	p.Textless = true
 	defer p.Destroy()
 	doc := p.Compose()
