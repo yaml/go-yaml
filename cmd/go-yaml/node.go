@@ -103,16 +103,16 @@ func FormatNode(n yaml.Node, profuse bool) *NodeInfo {
 	}
 
 	// Handle StreamNode-specific fields
-	if info.Kind == "Stream" {
-		if n.Encoding != 0 {
-			info.Encoding = formatEncoding(n.Encoding)
+	if info.Kind == "Stream" && n.Stream != nil {
+		if n.Stream.Encoding != 0 {
+			info.Encoding = formatEncoding(n.Stream.Encoding)
 		}
-		if n.Version != nil {
-			info.Version = formatVersion(n.Version)
+		if n.Stream.Version != nil {
+			info.Version = formatVersion(n.Stream.Version)
 		}
-		if len(n.TagDirectives) > 0 {
-			info.TagDirectives = make([]TagDirectiveInfo, len(n.TagDirectives))
-			for i, td := range n.TagDirectives {
+		if len(n.Stream.TagDirectives) > 0 {
+			info.TagDirectives = make([]TagDirectiveInfo, len(n.Stream.TagDirectives))
+			for i, td := range n.Stream.TagDirectives {
 				info.TagDirectives[i] = TagDirectiveInfo{
 					Handle: td.Handle,
 					Prefix: td.Prefix,
@@ -384,26 +384,28 @@ func FormatNodeCompact(n yaml.Node) any {
 		// Build stream content
 		content := MapSlice{}
 
-		// Add encoding if present
-		if n.Encoding != 0 {
-			content = append(content, MapItem{Key: "encoding", Value: formatEncoding(n.Encoding)})
-		}
-
-		// Add version if present
-		if n.Version != nil {
-			content = append(content, MapItem{Key: "version", Value: formatVersion(n.Version)})
-		}
-
-		// Add tag directives if present
-		if len(n.TagDirectives) > 0 {
-			var directives []TagDirectiveInfo
-			for _, td := range n.TagDirectives {
-				directives = append(directives, TagDirectiveInfo{
-					Handle: td.Handle,
-					Prefix: td.Prefix,
-				})
+		if n.Stream != nil {
+			// Add encoding if present
+			if n.Stream.Encoding != 0 {
+				content = append(content, MapItem{Key: "encoding", Value: formatEncoding(n.Stream.Encoding)})
 			}
-			content = append(content, MapItem{Key: "tag-directives", Value: directives})
+
+			// Add version if present
+			if n.Stream.Version != nil {
+				content = append(content, MapItem{Key: "version", Value: formatVersion(n.Stream.Version)})
+			}
+
+			// Add tag directives if present
+			if len(n.Stream.TagDirectives) > 0 {
+				var directives []TagDirectiveInfo
+				for _, td := range n.Stream.TagDirectives {
+					directives = append(directives, TagDirectiveInfo{
+						Handle: td.Handle,
+						Prefix: td.Prefix,
+					})
+				}
+				content = append(content, MapItem{Key: "tag-directives", Value: directives})
+			}
 		}
 
 		// Use content as value, or null if empty
