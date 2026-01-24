@@ -880,11 +880,11 @@ type unmarshalerInlinedTwice struct {
 	InlinedTwice unmarshalerInlined `yaml:",inline"`
 }
 
-type obsoleteUnmarshalerType struct {
+type legacyUnmarshalerType struct {
 	value any
 }
 
-func (o *obsoleteUnmarshalerType) UnmarshalYAML(unmarshal func(v any) error) error {
+func (o *legacyUnmarshalerType) UnmarshalYAML(unmarshal func(v any) error) error {
 	if err := unmarshal(&o.value); err != nil {
 		return err
 	}
@@ -896,12 +896,12 @@ func (o *obsoleteUnmarshalerType) UnmarshalYAML(unmarshal func(v any) error) err
 	return nil
 }
 
-type obsoleteUnmarshalerPointer struct {
-	Field *obsoleteUnmarshalerType `yaml:"_"`
+type legacyUnmarshalerPointer struct {
+	Field *legacyUnmarshalerType `yaml:"_"`
 }
 
-type obsoleteUnmarshalerValue struct {
-	Field obsoleteUnmarshalerType `yaml:"_"`
+type legacyUnmarshalerValue struct {
+	Field legacyUnmarshalerType `yaml:"_"`
 }
 
 func TestUnmarshalerPointerField(t *testing.T) {
@@ -917,7 +917,7 @@ func TestUnmarshalerPointerField(t *testing.T) {
 		}
 	}
 	for _, item := range unmarshalerTests {
-		obj := &obsoleteUnmarshalerPointer{}
+		obj := &legacyUnmarshalerPointer{}
 		err := yaml.Unmarshal([]byte(item.data), obj)
 		assert.NoError(t, err)
 		if item.value == nil {
@@ -931,7 +931,7 @@ func TestUnmarshalerPointerField(t *testing.T) {
 
 func TestUnmarshalerValueField(t *testing.T) {
 	for _, item := range unmarshalerTests {
-		obj := &obsoleteUnmarshalerValue{}
+		obj := &legacyUnmarshalerValue{}
 		err := yaml.Unmarshal([]byte(item.data), obj)
 		assert.NoError(t, err)
 		assert.NotNilf(t, obj.Field, "Pointer not initialized (%#v)", item.value)
@@ -954,7 +954,7 @@ func TestUnmarshalerInlinedField(t *testing.T) {
 }
 
 func TestUnmarshalerWholeDocument(t *testing.T) {
-	obj := &obsoleteUnmarshalerType{}
+	obj := &legacyUnmarshalerType{}
 	err := yaml.Unmarshal([]byte(unmarshalerTests[0].data), obj)
 	assert.NoError(t, err)
 	value, ok := obj.value.(map[string]any)
@@ -994,7 +994,7 @@ func TestUnmarshalerLoadErrors(t *testing.T) {
 	assert.Equal(t, 3, v.M["ghi"].value)
 }
 
-func TestObsoleteUnmarshalerLoadErrors(t *testing.T) {
+func TestLegacyUnmarshalerLoadErrors(t *testing.T) {
 	unmarshalerResult[2] = &yaml.LoadErrors{Errors: []*yaml.LoadError{{Err: errors.New("foo"), Line: 1, Column: 1}}}
 	unmarshalerResult[4] = &yaml.LoadErrors{Errors: []*yaml.LoadError{{Err: errors.New("bar"), Line: 1, Column: 1}}}
 	defer func() {
@@ -1005,7 +1005,7 @@ func TestObsoleteUnmarshalerLoadErrors(t *testing.T) {
 	type T struct {
 		Before int
 		After  int
-		M      map[string]*obsoleteUnmarshalerType
+		M      map[string]*legacyUnmarshalerType
 	}
 	var v T
 	data := `{before: A, m: {abc: 1, def: 2, ghi: 3, jkl: 4}, after: B}`
@@ -1140,9 +1140,9 @@ func TestUnmarshalerLoadErrorsProxying(t *testing.T) {
 	assert.ErrorMatches(t, expectedError, err)
 }
 
-type obsoleteProxyTypeError struct{}
+type legacyProxyTypeError struct{}
 
-func (v *obsoleteProxyTypeError) UnmarshalYAML(unmarshal func(any) error) error {
+func (v *legacyProxyTypeError) UnmarshalYAML(unmarshal func(any) error) error {
 	var s string
 	var a int32
 	var b int64
@@ -1161,11 +1161,11 @@ func (v *obsoleteProxyTypeError) UnmarshalYAML(unmarshal func(any) error) error 
 	return unmarshal(&b)
 }
 
-func TestObsoleteUnmarshalerLoadErrorsProxying(t *testing.T) {
+func TestLegacyUnmarshalerLoadErrorsProxying(t *testing.T) {
 	type T struct {
 		Before int
 		After  int
-		M      map[string]*obsoleteProxyTypeError
+		M      map[string]*legacyProxyTypeError
 	}
 	var v T
 	data := `{before: A, m: {abc: a, def: b}, after: B}`
@@ -1207,17 +1207,17 @@ func TestUnmarshalerError(t *testing.T) {
 	assert.Equal(t, "test", dst.Spam)
 }
 
-type obsoleteFailingUnmarshaler struct{}
+type legacyFailingUnmarshaler struct{}
 
-func (ft *obsoleteFailingUnmarshaler) UnmarshalYAML(unmarshal func(any) error) error {
+func (ft *legacyFailingUnmarshaler) UnmarshalYAML(unmarshal func(any) error) error {
 	return errFailing
 }
 
-func TestObsoleteUnmarshalerError(t *testing.T) {
+func TestLegacyUnmarshalerError(t *testing.T) {
 	data := `{foo: 123, bar: {}, spam: "test"}`
 	dst := struct {
 		Foo  int
-		Bar  *obsoleteFailingUnmarshaler
+		Bar  *legacyFailingUnmarshaler
 		Spam string
 	}{}
 	err := yaml.Unmarshal([]byte(data), &dst)
@@ -1229,7 +1229,7 @@ func TestObsoleteUnmarshalerError(t *testing.T) {
 	assert.DeepEqual(t, expectedErr, err)
 	// whatever could be unmarshaled must be unmarshaled
 	assert.Equal(t, 123, dst.Foo)
-	assert.DeepEqual(t, &obsoleteFailingUnmarshaler{}, dst.Bar)
+	assert.DeepEqual(t, &legacyFailingUnmarshaler{}, dst.Bar)
 	assert.Equal(t, "test", dst.Spam)
 }
 
@@ -1323,9 +1323,9 @@ func TestUnmarshalerRetry(t *testing.T) {
 	assert.DeepEqual(t, sliceUnmarshaler([]int{1}), su)
 }
 
-type obsoleteSliceUnmarshaler []int
+type legacySliceUnmarshaler []int
 
-func (su *obsoleteSliceUnmarshaler) UnmarshalYAML(unmarshal func(any) error) error {
+func (su *legacySliceUnmarshaler) UnmarshalYAML(unmarshal func(any) error) error {
 	var slice []int
 	err := unmarshal(&slice)
 	if err == nil {
@@ -1343,15 +1343,15 @@ func (su *obsoleteSliceUnmarshaler) UnmarshalYAML(unmarshal func(any) error) err
 	return err
 }
 
-func TestObsoleteUnmarshalerRetry(t *testing.T) {
-	var su obsoleteSliceUnmarshaler
+func TestLegacyUnmarshalerRetry(t *testing.T) {
+	var su legacySliceUnmarshaler
 	err := yaml.Unmarshal([]byte("[1, 2, 3]"), &su)
 	assert.NoError(t, err)
-	assert.DeepEqual(t, obsoleteSliceUnmarshaler([]int{1, 2, 3}), su)
+	assert.DeepEqual(t, legacySliceUnmarshaler([]int{1, 2, 3}), su)
 
 	err = yaml.Unmarshal([]byte("1"), &su)
 	assert.NoError(t, err)
-	assert.DeepEqual(t, obsoleteSliceUnmarshaler([]int{1}), su)
+	assert.DeepEqual(t, legacySliceUnmarshaler([]int{1}), su)
 }
 
 // From http://yaml.org/type/merge.html
