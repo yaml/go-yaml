@@ -19,9 +19,9 @@ import (
 // --------------------------------------------------------------------------
 // Constructor-specific interfaces
 
-// obsoleteConstructor is the old-style unmarshaler interface.
+// legacyConstructor is the old-style unmarshaler interface.
 // It's kept for backwards compatibility.
-type obsoleteConstructor interface {
+type legacyConstructor interface {
 	UnmarshalYAML(construct func(any) error) error
 }
 
@@ -82,27 +82,6 @@ func NewConstructor(opts *Options) *Constructor {
 	}
 }
 
-// Construct decodes YAML input into the provided output value.
-// The out parameter must be a pointer to the value to decode into.
-// Returns a [LoadErrors] if type mismatches occur during decoding.
-func Construct(in []byte, out any, opts *Options) error {
-	d := NewConstructor(opts)
-	p := NewComposer(in, opts)
-	defer p.Destroy()
-	node := p.Compose()
-	if node != nil {
-		v := reflect.ValueOf(out)
-		if v.Kind() == reflect.Pointer && !v.IsNil() {
-			v = v.Elem()
-		}
-		d.Construct(node, v)
-	}
-	if len(d.TypeErrors) > 0 {
-		return &LoadErrors{Errors: d.TypeErrors}
-	}
-	return nil
-}
-
 func (c *Constructor) tagError(n *Node, tag string, out reflect.Value) {
 	if n.Tag != "" {
 		tag = n.Tag
@@ -140,7 +119,7 @@ func (c *Constructor) callConstructor(n *Node, u constructor) (good bool) {
 	}
 }
 
-func (c *Constructor) callObsoleteConstructor(n *Node, u obsoleteConstructor) (good bool) {
+func (c *Constructor) callLegacyConstructor(n *Node, u legacyConstructor) (good bool) {
 	terrlen := len(c.TypeErrors)
 	err := u.UnmarshalYAML(func(v any) (err error) {
 		defer handleErr(&err)
@@ -219,8 +198,8 @@ func (c *Constructor) prepare(n *Node, out reflect.Value) (newout reflect.Value,
 				good = c.callConstructor(n, u)
 				return out, true, good
 			}
-			if u, ok := outi.(obsoleteConstructor); ok {
-				good = c.callObsoleteConstructor(n, u)
+			if u, ok := outi.(legacyConstructor); ok {
+				good = c.callLegacyConstructor(n, u)
 				return out, true, good
 			}
 		}
