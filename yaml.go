@@ -290,7 +290,7 @@ type (
 	// It contains multiple *[LoadError] instances with details about each error.
 	LoadErrors = libyaml.LoadErrors
 
-	// TypeError is an obsolete error type retained for compatibility.
+	// TypeError is a legacy error type retained for compatibility.
 	//
 	// Deprecated: Use [LoadErrors] instead.
 	//
