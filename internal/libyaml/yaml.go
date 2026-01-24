@@ -417,80 +417,6 @@ const (
 	DEFAULT_MAPPING_TAG  = MAP_TAG // The default mapping tag is !!map.
 )
 
-type NodeType int
-
-// Node types.
-const (
-	// An empty node.
-	NO_NODE NodeType = iota
-
-	SCALAR_NODE   // A scalar node.
-	SEQUENCE_NODE // A sequence node.
-	MAPPING_NODE  // A mapping node.
-)
-
-// NodeItem represents an element of a sequence node.
-type NodeItem int
-
-// NodePair represents an element of a mapping node.
-type NodePair struct {
-	key   int // The key of the element.
-	value int // The value of the element.
-}
-
-// parserNode represents a single node in the YAML document tree.
-type parserNode struct {
-	typ NodeType // The node type.
-	tag []byte   // The node tag.
-
-	// The node data.
-
-	// The scalar parameters (for SCALAR_NODE).
-	scalar struct {
-		value  []byte      // The scalar value.
-		length int         // The length of the scalar value.
-		style  ScalarStyle // The scalar style.
-	}
-
-	// The sequence parameters (for YAML_SEQUENCE_NODE).
-	sequence struct {
-		items_data []NodeItem    // The stack of sequence items.
-		style      SequenceStyle // The sequence style.
-	}
-
-	// The mapping parameters (for MAPPING_NODE).
-	mapping struct {
-		pairs_data  []NodePair   // The stack of mapping pairs (key, value).
-		pairs_start *NodePair    // The beginning of the stack.
-		pairs_end   *NodePair    // The end of the stack.
-		pairs_top   *NodePair    // The top of the stack.
-		style       MappingStyle // The mapping style.
-	}
-
-	start_mark Mark // The beginning of the node.
-	end_mark   Mark // The end of the node.
-}
-
-// Document structure.
-type Document struct {
-	// The document nodes.
-	nodes []parserNode
-
-	// The version directive.
-	version_directive *VersionDirective
-
-	// The list of tag directives.
-	tag_directives_data  []TagDirective
-	tag_directives_start int // The beginning of the tag directives list.
-	tag_directives_end   int // The end of the tag directives list.
-
-	start_implicit int // Is the document start indicator implicit?
-	end_implicit   int // Is the document end indicator implicit?
-
-	// The start/end of the document.
-	start_mark, end_mark Mark
-}
-
 // ReadHandler is called when the [Parser] needs to read more bytes from the
 // source. The handler should write not more than size bytes to the buffer.
 // The number of written bytes should be set to the size_read variable.
@@ -672,8 +598,6 @@ type Parser struct {
 	// Representer stuff
 
 	aliases []AliasData // The alias data.
-
-	document *Document // The currently parsed document.
 }
 
 type Comment struct {
@@ -829,6 +753,4 @@ type Emitter struct {
 	}
 
 	last_anchor_id int // The last assigned anchor id.
-
-	document *Document // The currently emitted document.
 }
