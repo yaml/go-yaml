@@ -142,10 +142,3 @@ func (d *Desolver) desolveCollection(n *Node) {
 	}
 	// For other tags, keep them - they're explicit type information
 }
-
-// DesolveNode is a convenience function that creates a Desolver and calls Desolve.
-// This is provided for simple use cases and backward compatibility.
-func DesolveNode(n *Node) {
-	d := NewDesolver(nil)
-	d.Desolve(n)
-}

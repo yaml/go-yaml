@@ -145,7 +145,7 @@ func (e *LoadErrors) Is(target error) bool {
 	return false
 }
 
-// TypeError is an obsolete error type retained for compatibility.
+// TypeError is a legacy error type retained for compatibility.
 //
 // A TypeError is returned by Unmarshal when one or more fields in
 // the YAML document cannot be properly decoded into the requested

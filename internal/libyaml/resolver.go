@@ -263,10 +263,3 @@ func (r *Resolver) Resolve(n *Node) {
 		// Alias nodes point to already-resolved nodes, nothing to do
 	}
 }
-
-// ResolveNode is a convenience function that creates a Resolver and calls Resolve.
-// This is provided for backward compatibility and for simple use cases.
-func ResolveNode(n *Node) {
-	r := NewResolver(nil)
-	r.Resolve(n)
-}
