@@ -12,14 +12,18 @@
 For contributors and those interested in go-yaml internals:
 
 - **[dev/](dev/)** — Internal documentation directory
-  - [go-yaml Internals](dev/go-yaml-internals.md) — Comprehensive analysis of load/dump stacks, stages, transforms, and architectural issues
-  - [How go-yaml Works](dev/how-go-yaml-works.md) — High-level overview of YAML processing
+  - [go-yaml Internals](dev/go-yaml-internals.md) — Comprehensive analysis of
+    load/dump stacks, stages, transforms, and architectural issues
+  - [How go-yaml Works](dev/how-go-yaml-works.md) — High-level overview of
+    YAML processing
   - [Dump and Load API](dev/dump-load-api.md) — Comprehensive API guide
-  - [Mermaid Diagrams](dev/) — Pipeline overview, call hierarchy, comment flow, and resolver problem diagrams
+  - [Mermaid Diagrams](dev/) — Pipeline overview, call hierarchy, comment
+    flow, and resolver problem diagrams
 
 ## Quick Links
 
 - [Main README](../README.md) — Getting started
 - [CONTRIBUTING](../CONTRIBUTING.md) — How to contribute
 - [Examples](../example/README.md) — Runnable code examples
-- [API Reference](https://pkg.go.dev/go.yaml.in/yaml/v4) — Full API documentation
+- [API Reference](https://pkg.go.dev/go.yaml.in/yaml/v4) — Full API
+  documentation

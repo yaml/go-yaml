@@ -13,21 +13,21 @@ refactored for cleaner API hooks.
             ↑                        ↓
        Constructor              Representer
             ↑                        ↓
-         (Nodes)             (Nodes - tagged)
+     (Nodes - tagged)   ←→    (Nodes - tagged)
             ↑                        ↓
         Resolver                 Desolver
             ↑                        ↓
-   (Nodes - unresolved)   (Nodes - minimal tags)
+    (Nodes - untagged)  ←→   (Nodes - untagged)
             ↑                        ↓
         Composer                Serializer
             ↑                        ↓
         (Events)        ←→       (Events)
             ↑                        ↓
-         Parser                      ↓
+         Parser                   Emitter
             ↑                        ↓
         (Tokens)                     ↓
             ↑                        ↓
-         Scanner                  Emitter
+         Scanner                     ↓
             ↑                        ↓
       (Code Points)     ←→     (Code Points)
             ↑                        ↓
@@ -46,17 +46,22 @@ See also:
 
 The load stack transforms YAML text into Go values through a series of stages.
 
-**Control Flow:** The load stack uses a pull-based call hierarchy. Entry points
+**Control Flow:** The load stack uses a pull-based call hierarchy.
+Entry points
 (such as `Load()`, `Loader.Load()`, or `Node.Load()`) orchestrate the
 process by creating and coordinating the stages:
 
-- **Entry points** create a **Loader** which owns **Composer**, **Resolver**, and **Constructor**
+- **Entry points** create a **Loader** which owns **Composer**, **Resolver**,
+  and **Constructor**
 - **Entry points** call **Loader.Load()** which executes the 3-stage pipeline:
-  1. **Composer.Compose()** creates Node tree with unresolved tags (calls Parser for Events)
+  1. **Composer.Compose()** creates Node tree with unresolved tags (calls
+     Parser for Events)
   2. **Resolver.Resolve()** determines implicit types for untagged scalars
   3. **Constructor.Construct()** converts Node tree to Go values
-- **Composer** calls **Parser**.Parse() to get Events (Parser and Scanner share the same struct)
-- **Parser** calls its own **Scanner** methods (Scan via peekToken) to get Tokens
+- **Composer** calls **Parser**.Parse() to get Events (Parser and Scanner share
+  the same struct)
+- **Parser** calls its own **Scanner** methods (Scan via peekToken) to get
+  Tokens
 - **Scanner** calls **Reader** functions (updateBuffer) to get more bytes
 
 
@@ -70,7 +75,8 @@ Info:
 - Input: `[]byte` or `io.Reader`
 - Output: UTF-8 normalized bytes in `parser.buffer`
 - Called From:
-  * Scanner ([`scanner.go`](../../internal/libyaml/scanner.go) / `fetchNextToken()`)
+  * Scanner ([`scanner.go`](../../internal/libyaml/scanner.go) /
+    `fetchNextToken()`)
 - Important Processes:
   * `reader.go / determineEncoding       - Detects UTF-8/UTF-16 from BOM`
   * `reader.go / updateRawBuffer         - Reads more bytes from input source`
@@ -78,14 +84,17 @@ Info:
 Transforms:
 * **Encoding detection from BOM** (UTF-8, UTF-16LE, UTF-16BE)
 * **UTF-16 to UTF-8 conversion** with surrogate pair handling
-* **YAML 1.2 character set validation** (Tab, LF, CR, printable ASCII, BMP, supplementary planes)
+* **YAML 1.2 character set validation** (Tab, LF, CR, printable ASCII, BMP,
+  supplementary planes)
 * **UTF-8 sequence validation**
 * **Input buffering** for lookahead
 
 Notes:
 * Encoding is stored in `parser.encoding` field
 * The reader is not a separate stage but integrated into the Parser struct
-* Character validation rules: allowed characters are Tab (0x09), LF (0x0A), CR (0x0D), printable ASCII (0x20-0x7E), BMP (U+0080-U+FFFD excluding surrogates), and supplementary planes (U+10000-U+10FFFF)
+* Character validation rules: allowed characters are Tab (0x09), LF (0x0A), CR
+  (0x0D), printable ASCII (0x20-0x7E), BMP (U+0080-U+FFFD excluding
+  surrogates), and supplementary planes (U+10000-U+10FFFF)
 
 
 ### Scanner
@@ -107,11 +116,13 @@ Info:
   * `reader.go / updateBuffer            - Refills input buffer (calls Reader)`
 
 Transforms:
-* **Character classification and dispatch** ([`fetchNextToken()`](../../internal/libyaml/scanner.go))
+* **Character classification and dispatch**
+  ([`fetchNextToken()`](../../internal/libyaml/scanner.go))
 * **Flow level tracking** (`flow_level` field)
 * **Indentation stack management** (`indent`, `indents` fields)
 * **Simple key candidate tracking** (`simple_keys` stack)
-* **Synthetic token generation** (BLOCK_SEQUENCE_START/BLOCK_MAPPING_START/BLOCK_END)
+* **Synthetic token generation**
+  (`BLOCK_SEQUENCE_START/BLOCK_MAPPING_START/BLOCK_END`)
 * **Escape sequence processing** in quoted scalars
 * **Line folding** in folded block scalars
 * **Chomping behavior** for block scalars (`-` strip, `+` keep)
@@ -121,11 +132,15 @@ Transforms:
 
 Notes:
 * Scanner and Parser share the same `Parser` struct
-* Tag handle and suffix remain separate at this stage (`Value` + `suffix` fields)
+* Tag handle and suffix remain separate at this stage (`Value` + `suffix`
+  fields)
 * Scalar style is recorded (Plain, SingleQuoted, DoubleQuoted, Literal, Folded)
-* 2-token lookahead requirement for comment association (see [Comment Handling](#comment-handling-in-the-load-stack))
-* Comment processing details covered in [Comment Handling](#comment-handling-in-the-load-stack) section
-* Depth limits enforced: `max_flow_level` and `max_indents` both set to 10000 (see [Security Limits](#security-limits-and-protections))
+* 2-token lookahead requirement for comment association (see
+  [Comment Handling](#comment-handling-in-the-load-stack))
+* Comment processing details covered in
+  [Comment Handling](#comment-handling-in-the-load-stack) section
+* Depth limits enforced: `max_flow_level` and `max_indents` both set to 10000
+  (see [Security Limits](#security-limits-and-protections))
 * 23 token types defined:
   - `NO_TOKEN`
   - `STREAM_START_TOKEN`
@@ -200,17 +215,19 @@ Transforms:
   - `PARSE_FLOW_MAPPING_EMPTY_VALUE_STATE`
   - `PARSE_END_STATE`
 * **Tag handle → full URI resolution** (`!!str` → `tag:yaml.org,2002:str`)
-* **Token grouping** (anchor + tag + scalar tokens → single SCALAR_EVENT)
-* **Comment attachment to events** via `UnfoldComments()` and `setEventComments()`
+* **Token grouping** (anchor + tag + scalar tokens → single `SCALAR_EVENT`)
+* **Comment attachment to events** via `UnfoldComments()` and
+  `setEventComments()`
 * **`TAIL_COMMENT_EVENT` generation** for block-end foot comments
 * **`splitStemComment()` processing** for comments preceding nested structures
-* **Implicit/quoted_implicit flag calculation**
+* **Implicit/`quoted_implicit` flag calculation**
 * **Block structure tokens → hierarchical event pairs**
 
 Notes:
 * Tag handle/suffix split is lost here - only full URI remains
 * The `Implicit` flag indicates whether tag was omitted in source
-* Comment processing details covered in [Comment Handling](#comment-handling-in-the-load-stack) section
+* Comment processing details covered in [Comment
+  Handling](#comment-handling-in-the-load-stack) section
 
 
 ### Composer
@@ -225,7 +242,8 @@ Info:
 - Called From:
   * Entry point [`yaml.go / unmarshal()`](../../yaml.go)
   * Entry point [`yaml.go / Decoder.Decode()`](../../yaml.go)
-  * Entry point [`constructor.go / Construct()`](../../internal/libyaml/constructor.go)
+  * Entry point [`constructor.go /
+    Construct()`](../../internal/libyaml/constructor.go)
 - Important Processes:
   * `composer.go / peek                  - Peeks at next event type (calls Parser)`
   * `composer.go / expect                - Consumes event of expected type (calls Parser)`
@@ -249,7 +267,8 @@ Notes:
 * Byte-level Index is lost here (only Line/Column preserved)
 * Implicit document distinction is lost
 * Tag resolution happens in the next stage (Resolver)
-* Comment reassignment rules detailed in [Comment Handling](#comment-handling-in-the-load-stack) section
+* Comment reassignment rules detailed in
+  [Comment Handling](#comment-handling-in-the-load-stack) section
 
 
 ### Resolver
@@ -262,7 +281,8 @@ Info:
 - Input: `*Node` tree with unresolved tags
 - Output: Modified Node tree with resolved tags (in-place)
 - Called From:
-  * Loader ([`loader.go:267`](../../internal/libyaml/loader.go) / `Loader.Load()`)
+  * Loader ([`loader.go:267`](../../internal/libyaml/loader.go) /
+    `Loader.Load()`)
 - Important Processes:
   * `resolver.go / Resolve              - Walks node tree, resolves scalar tags`
   * `resolver.go / resolveScalar        - Infers tag based on content`
@@ -272,17 +292,21 @@ Info:
   * `strconv / ParseFloat               - Parses floating point numbers`
 
 Transforms:
-* **Implicit tag resolution** based on scalar content (`true` → `!!bool`, `42` → `!!int`)
+* **Implicit tag resolution** based on scalar content (`true` → `!!bool`, `42`
+  → `!!int`)
 * **YAML 1.1 compatibility handling** (sexagesimal, old bools)
 * **Timestamp parsing**
 * **Special value recognition** (`.nan`, `.inf`, `null`)
 * **Recursive tree walking** to resolve all scalars in sequences and mappings
 
 Notes:
-* Now a proper stage in the Load pipeline, called once between Composer and Constructor
+* Now a proper stage in the Load pipeline, called once between Composer and
+  Constructor
 * Modifies the Node tree in-place (sets Tag field on ScalarNodes)
-* The YAML spec treats Resolver as a distinct stage producing the "Representation Graph"
-* This refactor eliminates duplicate resolution calls that existed in the old architecture
+* The YAML spec treats Resolver as a distinct stage producing the
+  "Representation Graph"
+* This refactor eliminates duplicate resolution calls that existed in the old
+  architecture
 
 
 ### Constructor
@@ -291,7 +315,8 @@ Converts Node tree into Go values.
 
 Info:
 - File: internal/libyaml/constructor.go (1183 lines)
-- Main Function: `func (c *Constructor) Construct(n *Node, out reflect.Value) bool`
+- Main Function: `func (c *Constructor) Construct(n *Node, out reflect.Value)
+  bool`
 - Input: `*Node` tree (received from Composer via entry point)
 - Output: `reflect.Value` (Go values modified in place)
 - Called From:
@@ -308,114 +333,158 @@ Info:
 
 Transforms:
 * **Custom Unmarshaler interface detection and dispatch**
-* **Duplicate key detection** (when `UniqueKeys` option enabled) - checks all mapping keys
-* **Alias expansion ratio protection** (billion laughs defense) - limits constructs from alias expansion
-* **Self-referential alias detection** - prevents infinite loops from aliases containing themselves
+* **Duplicate key detection** (when `UniqueKeys` option enabled) - checks all
+  mapping keys
+* **Alias expansion ratio protection** (billion laughs defense) - limits
+  constructs from alias expansion
+* **Self-referential alias detection** - prevents infinite loops from aliases
+  containing themselves
 * **Tag-based type conversion** using already-resolved tags from Resolver stage
-* **`indicatedString()` check** for quoted scalars (quoted/literal scalars force string type)
-* **Merge key (`<<`) handling** - explicit keys take precedence, can merge single mapping or sequence of mappings
-* **Inline struct/map handling** (`,inline` tag) - one inline map per struct, string keys required, unknown keys go there
-* **Known fields enforcement** (`WithKnownFields` option) - rejects unknown struct fields when enabled
-* **Unhashable key error handling** - maps/slices as mapping keys trigger errors
+* **`indicatedString()` check** for quoted scalars (quoted/literal scalars
+  force string type)
+* **Merge key (`<<`) handling** - explicit keys take precedence, can merge
+  single mapping or sequence of mappings
+* **Inline struct/map handling** (`,inline` tag) - one inline map per struct,
+  string keys required, unknown keys go there
+* **Known fields enforcement** (`WithKnownFields` option) - rejects unknown
+  struct fields when enabled
+* **Unhashable key error handling** - maps/slices as mapping keys trigger
+  errors
 * **TextUnmarshaler support** - for scalar types only
-* **YAML 1.1 boolean compatibility** - `yes/no/on/off` recognized for typed bool targets
+* **YAML 1.1 boolean compatibility** - `yes/no/on/off` recognized for typed
+  bool targets
 * **Type coercion** (YAML types → Go types)
 * **Alias expansion** (full reconstruction each time)
 * **Binary base64 decoding** (`!!binary` tag)
 * **Struct field mapping** via `getStructInfo()`
 
 Notes:
-* Now receives fully-resolved tags from the Resolver stage (no duplicate resolution)
+* Now receives fully-resolved tags from the Resolver stage (no duplicate
+  resolution)
 * Aliases are fully reconstructed each time (not shared)
-* Duplicate key detection (in [`mapping()`](../../internal/libyaml/constructor.go) function) compares all keys in mappings when enabled
-* Merge key rules: explicit keys take precedence over merged keys, can merge a single mapping or a sequence of mappings
-* Inline rules: only one inline map allowed per struct, requires string keys, unknown keys are stored in the inline map field
-* Indicated strings (quoted or literal style) force string type regardless of content
+* Duplicate key detection (in
+  [`mapping()`](../../internal/libyaml/constructor.go) function) compares all
+  keys in mappings when enabled
+* Merge key rules: explicit keys take precedence over merged keys, can merge a
+  single mapping or a sequence of mappings
+* Inline rules: only one inline map allowed per struct, requires string keys,
+  unknown keys are stored in the inline map field
+* Indicated strings (quoted or literal style) force string type regardless of
+  content
 * Node tree, comments, style, anchors, positions are all discarded
 
 
 ## Comment Handling in the Load Stack
 
-Comments flow through Scanner → Parser → Composer with classification, attachment,
-and reassignment at each stage. The goal is to preserve comments and associate them
-with the appropriate YAML nodes so they can be round-tripped or presented in the
-Node tree.
+Comments flow through Scanner → Parser → Composer with classification,
+attachment, and reassignment at each stage.
+The goal is to preserve comments and associate them with the appropriate YAML
+nodes so they can be round-tripped or presented in the Node tree.
 
 See also: [Comment Flow Diagram](comment-flow.mmd)
 
 ### Comment Types
 
-Comments are classified into several types based on their position relative to nodes:
+Comments are classified into several types based on their position relative to
+nodes:
 
 | Type | Purpose | Example |
 |------|---------|---------|
-| HeadComment | Lines preceding a node (no blank line separation) | `# This is a comment\nkey: value` |
-| LineComment | Same line as a node, after its value | `key: value  # inline comment` |
-| FootComment | After a node, before any blank lines | `key: value\n# trailing comment` |
-| TailComment | Internal: foot comment at end of block mapping value | Used during parsing only |
-| stem_comment | Internal: comment on entry before nested structure | Used during parsing only |
+| `HeadComment` | Lines preceding a node (no blank line separation) | `# This is a comment\nkey: value` |
+| `LineComment` | Same line as a node, after its value | `key: value  # inline comment` |
+| `FootComment` | After a node, before any blank lines | `key: value\n# trailing comment` |
+| `TailComment` | Internal: foot comment at end of block mapping value | Used during parsing only |
+| `stem_comment` | Internal: comment on entry before nested structure | Used during parsing only |
 
 ### Scanner: Comment Tokenization
 
 The scanner identifies and classifies comments as it processes tokens:
 
-- **`scanLineComment()`** - Captures same-line comments (when no newlines have occurred since the last token)
-- **`scanComments()`** - Main classifier that determines head/foot/line based on:
+- **`scanLineComment()`** - Captures same-line comments (when no newlines have
+  occurred since the last token)
+- **`scanComments()`** - Main classifier that determines head/foot/line based
+  on:
   - Indentation relative to `next_indent`
-  - Flow context (all remaining comments become foot comments in `[...]` or `{...}`)
+  - Flow context (all remaining comments become foot comments in `[...]` or
+    `{...}`)
   - Empty line boundaries (blank lines separate head from foot)
-- **2-token lookahead requirement** ([`scanLineComment()`](../../internal/libyaml/scanner.go)) - Scanner needs to peek ahead to properly associate comments
-- **Special case**: Sequence entry line comments are transformed to head comments
+- **2-token lookahead requirement**
+  ([`scanLineComment()`](../../internal/libyaml/scanner.go)) - Scanner needs to
+  peek ahead to properly associate comments
+- **Special case**: Sequence entry line comments are transformed to head
+  comments
 
-Location: [`scanner.go`](../../internal/libyaml/scanner.go) / `scanComments()` and `scanLineComment()`
+Location: [`scanner.go`](../../internal/libyaml/scanner.go) / `scanComments()`
+and `scanLineComment()`
 
 ### Parser: Comment Attachment
 
 The parser accumulates comments from tokens and attaches them to events:
 
-- **`UnfoldComments()`** - Joins accumulated comment lines to tokens based on position
-- **Parser comment fields** - `HeadComment`, `LineComment`, `FootComment` accumulate during token processing
+- **`UnfoldComments()`** - Joins accumulated comment lines to tokens based on
+  position
+- **Parser comment fields** - `HeadComment`, `LineComment`, `FootComment`
+  accumulate during token processing
 - **`setEventComments()`** - Transfers parser comment fields to Event struct
-- **`TAIL_COMMENT_EVENT`** - Special event type for foot comments at block ends (e.g., end of mapping value)
-- **`splitStemComment()`** - Handles comments on entries preceding nested structures (splits into head comment for the nested item)
-- **Document header splitting** - HeadComment is split at empty lines; content after blank goes to FootComment
+- **`TAIL_COMMENT_EVENT`** - Special event type for foot comments at block ends
+  (e.g., end of mapping value)
+- **`splitStemComment()`** - Handles comments on entries preceding nested
+  structures (splits into head comment for the nested item)
+- **Document header splitting** - HeadComment is split at empty lines; content
+  after blank goes to FootComment
 
-Location: [`parser.go`](../../internal/libyaml/parser.go) / `UnfoldComments()`, `setEventComments()`, and `splitStemComment()`
+Location: [`parser.go`](../../internal/libyaml/parser.go) / `UnfoldComments()`,
+`setEventComments()`, and `splitStemComment()`
 
 ### Composer: Comment Transfer and Reassignment
 
-The composer transfers comments from events to nodes and applies reassignment logic:
+The composer transfers comments from events to nodes and applies reassignment
+logic:
 
-- **Basic transfer**: Event.{Head,Line,Foot}Comment → Node.{Head,Line,Foot}Comment
+- **Basic transfer**: Event.{Head,Line,Foot}Comment →
+  Node.{Head,Line,Foot}Comment
 - **Mapping reassignment rules** (in `mapping()` function):
-  1. **Key FootComment reassignment for dedented comments** - If a comment is dedented (less indented than the key), it moves from key's FootComment to the mapping's FootComment
-  2. **Value FootComment transfers to Key** - When the value has a FootComment but the key doesn't, the value's FootComment becomes the key's FootComment
-  3. **TAIL_COMMENT_EVENT FootComment goes to Key** - Tail comments (from block-end events) are assigned to the key's FootComment
-  4. **Final mapping FootComment moves to last key** - At the end of a mapping, if the mapping has a FootComment, it's moved to the last key's FootComment
+  1. **Key FootComment reassignment for dedented comments** - If a comment is
+     dedented (less indented than the key), it moves from key's FootComment to
+     the mapping's FootComment
+  2. **Value FootComment transfers to Key** - When the value has a FootComment
+     but the key doesn't, the value's FootComment becomes the key's FootComment
+  3. **TAIL_COMMENT_EVENT FootComment goes to Key** - Tail comments (from
+     block-end events) are assigned to the key's FootComment
+  4. **Final mapping FootComment moves to last key** - At the end of a mapping,
+     if the mapping has a FootComment, it's moved to the last key's FootComment
 
-Location: [`composer.go`](../../internal/libyaml/composer.go) / `mapping()` function
+Location: [`composer.go`](../../internal/libyaml/composer.go) / `mapping()`
+function
 
 ### Edge Cases
 
 Several edge cases require special handling:
 
-- **Sequence entry line-to-head transformation** - Line comments on sequence entries (`- item  # comment`) become head comments of the item
-- **Block end token skip for head comments** - When BLOCK_END tokens have head comments, they're handled specially
-- **Flow context closure** - When closing `]` or `}` in flow style, all remaining comments become foot comments
-- **Document header splitting at empty lines** - Head comments with embedded blank lines are split (before blank stays head, after blank becomes foot)
+- **Sequence entry line-to-head transformation** - Line comments on sequence
+  entries (`- item  # comment`) become head comments of the item
+- **Block end token skip for head comments** - When `BLOCK_END` tokens have
+  head comments, they're handled specially
+- **Flow context closure** - When closing `]` or `}` in flow style, all
+  remaining comments become foot comments
+- **Document header splitting at empty lines** - Head comments with embedded
+  blank lines are split (before blank stays head, after blank becomes foot)
 
 
 ## Security Limits and Protections
 
-go-yaml includes several security features to prevent denial-of-service attacks.
+go-yaml includes several security features to prevent denial-of-service
+attacks.
 
 ### Depth Limits (Scanner)
 
 The scanner enforces maximum nesting depth to prevent stack overflow:
-- `max_flow_level = 10000` - Maximum nesting in flow style `[[[...]]]` or `{{{...}}}`
+- `max_flow_level = 10000` - Maximum nesting in flow style `[[[...]]]` or
+  `{{{...}}}`
 - `max_indents = 10000` - Maximum nesting via indentation (block style)
 
-Location: [`scanner.go`](../../internal/libyaml/scanner.go) / flow level and indent tracking
+Location: [`scanner.go`](../../internal/libyaml/scanner.go) / flow level and
+indent tracking
 
 ### Alias Expansion Ratio (Constructor)
 
@@ -426,7 +495,8 @@ Prevents "billion laughs" style attacks via nested alias expansion:
 
 Error: `"document contains excessive aliasing"`
 
-Location: [`constructor.go`](../../internal/libyaml/constructor.go) / `allowedAliasRatio()` function and expansion check in `sequence()`
+Location: [`constructor.go`](../../internal/libyaml/constructor.go) /
+`allowedAliasRatio()` function and expansion check in `sequence()`
 
 ### Self-Referential Alias Detection (Constructor)
 
@@ -434,24 +504,29 @@ Detects and prevents infinite loops from aliases referencing themselves:
 - Tracks nodes being expanded in `c.aliases` map
 - Error: `"anchor '%s' value contains itself"`
 
-Location: [`constructor.go`](../../internal/libyaml/constructor.go) / `alias()` function
+Location: [`constructor.go`](../../internal/libyaml/constructor.go) / `alias()`
+function
 
 
 ## Dump Stack
 
-The dump stack transforms Go values into YAML text through a symmetric 3-stage pipeline.
+The dump stack transforms Go values into YAML text through a symmetric 3-stage
+pipeline.
 
-**Control Flow:** The dump stack uses a push-based call hierarchy. Entry points
-(such as `Dump()`, `Dumper.Dump()`, or `Node.Dump()`) orchestrate the
-process by creating and coordinating the stages:
+**Control Flow:** The dump stack uses a push-based call hierarchy.
+Entry points (such as `Dump()`, `Dumper.Dump()`, or `Node.Dump()`) orchestrate
+the process by creating and coordinating the stages:
 
-- **Entry points** create a **Dumper** which owns **Representer**, **Desolver**, and **Serializer**
+- **Entry points** create a **Dumper** which owns **Representer**,
+  **Desolver**, and **Serializer**
 - **Entry points** call **Dumper.Dump()** which executes the 3-stage pipeline:
   1. **Representer.Represent()** converts Go values to tagged Node tree
   2. **Desolver.Desolve()** removes inferable tags to minimize output
-  3. **Serializer.Serialize()** converts Node tree to Events and pushes to Emitter
+  3. **Serializer.Serialize()** converts Node tree to Events and pushes to
+     Emitter
 - **Serializer** owns an **Emitter** and calls emit() to push Events
-- **Emitter** accumulates Events, formats output, and calls **Writer** to flush bytes
+- **Emitter** accumulates Events, formats output, and calls **Writer** to flush
+  bytes
 
 
 ### Representer
@@ -460,11 +535,13 @@ Converts Go values to a tagged Node tree (Stage 1 of Dump pipeline).
 
 Info:
 - File: internal/libyaml/representer.go (600+ lines)
-- Main Function: `func (r *Representer) Represent(tag string, in reflect.Value) *Node`
+- Main Function: `func (r *Representer) Represent(tag string, in reflect.Value)
+  *Node`
 - Input: `reflect.Value` + `Options`
 - Output: `*Node` tree with explicit tags
 - Called From:
-  * Dumper ([`dumper.go:116`](../../internal/libyaml/dumper.go) / `Dumper.Dump()`)
+  * Dumper ([`dumper.go:116`](../../internal/libyaml/dumper.go) /
+    `Dumper.Dump()`)
 - Important Processes:
   * `representer.go / marshal            - Dispatches by Go type`
   * `representer.go / mapv               - Marshals map with sorted keys`
@@ -475,27 +552,33 @@ Info:
   * `representer.go / floatv             - Marshals floating point values`
 
 Transforms:
-* **Go type dispatch** ([`marshal()`](../../internal/libyaml/representer.go) type switch)
+* **Go type dispatch** ([`marshal()`](../../internal/libyaml/representer.go)
+  type switch)
 * **Custom Marshaler interface detection and dispatch**
 * **TextMarshaler support** - detects and calls TextMarshaler interface methods
 * **Struct field ordering and filtering** (exported, by tag, omitempty)
-* **Map key sorting** (natural sort with numeric awareness) - ensures deterministic output
-* **Explicit tag assignment** - all nodes get explicit tags (e.g., `!!str`, `!!int`, `!!map`)
+* **Map key sorting** (natural sort with numeric awareness) - ensures
+  deterministic output
+* **Explicit tag assignment** - all nodes get explicit tags (e.g., `!!str`,
+  `!!int`, `!!map`)
 * **YAML 1.1 compatibility checks** (`isBase60Float()`, `isOldBool()`)
 * **Style selection** (literal for multiline strings, flow from struct tags)
-* **Binary data base64 encoding** - non-UTF-8 strings automatically tagged `!!binary` and base64 encoded
+* **Binary data base64 encoding** - non-UTF-8 strings automatically tagged
+  `!!binary` and base64 encoded
 * **Anchor assignment** for shared/circular references
 
 Notes:
 * Now returns `*Node` instead of emitting events directly
 * All output nodes have explicit tags - Desolver stage removes inferable ones
-* Map key sorting ensures deterministic output by using natural sort with numeric awareness
+* Map key sorting ensures deterministic output by using natural sort with
+  numeric awareness
 * This stage is now symmetric with Constructor on the Load side
 
 
 ### Desolver
 
-Removes inferable tags from Node tree (Stage 2 of Dump pipeline, inverse of Resolver).
+Removes inferable tags from Node tree (Stage 2 of Dump pipeline, inverse of
+Resolver).
 
 Info:
 - File: internal/libyaml/desolver.go (150+ lines)
@@ -503,22 +586,26 @@ Info:
 - Input: `*Node` tree with explicit tags
 - Output: Modified Node tree with minimal tags (in-place)
 - Called From:
-  * Dumper ([`dumper.go:119`](../../internal/libyaml/dumper.go) / `Dumper.Dump()`)
+  * Dumper ([`dumper.go:119`](../../internal/libyaml/dumper.go) /
+    `Dumper.Dump()`)
 - Important Processes:
   * `desolver.go / Desolve              - Walks node tree, removes inferable tags`
   * `desolver.go / desolveScalar        - Checks if tag can be inferred`
   * `desolver.go / canInferTag          - Tests if value would resolve to same tag`
 
 Transforms:
-* **Tag elision** for scalars where tag can be inferred (`!!str "hello"` → `hello`)
+* **Tag elision** for scalars where tag can be inferred (`!!str "hello"` →
+  `hello`)
 * **Recursive tree walking** to process all scalars in sequences and mappings
-* **Preserve explicit tags** when content would be misresolved (e.g., `!!str "42"`)
+* **Preserve explicit tags** when content would be misresolved (e.g., `!!str
+  "42"`)
 * **YAML 1.1 compatibility awareness** (checks for ambiguous old-style values)
 
 Notes:
 * NEW stage in v4, makes Dump symmetric with Load (mirrors Resolver)
 * Modifies the Node tree in-place (clears Tag field when inferable)
-* This is the inverse operation of Resolver - while Resolver adds tags based on content, Desolver removes tags that can be inferred
+* This is the inverse operation of Resolver - while Resolver adds tags based on
+  content, Desolver removes tags that can be inferred
 * Results in cleaner YAML output without unnecessary type annotations
 * Called between Representer and Serializer in the dump pipeline
 
@@ -533,7 +620,8 @@ Info:
 - Input: `*Node` tree with minimal tags (from Desolver)
 - Output: Events pushed to owned Emitter
 - Called From:
-  * Dumper ([`dumper.go:122`](../../internal/libyaml/dumper.go) / `Dumper.Dump()`)
+  * Dumper ([`dumper.go:122`](../../internal/libyaml/dumper.go) /
+    `Dumper.Dump()`)
 - Important Processes:
   * `serializer.go / emit                - Sends event to owned Emitter`
   * `serializer.go / node (recursive)    - Walks child nodes`
@@ -543,7 +631,8 @@ Info:
 Transforms:
 * **Node tree → event stream**
 * **Recursive tree walking** to emit events for all nodes
-* **Flow style detection for simple collections** (`WithFlowSimpleCollections` option) - automatically uses flow style for eligible collections
+* **Flow style detection for simple collections** (`WithFlowSimpleCollections`
+  option) - automatically uses flow style for eligible collections
 * **Comment placement/shifting** (foot → tail)
 * **Style flag interpretation** (converts Node.Style to Event.Style)
 * **Anchor emission** for nodes that need aliasing
@@ -566,8 +655,10 @@ Info:
 - Input: `Event` stream (queued in `emitter.events`)
 - Output: UTF-8 bytes to `emitter.buffer`
 - Called From:
-  * Representer ([`representer.go / Representer.must()`](../../internal/libyaml/representer.go))
-  * Representer ([`representer.go / Representer.emit()`](../../internal/libyaml/representer.go))
+  * Representer ([`representer.go /
+    Representer.must()`](../../internal/libyaml/representer.go))
+  * Representer ([`representer.go /
+    Representer.emit()`](../../internal/libyaml/representer.go))
 - Important Processes:
   * `emitter.go / needMoreEvents         - Checks if more events needed for lookahead`
   * `emitter.go / analyzeEvent           - Analyzes scalar/tag for style decisions`
@@ -622,7 +713,8 @@ The data representations passed between stages.
 
 Raw input/output bytes.
 
-At input: Raw bytes from file or string, potentially any encoding (UTF-8, UTF-16LE, UTF-16BE).
+At input: Raw bytes from file or string, potentially any encoding (UTF-8,
+UTF-16LE, UTF-16BE).
 
 At output: UTF-8 encoded YAML text.
 
@@ -645,7 +737,8 @@ type Token struct {
 }
 ```
 
-Location: [`yaml.go`](../../internal/libyaml/yaml.go) / `Token` struct definition
+Location: [`yaml.go`](../../internal/libyaml/yaml.go) / `Token` struct
+definition
 
 Notes:
 * Tag handle and suffix are still separate here
@@ -678,7 +771,8 @@ type Event struct {
 }
 ```
 
-Location: [`yaml.go`](../../internal/libyaml/yaml.go) / `Event` struct definition
+Location: [`yaml.go`](../../internal/libyaml/yaml.go) / `Event` struct
+definition
 
 Notes:
 * Tag is now full URI - handle/suffix split is lost
@@ -721,7 +815,8 @@ type Node struct {
 }
 ```
 
-Location: [`node.go`](../../internal/libyaml/node.go) / `Node` struct definition
+Location: [`node.go`](../../internal/libyaml/node.go) / `Node` struct
+definition
 
 Notes:
 * Tag is short form - full URI is lost
@@ -740,24 +835,32 @@ Notes:
   - `LiteralStyle`
   - `FoldedStyle`
   - `FlowStyle`
-* `indicatedString()` method determines if a scalar skips tag resolution (quoted or literal style)
-* `shouldUseLiteralStyle()` heuristic for multi-line strings decides between literal block style and quoted style
+* `indicatedString()` method determines if a scalar skips tag resolution
+  (quoted or literal style)
+* `shouldUseLiteralStyle()` heuristic for multi-line strings decides between
+  literal block style and quoted style
 
 
 ### Repr (Representation Graph)
 
 The Node tree after tag resolution.
 
-In the YAML specification, the Representation Graph is a distinct stage where all tags have been fully resolved. In go-yaml's implementation, this is still represented using Node structures with resolved tags.
+In the YAML specification, the Representation Graph is a distinct stage where
+all tags have been fully resolved.
+In go-yaml's implementation, this is still represented using Node structures
+with resolved tags.
 
-The "Repr" is conceptual - there's no separate struct. The transformation from Nodes to Repr happens when `resolve()` is called to determine implicit tags.
+The "Repr" is conceptual - there's no separate struct.
+The transformation from Nodes to Repr happens when `resolve()` is called to
+determine implicit tags.
 
 
 ### Native Value
 
 Go language values: structs, maps, slices, strings, ints, etc.
 
-This is the final output of the Load stack and the input to the Dump stack. Represented as `reflect.Value` internally.
+This is the final output of the Load stack and the input to the Dump stack.
+Represented as `reflect.Value` internally.
 
 
 ## Potential Problems and Inconsistencies
@@ -773,9 +876,12 @@ This is the final output of the Load stack and the input to the Dump stack. Repr
 - Serializer (to check if tag can be elided)
 
 **Solution Implemented:**
-- **Load Stack:** Resolver is now a proper stage with `Resolve()` method, called once in `Loader.Load()` between Composer and Constructor
-- **Dump Stack:** Desolver is a new stage with `Desolve()` method, called once in `Dumper.Dump()` between Representer and Serializer
-- **Result:** Both stacks now have clean 3-stage pipelines with symmetric tag resolution/desolving stages
+- **Load Stack:** Resolver is now a proper stage with `Resolve()` method,
+  called once in `Loader.Load()` between Composer and Constructor
+- **Dump Stack:** Desolver is a new stage with `Desolve()` method, called once
+  in `Dumper.Dump()` between Representer and Serializer
+- **Result:** Both stacks now have clean 3-stage pipelines with symmetric tag
+  resolution/desolving stages
 
 The pipelines are now:
 - **Load:** Composer → Resolver → Constructor
@@ -788,9 +894,11 @@ The pipelines are now:
 
 **Dump:** Representer → Serializer → Emitter (each can override style)
 
-**Problem:** Hard to control or predict final output style. Emitter can override everything.
+**Problem:** Hard to control or predict final output style.
+Emitter can override everything.
 
-**Better:** Make style decisions once and respect them, or clearly separate "hints" from "requirements".
+**Better:** Make style decisions once and respect them, or clearly separate
+"hints" from "requirements".
 
 
 ### 3. Information Lost at Each Stage
@@ -817,11 +925,17 @@ These checks appear in multiple files:
 
 **Status:** This problem has been resolved in the current refactor.
 
-**Old Problem:** The Representer called `resolve()` to check if strings would be misresolved - this was parser-era logic living in the dump stack.
+**Old Problem:** The Representer called `resolve()` to check if strings would
+be misresolved - this was parser-era logic living in the dump stack.
 
-**Solution Implemented:** The Desolver stage now handles tag removal using the same resolution logic, but as a proper inverse operation of the Resolver. The Representer no longer needs to call resolution functions - it simply creates a fully-tagged Node tree, and the Desolver removes inferable tags in a separate stage.
+**Solution Implemented:** The Desolver stage now handles tag removal using the
+same resolution logic, but as a proper inverse operation of the Resolver.
+The Representer no longer needs to call resolution functions - it simply
+creates a fully-tagged Node tree, and the Desolver removes inferable tags in a
+separate stage.
 
-**Result:** Clean separation of concerns - Representer focuses on Go→Node conversion, Desolver handles tag optimization.
+**Result:** Clean separation of concerns - Representer focuses on Go→Node
+conversion, Desolver handles tag optimization.
 
 
 ### 6. Scanner and Parser Share Struct
@@ -833,7 +947,8 @@ Both stages use the `Parser` struct, making it hard to:
 
 ### 7. v4 vs Legacy Default Differences
 
-Different entry points use different default settings, which can cause inconsistent behavior:
+Different entry points use different default settings, which can cause
+inconsistent behavior:
 
 | Setting | v4 Defaults | Legacy Defaults |
 |---------|-------------|-----------------|
@@ -843,9 +958,11 @@ Different entry points use different default settings, which can cause inconsist
 
 `Load/Dump` use v4 defaults; `Marshal/Unmarshal` use Legacy defaults.
 
-Location: [`options.go`](../../internal/libyaml/options.go) / `Options` struct v4 defaults and `LegacyOptions` variable
+Location: [`options.go`](../../internal/libyaml/options.go) / `Options` struct
+v4 defaults and `LegacyOptions` variable
 
-**Problem:** Users may see different formatting depending on which API they use, even with identical data.
+**Problem:** Users may see different formatting depending on which API they
+use, even with identical data.
 
 
 ## Anything Else I Missed?
@@ -860,142 +977,228 @@ Areas that may need deeper investigation:
 
 ### A
 
-**Alias** - A YAML reference to a previously defined anchor, allowing reuse of content. Represented with `*name` syntax in YAML. In go-yaml, AliasNode points to the target Node.
+**Alias** - A YAML reference to a previously defined anchor, allowing reuse of
+content.
+Represented with `*name` syntax in YAML.
+In go-yaml, AliasNode points to the target Node.
 
-**Anchor** - A named marker (`&name`) that identifies a YAML node for later reference via aliases. Stored as a string in Node/Event/Token structs.
+**Anchor** - A named marker (`&name`) that identifies a YAML node for later
+reference via aliases.
+Stored as a string in Node/Event/Token structs.
 
 ### B
 
-**Billion Laughs Attack** - A denial-of-service attack using nested aliases to cause exponential expansion. go-yaml protects against this with alias expansion ratio limits.
+**Billion Laughs Attack** - A denial-of-service attack using nested aliases to
+cause exponential expansion.
+go-yaml protects against this with alias expansion ratio limits.
 
-**Block Style** - YAML's indentation-based syntax for collections and scalars. Examples: indented mappings/sequences, literal blocks (`|`), folded blocks (`>`).
+**Block Style** - YAML's indentation-based syntax for collections and scalars.
+Examples: indented mappings/sequences, literal blocks (`|`), folded blocks
+(`>`).
 
-**BOM (Byte Order Mark)** - A special Unicode character at the start of a file indicating encoding. go-yaml detects UTF-8, UTF-16LE, and UTF-16BE from BOM.
+**BOM (Byte Order Mark)** - A special Unicode character at the start of a file
+indicating encoding.
+go-yaml detects UTF-8, UTF-16LE, and UTF-16BE from BOM.
 
 ### C
 
-**Chomping** - Controls how trailing newlines are handled in block scalars. Strip (`-`) removes them, keep (`+`) preserves them, clip (default) keeps one newline.
+**Chomping** - Controls how trailing newlines are handled in block scalars.
+Strip (`-`) removes them, keep (`+`) preserves them, clip (default) keeps one
+newline.
 
-**Composer** - Load stack stage that builds Node trees from Event streams. Handles tag normalization, anchor registration, and comment transfer.
+**Composer** - Load stack stage that builds Node trees from Event streams.
+Handles tag normalization, anchor registration, and comment transfer.
 
-**Constructor** - Load stack stage that converts Node trees to native Go values. Performs type coercion, handles custom Unmarshalers, and enforces constraints.
+**Constructor** - Load stack stage that converts Node trees to native Go values.
+Performs type coercion, handles custom Unmarshalers, and enforces constraints.
 
 ### D
 
-**Document** - A single YAML data structure within a stream. Can be explicit (starts with `---`) or implicit. Represented as DocumentNode in go-yaml.
+**Document** - A single YAML data structure within a stream.
+Can be explicit (starts with `---`) or implicit.
+Represented as DocumentNode in go-yaml.
 
-**Dump Stack** - The pipeline that transforms Go values into YAML text: Representer → Serializer → Emitter → Writer.
+**Dump Stack** - The pipeline that transforms Go values into YAML text:
+Representer → Serializer → Emitter → Writer.
 
 ### E
 
-**Emitter** - Dump stack stage that converts Events to UTF-8 YAML text. Handles final style selection, line wrapping, and indentation.
+**Emitter** - Dump stack stage that converts Events to UTF-8 YAML text.
+Handles final style selection, line wrapping, and indentation.
 
-**Event** - Parser output representing syntactic structure. 11 types including SCALAR_EVENT, MAPPING_START_EVENT, SEQUENCE_END_EVENT. Contains tag, value, comments, and position.
+**Event** - Parser output representing syntactic structure.
+11 types including `SCALAR_EVENT`, `MAPPING_START_EVENT`, `SEQUENCE_END_EVENT`.
+Contains tag, value, comments, and position.
 
 ### F
 
-**Flow Style** - YAML's compact JSON-like syntax using brackets `[]` and braces `{}`. Example: `{key: value}` or `[a, b, c]`.
+**Flow Style** - YAML's compact JSON-like syntax using brackets `[]` and braces
+`{}`.
+Example: `{key: value}` or `[a, b, c]`.
 
-**Folded Block Scalar** - Multi-line string (`>`) where newlines are converted to spaces, except for blank lines and more-indented lines.
+**Folded Block Scalar** - Multi-line string (`>`) where newlines are converted
+to spaces, except for blank lines and more-indented lines.
 
-**FootComment** - A comment appearing after a node but before any blank lines. Can be reassigned to keys in mappings.
+**FootComment** - A comment appearing after a node but before any blank lines.
+Can be reassigned to keys in mappings.
 
 ### H
 
-**HeadComment** - Comments appearing before a node with no blank line separation.
+**HeadComment** - Comments appearing before a node with no blank line
+separation.
 
 ### I
 
-**Implicit Tag** - A tag inferred by the resolver based on scalar content rather than explicitly specified. Example: `42` → `!!int`.
+**Implicit Tag** - A tag inferred by the resolver based on scalar content
+rather than explicitly specified.
+Example: `42` → `!!int`.
 
-**Indicated String** - A scalar that has quoted or literal style, indicating it should be treated as a string regardless of content. Skips tag resolution.
+**Indicated String** - A scalar that has quoted or literal style, indicating it
+should be treated as a string regardless of content.
+Skips tag resolution.
 
-**Indentless Sequence** - A YAML sequence where entries are indicated by `-` but not further indented relative to the parent. Used in some mapping values.
+**Indentless Sequence** - A YAML sequence where entries are indicated by `-`
+but not further indented relative to the parent.
+Used in some mapping values.
 
-**Inline Struct** - A struct field tagged with `,inline` that merges its fields into the parent struct during marshaling/unmarshaling.
+**Inline Struct** - A struct field tagged with `,inline` that merges its fields
+into the parent struct during marshaling/unmarshaling.
 
 ### L
 
-**Literal Block Scalar** - Multi-line string (`|`) where newlines are preserved exactly as written.
+**Literal Block Scalar** - Multi-line string (`|`) where newlines are preserved
+exactly as written.
 
-**Load Stack** - The pipeline that transforms YAML text into Go values: Reader → Scanner → Parser → Composer → Resolver → Constructor.
+**Load Stack** - The pipeline that transforms YAML text into Go values: Reader
+→ Scanner → Parser → Composer → Resolver → Constructor.
 
 ### M
 
-**Mapping** - YAML's key-value structure (like a map or dictionary). Represented as MappingNode in go-yaml.
+**Mapping** - YAML's key-value structure (like a map or dictionary).
+Represented as MappingNode in go-yaml.
 
 **Marshaling** - The process of converting Go values to YAML text (Dump stack).
 
-**Merge Key** - Special YAML key (`<<`) that merges content from another mapping or sequence of mappings. Explicit keys take precedence.
+**Merge Key** - Special YAML key (`<<`) that merges content from another
+mapping or sequence of mappings.
+Explicit keys take precedence.
 
 ### N
 
-**Node** - Tree-based representation of YAML structure. 6 kinds: DocumentNode, SequenceNode, MappingNode, ScalarNode, AliasNode, StreamNode.
+**Node** - Tree-based representation of YAML structure.
+6 kinds: DocumentNode, SequenceNode, MappingNode, ScalarNode, AliasNode,
+StreamNode.
 
 ### P
 
-**Parser** - Load stack stage that converts Tokens to Events using LL(1) grammar. Implements 22 parser states and handles comment attachment.
+**Parser** - Load stack stage that converts Tokens to Events using LL(1)
+grammar.
+Implements 22 parser states and handles comment attachment.
 
-**Pull-Based** - Architecture where higher stages request data from lower stages. Used in Load stack (Constructor pulls from Composer, which pulls from Parser, etc.).
+**Pull-Based** - Architecture where higher stages request data from lower
+stages.
+Used in Load stack (Constructor pulls from Composer, which pulls from Parser,
+etc.).
 
-**Push-Based** - Architecture where lower stages push data to higher stages. Used in Dump stack (Representer pushes Events to Emitter).
+**Push-Based** - Architecture where lower stages push data to higher stages.
+Used in Dump stack (Representer pushes Events to Emitter).
 
 ### R
 
-**Reader** - Load stack component that handles encoding detection, UTF-8 conversion, and input buffering. Not a separate stage but integrated into Parser struct.
+**Reader** - Load stack component that handles encoding detection, UTF-8
+conversion, and input buffering.
+Not a separate stage but integrated into Parser struct.
 
-**Representer** - Dump stack stage that converts Go values to Events. Handles type dispatch, field filtering, key sorting, and style selection.
+**Representer** - Dump stack stage that converts Go values to Events.
+Handles type dispatch, field filtering, key sorting, and style selection.
 
-**Representation Graph** - In YAML spec, the data structure after tag resolution. In go-yaml, conceptually the Node tree with resolved tags.
+**Representation Graph** - In YAML spec, the data structure after tag
+resolution.
+In go-yaml, conceptually the Node tree with resolved tags.
 
-**Resolver** - Function (not a separate stage) that infers tags from scalar content. Called from multiple places in both Load and Dump stacks.
+**Resolver** - Function (not a separate stage) that infers tags from scalar
+content.
+Called from multiple places in both Load and Dump stacks.
 
 ### S
 
-**Scalar** - YAML's atomic value type (string, number, boolean, null). Represented as ScalarNode with a style (plain, quoted, literal, folded).
+**Scalar** - YAML's atomic value type (string, number, boolean, null).
+Represented as ScalarNode with a style (plain, quoted, literal, folded).
 
-**Scanner** - Load stack stage performing lexical analysis. Converts UTF-8 bytes to Tokens, handling indentation tracking, flow level tracking, and comment tokenization.
+**Scanner** - Load stack stage performing lexical analysis.
+Converts UTF-8 bytes to Tokens, handling indentation tracking, flow level
+tracking, and comment tokenization.
 
-**Self-Referential Alias** - An alias that references itself directly or indirectly, causing infinite loops. go-yaml detects and prevents this.
+**Self-Referential Alias** - An alias that references itself directly or
+indirectly, causing infinite loops.
+go-yaml detects and prevents this.
 
-**Sequence** - YAML's ordered list structure (like an array). Represented as SequenceNode in go-yaml.
+**Sequence** - YAML's ordered list structure (like an array).
+Represented as SequenceNode in go-yaml.
 
-**Serializer** - Dump stack stage that converts Node trees to Events. Handles tag elision checks and flow style detection.
+**Serializer** - Dump stack stage that converts Node trees to Events.
+Handles tag elision checks and flow style detection.
 
-**Simple Collection** - A sequence or mapping containing only scalar children that fits within line width. Eligible for automatic flow style.
+**Simple Collection** - A sequence or mapping containing only scalar children
+that fits within line width.
+Eligible for automatic flow style.
 
-**Simple Key** - A mapping key that is short enough (≤128 characters) and single-line. Flow mappings require simple keys.
+**Simple Key** - A mapping key that is short enough (≤128 characters) and
+single-line.
+Flow mappings require simple keys.
 
-**Stream** - Top-level container for YAML documents. A stream can contain multiple documents separated by `---`. Represented as StreamNode in go-yaml.
+**Stream** - Top-level container for YAML documents.
+A stream can contain multiple documents separated by `---`.
+Represented as StreamNode in go-yaml.
 
-**Surrogate Pair** - UTF-16 encoding mechanism for characters outside the Basic Multilingual Plane. go-yaml handles these during UTF-16 to UTF-8 conversion.
+**Surrogate Pair** - UTF-16 encoding mechanism for characters outside the Basic
+Multilingual Plane.
+go-yaml handles these during UTF-16 to UTF-8 conversion.
 
 ### T
 
-**Tag** - Type indicator for YAML nodes. Short form (`!!str`, `!!int`) or full URI (`tag:yaml.org,2002:str`). Can be explicit or implicit.
+**Tag** - Type indicator for YAML nodes.
+Short form (`!!str`, `!!int`) or full URI (`tag:yaml.org,2002:str`).
+Can be explicit or implicit.
 
-**Tag Directive** - YAML directive (`%TAG`) that defines a short handle for tag URIs. Example: `%TAG ! tag:yaml.org,2002:`.
+**Tag Directive** - YAML directive (`%TAG`) that defines a short handle for tag
+URIs.
+Example: `%TAG ! tag:yaml.org,2002:`.
 
-**Tag Elision** - Omitting an explicit tag when it can be inferred. Serializer checks if tags can be elided during dump.
+**Tag Elision** - Omitting an explicit tag when it can be inferred.
+Serializer checks if tags can be elided during dump.
 
-**Tag Handle** - Short prefix for tags (like `!!` or `!custom!`). Stored separately from suffix in Token but merged in Event.
+**Tag Handle** - Short prefix for tags (like `!!` or `!custom!`).
+Stored separately from suffix in Token but merged in Event.
 
-**TAIL_COMMENT_EVENT** - Special event type for foot comments at block structure ends. Used during parsing to properly assign comments to mapping keys.
+**TAIL_COMMENT_EVENT** - Special event type for foot comments at block
+structure ends.
+Used during parsing to properly assign comments to mapping keys.
 
-**TextMarshaler/TextUnmarshaler** - Go interfaces for custom text encoding/decoding. Supported by Representer (marshaling) and Constructor (unmarshaling, scalars only).
+**TextMarshaler/TextUnmarshaler** - Go interfaces for custom text
+encoding/decoding.
+Supported by Representer (marshaling) and Constructor (unmarshaling, scalars
+only).
 
-**Token** - Scanner output representing lexical units. 23 types including SCALAR_TOKEN, BLOCK_MAPPING_START_TOKEN, TAG_TOKEN. Contains byte-level position (Index).
+**Token** - Scanner output representing lexical units.
+23 types including `SCALAR_TOKEN`, `BLOCK_MAPPING_START_TOKEN`, `TAG_TOKEN`.
+Contains byte-level position (Index).
 
 ### U
 
-**Unmarshaling** - The process of converting YAML text to Go values (Load stack).
+**Unmarshaling** - The process of converting YAML text to Go values (Load
+stack).
 
-**UniqueKeys** - Option that enables duplicate key detection in mappings. Enabled by default in v2, v3, and v4.
+**UniqueKeys** - Option that enables duplicate key detection in mappings.
+Enabled by default in v2, v3, and v4.
 
 ### V
 
-**Version Directive** - YAML directive (`%YAML 1.2`) specifying the YAML version. Stored in StreamNode.
+**Version Directive** - YAML directive (`%YAML 1.2`) specifying the YAML
+version.
+Stored in StreamNode.
 
 ### W
 
-**Writer** - Dump stack component that flushes output buffer to destination. Very simple - just calls configured write handler.
+**Writer** - Dump stack component that flushes output buffer to destination.
+Very simple - just calls configured write handler.

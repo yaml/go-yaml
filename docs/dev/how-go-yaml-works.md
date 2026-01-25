@@ -76,8 +76,10 @@ The v4 refactor has made the stacks more symmetric:
 2. **Symmetric Tag Handling**:
    - **Resolver** (Load) infers tags from content
    - **Desolver** (Dump) removes inferable tags - NEW in v4
-3. **Node Trees on Both Sides**: Both stacks work with Node trees as intermediate representation
-4. **Remaining Asymmetry**: Scanner+Parser on Load vs single Emitter on Dump (due to YAML's complex indentation-based syntax)
+3. **Node Trees on Both Sides**: Both stacks work with Node trees as
+   intermediate representation
+4. **Remaining Asymmetry**: Scanner+Parser on Load vs single Emitter on Dump
+   (due to YAML's complex indentation-based syntax)
 
 ## Data Representations
 
@@ -339,7 +341,8 @@ YAML processing is a pipeline, not a single operation:
 
 - **Loading** flows through: Reader → Scanner → Parser → Composer →
   Resolver → Constructor
-- **Dumping** flows through: Representer → Desolver → Serializer → Emitter → Writer
+- **Dumping** flows through: Representer → Desolver → Serializer → Emitter
+  → Writer
 - Each stage transforms data from one representation to another
 - The v4 refactor has made the stacks more symmetric with 3-stage pipelines:
   - **Load:** Composer → Resolver → Constructor

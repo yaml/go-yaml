@@ -570,7 +570,8 @@ encoding.
 **Node structure:** Mapping nodes have alternating key/value in Content (key at
 i, value at i+1).
 
-**Performance:** Comments are not loaded by default in V4; use the v3 plugin only if you need preservation.
+**Performance:** Comments are not loaded by default in V4; use the v3 plugin
+only if you need preservation.
 
 **Debugging:** Add a logging plugin to see what's happening during processing.
 

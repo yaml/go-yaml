@@ -300,7 +300,9 @@ config:
 
 Controls which type of quotes to use when quoting is required by the YAML spec.
 
-**Important:** This option only affects strings that *require* quoting. Plain strings that don't need quoting remain unquoted regardless of this setting.
+**Important:** This option only affects strings that *require* quoting.
+Plain strings that don't need quoting remain unquoted regardless of this
+setting.
 
 Quoting is required for:
 - Strings that look like other YAML types (true, false, null, 123, etc.)
@@ -343,7 +345,8 @@ spaces: ' hello'   # Leading space, gets single quotes
 
 **Use case:**
 - `QuoteSingle`: Modern YAML style with single quotes (cleaner, less escaping)
-- `QuoteDouble`: When you prefer double quotes or need consistency with JSON-style
+- `QuoteDouble`: When you prefer double quotes or need consistency with
+  JSON-style
 - `QuoteLegacy`: Backward compatibility with go-yaml v2/v3 output
 
 **Default:**
@@ -475,13 +478,19 @@ key: value  # This is a line comment
 ```
 
 **Use cases:**
-- **Preserving comments:** When you need to read, modify, and write back YAML while keeping comments intact
-- **Comment-aware processing:** Tools that need to understand or manipulate comments
-- **V3 compatibility:** Maintaining backward compatibility with go-yaml v3 code that uses comment fields
+- **Preserving comments:** When you need to read, modify, and write back YAML
+  while keeping comments intact
+- **Comment-aware processing:** Tools that need to understand or manipulate
+  comments
+- **V3 compatibility:** Maintaining backward compatibility with go-yaml v3
+  code that uses comment fields
 
-**Performance note:** Comment scanning has a small performance cost. In v4, comments are opt-in (disabled by default) for better performance when comments aren't needed.
+**Performance note:** Comment scanning has a small performance cost.
+In v4, comments are opt-in (disabled by default) for better performance when
+comments aren't needed.
 
-**Alternative:** For new code, consider using comment plugins via `WithPlugin()` for more flexible comment handling.
+**Alternative:** For new code, consider using comment plugins via
+`WithPlugin()` for more flexible comment handling.
 
 **Default:** false (comments not loaded)
 
@@ -759,7 +768,8 @@ format.
 
 ## See Also
 
-- [Dumping and Loading API Guide](dump-load-api.md) - Complete guide to Dump/Load APIs
+- [Dumping and Loading API Guide](dump-load-api.md) - Complete guide to
+  Dump/Load APIs
 - [API Documentation](https://pkg.go.dev/go.yaml.in/yaml/v4) - Full API
   reference
 - [Examples](../example/README.md) - Runnable code examples
