@@ -1,12 +1,14 @@
 # go-yaml
 
-The `go-yaml` binary is a YAML node inspection tool that provides various modes for analyzing and transforming YAML data.
+The `go-yaml` binary is a YAML node inspection tool that provides various
+modes for analyzing and transforming YAML data.
 
 Below is a summary of its capabilities:
 
 ## License
 
-The `go-yaml` project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for more details.
+The `go-yaml` project is licensed under the Apache License 2.0.
+See the [LICENSE](LICENSE) file for more details.
 
 ## Features
 
@@ -41,4 +43,7 @@ The `go-yaml` project is licensed under the Apache License 2.0. See the [LICENSE
 - `--version`: Displays the version of the tool.
 
 ## Usage
-The tool reads YAML data from `stdin` and processes it based on the specified flags. It validates flag combinations and provides error messages for incompatible options.
+The tool reads YAML data from `stdin` and processes it based on the specified
+flags.
+It validates flag combinations and provides error messages for incompatible
+options.

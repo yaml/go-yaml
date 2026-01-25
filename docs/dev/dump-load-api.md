@@ -8,9 +8,9 @@ from simple one-liners to advanced streaming with full configuration control.
 **For new code in v4+, prefer `Dump`/`Load` over `Marshal`/`Unmarshal` and
 `Encode`/`Decode`.**
 
-The classic API (`Marshal`, `Unmarshal`, `Encoder`, `Decoder`) remains supported
-for compatibility, but `Dump`/`Load` and `Dumper`/`Loader` offer more flexibility
-with options support.
+The classic API (`Marshal`, `Unmarshal`, `Encoder`, `Decoder`) remains
+supported for compatibility, but `Dump`/`Load` and `Dumper`/`Loader` offer
+more flexibility with options support.
 
 ### Why Dump and Load?
 
@@ -199,7 +199,8 @@ dumper.Close()
 fmt.Println(buf.String())
 ```
 
-**Note: `NewDumper` opens a write stream that must be closed with a call to `Close()`.
+**Note: `NewDumper` opens a write stream that must be closed with a call to
+`Close()`.
 This call can be deferred.**
 
 ### NewLoader
