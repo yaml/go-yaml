@@ -17,67 +17,52 @@ import (
 	"time"
 )
 
+// resolveMapItem holds a resolved value and its YAML tag for exact string
+// matches in the resolution table.
 type resolveMapItem struct {
 	value any
 	tag   string
 }
 
-var (
-	resolveTable = make([]byte, 256)
-	resolveMap   = make(map[string]resolveMapItem)
-)
+// Resolver handles tag resolution for YAML nodes.
+type Resolver struct {
+	opts *Options
+}
 
-// negativeZero represents -0.0 for YAML encoding/decoding
-// this is needed because Go constants cannot express -0.0
-// https://staticcheck.dev/docs/checks/#SA4026
-var negativeZero = math.Copysign(0.0, -1.0)
+// NewResolver creates a new Resolver with the given options.
+func NewResolver(opts *Options) *Resolver {
+	return &Resolver{opts: opts}
+}
 
-func init() {
-	t := resolveTable
-	t[int('+')] = 'S' // Sign
-	t[int('-')] = 'S'
-	for _, c := range "0123456789" {
-		t[int(c)] = 'D' // Digit
-	}
-	for _, c := range "yYnNtTfFoO~<" { // < for merge key <<
-		t[int(c)] = 'M' // In map
-	}
-	t[int('.')] = '.' // Float (potentially in map)
-
-	resolveMapList := []struct {
-		v   any
-		tag string
-		l   []string
-	}{
-		{true, boolTag, []string{"true", "True", "TRUE"}},
-		{false, boolTag, []string{"false", "False", "FALSE"}},
-		{nil, nullTag, []string{"", "~", "null", "Null", "NULL"}},
-		{math.NaN(), floatTag, []string{".nan", ".NaN", ".NAN"}},
-		{math.Inf(+1), floatTag, []string{".inf", ".Inf", ".INF"}},
-		{math.Inf(+1), floatTag, []string{"+.inf", "+.Inf", "+.INF"}},
-		{math.Inf(-1), floatTag, []string{"-.inf", "-.Inf", "-.INF"}},
-		{negativeZero, floatTag, []string{"-0", "-0.0"}},
-		{"<<", mergeTag, []string{"<<"}},
+// Resolve walks the node tree and resolves tags for untagged scalars.
+// This is called after composition to determine implicit types (int, float,
+// bool, null, timestamp) from scalar values.
+func (r *Resolver) Resolve(n *Node) {
+	if n == nil {
+		return
 	}
 
-	m := resolveMap
-	for _, item := range resolveMapList {
-		for _, s := range item.l {
-			m[s] = resolveMapItem{item.v, item.tag}
+	switch n.Kind {
+	case ScalarNode:
+		// Only resolve if tag is empty (not explicitly tagged)
+		if n.Tag == "" {
+			n.Tag, _ = resolve("", n.Value)
 		}
+	case DocumentNode, SequenceNode, MappingNode:
+		// Recursively resolve children
+		for _, child := range n.Content {
+			r.Resolve(child)
+		}
+	case AliasNode:
+		// Alias nodes point to already-resolved nodes, nothing to do
 	}
 }
 
-func resolvableTag(tag string) bool {
-	switch tag {
-	case "", strTag, boolTag, intTag, floatTag, nullTag, timestampTag:
-		return true
-	}
-	return false
-}
-
-var yamlStyleFloat = regexp.MustCompile(`^[-+]?(\.[0-9]+|[0-9]+(\.[0-9]*)?)([eE][-+]?[0-9]+)?$`)
-
+// resolve determines the YAML tag and Go value for a scalar string.
+// It takes a tag hint and the scalar string value, and returns the resolved
+// tag and the corresponding Go value (int, float, bool, time.Time, etc.).
+// If the tag is already specified and non-resolvable, it returns the input
+// unchanged.
 func resolve(tag string, in string) (rtag string, out any) {
 	tag = shortTag(tag)
 	if !resolvableTag(tag) {
@@ -134,8 +119,8 @@ func resolve(tag string, in string) (rtag string, out any) {
 
 		case 'D', 'S':
 			// Int, float, or timestamp.
-			// Only try values as a timestamp if the value is unquoted or there's an explicit
-			// !!timestamp tag.
+			// Only try values as a timestamp if the value is
+			// unquoted or there's an explicit !!timestamp tag.
 			if tag == "" || tag == timestampTag {
 				t, ok := parseTimestamp(in)
 				if ok {
@@ -169,6 +154,80 @@ func resolve(tag string, in string) (rtag string, out any) {
 	return strTag, in
 }
 
+// resolveTable provides a fast lookup table for initial character-based
+// classification during tag resolution.
+// resolveMap maps specific scalar strings to their resolved values and tags.
+var (
+	resolveTable = make([]byte, 256)
+	resolveMap   = make(map[string]resolveMapItem)
+)
+
+// negativeZero represents -0.0 for YAML encoding/decoding
+// this is needed because Go constants cannot express -0.0
+// https://staticcheck.dev/docs/checks/#SA4026
+var negativeZero = math.Copysign(0.0, -1.0)
+
+// yamlStyleFloat matches floating-point numbers in YAML style (including
+// scientific notation and numbers starting with a dot).
+var yamlStyleFloat = regexp.MustCompile(`^[-+]?(\.[0-9]+|[0-9]+(\.[0-9]*)?)([eE][-+]?[0-9]+)?$`)
+
+// This is a subset of the formats allowed by the regular expression
+// defined at http://yaml.org/type/timestamp.html.
+var allowedTimestampFormats = []string{
+	"2006-1-2T15:4:5.999999999Z07:00", // RCF3339Nano with short date fields.
+	"2006-1-2t15:4:5.999999999Z07:00", // RFC3339Nano with short date fields and lower-case "t".
+	"2006-1-2 15:4:5.999999999",       // space separated with no time zone
+	"2006-1-2",                        // date only
+	// Notable exception: time.Parse cannot handle: "2001-12-14 21:59:43.10 -5"
+	// from the set of examples.
+}
+
+func init() {
+	t := resolveTable
+	t[int('+')] = 'S' // Sign
+	t[int('-')] = 'S'
+	for _, c := range "0123456789" {
+		t[int(c)] = 'D' // Digit
+	}
+	for _, c := range "yYnNtTfFoO~<" { // < for merge key <<
+		t[int(c)] = 'M' // In map
+	}
+	t[int('.')] = '.' // Float (potentially in map)
+
+	resolveMapList := []struct {
+		v   any
+		tag string
+		l   []string
+	}{
+		{true, boolTag, []string{"true", "True", "TRUE"}},
+		{false, boolTag, []string{"false", "False", "FALSE"}},
+		{nil, nullTag, []string{"", "~", "null", "Null", "NULL"}},
+		{math.NaN(), floatTag, []string{".nan", ".NaN", ".NAN"}},
+		{math.Inf(+1), floatTag, []string{".inf", ".Inf", ".INF"}},
+		{math.Inf(+1), floatTag, []string{"+.inf", "+.Inf", "+.INF"}},
+		{math.Inf(-1), floatTag, []string{"-.inf", "-.Inf", "-.INF"}},
+		{negativeZero, floatTag, []string{"-0", "-0.0"}},
+		{"<<", mergeTag, []string{"<<"}},
+	}
+
+	m := resolveMap
+	for _, item := range resolveMapList {
+		for _, s := range item.l {
+			m[s] = resolveMapItem{item.v, item.tag}
+		}
+	}
+}
+
+// resolvableTag checks if a tag can be automatically resolved from a scalar
+// value.
+func resolvableTag(tag string) bool {
+	switch tag {
+	case "", strTag, boolTag, intTag, floatTag, nullTag, timestampTag:
+		return true
+	}
+	return false
+}
+
 // encodeBase64 encodes s as base64 that is broken up into multiple lines
 // as appropriate for the resulting length.
 func encodeBase64(s string) string {
@@ -194,17 +253,6 @@ func encodeBase64(s string) string {
 	return string(out[:k])
 }
 
-// This is a subset of the formats allowed by the regular expression
-// defined at http://yaml.org/type/timestamp.html.
-var allowedTimestampFormats = []string{
-	"2006-1-2T15:4:5.999999999Z07:00", // RCF3339Nano with short date fields.
-	"2006-1-2t15:4:5.999999999Z07:00", // RFC3339Nano with short date fields and lower-case "t".
-	"2006-1-2 15:4:5.999999999",       // space separated with no time zone
-	"2006-1-2",                        // date only
-	// Notable exception: time.Parse cannot handle: "2001-12-14 21:59:43.10 -5"
-	// from the set of examples.
-}
-
 // parseTimestamp parses s as a timestamp string and
 // returns the timestamp and reports whether it succeeded.
 // Timestamp formats are defined at http://yaml.org/type/timestamp.html
@@ -228,38 +276,4 @@ func parseTimestamp(s string) (time.Time, bool) {
 		}
 	}
 	return time.Time{}, false
-}
-
-// Resolver handles tag resolution for YAML nodes.
-type Resolver struct {
-	opts *Options
-}
-
-// NewResolver creates a new Resolver with the given options.
-func NewResolver(opts *Options) *Resolver {
-	return &Resolver{opts: opts}
-}
-
-// Resolve walks the node tree and resolves tags for untagged scalars.
-// This is called after composition to determine implicit types (int, float,
-// bool, null, timestamp) from scalar values.
-func (r *Resolver) Resolve(n *Node) {
-	if n == nil {
-		return
-	}
-
-	switch n.Kind {
-	case ScalarNode:
-		// Only resolve if tag is empty (not explicitly tagged)
-		if n.Tag == "" {
-			n.Tag, _ = resolve("", n.Value)
-		}
-	case DocumentNode, SequenceNode, MappingNode:
-		// Recursively resolve children
-		for _, child := range n.Content {
-			r.Resolve(child)
-		}
-	case AliasNode:
-		// Alias nodes point to already-resolved nodes, nothing to do
-	}
 }

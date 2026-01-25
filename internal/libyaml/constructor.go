@@ -17,7 +17,7 @@ import (
 )
 
 // --------------------------------------------------------------------------
-// Constructor-specific interfaces
+// Types and Interfaces
 
 // legacyConstructor is the old-style unmarshaler interface.
 // It's kept for backwards compatibility.
@@ -25,28 +25,21 @@ type legacyConstructor interface {
 	UnmarshalYAML(construct func(any) error) error
 }
 
-// --------------------------------------------------------------------------
-// Tag dispatch table
-
-// ScalarConstructFunc is the signature for tag-specific scalar constructor functions.
-// Each function handles construction of a specific YAML tag to various Go types.
-type ScalarConstructFunc func(c *Constructor, n *Node, resolved any, out reflect.Value) bool
-
-// scalarConstructors maps YAML scalar tags to their constructor functions.
-var scalarConstructors = map[string]ScalarConstructFunc{
-	strTag:       (*Constructor).constructStr,
-	intTag:       (*Constructor).constructInt,
-	boolTag:      (*Constructor).constructBool,
-	floatTag:     (*Constructor).constructFloat,
-	nullTag:      (*Constructor).constructNull,
-	timestampTag: (*Constructor).constructTimestamp,
-	binaryTag:    (*Constructor).constructBinary,
-	mergeTag:     (*Constructor).constructMerge,
+// constructorAdapter is an interface that wraps the root package's Unmarshaler
+// interface.
+// This allows the constructor to call constructors that expect *yaml.Node
+// instead of *libyaml.Node.
+type constructorAdapter interface {
+	CallRootConstructor(n *Node) error
 }
 
-// --------------------------------------------------------------------------
-// Constructor state
+// ScalarConstructFunc is the signature for tag-specific scalar constructor
+// functions.
+// Each function handles construction of a specific YAML tag to various Go
+// types.
+type ScalarConstructFunc func(c *Constructor, n *Node, resolved any, out reflect.Value) bool
 
+// Constructor state
 type Constructor struct {
 	doc        *Node
 	aliases    map[*Node]bool
@@ -64,14 +57,8 @@ type Constructor struct {
 	mergedFields map[any]bool
 }
 
-var (
-	nodeType       = reflect.TypeOf(Node{})
-	durationType   = reflect.TypeOf(time.Duration(0))
-	stringMapType  = reflect.TypeOf(map[string]any{})
-	generalMapType = reflect.TypeOf(map[any]any{})
-	ifaceType      = generalMapType.Elem()
-)
-
+// NewConstructor creates a new Constructor initialized with the provided
+// options.
 func NewConstructor(opts *Options) *Constructor {
 	return &Constructor{
 		stringMapType:  stringMapType,
@@ -82,250 +69,13 @@ func NewConstructor(opts *Options) *Constructor {
 	}
 }
 
-func (c *Constructor) tagError(n *Node, tag string, out reflect.Value) {
-	if n.Tag != "" {
-		tag = n.Tag
-	}
-	value := n.Value
-	if tag != seqTag && tag != mapTag {
-		if len(value) > 10 {
-			value = " `" + value[:7] + "...`"
-		} else {
-			value = " `" + value + "`"
-		}
-	}
-	c.TypeErrors = append(c.TypeErrors, &ConstructError{
-		Err:    fmt.Errorf("cannot construct %s%s into %s", shortTag(tag), value, out.Type()),
-		Line:   n.Line,
-		Column: n.Column,
-	})
-}
+// --------------------------------------------------------------------------
+// Main Entry Point
 
-func (c *Constructor) callConstructor(n *Node, u constructor) (good bool) {
-	err := u.UnmarshalYAML(n)
-	switch e := err.(type) {
-	case nil:
-		return true
-	case *LoadErrors:
-		c.TypeErrors = append(c.TypeErrors, e.Errors...)
-		return false
-	default:
-		c.TypeErrors = append(c.TypeErrors, &ConstructError{
-			Err:    err,
-			Line:   n.Line,
-			Column: n.Column,
-		})
-		return false
-	}
-}
-
-func (c *Constructor) callLegacyConstructor(n *Node, u legacyConstructor) (good bool) {
-	terrlen := len(c.TypeErrors)
-	err := u.UnmarshalYAML(func(v any) (err error) {
-		defer handleErr(&err)
-		c.Construct(n, reflect.ValueOf(v))
-		if len(c.TypeErrors) > terrlen {
-			issues := c.TypeErrors[terrlen:]
-			c.TypeErrors = c.TypeErrors[:terrlen]
-			return &LoadErrors{issues}
-		}
-		return nil
-	})
-	switch e := err.(type) {
-	case nil:
-		return true
-	case *LoadErrors:
-		c.TypeErrors = append(c.TypeErrors, e.Errors...)
-		return false
-	default:
-		c.TypeErrors = append(c.TypeErrors, &ConstructError{
-			Err:    err,
-			Line:   n.Line,
-			Column: n.Column,
-		})
-		return false
-	}
-}
-
-func isTextUnmarshaler(out reflect.Value) bool {
-	// Dereference pointers to check the underlying type,
-	// similar to how prepare() handles Constructor checks.
-	for out.Kind() == reflect.Pointer {
-		if out.IsNil() {
-			// Create a new instance to check the type
-			out = reflect.New(out.Type().Elem()).Elem()
-		} else {
-			out = out.Elem()
-		}
-	}
-	if out.CanAddr() {
-		_, ok := out.Addr().Interface().(encoding.TextUnmarshaler)
-		return ok
-	}
-	return false
-}
-
-// prepare initializes and dereferences pointers and calls UnmarshalYAML
-// if a value is found to implement it.
-// It returns the initialized and dereferenced out value, whether
-// construction was already done by UnmarshalYAML, and if so whether
-// its types constructed appropriately.
-//
-// If n holds a null value, prepare returns before doing anything.
-func (c *Constructor) prepare(n *Node, out reflect.Value) (newout reflect.Value, constructed, good bool) {
-	if n.ShortTag() == nullTag {
-		return out, false, false
-	}
-	again := true
-	for again {
-		again = false
-		if out.Kind() == reflect.Pointer {
-			if out.IsNil() {
-				out.Set(reflect.New(out.Type().Elem()))
-			}
-			out = out.Elem()
-			again = true
-		}
-		if out.CanAddr() {
-			// Try yaml.Unmarshaler (from root package) first
-			if called, good := c.tryCallYAMLConstructor(n, out); called {
-				return out, true, good
-			}
-
-			outi := out.Addr().Interface()
-			// Check for libyaml.constructor
-			if u, ok := outi.(constructor); ok {
-				good = c.callConstructor(n, u)
-				return out, true, good
-			}
-			if u, ok := outi.(legacyConstructor); ok {
-				good = c.callLegacyConstructor(n, u)
-				return out, true, good
-			}
-		}
-	}
-	return out, false, false
-}
-
-func (c *Constructor) fieldByIndex(n *Node, v reflect.Value, index []int) (field reflect.Value) {
-	if n.ShortTag() == nullTag {
-		return reflect.Value{}
-	}
-	for _, num := range index {
-		for {
-			if v.Kind() == reflect.Pointer {
-				if v.IsNil() {
-					v.Set(reflect.New(v.Type().Elem()))
-				}
-				v = v.Elem()
-				continue
-			}
-			break
-		}
-		v = v.Field(num)
-	}
-	return v
-}
-
-const (
-	// 400,000 decode operations is ~500kb of dense object declarations, or
-	// ~5kb of dense object declarations with 10000% alias expansion
-	alias_ratio_range_low = 400000
-
-	// 4,000,000 decode operations is ~5MB of dense object declarations, or
-	// ~4.5MB of dense object declarations with 10% alias expansion
-	alias_ratio_range_high = 4000000
-
-	// alias_ratio_range is the range over which we scale allowed alias ratios
-	alias_ratio_range = float64(alias_ratio_range_high - alias_ratio_range_low)
-)
-
-func allowedAliasRatio(constructCount int) float64 {
-	switch {
-	case constructCount <= alias_ratio_range_low:
-		// allow 99% to come from alias expansion for small-to-medium documents
-		return 0.99
-	case constructCount >= alias_ratio_range_high:
-		// allow 10% to come from alias expansion for very large documents
-		return 0.10
-	default:
-		// scale smoothly from 99% down to 10% over the range.
-		// this maps to 396,000 - 400,000 allowed alias-driven decodes over the range.
-		// 400,000 decode operations is ~100MB of allocations in worst-case scenarios (single-item maps).
-		return 0.99 - 0.89*(float64(constructCount-alias_ratio_range_low)/alias_ratio_range)
-	}
-}
-
-// constructorAdapter is an interface that wraps the root package's Unmarshaler interface.
-// This allows the constructor to call constructors that expect *yaml.Node instead of *libyaml.Node.
-type constructorAdapter interface {
-	CallRootConstructor(n *Node) error
-}
-
-// tryCallYAMLConstructor checks if the value has an UnmarshalYAML method that takes
-// a *yaml.Node (from the root package) and calls it if found.
-// This handles the case where user types implement yaml.Unmarshaler instead of libyaml.constructor.
-func (c *Constructor) tryCallYAMLConstructor(n *Node, out reflect.Value) (called bool, good bool) {
-	if !out.CanAddr() {
-		return false, false
-	}
-
-	addr := out.Addr()
-	// Check for UnmarshalYAML method
-	method := addr.MethodByName("UnmarshalYAML")
-	if !method.IsValid() {
-		return false, false
-	}
-
-	// Check method signature: func(*yaml.Node) error
-	mtype := method.Type()
-	if mtype.NumIn() != 1 || mtype.NumOut() != 1 {
-		return false, false
-	}
-
-	// Check if parameter is a pointer to a Node-like struct
-	paramType := mtype.In(0)
-	if paramType.Kind() != reflect.Ptr {
-		return false, false
-	}
-
-	elemType := paramType.Elem()
-	if elemType.Kind() != reflect.Struct {
-		return false, false
-	}
-
-	// Check if it's the same underlying type as our Node
-	// Both yaml.Node and libyaml.Node have the same structure
-	if elemType.Name() != "Node" {
-		return false, false
-	}
-
-	// Call the method with a converted node
-	// Since yaml.Node and libyaml.Node have the same structure,
-	// we can convert using unsafe pointer cast
-	nodeValue := reflect.NewAt(elemType, reflect.ValueOf(n).UnsafePointer())
-
-	results := method.Call([]reflect.Value{nodeValue})
-	err := results[0].Interface()
-
-	if err == nil {
-		return true, true
-	}
-
-	switch e := err.(type) {
-	case *LoadErrors:
-		c.TypeErrors = append(c.TypeErrors, e.Errors...)
-		return true, false
-	default:
-		c.TypeErrors = append(c.TypeErrors, &ConstructError{
-			Err:    e.(error),
-			Line:   n.Line,
-			Column: n.Column,
-		})
-		return true, false
-	}
-}
-
+// Construct converts a YAML node into the Go value represented by out.
+// It dispatches to the appropriate handler based on the node kind and
+// handles alias expansion, custom unmarshalers, and type resolution.
+// Returns true if the construction was successful.
 func (c *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
 	c.constructCount++
 	if c.aliasDepth > 0 {
@@ -339,12 +89,13 @@ func (c *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
 		return true
 	}
 
-	// When out type implements [encoding.TextUnmarshaler], ensure the node is
-	// a scalar. Otherwise, for example, constructing a YAML mapping into
-	// a struct having no exported fields, but implementing TextUnmarshaler
-	// would silently succeed, but do nothing.
+	// When out type implements [encoding.TextUnmarshaler], ensure the node
+	// is a scalar. Otherwise, for example, constructing a YAML mapping
+	// into a struct having no exported fields, but implementing
+	// TextUnmarshaler would silently succeed, but do nothing.
 	//
-	// Note that this matches the behavior of both encoding/json and encoding/json/v2.
+	// Note that this matches the behavior of both encoding/json and
+	// encoding/json/v2.
 	if n.Kind != ScalarNode && isTextUnmarshaler(out) {
 		err := fmt.Errorf("cannot construct %s into %s (TextUnmarshaler)", shortTag(n.Tag), out.Type())
 		c.TypeErrors = append(c.TypeErrors, &ConstructError{
@@ -382,37 +133,65 @@ func (c *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
 	return good
 }
 
-func (c *Constructor) document(n *Node, out reflect.Value) (good bool) {
-	if len(n.Content) == 1 {
-		c.doc = n
-		c.Construct(n.Content[0], out)
-		return true
-	}
-	return false
+// --------------------------------------------------------------------------
+// Package-level Variables and Constants
+
+var (
+	nodeType       = reflect.TypeOf(Node{})
+	durationType   = reflect.TypeOf(time.Duration(0))
+	stringMapType  = reflect.TypeOf(map[string]any{})
+	generalMapType = reflect.TypeOf(map[any]any{})
+	ifaceType      = generalMapType.Elem()
+)
+
+// scalarConstructors maps YAML scalar tags to their constructor functions.
+var scalarConstructors = map[string]ScalarConstructFunc{
+	strTag:       (*Constructor).constructStr,
+	intTag:       (*Constructor).constructInt,
+	boolTag:      (*Constructor).constructBool,
+	floatTag:     (*Constructor).constructFloat,
+	nullTag:      (*Constructor).constructNull,
+	timestampTag: (*Constructor).constructTimestamp,
+	binaryTag:    (*Constructor).constructBinary,
+	mergeTag:     (*Constructor).constructMerge,
 }
 
-func (c *Constructor) alias(n *Node, out reflect.Value) (good bool) {
-	if c.aliases[n] {
-		// TODO this could actually be allowed in some circumstances.
-		failf("anchor '%s' value contains itself", n.Value)
-	}
-	c.aliases[n] = true
-	c.aliasDepth++
-	good = c.Construct(n.Alias, out)
-	c.aliasDepth--
-	delete(c.aliases, n)
-	return good
-}
+const (
+	// 400,000 decode operations is ~500kb of dense object declarations, or
+	// ~5kb of dense object declarations with 10000% alias expansion
+	alias_ratio_range_low = 400000
 
-func (c *Constructor) null(out reflect.Value) bool {
-	if out.CanAddr() {
-		switch out.Kind() {
-		case reflect.Interface, reflect.Pointer, reflect.Map, reflect.Slice:
-			out.Set(reflect.Zero(out.Type()))
-			return true
-		}
+	// 4,000,000 decode operations is ~5MB of dense object declarations, or
+	// ~4.5MB of dense object declarations with 10% alias expansion
+	alias_ratio_range_high = 4000000
+
+	// alias_ratio_range is the range over which we scale allowed alias
+	// ratios
+	alias_ratio_range = float64(alias_ratio_range_high - alias_ratio_range_low)
+)
+
+// allowedAliasRatio calculates the maximum allowed ratio of alias-driven
+// decodes to total decodes based on the construct count.
+// This prevents excessive alias expansion attacks while allowing reasonable
+// alias usage in both small and large documents.
+func allowedAliasRatio(constructCount int) float64 {
+	switch {
+	case constructCount <= alias_ratio_range_low:
+		// allow 99% to come from alias expansion for small-to-medium
+		// documents
+		return 0.99
+	case constructCount >= alias_ratio_range_high:
+		// allow 10% to come from alias expansion for very large
+		// documents
+		return 0.10
+	default:
+		// scale smoothly from 99% down to 10% over the range.
+		// this maps to 396,000 - 400,000 allowed alias-driven decodes
+		// over the range.
+		// 400,000 decode operations is ~100MB of allocations in
+		// worst-case scenarios (single-item maps).
+		return 0.99 - 0.89*(float64(constructCount-alias_ratio_range_low)/alias_ratio_range)
 	}
-	return false
 }
 
 // --------------------------------------------------------------------------
@@ -425,7 +204,8 @@ func (c *Constructor) constructStr(n *Node, resolved any, out reflect.Value) boo
 		out.SetString(n.Value)
 		return true
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		// Handle time.Duration parsing from strings like "3s", "1m", etc.
+		// Handle time.Duration parsing from strings like "3s", "1m",
+		// etc.
 		if out.Type() == durationType {
 			d, err := time.ParseDuration(n.Value)
 			if err == nil {
@@ -434,7 +214,8 @@ func (c *Constructor) constructStr(n *Node, resolved any, out reflect.Value) boo
 			}
 		}
 	case reflect.Bool:
-		// YAML 1.1 compatibility: allow string values like "y", "on", "Off" as bools
+		// YAML 1.1 compatibility: allow string values like "y", "on",
+		// "Off" as bools
 		switch n.Value {
 		case "y", "Y", "yes", "Yes", "YES", "on", "On", "ON":
 			out.SetBool(true)
@@ -482,7 +263,8 @@ func (c *Constructor) constructInt(n *Node, resolved any, out reflect.Value) boo
 		case float64:
 			if !isDuration && resolved >= math.MinInt64 && resolved <= math.MaxInt64 {
 				intVal := int64(resolved)
-				// Verify conversion is lossless (handles floating-point precision)
+				// Verify conversion is lossless (handles
+				// floating-point precision)
 				if float64(intVal) == resolved && !out.OverflowInt(intVal) {
 					out.SetInt(intVal)
 					return true
@@ -517,7 +299,8 @@ func (c *Constructor) constructInt(n *Node, resolved any, out reflect.Value) boo
 		case float64:
 			if resolved >= 0 && resolved <= math.MaxUint64 {
 				uintVal := uint64(resolved)
-				// Verify conversion is lossless (handles floating-point precision)
+				// Verify conversion is lossless (handles
+				// floating-point precision)
 				if float64(uintVal) == resolved && !out.OverflowUint(uintVal) {
 					out.SetUint(uintVal)
 					return true
@@ -558,8 +341,10 @@ func (c *Constructor) constructBool(n *Node, resolved any, out reflect.Value) bo
 			out.SetBool(resolved)
 			return true
 		case string:
-			// This offers some compatibility with the 1.1 spec (https://yaml.org/type/bool.html).
-			// It only works if explicitly attempting to construct into a typed bool value.
+			// This offers some compatibility with the 1.1 spec
+			// (https://yaml.org/type/bool.html).
+			// It only works if explicitly attempting to construct
+			// into a typed bool value.
 			switch resolved {
 			case "y", "Y", "yes", "Yes", "YES", "on", "On", "ON":
 				out.SetBool(true)
@@ -629,7 +414,8 @@ func (c *Constructor) constructFloat(n *Node, resolved any, out reflect.Value) b
 	return false
 }
 
-// constructTimestamp constructs a !!timestamp tagged value into various Go types.
+// constructTimestamp constructs a !!timestamp tagged value into various Go
+// types.
 func (c *Constructor) constructTimestamp(n *Node, resolved any, out reflect.Value) bool {
 	switch out.Kind() {
 	case reflect.Struct:
@@ -677,6 +463,37 @@ func (c *Constructor) constructMerge(n *Node, resolved any, out reflect.Value) b
 	return false
 }
 
+// --------------------------------------------------------------------------
+// Node Kind Handlers
+
+// document constructs a DocumentNode by processing its single content node.
+func (c *Constructor) document(n *Node, out reflect.Value) (good bool) {
+	if len(n.Content) == 1 {
+		c.doc = n
+		c.Construct(n.Content[0], out)
+		return true
+	}
+	return false
+}
+
+// alias constructs an AliasNode by following the alias reference and
+// tracking alias depth to detect circular references.
+func (c *Constructor) alias(n *Node, out reflect.Value) (good bool) {
+	if c.aliases[n] {
+		// TODO this could actually be allowed in some circumstances.
+		failf("anchor '%s' value contains itself", n.Value)
+	}
+	c.aliases[n] = true
+	c.aliasDepth++
+	good = c.Construct(n.Alias, out)
+	c.aliasDepth--
+	delete(c.aliases, n)
+	return good
+}
+
+// scalar constructs a ScalarNode by resolving its tag and value, then
+// dispatching to the appropriate tag-specific constructor or using
+// TextUnmarshaler if available.
 func (c *Constructor) scalar(n *Node, out reflect.Value) bool {
 	// Resolve the tag and value
 	var tag string
@@ -753,13 +570,7 @@ func (c *Constructor) scalar(n *Node, out reflect.Value) bool {
 	return false
 }
 
-func settableValueOf(i any) reflect.Value {
-	v := reflect.ValueOf(i)
-	sv := reflect.New(v.Type()).Elem()
-	sv.Set(v)
-	return sv
-}
-
+// sequence constructs a SequenceNode into a Go slice, array, or interface.
 func (c *Constructor) sequence(n *Node, out reflect.Value) (good bool) {
 	l := len(n.Content)
 
@@ -798,6 +609,9 @@ func (c *Constructor) sequence(n *Node, out reflect.Value) (good bool) {
 	return true
 }
 
+// mapping constructs a MappingNode into a Go map, struct, or interface.
+// It handles key uniqueness checking, merge keys, and type-appropriate
+// map construction (string-keyed vs general).
 func (c *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 	l := len(n.Content)
 	if c.UniqueKeys {
@@ -899,20 +713,12 @@ func (c *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 	return true
 }
 
-func isStringMap(n *Node) bool {
-	if n.Kind != MappingNode {
-		return false
-	}
-	l := len(n.Content)
-	for i := 0; i < l; i += 2 {
-		shortTag := n.Content[i].ShortTag()
-		if shortTag != strTag && shortTag != mergeTag {
-			return false
-		}
-	}
-	return true
-}
+// --------------------------------------------------------------------------
+// Mapping/Struct Support
 
+// mappingStruct constructs a MappingNode into a struct value.
+// It handles field matching by name, inline fields, inline maps, merge keys,
+// and enforces known fields and unique keys when configured.
 func (c *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
 	sinfo, err := getStructInfo(out.Type())
 	if err != nil {
@@ -998,28 +804,10 @@ func (c *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
 	return true
 }
 
-func failWantMap() {
-	failf("map merge requires map or sequence of maps as the value")
-}
-
-func (c *Constructor) setPossiblyUnhashableKey(m map[any]bool, key any, value bool) {
-	defer func() {
-		if err := recover(); err != nil {
-			failf("%v", err)
-		}
-	}()
-	m[key] = value
-}
-
-func (c *Constructor) getPossiblyUnhashableKey(m map[any]bool, key any) bool {
-	defer func() {
-		if err := recover(); err != nil {
-			failf("%v", err)
-		}
-	}()
-	return m[key]
-}
-
+// merge processes a merge key (<<) by constructing the merge value into out.
+// The merge value can be a single mapping, an alias to a mapping, or a
+// sequence of mappings.
+// Fields from the parent mapping take precedence over merged fields.
 func (c *Constructor) merge(parent *Node, merge *Node, out reflect.Value) {
 	mergedFields := c.mergedFields
 	if mergedFields == nil {
@@ -1059,6 +847,295 @@ func (c *Constructor) merge(parent *Node, merge *Node, out reflect.Value) {
 	c.mergedFields = mergedFields
 }
 
+// isStringMap checks if a MappingNode has only string or merge keys.
+// This determines whether to use map[string]any or map[any]any when
+// constructing into an interface{}.
+func isStringMap(n *Node) bool {
+	if n.Kind != MappingNode {
+		return false
+	}
+	l := len(n.Content)
+	for i := 0; i < l; i += 2 {
+		shortTag := n.Content[i].ShortTag()
+		if shortTag != strTag && shortTag != mergeTag {
+			return false
+		}
+	}
+	return true
+}
+
+// isMerge checks if a node is a merge key (!!merge tag).
 func isMerge(n *Node) bool {
 	return n.Kind == ScalarNode && shortTag(n.Tag) == mergeTag
+}
+
+// failWantMap panics with an error message for invalid merge key values.
+func failWantMap() {
+	failf("map merge requires map or sequence of maps as the value")
+}
+
+// --------------------------------------------------------------------------
+// Utility Methods
+
+// prepare initializes and dereferences pointers and calls UnmarshalYAML
+// if a value is found to implement it.
+// It returns the initialized and dereferenced out value, whether
+// construction was already done by UnmarshalYAML, and if so whether
+// its types constructed appropriately.
+//
+// If n holds a null value, prepare returns before doing anything.
+func (c *Constructor) prepare(n *Node, out reflect.Value) (newout reflect.Value, constructed, good bool) {
+	if n.ShortTag() == nullTag {
+		return out, false, false
+	}
+	again := true
+	for again {
+		again = false
+		if out.Kind() == reflect.Pointer {
+			if out.IsNil() {
+				out.Set(reflect.New(out.Type().Elem()))
+			}
+			out = out.Elem()
+			again = true
+		}
+		if out.CanAddr() {
+			// Try yaml.Unmarshaler (from root package) first
+			if called, good := c.tryCallYAMLConstructor(n, out); called {
+				return out, true, good
+			}
+
+			outi := out.Addr().Interface()
+			// Check for libyaml.constructor
+			if u, ok := outi.(constructor); ok {
+				good = c.callConstructor(n, u)
+				return out, true, good
+			}
+			if u, ok := outi.(legacyConstructor); ok {
+				good = c.callLegacyConstructor(n, u)
+				return out, true, good
+			}
+		}
+	}
+	return out, false, false
+}
+
+// fieldByIndex returns the struct field at the given index path, initializing
+// any nil pointers along the way.
+func (c *Constructor) fieldByIndex(n *Node, v reflect.Value, index []int) (field reflect.Value) {
+	if n.ShortTag() == nullTag {
+		return reflect.Value{}
+	}
+	for _, num := range index {
+		for {
+			if v.Kind() == reflect.Pointer {
+				if v.IsNil() {
+					v.Set(reflect.New(v.Type().Elem()))
+				}
+				v = v.Elem()
+				continue
+			}
+			break
+		}
+		v = v.Field(num)
+	}
+	return v
+}
+
+// tryCallYAMLConstructor checks if the value has an UnmarshalYAML method that
+// takes a *yaml.Node (from the root package) and calls it if found.
+// This handles the case where user types implement yaml.Unmarshaler instead of
+// libyaml.constructor.
+func (c *Constructor) tryCallYAMLConstructor(n *Node, out reflect.Value) (called bool, good bool) {
+	if !out.CanAddr() {
+		return false, false
+	}
+
+	addr := out.Addr()
+	// Check for UnmarshalYAML method
+	method := addr.MethodByName("UnmarshalYAML")
+	if !method.IsValid() {
+		return false, false
+	}
+
+	// Check method signature: func(*yaml.Node) error
+	mtype := method.Type()
+	if mtype.NumIn() != 1 || mtype.NumOut() != 1 {
+		return false, false
+	}
+
+	// Check if parameter is a pointer to a Node-like struct
+	paramType := mtype.In(0)
+	if paramType.Kind() != reflect.Ptr {
+		return false, false
+	}
+
+	elemType := paramType.Elem()
+	if elemType.Kind() != reflect.Struct {
+		return false, false
+	}
+
+	// Check if it's the same underlying type as our Node
+	// Both yaml.Node and libyaml.Node have the same structure
+	if elemType.Name() != "Node" {
+		return false, false
+	}
+
+	// Call the method with a converted node
+	// Since yaml.Node and libyaml.Node have the same structure,
+	// we can convert using unsafe pointer cast
+	nodeValue := reflect.NewAt(elemType, reflect.ValueOf(n).UnsafePointer())
+
+	results := method.Call([]reflect.Value{nodeValue})
+	err := results[0].Interface()
+
+	if err == nil {
+		return true, true
+	}
+
+	switch e := err.(type) {
+	case *LoadErrors:
+		c.TypeErrors = append(c.TypeErrors, e.Errors...)
+		return true, false
+	default:
+		c.TypeErrors = append(c.TypeErrors, &ConstructError{
+			Err:    e.(error),
+			Line:   n.Line,
+			Column: n.Column,
+		})
+		return true, false
+	}
+}
+
+// callConstructor invokes the UnmarshalYAML method on a value implementing
+// the constructor interface, handling errors appropriately.
+func (c *Constructor) callConstructor(n *Node, u constructor) (good bool) {
+	err := u.UnmarshalYAML(n)
+	switch e := err.(type) {
+	case nil:
+		return true
+	case *LoadErrors:
+		c.TypeErrors = append(c.TypeErrors, e.Errors...)
+		return false
+	default:
+		c.TypeErrors = append(c.TypeErrors, &ConstructError{
+			Err:    err,
+			Line:   n.Line,
+			Column: n.Column,
+		})
+		return false
+	}
+}
+
+// callLegacyConstructor invokes the UnmarshalYAML method on a value
+// implementing the old-style legacyConstructor interface.
+func (c *Constructor) callLegacyConstructor(n *Node, u legacyConstructor) (good bool) {
+	terrlen := len(c.TypeErrors)
+	err := u.UnmarshalYAML(func(v any) (err error) {
+		defer handleErr(&err)
+		c.Construct(n, reflect.ValueOf(v))
+		if len(c.TypeErrors) > terrlen {
+			issues := c.TypeErrors[terrlen:]
+			c.TypeErrors = c.TypeErrors[:terrlen]
+			return &LoadErrors{issues}
+		}
+		return nil
+	})
+	switch e := err.(type) {
+	case nil:
+		return true
+	case *LoadErrors:
+		c.TypeErrors = append(c.TypeErrors, e.Errors...)
+		return false
+	default:
+		c.TypeErrors = append(c.TypeErrors, &ConstructError{
+			Err:    err,
+			Line:   n.Line,
+			Column: n.Column,
+		})
+		return false
+	}
+}
+
+// tagError records a type construction error indicating that a node with a
+// given tag cannot be constructed into the target type.
+func (c *Constructor) tagError(n *Node, tag string, out reflect.Value) {
+	if n.Tag != "" {
+		tag = n.Tag
+	}
+	value := n.Value
+	if tag != seqTag && tag != mapTag {
+		if len(value) > 10 {
+			value = " `" + value[:7] + "...`"
+		} else {
+			value = " `" + value + "`"
+		}
+	}
+	c.TypeErrors = append(c.TypeErrors, &ConstructError{
+		Err:    fmt.Errorf("cannot construct %s%s into %s", shortTag(tag), value, out.Type()),
+		Line:   n.Line,
+		Column: n.Column,
+	})
+}
+
+// null constructs a null value by setting the target to its zero value.
+// Only works for nillable types (interface, pointer, map, slice).
+func (c *Constructor) null(out reflect.Value) bool {
+	if out.CanAddr() {
+		switch out.Kind() {
+		case reflect.Interface, reflect.Pointer, reflect.Map, reflect.Slice:
+			out.Set(reflect.Zero(out.Type()))
+			return true
+		}
+	}
+	return false
+}
+
+// isTextUnmarshaler checks if a value implements encoding.TextUnmarshaler.
+// It dereferences pointers to check the underlying type.
+func isTextUnmarshaler(out reflect.Value) bool {
+	// Dereference pointers to check the underlying type,
+	// similar to how prepare() handles Constructor checks.
+	for out.Kind() == reflect.Pointer {
+		if out.IsNil() {
+			// Create a new instance to check the type
+			out = reflect.New(out.Type().Elem()).Elem()
+		} else {
+			out = out.Elem()
+		}
+	}
+	if out.CanAddr() {
+		_, ok := out.Addr().Interface().(encoding.TextUnmarshaler)
+		return ok
+	}
+	return false
+}
+
+// settableValueOf returns a settable reflect.Value for the given value.
+func settableValueOf(i any) reflect.Value {
+	v := reflect.ValueOf(i)
+	sv := reflect.New(v.Type()).Elem()
+	sv.Set(v)
+	return sv
+}
+
+// setPossiblyUnhashableKey sets a map key, recovering from panics if the key
+// type is unhashable.
+func (c *Constructor) setPossiblyUnhashableKey(m map[any]bool, key any, value bool) {
+	defer func() {
+		if err := recover(); err != nil {
+			failf("%v", err)
+		}
+	}()
+	m[key] = value
+}
+
+// getPossiblyUnhashableKey gets a map key value, recovering from panics if
+// the key type is unhashable.
+func (c *Constructor) getPossiblyUnhashableKey(m map[any]bool, key any) bool {
+	defer func() {
+		if err := recover(); err != nil {
+			failf("%v", err)
+		}
+	}()
+	return m[key]
 }

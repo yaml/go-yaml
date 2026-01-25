@@ -16,6 +16,34 @@ import (
 	"reflect"
 )
 
+// A Dumper writes YAML values to an output stream with configurable options.
+// It uses a 3-stage pipeline mirroring the Loader:
+//  1. Representer: Go values → Tagged Node tree
+//  2. Desolver: Remove inferable tags
+//  3. Serializer: Node tree → Events → YAML
+type Dumper struct {
+	representer *Representer
+	desolver    *Desolver
+	serializer  *Serializer
+	options     *Options
+}
+
+// NewDumper returns a new Dumper that writes to w with the given options.
+//
+// The Dumper should be closed after use to flush all data to w.
+func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
+	o, err := ApplyOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &Dumper{
+		representer: NewRepresenter(o), // No writer - builds nodes
+		desolver:    NewDesolver(o),
+		serializer:  NewSerializer(w, o), // Writer here - emits YAML
+		options:     o,
+	}, nil
+}
+
 // Dump encodes a value to YAML with the given options.
 //
 // By default, Dump encodes a single value as a single YAML document.
@@ -72,34 +100,6 @@ func Dump(in any, opts ...Option) (out []byte, err error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
-}
-
-// A Dumper writes YAML values to an output stream with configurable options.
-// It uses a 3-stage pipeline mirroring the Loader:
-//  1. Representer: Go values → Tagged Node tree
-//  2. Desolver: Remove inferable tags
-//  3. Serializer: Node tree → Events → YAML
-type Dumper struct {
-	representer *Representer
-	desolver    *Desolver
-	serializer  *Serializer
-	options     *Options
-}
-
-// NewDumper returns a new Dumper that writes to w with the given options.
-//
-// The Dumper should be closed after use to flush all data to w.
-func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
-	o, err := ApplyOptions(opts...)
-	if err != nil {
-		return nil, err
-	}
-	return &Dumper{
-		representer: NewRepresenter(o), // No writer - builds nodes
-		desolver:    NewDesolver(o),
-		serializer:  NewSerializer(w, o), // Writer here - emits YAML
-		options:     o,
-	}, nil
 }
 
 // Dump writes the YAML encoding of v to the stream.
