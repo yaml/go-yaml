@@ -16,6 +16,35 @@ import (
 	"reflect"
 )
 
+// A Loader reads and loads YAML values from an input stream with configurable
+// options.
+type Loader struct {
+	composer    *Composer
+	resolver    *Resolver
+	constructor *Constructor
+	options     *Options
+	docCount    int
+}
+
+// NewLoader returns a new Loader that reads from r with the given options.
+//
+// The Loader introduces its own buffering and may read data from r beyond the
+// YAML values requested.
+func NewLoader(r io.Reader, opts ...Option) (*Loader, error) {
+	o, err := ApplyOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	c := NewComposerFromReader(r, o)
+	c.SetStreamNodes(o.StreamNodes)
+	return &Loader{
+		composer:    c,
+		resolver:    NewResolver(o),
+		constructor: NewConstructor(o),
+		options:     o,
+	}, nil
+}
+
 // Load loads YAML document(s) with the given options.
 //
 // By default, Load requires exactly one document in the input.
@@ -74,162 +103,6 @@ func Load(in []byte, out any, opts ...Option) error {
 	return loadSingle(in, out, o)
 }
 
-// LoadAny parses YAML data into generic Go structures (map[string]any, []any).
-//
-// Useful for test data loading where the structure is unknown at compile time.
-// This is a convenience wrapper around Load with an any target.
-func LoadAny(data []byte) (any, error) {
-	var result any
-	if err := Load(data, &result); err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
-// loadAll loads all documents into a slice
-func loadAll(in []byte, out any, opts *Options) error {
-	outVal := reflect.ValueOf(out)
-	if outVal.Kind() != reflect.Pointer || outVal.IsNil() {
-		return &LoadErrors{Errors: []*ConstructError{{
-			Err: errors.New("yaml: WithAllDocuments requires a non-nil pointer to a slice"),
-		}}}
-	}
-
-	sliceVal := outVal.Elem()
-	if sliceVal.Kind() != reflect.Slice {
-		return &LoadErrors{Errors: []*ConstructError{{
-			Err: errors.New("yaml: WithAllDocuments requires a pointer to a slice"),
-		}}}
-	}
-
-	// Create a new slice (clear existing content)
-	sliceVal.Set(reflect.MakeSlice(sliceVal.Type(), 0, 0))
-
-	l, err := NewLoader(bytes.NewReader(in), func(o *Options) error {
-		*o = *opts // Copy options
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	elemType := sliceVal.Type().Elem()
-	for {
-		// Create new element of slice's element type
-		elemPtr := reflect.New(elemType)
-		err := l.Load(elemPtr.Interface())
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		// Append loaded element to slice
-		sliceVal.Set(reflect.Append(sliceVal, elemPtr.Elem()))
-	}
-
-	return nil
-}
-
-// loadSingle loads exactly one document (strict)
-func loadSingle(in []byte, out any, opts *Options) error {
-	l, err := NewLoader(bytes.NewReader(in), func(o *Options) error {
-		*o = *opts // Copy options
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	// Load first document
-	err = l.Load(out)
-	if err == io.EOF {
-		return &LoadErrors{Errors: []*ConstructError{{
-			Err: errors.New("yaml: no documents in stream"),
-		}}}
-	}
-	if err != nil {
-		return err
-	}
-
-	// Skip trailing document check for legacy Unmarshal() compatibility
-	if opts.FromLegacy {
-		return nil
-	}
-
-	// Check for additional documents
-	var dummy any
-	err = l.Load(&dummy)
-	if err != io.EOF {
-		if err != nil {
-			// Some other error occurred
-			return err
-		}
-		// Successfully loaded a second document - this is an error in strict mode
-		return &LoadErrors{Errors: []*ConstructError{{
-			Err: errors.New("yaml: expected single document, found multiple"),
-		}}}
-	}
-
-	return nil
-}
-
-// A Loader reads and loads YAML values from an input stream with configurable
-// options.
-type Loader struct {
-	composer    *Composer
-	resolver    *Resolver
-	constructor *Constructor
-	options     *Options
-	docCount    int
-}
-
-// NewLoader returns a new Loader that reads from r with the given options.
-//
-// The Loader introduces its own buffering and may read data from r beyond the
-// YAML values requested.
-func NewLoader(r io.Reader, opts ...Option) (*Loader, error) {
-	o, err := ApplyOptions(opts...)
-	if err != nil {
-		return nil, err
-	}
-	c := NewComposerFromReader(r, o)
-	c.SetStreamNodes(o.StreamNodes)
-	return &Loader{
-		composer:    c,
-		resolver:    NewResolver(o),
-		constructor: NewConstructor(o),
-		options:     o,
-	}, nil
-}
-
-// SetKnownFields enables or disables strict field checking for subsequent Load calls.
-// This is used by the legacy Decoder.KnownFields() method.
-func (l *Loader) SetKnownFields(enable bool) {
-	l.constructor.KnownFields = enable
-}
-
-// ComposeAndResolve composes and resolves the next document from the input
-// and returns the node without constructing Go values. This is used by
-// Unmarshal() to support the Unmarshaler interface.
-func (l *Loader) ComposeAndResolve() *Node {
-	if l.options.SingleDocument && l.docCount > 0 {
-		return nil
-	}
-
-	// Stage 1: Compose - parse events into node tree (unresolved tags)
-	node := l.composer.Compose()
-	if node == nil {
-		return nil
-	}
-	l.docCount++
-
-	// Stage 2: Resolve - determine implicit types for untagged scalars
-	l.resolver.Resolve(node)
-
-	return node
-}
-
 // Load reads the next YAML-encoded document from its input and stores it
 // in the value pointed to by v.
 //
@@ -278,4 +151,137 @@ func (l *Loader) Load(v any) (err error) {
 		return &LoadErrors{Errors: typeErrors}
 	}
 	return nil
+}
+
+// loadAll loads all documents from the input into a slice.
+// The out parameter must be a non-nil pointer to a slice.
+// Each document is appended to the slice as an element.
+func loadAll(in []byte, out any, opts *Options) error {
+	outVal := reflect.ValueOf(out)
+	if outVal.Kind() != reflect.Pointer || outVal.IsNil() {
+		return &LoadErrors{Errors: []*ConstructError{{
+			Err: errors.New(
+				"yaml: WithAllDocuments requires a non-nil pointer to a slice"),
+		}}}
+	}
+
+	sliceVal := outVal.Elem()
+	if sliceVal.Kind() != reflect.Slice {
+		return &LoadErrors{Errors: []*ConstructError{{
+			Err: errors.New("yaml: WithAllDocuments requires a pointer to a slice"),
+		}}}
+	}
+
+	// Create a new slice (clear existing content)
+	sliceVal.Set(reflect.MakeSlice(sliceVal.Type(), 0, 0))
+
+	l, err := NewLoader(bytes.NewReader(in), func(o *Options) error {
+		*o = *opts // Copy options
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	elemType := sliceVal.Type().Elem()
+	for {
+		// Create new element of slice's element type
+		elemPtr := reflect.New(elemType)
+		err := l.Load(elemPtr.Interface())
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		// Append loaded element to slice
+		sliceVal.Set(reflect.Append(sliceVal, elemPtr.Elem()))
+	}
+
+	return nil
+}
+
+// loadSingle loads exactly one document from the input.
+// Returns an error if the input contains zero or multiple documents
+// (unless FromLegacy option is set for backward compatibility).
+func loadSingle(in []byte, out any, opts *Options) error {
+	l, err := NewLoader(bytes.NewReader(in), func(o *Options) error {
+		*o = *opts // Copy options
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	// Load first document
+	err = l.Load(out)
+	if err == io.EOF {
+		return &LoadErrors{Errors: []*ConstructError{{
+			Err: errors.New("yaml: no documents in stream"),
+		}}}
+	}
+	if err != nil {
+		return err
+	}
+
+	// Skip trailing document check for legacy Unmarshal() compatibility
+	if opts.FromLegacy {
+		return nil
+	}
+
+	// Check for additional documents
+	var dummy any
+	err = l.Load(&dummy)
+	if err != io.EOF {
+		if err != nil {
+			// Some other error occurred
+			return err
+		}
+		// Successfully loaded a second document - this is an error in strict mode
+		return &LoadErrors{Errors: []*ConstructError{{
+			Err: errors.New("yaml: expected single document, found multiple"),
+		}}}
+	}
+
+	return nil
+}
+
+// SetKnownFields enables or disables strict field checking for subsequent Load
+// calls.
+// This is used by the legacy Decoder.KnownFields() method.
+func (l *Loader) SetKnownFields(enable bool) {
+	l.constructor.KnownFields = enable
+}
+
+// ComposeAndResolve composes and resolves the next document from the input
+// and returns the node without constructing Go values. This is used by
+// Unmarshal() to support the Unmarshaler interface.
+func (l *Loader) ComposeAndResolve() *Node {
+	if l.options.SingleDocument && l.docCount > 0 {
+		return nil
+	}
+
+	// Stage 1: Compose - parse events into node tree (unresolved tags)
+	node := l.composer.Compose()
+	if node == nil {
+		return nil
+	}
+	l.docCount++
+
+	// Stage 2: Resolve - determine implicit types for untagged scalars
+	l.resolver.Resolve(node)
+
+	return node
+}
+
+// LoadAny parses YAML data into generic Go structures (map[string]any, []any).
+//
+// Useful for test data loading where the structure is unknown at compile time.
+// This is a convenience wrapper around Load with an any target.
+func LoadAny(data []byte) (any, error) {
+	var result any
+	if err := Load(data, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
 }

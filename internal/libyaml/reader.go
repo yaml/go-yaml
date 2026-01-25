@@ -15,89 +15,6 @@ import (
 	"io"
 )
 
-func formatReaderError(problem string, offset int, value int) error {
-	return ReaderError{
-		Offset: offset,
-		Value:  value,
-		Err:    errors.New(problem),
-	}
-}
-
-// Byte order marks.
-const (
-	bom_UTF8    = "\xef\xbb\xbf"
-	bom_UTF16LE = "\xff\xfe"
-	bom_UTF16BE = "\xfe\xff"
-)
-
-// Determine the input stream encoding by checking the BOM symbol. If no BOM is
-// found, the UTF-8 encoding is assumed. Return 1 on success, 0 on failure.
-func (parser *Parser) determineEncoding() error {
-	// Ensure that we had enough bytes in the raw buffer.
-	for !parser.eof && len(parser.raw_buffer)-parser.raw_buffer_pos < 3 {
-		if err := parser.updateRawBuffer(); err != nil {
-			return err
-		}
-	}
-
-	// Determine the encoding.
-	buf := parser.raw_buffer
-	pos := parser.raw_buffer_pos
-	avail := len(buf) - pos
-	if avail >= 2 && buf[pos] == bom_UTF16LE[0] && buf[pos+1] == bom_UTF16LE[1] {
-		parser.encoding = UTF16LE_ENCODING
-		parser.raw_buffer_pos += 2
-		parser.offset += 2
-	} else if avail >= 2 && buf[pos] == bom_UTF16BE[0] && buf[pos+1] == bom_UTF16BE[1] {
-		parser.encoding = UTF16BE_ENCODING
-		parser.raw_buffer_pos += 2
-		parser.offset += 2
-	} else if avail >= 3 && buf[pos] == bom_UTF8[0] && buf[pos+1] == bom_UTF8[1] && buf[pos+2] == bom_UTF8[2] {
-		parser.encoding = UTF8_ENCODING
-		parser.raw_buffer_pos += 3
-		parser.offset += 3
-	} else {
-		parser.encoding = UTF8_ENCODING
-	}
-	return nil
-}
-
-// Update the raw buffer.
-func (parser *Parser) updateRawBuffer() error {
-	size_read := 0
-
-	// Return if the raw buffer is full.
-	if parser.raw_buffer_pos == 0 && len(parser.raw_buffer) == cap(parser.raw_buffer) {
-		return nil
-	}
-
-	// Return on EOF.
-	if parser.eof {
-		return nil
-	}
-
-	// Move the remaining bytes in the raw buffer to the beginning.
-	if parser.raw_buffer_pos > 0 && parser.raw_buffer_pos < len(parser.raw_buffer) {
-		copy(parser.raw_buffer, parser.raw_buffer[parser.raw_buffer_pos:])
-	}
-	parser.raw_buffer = parser.raw_buffer[:len(parser.raw_buffer)-parser.raw_buffer_pos]
-	parser.raw_buffer_pos = 0
-
-	// Call the read handler to fill the buffer.
-	size_read, err := parser.read_handler(parser, parser.raw_buffer[len(parser.raw_buffer):cap(parser.raw_buffer)])
-	parser.raw_buffer = parser.raw_buffer[:len(parser.raw_buffer)+size_read]
-	if err == io.EOF {
-		parser.eof = true
-	} else if err != nil {
-		return ReaderError{
-			Offset: parser.offset,
-			Value:  -1,
-			Err:    fmt.Errorf("input error: %w", err),
-		}
-	}
-	return nil
-}
-
 // Ensure that the buffer contains at least `length` characters.
 // Return true on success, false on failure.
 //
@@ -107,9 +24,10 @@ func (parser *Parser) updateBuffer(length int) error {
 		panic("read handler must be set")
 	}
 
-	// [Go] This function was changed to guarantee the requested length size at EOF.
-	// The fact we need to do this is pretty awful, but the description above implies
-	// for that to be the case, and there are tests
+	// [Go] This function was changed to guarantee the requested length
+	// size at EOF.
+	// The fact we need to do this is pretty awful, but the description
+	// above implies for that to be the case, and there are tests
 
 	// If the EOF flag is set and the raw buffer is empty, do nothing.
 	//
@@ -438,4 +356,90 @@ func (parser *Parser) updateBuffer(length int) error {
 	}
 	parser.buffer = parser.buffer[:buffer_len]
 	return nil
+}
+
+// Byte order marks.
+const (
+	bom_UTF8    = "\xef\xbb\xbf"
+	bom_UTF16LE = "\xff\xfe"
+	bom_UTF16BE = "\xfe\xff"
+)
+
+// Determine the input stream encoding by checking the BOM symbol.
+// If no BOM is found, the UTF-8 encoding is assumed.
+// Return 1 on success, 0 on failure.
+func (parser *Parser) determineEncoding() error {
+	// Ensure that we had enough bytes in the raw buffer.
+	for !parser.eof && len(parser.raw_buffer)-parser.raw_buffer_pos < 3 {
+		if err := parser.updateRawBuffer(); err != nil {
+			return err
+		}
+	}
+
+	// Determine the encoding.
+	buf := parser.raw_buffer
+	pos := parser.raw_buffer_pos
+	avail := len(buf) - pos
+	if avail >= 2 && buf[pos] == bom_UTF16LE[0] && buf[pos+1] == bom_UTF16LE[1] {
+		parser.encoding = UTF16LE_ENCODING
+		parser.raw_buffer_pos += 2
+		parser.offset += 2
+	} else if avail >= 2 && buf[pos] == bom_UTF16BE[0] && buf[pos+1] == bom_UTF16BE[1] {
+		parser.encoding = UTF16BE_ENCODING
+		parser.raw_buffer_pos += 2
+		parser.offset += 2
+	} else if avail >= 3 && buf[pos] == bom_UTF8[0] && buf[pos+1] == bom_UTF8[1] && buf[pos+2] == bom_UTF8[2] {
+		parser.encoding = UTF8_ENCODING
+		parser.raw_buffer_pos += 3
+		parser.offset += 3
+	} else {
+		parser.encoding = UTF8_ENCODING
+	}
+	return nil
+}
+
+// Update the raw buffer.
+func (parser *Parser) updateRawBuffer() error {
+	size_read := 0
+
+	// Return if the raw buffer is full.
+	if parser.raw_buffer_pos == 0 && len(parser.raw_buffer) == cap(parser.raw_buffer) {
+		return nil
+	}
+
+	// Return on EOF.
+	if parser.eof {
+		return nil
+	}
+
+	// Move the remaining bytes in the raw buffer to the beginning.
+	if parser.raw_buffer_pos > 0 && parser.raw_buffer_pos < len(parser.raw_buffer) {
+		copy(parser.raw_buffer, parser.raw_buffer[parser.raw_buffer_pos:])
+	}
+	parser.raw_buffer = parser.raw_buffer[:len(parser.raw_buffer)-parser.raw_buffer_pos]
+	parser.raw_buffer_pos = 0
+
+	// Call the read handler to fill the buffer.
+	size_read, err := parser.read_handler(parser, parser.raw_buffer[len(parser.raw_buffer):cap(parser.raw_buffer)])
+	parser.raw_buffer = parser.raw_buffer[:len(parser.raw_buffer)+size_read]
+	if err == io.EOF {
+		parser.eof = true
+	} else if err != nil {
+		return ReaderError{
+			Offset: parser.offset,
+			Value:  -1,
+			Err:    fmt.Errorf("input error: %w", err),
+		}
+	}
+	return nil
+}
+
+// formatReaderError creates a ReaderError with the given problem description,
+// byte offset, and invalid value.
+func formatReaderError(problem string, offset int, value int) error {
+	return ReaderError{
+		Offset: offset,
+		Value:  value,
+		Err:    errors.New(problem),
+	}
 }
