@@ -13,13 +13,6 @@ import (
 	"unicode/utf8"
 )
 
-// Sentinel values for event creation.
-// These provide clarity at call sites, similar to http.NoBody.
-var (
-	noVersionDirective *VersionDirective = nil
-	noTagDirective     []TagDirective    = nil
-)
-
 // Serializer handles serialization of YAML nodes to event stream.
 type Serializer struct {
 	Emitter               Emitter
@@ -63,6 +56,21 @@ func NewSerializer(w io.Writer, opts *Options) *Serializer {
 	}
 }
 
+// Serialize walks a Node tree and emits events to produce YAML output.
+// This is the primary method for the Serializer stage.
+func (s *Serializer) Serialize(node *Node) {
+	s.init()
+	s.node(node, "")
+}
+
+// Sentinel values for event creation.
+// These provide clarity at call sites, similar to http.NoBody.
+var (
+	noVersionDirective *VersionDirective = nil
+	noTagDirective     []TagDirective    = nil
+)
+
+// init initializes the serializer by emitting a STREAM_START event.
 func (s *Serializer) init() {
 	if s.doneInit {
 		return
@@ -71,34 +79,15 @@ func (s *Serializer) init() {
 	s.doneInit = true
 }
 
+// Finish completes serialization by emitting a STREAM_END event.
 func (s *Serializer) Finish() {
 	s.Emitter.OpenEnded = false
 	s.emit(NewStreamEndEvent())
 }
 
-func (s *Serializer) emit(event Event) {
-	s.must(s.Emitter.Emit(&event))
-}
-
-func (s *Serializer) must(err error) {
-	if err != nil {
-		msg := err.Error()
-		if msg == "" {
-			msg = "unknown problem generating YAML content"
-		}
-		failf("%s", msg)
-	}
-}
-
-// Serialize walks a Node tree and emits events to produce YAML output.
-// This is the primary method for the Serializer stage.
-func (s *Serializer) Serialize(node *Node) {
-	s.init()
-	s.node(node, "")
-}
-
 // node serializes a Node tree into YAML events.
-// This is the core of the serializer stage - it walks the tree and produces events.
+// This is the core of the serializer stage - it walks the tree and produces
+// events.
 func (s *Serializer) node(node *Node, tail string) {
 	// Zero nodes behave as nil.
 	if node.Kind == 0 && node.IsZero() {
@@ -113,7 +102,8 @@ func (s *Serializer) node(node *Node, tail string) {
 	tag := node.Tag
 	var forceQuoting bool
 	if tag == "" && node.Kind == ScalarNode {
-		// Empty tag with quoting style means the string type needs to be preserved
+		// Empty tag with quoting style means the string type needs to
+		// be preserved
 		if node.Style&(SingleQuotedStyle|DoubleQuotedStyle|LiteralStyle|FoldedStyle) != 0 {
 			forceQuoting = true
 		}
@@ -163,10 +153,11 @@ func (s *Serializer) node(node *Node, tail string) {
 		event.HeadComment = []byte(node.HeadComment)
 		s.emit(event)
 
-		// The tail logic below moves the foot comment of prior keys to the following key,
-		// since the value for each key may be a nested structure and the foot needs to be
-		// processed only the entirety of the value is streamed. The last tail is processed
-		// with the mapping end event.
+		// The tail logic below moves the foot comment of prior keys to
+		// the following key, since the value for each key may be a
+		// nested structure and the foot needs to be processed only the
+		// entirety of the value is streamed. The last tail is
+		// processed with the mapping end event.
 		var tail string
 		for i := 0; i+1 < len(node.Content); i += 2 {
 			k := node.Content[i]
@@ -234,6 +225,24 @@ func (s *Serializer) node(node *Node, tail string) {
 	}
 }
 
+// emit sends an event to the underlying emitter.
+func (s *Serializer) emit(event Event) {
+	s.must(s.Emitter.Emit(&event))
+}
+
+// must panics if the given error is non-nil.
+func (s *Serializer) must(err error) {
+	if err != nil {
+		msg := err.Error()
+		if msg == "" {
+			msg = "unknown problem generating YAML content"
+		}
+		failf("%s", msg)
+	}
+}
+
+// emitScalar emits a scalar event with the given value, anchor, tag, style,
+// and associated comments.
 func (s *Serializer) emitScalar(
 	value, anchor, tag string, style ScalarStyle, head, line, foot, tail []byte,
 ) {
@@ -298,4 +307,99 @@ func (s *Serializer) estimateFlowLength(node *Node) int {
 		return length
 	}
 	return 0
+}
+
+// NewStreamStartEvent creates a new STREAM-START event.
+func NewStreamStartEvent(encoding Encoding) Event {
+	return Event{
+		Type:     STREAM_START_EVENT,
+		encoding: encoding,
+	}
+}
+
+// NewStreamEndEvent creates a new STREAM-END event.
+func NewStreamEndEvent() Event {
+	return Event{
+		Type: STREAM_END_EVENT,
+	}
+}
+
+// NewDocumentStartEvent creates a new DOCUMENT-START event.
+func NewDocumentStartEvent(version_directive *VersionDirective, tag_directives []TagDirective, implicit bool) Event {
+	return Event{
+		Type:             DOCUMENT_START_EVENT,
+		versionDirective: version_directive,
+		tagDirectives:    tag_directives,
+		Implicit:         implicit,
+	}
+}
+
+// NewDocumentEndEvent creates a new DOCUMENT-END event.
+func NewDocumentEndEvent(implicit bool) Event {
+	return Event{
+		Type:     DOCUMENT_END_EVENT,
+		Implicit: implicit,
+	}
+}
+
+// NewAliasEvent creates a new ALIAS event.
+func NewAliasEvent(anchor []byte) Event {
+	return Event{
+		Type:   ALIAS_EVENT,
+		Anchor: anchor,
+	}
+}
+
+// NewScalarEvent creates a new SCALAR event.
+func NewScalarEvent(anchor, tag, value []byte, plain_implicit, quoted_implicit bool, style ScalarStyle) Event {
+	return Event{
+		Type:            SCALAR_EVENT,
+		Anchor:          anchor,
+		Tag:             tag,
+		Value:           value,
+		Implicit:        plain_implicit,
+		quoted_implicit: quoted_implicit,
+		Style:           Style(style),
+	}
+}
+
+// NewSequenceStartEvent creates a new SEQUENCE-START event.
+func NewSequenceStartEvent(anchor, tag []byte, implicit bool, style SequenceStyle) Event {
+	return Event{
+		Type:     SEQUENCE_START_EVENT,
+		Anchor:   anchor,
+		Tag:      tag,
+		Implicit: implicit,
+		Style:    Style(style),
+	}
+}
+
+// NewSequenceEndEvent creates a new SEQUENCE-END event.
+func NewSequenceEndEvent() Event {
+	return Event{
+		Type: SEQUENCE_END_EVENT,
+	}
+}
+
+// NewMappingStartEvent creates a new MAPPING-START event.
+func NewMappingStartEvent(anchor, tag []byte, implicit bool, style MappingStyle) Event {
+	return Event{
+		Type:     MAPPING_START_EVENT,
+		Anchor:   anchor,
+		Tag:      tag,
+		Implicit: implicit,
+		Style:    Style(style),
+	}
+}
+
+// NewMappingEndEvent creates a new MAPPING-END event.
+func NewMappingEndEvent() Event {
+	return Event{
+		Type: MAPPING_END_EVENT,
+	}
+}
+
+// Delete an event object.
+func (e *Event) Delete() {
+	*e = Event{}
 }

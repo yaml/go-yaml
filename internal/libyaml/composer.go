@@ -60,80 +60,6 @@ func NewComposerFromReader(r io.Reader, opts *Options) *Composer {
 	return &p
 }
 
-func (c *Composer) init() {
-	if c.doneInit {
-		return
-	}
-	c.anchors = make(map[string]*Node)
-	// Peek to get the encoding from STREAM_START_EVENT
-	if c.peek() == STREAM_START_EVENT {
-		c.encoding = c.event.GetEncoding()
-	}
-	c.expect(STREAM_START_EVENT)
-	c.doneInit = true
-
-	// If stream nodes are enabled, prepare to return the first stream node
-	if c.streamNodes {
-		c.returnStream = true
-	}
-}
-
-func (c *Composer) Destroy() {
-	if c.event.Type != NO_EVENT {
-		c.event.Delete()
-	}
-	c.Parser.Delete()
-}
-
-// SetStreamNodes enables or disables stream node emission.
-func (c *Composer) SetStreamNodes(enable bool) {
-	c.streamNodes = enable
-}
-
-// expect consumes an event from the event stream and
-// checks that it's of the expected type.
-func (c *Composer) expect(e EventType) {
-	if c.event.Type == NO_EVENT {
-		if err := c.Parser.Parse(&c.event); err != nil {
-			c.fail(err)
-		}
-	}
-	if c.event.Type == STREAM_END_EVENT {
-		failf("attempted to go past the end of stream; corrupted value?")
-	}
-	if c.event.Type != e {
-		c.fail(fmt.Errorf("expected %s event but got %s", e, c.event.Type))
-	}
-	c.event.Delete()
-	c.event.Type = NO_EVENT
-}
-
-// peek peeks at the next event in the event stream,
-// puts the results into c.event and returns the event type.
-func (c *Composer) peek() EventType {
-	if c.event.Type != NO_EVENT {
-		return c.event.Type
-	}
-	// It's curious choice from the underlying API to generally return a
-	// positive result on success, but on this case return true in an error
-	// scenario. This was the source of bugs in the past (issue #666).
-	if err := c.Parser.Parse(&c.event); err != nil {
-		c.fail(err)
-	}
-	return c.event.Type
-}
-
-func (c *Composer) fail(err error) {
-	Fail(err)
-}
-
-func (c *Composer) anchor(n *Node, anchor []byte) {
-	if anchor != nil {
-		n.Anchor = string(anchor)
-		c.anchors[n.Anchor] = n
-	}
-}
-
 // Compose composes the next YAML node from the event stream.
 func (c *Composer) Compose() *Node {
 	c.init()
@@ -142,7 +68,8 @@ func (c *Composer) Compose() *Node {
 	if c.streamNodes {
 		// Check for stream end first
 		if c.peek() == STREAM_END_EVENT {
-			// If we haven't returned the final stream node yet, return it now
+			// If we haven't returned the final stream node yet,
+			// return it now
 			if !c.atStreamEnd {
 				c.atStreamEnd = true
 				return c.createStreamNode()
@@ -151,7 +78,8 @@ func (c *Composer) Compose() *Node {
 			return nil
 		}
 
-		// Check if we should return a stream node before the next document
+		// Check if we should return a stream node before the next
+		// document
 		if c.returnStream {
 			c.returnStream = false
 			n := c.createStreamNode()
@@ -173,7 +101,8 @@ func (c *Composer) Compose() *Node {
 	case DOCUMENT_START_EVENT:
 		return c.document()
 	case STREAM_END_EVENT:
-		// Happens when attempting to decode an empty buffer (when not using stream nodes).
+		// Happens when attempting to decode an empty buffer (when not
+		// using stream nodes).
 		return nil
 	case TAIL_COMMENT_EVENT:
 		panic("internal error: unexpected tail comment event (please report)")
@@ -182,6 +111,8 @@ func (c *Composer) Compose() *Node {
 	}
 }
 
+// node creates a new node with the given kind, tag, and value, and attaches
+// position and comment information from the current event.
 func (c *Composer) node(kind Kind, defaultTag, tag, value string) *Node {
 	var style Style
 	if tag != "" && tag != "!" {
@@ -228,12 +159,8 @@ func (c *Composer) node(kind Kind, defaultTag, tag, value string) *Node {
 	return n
 }
 
-func (c *Composer) parseChild(parent *Node) *Node {
-	child := c.Compose()
-	parent.Content = append(parent.Content, child)
-	return child
-}
-
+// document composes a document node by parsing its content between
+// DOCUMENT_START and DOCUMENT_END events.
 func (c *Composer) document() *Node {
 	n := c.node(DocumentNode, "", "", "")
 	c.doc = n
@@ -252,6 +179,7 @@ func (c *Composer) document() *Node {
 	return n
 }
 
+// createStreamNode creates a stream node with encoding information.
 func (c *Composer) createStreamNode() *Node {
 	n := &Node{
 		Kind:   StreamNode,
@@ -264,27 +192,7 @@ func (c *Composer) createStreamNode() *Node {
 	return n
 }
 
-// captureDirectives captures version and tag directives from upcoming DOCUMENT_START.
-func (c *Composer) captureDirectives(n *Node) {
-	if c.peek() == DOCUMENT_START_EVENT {
-		if vd := c.event.GetVersionDirective(); vd != nil {
-			n.Stream.Version = &StreamVersionDirective{
-				Major: vd.Major(),
-				Minor: vd.Minor(),
-			}
-		}
-		if tds := c.event.GetTagDirectives(); len(tds) > 0 {
-			n.Stream.TagDirectives = make([]StreamTagDirective, len(tds))
-			for i, td := range tds {
-				n.Stream.TagDirectives[i] = StreamTagDirective{
-					Handle: td.GetHandle(),
-					Prefix: td.GetPrefix(),
-				}
-			}
-		}
-	}
-}
-
+// alias composes an alias node by resolving the referenced anchor.
 func (c *Composer) alias() *Node {
 	n := c.node(AliasNode, "", "", string(c.event.Anchor))
 	n.Alias = c.anchors[n.Value]
@@ -302,6 +210,7 @@ func (c *Composer) alias() *Node {
 	return n
 }
 
+// scalar composes a scalar node with value, tag, and style information.
 func (c *Composer) scalar() *Node {
 	parsedStyle := c.event.ScalarStyle()
 	var nodeStyle Style
@@ -328,6 +237,8 @@ func (c *Composer) scalar() *Node {
 	return n
 }
 
+// sequence composes a sequence node by parsing elements between
+// SEQUENCE_START and SEQUENCE_END events.
 func (c *Composer) sequence() *Node {
 	n := c.node(SequenceNode, seqTag, string(c.event.Tag), "")
 	if c.event.SequenceStyle()&FLOW_SEQUENCE_STYLE != 0 {
@@ -344,6 +255,8 @@ func (c *Composer) sequence() *Node {
 	return n
 }
 
+// mapping composes a mapping node by parsing key-value pairs between
+// MAPPING_START and MAPPING_END events, handling foot comments appropriately.
 func (c *Composer) mapping() *Node {
 	n := c.node(MappingNode, mapTag, string(c.event.Tag), "")
 	block := true
@@ -384,10 +297,121 @@ func (c *Composer) mapping() *Node {
 	return n
 }
 
+// init initializes the composer by setting up the anchor map and consuming
+// the STREAM_START event.
+func (c *Composer) init() {
+	if c.doneInit {
+		return
+	}
+	c.anchors = make(map[string]*Node)
+	// Peek to get the encoding from STREAM_START_EVENT
+	if c.peek() == STREAM_START_EVENT {
+		c.encoding = c.event.GetEncoding()
+	}
+	c.expect(STREAM_START_EVENT)
+	c.doneInit = true
+
+	// If stream nodes are enabled, prepare to return the first stream node
+	if c.streamNodes {
+		c.returnStream = true
+	}
+}
+
+// Destroy cleans up the composer by deleting any pending event and the
+// underlying parser.
+func (c *Composer) Destroy() {
+	if c.event.Type != NO_EVENT {
+		c.event.Delete()
+	}
+	c.Parser.Delete()
+}
+
+// SetStreamNodes enables or disables stream node emission.
+func (c *Composer) SetStreamNodes(enable bool) {
+	c.streamNodes = enable
+}
+
+// expect consumes an event from the event stream and
+// checks that it's of the expected type.
+func (c *Composer) expect(e EventType) {
+	if c.event.Type == NO_EVENT {
+		if err := c.Parser.Parse(&c.event); err != nil {
+			c.fail(err)
+		}
+	}
+	if c.event.Type == STREAM_END_EVENT {
+		failf("attempted to go past the end of stream; corrupted value?")
+	}
+	if c.event.Type != e {
+		c.fail(fmt.Errorf("expected %s event but got %s", e, c.event.Type))
+	}
+	c.event.Delete()
+	c.event.Type = NO_EVENT
+}
+
+// peek peeks at the next event in the event stream,
+// puts the results into c.event and returns the event type.
+func (c *Composer) peek() EventType {
+	if c.event.Type != NO_EVENT {
+		return c.event.Type
+	}
+	// It's curious choice from the underlying API to generally return a
+	// positive result on success, but on this case return true in an error
+	// scenario. This was the source of bugs in the past (issue #666).
+	if err := c.Parser.Parse(&c.event); err != nil {
+		c.fail(err)
+	}
+	return c.event.Type
+}
+
+// fail panics with the given error.
+func (c *Composer) fail(err error) {
+	Fail(err)
+}
+
+// anchor sets the anchor name on a node and records it in the anchor map.
+func (c *Composer) anchor(n *Node, anchor []byte) {
+	if anchor != nil {
+		n.Anchor = string(anchor)
+		c.anchors[n.Anchor] = n
+	}
+}
+
+// parseChild composes the next node and adds it as a child to the parent.
+func (c *Composer) parseChild(parent *Node) *Node {
+	child := c.Compose()
+	parent.Content = append(parent.Content, child)
+	return child
+}
+
+// captureDirectives captures version and tag directives from upcoming
+// DOCUMENT_START.
+func (c *Composer) captureDirectives(n *Node) {
+	if c.peek() == DOCUMENT_START_EVENT {
+		if vd := c.event.GetVersionDirective(); vd != nil {
+			n.Stream.Version = &StreamVersionDirective{
+				Major: vd.Major(),
+				Minor: vd.Minor(),
+			}
+		}
+		if tds := c.event.GetTagDirectives(); len(tds) > 0 {
+			n.Stream.TagDirectives = make([]StreamTagDirective, len(tds))
+			for i, td := range tds {
+				n.Stream.TagDirectives[i] = StreamTagDirective{
+					Handle: td.GetHandle(),
+					Prefix: td.GetPrefix(),
+				}
+			}
+		}
+	}
+}
+
+// Fail panics with a YAMLError wrapping the given error.
 func Fail(err error) {
 	panic(&YAMLError{err})
 }
 
+// failf panics with a YAMLError containing a formatted error message.
 func failf(format string, args ...any) {
 	panic(&YAMLError{fmt.Errorf("yaml: "+format, args...)})
 }
