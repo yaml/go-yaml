@@ -53,9 +53,9 @@ If you’re starting a new project or upgrading an existing one, please use the
 
 When migrating from [go-yaml](https://github.com/go-yaml/yaml/) ensure that
 YAML module imports are updated in all dependent projects transitively, because
-unmarshaller interface types `gopkg.in/yaml.v{version}.Unmarshaler` and
+unmarshaler interface types `gopkg.in/yaml.v{version}.Unmarshaler` and
 `go.yaml.in/yaml/v{version}.Unmarshaler` are different types and thus are
-incompatible. Custom unmarshallers would not be called if executed with the
+incompatible. Custom unmarshalers would not be called if executed with the
 parser from the different library.
 
 The `yaml` package supports most of YAML 1.2, but preserves some behavior from
