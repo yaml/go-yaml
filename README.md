@@ -51,6 +51,13 @@ If you’re starting a new project or upgrading an existing one, please use the
 
 ## Compatibility
 
+When migrating from [go-yaml](https://github.com/go-yaml/yaml/) ensure that
+YAML module imports are updated in all dependent projects transitively, because
+unmarshaller interface types `gopkg.in/yaml.v{version}.Unmarshaler` and
+`go.yaml.in/yaml/v{version}.Unmarshaler` are the different types and thus are
+incompatible. Custom marshallers would not be called if executed with the
+parser from the different library.
+
 The `yaml` package supports most of YAML 1.2, but preserves some behavior from
 1.1 for backwards compatibility.
 
@@ -67,11 +74,6 @@ Specifically, v3 of the `yaml` package:
 * Does not support base-60 floats.
   These are gone from YAML 1.2, and were actually never supported by this
   package as it's clearly a poor choice.
-* Migration: when migrating from [go-yaml](https://github.com/go-yaml/yaml/)
-  remember to update YAML module imports in all dependent projects as types that
-  implement `gopkg.in/yaml.v3.Unmarshaler` will be incompatible with the
-  `go.yaml.in/yaml/v3.Unmarshaler` from this package. Otherwise it will break your
-  custom unmarshal code.
 
 ## Installation and Usage
 
