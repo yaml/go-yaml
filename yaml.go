@@ -263,6 +263,8 @@ type Unmarshaler interface {
 	UnmarshalYAML(node *Node) error
 }
 
+type obsoleteUnmarshaler = libyaml.ObsoleteConstructor
+
 // Re-export stream-related types
 type (
 	VersionDirective = libyaml.StreamVersionDirective
@@ -517,6 +519,69 @@ func handleErr(err *error) {
 	}
 }
 
+var ErrIncompatibleUnmarshaler = errors.New("UnmarshalYAML has an incompatible signature")
+
+// callUnmarshalYAML attempts to handle UnmarshalYAML via the current interface
+// or via a correctly-typed method. It returns (handled, err).
+func callUnmarshalYAML(out any, in []byte) (bool, error) {
+	if out == nil {
+		return false, nil
+	}
+
+	// Fast-path: implements the current Unmarshaler interface.
+	if u, ok := out.(Unmarshaler); ok {
+		p := libyaml.NewComposer(in)
+		defer p.Destroy()
+		node := p.Parse()
+		if node != nil {
+			return true, u.UnmarshalYAML(node)
+		}
+		return true, nil
+	}
+
+	if _, ok := out.(obsoleteUnmarshaler); ok {
+		// Ignore the obsolete unmarshaler interface.
+		// TODO find why code was not calling obsolete unmarshaler.
+		return false, nil
+	}
+
+	// TODO having an option to disable this reflection-based check may be useful for performance.
+	// but it would be from user responsibility to ensure no older UnmarshalYAML methods are present.
+
+	// Reflection path: a method named UnmarshalYAML exists; validate signature and invoke.
+	outVal := reflect.ValueOf(out)
+	method := outVal.MethodByName("UnmarshalYAML")
+	if !method.IsValid() {
+		return false, nil
+	}
+
+	methodType := method.Type()
+	expectedNodeType := reflect.TypeOf((*Node)(nil))
+	if methodType.NumIn() != 1 || methodType.NumOut() != 1 {
+		// This allows catching methods with incompatible signatures, even with the v4.
+		return true, fmt.Errorf(
+			"cannot unmarshal into %T: %w: expected 1 parameter and 1 returned value, got %d and %d",
+			out, ErrIncompatibleUnmarshaler, methodType.NumIn(), methodType.NumOut())
+	}
+	if !methodType.Out(0).Implements(reflect.TypeOf((*error)(nil)).Elem()) {
+		// Method does not return an error.
+		return true, fmt.Errorf(
+			"cannot unmarshal into %T: %w: UnmarshalYAML must return an error, got %v",
+			out, ErrIncompatibleUnmarshaler, methodType.Out(0))
+	}
+	paramType := methodType.In(0)
+	if paramType != expectedNodeType {
+		// the parameter is not *yaml.Node
+		return true, fmt.Errorf(
+			"cannot unmarshal into %T: %w: UnmarshalYAML expects %v but go.yaml.in/yaml/v4.Unmarshaler expects *go.yaml.in/yaml/v4.Node\n"+
+				"This typically occurs when migrating from an older YAML package.\n"+
+				"Please update %T to implement UnmarshalYAML(*go.yaml.in/yaml/v4.Node) error",
+			out, ErrIncompatibleUnmarshaler, paramType, out)
+	}
+
+	return true, fmt.Errorf("cannot unmarshal into %T: unknown error invoking UnmarshalYAML", out)
+}
+
 //-----------------------------------------------------------------------------
 // Classic APIs
 //-----------------------------------------------------------------------------
@@ -664,15 +729,10 @@ func unmarshal(in []byte, out any, opts ...Option) (err error) {
 		return err
 	}
 
-	// Check if out implements yaml.Unmarshaler
-	if u, ok := out.(Unmarshaler); ok {
-		p := libyaml.NewComposer(in)
-		defer p.Destroy()
-		node := p.Parse()
-		if node != nil {
-			return u.UnmarshalYAML(node)
-		}
-		return nil
+	// Attempt to handle any UnmarshalYAML implementation (interface or method).
+	var handled bool
+	if handled, err = callUnmarshalYAML(out, in); handled {
+		return err
 	}
 
 	return libyaml.Construct(in, out, o)
