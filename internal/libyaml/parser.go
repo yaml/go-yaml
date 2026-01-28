@@ -462,12 +462,10 @@ func (parser *Parser) parseDocumentStart(event *Event, implicit bool) error {
 	}
 
 	// Parse extra document end indicators.
-	if !implicit {
-		for token.Type == DOCUMENT_END_TOKEN {
-			parser.skipToken()
-			if err := parser.peekToken(&token); err != nil {
-				return err
-			}
+	for token.Type == DOCUMENT_END_TOKEN {
+		parser.skipToken()
+		if err := parser.peekToken(&token); err != nil {
+			return err
 		}
 	}
 
