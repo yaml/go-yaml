@@ -1280,6 +1280,30 @@ func ParserGetEvents(in []byte) (string, error) {
 	return events.String(), nil
 }
 
+func escaped(b []byte) string {
+	builder := strings.Builder{}
+	builder.Grow(len(b))
+	for _, c := range string(b) {
+		switch c {
+		case '\\':
+			builder.WriteString(`\\`)
+		case 0:
+			builder.WriteString(`\0`)
+		case '\b':
+			builder.WriteString(`\b`)
+		case '\n':
+			builder.WriteString(`\n`)
+		case '\r':
+			builder.WriteString(`\r`)
+		case '\t':
+			builder.WriteString(`\t`)
+		default:
+			builder.WriteRune(c)
+		}
+	}
+	return builder.String()
+}
+
 func formatEvent(e *Event) string {
 	var b strings.Builder
 	switch e.Type {
@@ -1323,16 +1347,13 @@ func formatEvent(e *Event) string {
 		case DOUBLE_QUOTED_SCALAR_STYLE:
 			b.WriteString(` "`)
 		}
-		// Escape special characters for consistent event output.
-		val := strings.NewReplacer(
-			`\`, `\\`,
-			"\n", `\n`,
-			"\t", `\t`,
-		).Replace(string(e.Value))
-		b.WriteString(val)
+		b.WriteString(escaped(e.Value))
 
 	case SEQUENCE_START_EVENT:
 		b.WriteString("+SEQ")
+		if e.SequenceStyle() == FLOW_SEQUENCE_STYLE {
+			b.WriteString(" []")
+		}
 		if len(e.Anchor) > 0 {
 			b.WriteString(" &")
 			b.Write(e.Anchor)
@@ -1341,14 +1362,14 @@ func formatEvent(e *Event) string {
 			b.WriteString(" <")
 			b.Write(e.Tag)
 			b.WriteString(">")
-		}
-		if e.SequenceStyle() == FLOW_SEQUENCE_STYLE {
-			b.WriteString(" []")
 		}
 	case SEQUENCE_END_EVENT:
 		b.WriteString("-SEQ")
 	case MAPPING_START_EVENT:
 		b.WriteString("+MAP")
+		if e.MappingStyle() == FLOW_MAPPING_STYLE {
+			b.WriteString(" {}")
+		}
 		if len(e.Anchor) > 0 {
 			b.WriteString(" &")
 			b.Write(e.Anchor)
@@ -1357,9 +1378,6 @@ func formatEvent(e *Event) string {
 			b.WriteString(" <")
 			b.Write(e.Tag)
 			b.WriteString(">")
-		}
-		if e.MappingStyle() == FLOW_MAPPING_STYLE {
-			b.WriteString(" {}")
 		}
 	case MAPPING_END_EVENT:
 		b.WriteString("-MAP")
