@@ -13,11 +13,11 @@ refactored for cleaner API hooks.
             ↑                        ↓
        Constructor              Representer
             ↑                        ↓
-         (Repr)                      ↓
+         (Nodes)             (Nodes - tagged)
             ↑                        ↓
-        Resolver                     ↓
+        Resolver                 Desolver
             ↑                        ↓
-         (Nodes)        ←→        (Nodes)
+   (Nodes - unresolved)   (Nodes - minimal tags)
             ↑                        ↓
         Composer                Serializer
             ↑                        ↓
@@ -47,16 +47,17 @@ See also:
 The load stack transforms YAML text into Go values through a series of stages.
 
 **Control Flow:** The load stack uses a pull-based call hierarchy. Entry points
-(such as `Unmarshal()`, `Decoder.Decode()`, or `Node.Decode()`) orchestrate the
+(such as `Load()`, `Loader.Load()`, or `Node.Load()`) orchestrate the
 process by creating and coordinating the stages:
 
-- **Entry points** create a **Composer** (which owns a **Parser**)
-- **Entry points** call **Composer**.Parse() to get Node trees
+- **Entry points** create a **Loader** which owns **Composer**, **Resolver**, and **Constructor**
+- **Entry points** call **Loader.Load()** which executes the 3-stage pipeline:
+  1. **Composer.Compose()** creates Node tree with unresolved tags (calls Parser for Events)
+  2. **Resolver.Resolve()** determines implicit types for untagged scalars
+  3. **Constructor.Construct()** converts Node tree to Go values
 - **Composer** calls **Parser**.Parse() to get Events (Parser and Scanner share the same struct)
 - **Parser** calls its own **Scanner** methods (Scan via peekToken) to get Tokens
 - **Scanner** calls **Reader** functions (updateBuffer) to get more bytes
-- **Entry points** create a **Constructor** and call Construct() to convert Nodes to Go values
-- **Resolver** is called by Composer (for tag inference) and Constructor (for value conversion)
 
 
 ### Reader
@@ -234,12 +235,10 @@ Info:
   * `composer.go / mapping               - Builds MappingNode recursively`
   * `composer.go / sequence              - Builds SequenceNode recursively`
   * `composer.go / document              - Builds DocumentNode wrapper`
-  * `resolver.go / resolve               - Infers tag for untagged scalars`
 
 Transforms:
 * **Event sequence → tree structure**
 * **Tag short-form normalization** (`tag:yaml.org,2002:str` → `!!str`)
-* **DEFAULT TYPE INFERENCE for untagged scalars** via `resolve("", value)` ⚠️
 * **Anchor registration** in map (`c.anchors`)
 * **Alias name → pointer to target Node**
 * **Style flag conversion** (libyaml styles → Node Style flags)
@@ -249,40 +248,41 @@ Transforms:
 Notes:
 * Byte-level Index is lost here (only Line/Column preserved)
 * Implicit document distinction is lost
-* In the current implementation, Composer calls `resolve()` for untagged scalars - this may be the wrong place (see Problems section)
+* Tag resolution happens in the next stage (Resolver)
 * Comment reassignment rules detailed in [Comment Handling](#comment-handling-in-the-load-stack) section
 
 
 ### Resolver
 
-Resolves tags to determine the type of each scalar value.
+Resolves tags to determine the type of each scalar value in the node tree.
 
 Info:
-- File: internal/libyaml/resolver.go (170 lines)
-- Main Function: `func resolve(tag string, in string) (rtag string, out any)`
-- Input: Tag string + scalar value
-- Output: Resolved tag + typed Go value
+- File: internal/libyaml/resolver.go (300+ lines)
+- Main Function: `func (r *Resolver) Resolve(node *Node)`
+- Input: `*Node` tree with unresolved tags
+- Output: Modified Node tree with resolved tags (in-place)
 - Called From:
-  * Composer ([`composer.go`](../../internal/libyaml/composer.go) / `scalar()`)
-  * Constructor ([`constructor.go`](../../internal/libyaml/constructor.go) / `scalar()`)
-  * Representer ([`representer.go`](../../internal/libyaml/representer.go) / `stringv()`)
-  * Serializer ([`serializer.go`](../../internal/libyaml/serializer.go) / `node()`)
+  * Loader ([`loader.go:267`](../../internal/libyaml/loader.go) / `Loader.Load()`)
 - Important Processes:
-  * `resolver.go / parseTimestamp        - Parses ISO 8601 timestamps`
-  * `strconv / ParseInt                  - Parses signed integers`
-  * `strconv / ParseUint                 - Parses unsigned integers`
-  * `strconv / ParseFloat                - Parses floating point numbers`
+  * `resolver.go / Resolve              - Walks node tree, resolves scalar tags`
+  * `resolver.go / resolveScalar        - Infers tag based on content`
+  * `resolver.go / parseTimestamp       - Parses ISO 8601 timestamps`
+  * `strconv / ParseInt                 - Parses signed integers`
+  * `strconv / ParseUint                - Parses unsigned integers`
+  * `strconv / ParseFloat               - Parses floating point numbers`
 
 Transforms:
 * **Implicit tag resolution** based on scalar content (`true` → `!!bool`, `42` → `!!int`)
 * **YAML 1.1 compatibility handling** (sexagesimal, old bools)
 * **Timestamp parsing**
 * **Special value recognition** (`.nan`, `.inf`, `null`)
+* **Recursive tree walking** to resolve all scalars in sequences and mappings
 
 Notes:
-* In go-yaml, this is not a separate stage but a function called from multiple places
-* Called from Composer (to set Node.Tag) and Constructor (to get typed value) ⚠️
+* Now a proper stage in the Load pipeline, called once between Composer and Constructor
+* Modifies the Node tree in-place (sets Tag field on ScalarNodes)
 * The YAML spec treats Resolver as a distinct stage producing the "Representation Graph"
+* This refactor eliminates duplicate resolution calls that existed in the old architecture
 
 
 ### Constructor
@@ -305,15 +305,14 @@ Info:
   * `constructor.go / sequence           - Converts SequenceNode to slice`
   * `constructor.go / document           - Unwraps DocumentNode`
   * `constructor.go / alias              - Follows alias pointer, reconstructs`
-  * `resolver.go / resolve               - Re-resolves tag to get typed value`
 
 Transforms:
 * **Custom Unmarshaler interface detection and dispatch**
 * **Duplicate key detection** (when `UniqueKeys` option enabled) - checks all mapping keys
 * **Alias expansion ratio protection** (billion laughs defense) - limits constructs from alias expansion
 * **Self-referential alias detection** - prevents infinite loops from aliases containing themselves
-* **Re-resolution of tag/value** via `resolve(n.Tag, n.Value)` ⚠️
-* **`indicatedString()` check** for quoted scalars (quoted/literal scalars skip `resolve()`)
+* **Tag-based type conversion** using already-resolved tags from Resolver stage
+* **`indicatedString()` check** for quoted scalars (quoted/literal scalars force string type)
 * **Merge key (`<<`) handling** - explicit keys take precedence, can merge single mapping or sequence of mappings
 * **Inline struct/map handling** (`,inline` tag) - one inline map per struct, string keys required, unknown keys go there
 * **Known fields enforcement** (`WithKnownFields` option) - rejects unknown struct fields when enabled
@@ -326,12 +325,12 @@ Transforms:
 * **Struct field mapping** via `getStructInfo()`
 
 Notes:
-* `resolve()` is called again here - duplicates work done in Composer
+* Now receives fully-resolved tags from the Resolver stage (no duplicate resolution)
 * Aliases are fully reconstructed each time (not shared)
 * Duplicate key detection (in [`mapping()`](../../internal/libyaml/constructor.go) function) compares all keys in mappings when enabled
 * Merge key rules: explicit keys take precedence over merged keys, can merge a single mapping or a sequence of mappings
 * Inline rules: only one inline map allowed per struct, requires string keys, unknown keys are stored in the inline map field
-* Indicated strings (quoted or literal style) skip tag resolution via `indicatedString()` check
+* Indicated strings (quoted or literal style) force string type regardless of content
 * Node tree, comments, style, anchors, positions are all discarded
 
 
@@ -440,44 +439,40 @@ Location: [`constructor.go`](../../internal/libyaml/constructor.go) / `alias()` 
 
 ## Dump Stack
 
-The dump stack transforms Go values (or Node trees) into YAML text.
+The dump stack transforms Go values into YAML text through a symmetric 3-stage pipeline.
 
 **Control Flow:** The dump stack uses a push-based call hierarchy. Entry points
-(such as `Marshal()`, `Encoder.Encode()`, or `Node.Encode()`) orchestrate the
+(such as `Dump()`, `Dumper.Dump()`, or `Node.Dump()`) orchestrate the
 process by creating and coordinating the stages:
 
-- **Entry points** create a **Representer** (which owns an **Emitter**)
-- **Entry points** call **Representer**.MarshalDoc() or similar methods
-- **Representer** walks Go values and calls emit() to push Events to owned **Emitter**
-- If input is a `*Node`, **Representer** delegates to **Serializer** (part of Representer)
-- **Serializer** walks the Node tree and pushes Events to **Emitter** via emit()
+- **Entry points** create a **Dumper** which owns **Representer**, **Desolver**, and **Serializer**
+- **Entry points** call **Dumper.Dump()** which executes the 3-stage pipeline:
+  1. **Representer.Represent()** converts Go values to tagged Node tree
+  2. **Desolver.Desolve()** removes inferable tags to minimize output
+  3. **Serializer.Serialize()** converts Node tree to Events and pushes to Emitter
+- **Serializer** owns an **Emitter** and calls emit() to push Events
 - **Emitter** accumulates Events, formats output, and calls **Writer** to flush bytes
-- **Resolver** is called by Representer and Serializer (to check if quoting/tags needed)
 
 
 ### Representer
 
-Converts Go values directly to events (bypasses Node tree).
+Converts Go values to a tagged Node tree (Stage 1 of Dump pipeline).
 
 Info:
-- File: internal/libyaml/representer.go (564 lines)
-- Main Function: `func (r *Representer) MarshalDoc(tag string, in reflect.Value)`
+- File: internal/libyaml/representer.go (600+ lines)
+- Main Function: `func (r *Representer) Represent(tag string, in reflect.Value) *Node`
 - Input: `reflect.Value` + `Options`
-- Output: Events pushed to owned Emitter
+- Output: `*Node` tree with explicit tags
 - Called From:
-  * Entry point [`yaml.go / Marshal()`](../../yaml.go)
-  * Entry point [`yaml.go / Encoder.Encode()`](../../yaml.go)
-  * Entry point [`node.go / Node.Encode()`](../../internal/libyaml/node.go)
+  * Dumper ([`dumper.go:116`](../../internal/libyaml/dumper.go) / `Dumper.Dump()`)
 - Important Processes:
   * `representer.go / marshal            - Dispatches by Go type`
-  * `representer.go / emit               - Sends event to owned Emitter`
-  * `serializer.go / node                - Delegates Node to Serializer (same file scope)`
   * `representer.go / mapv               - Marshals map with sorted keys`
   * `representer.go / structv            - Marshals struct fields`
   * `representer.go / slicev             - Marshals slice/array`
   * `representer.go / stringv            - Marshals string with style choice`
-  * `emitter.go / Emitter.Emit           - Emits events (owned Emitter)`
-  * `resolver.go / resolve               - Checks if quoting needed`
+  * `representer.go / intv               - Marshals integer values`
+  * `representer.go / floatv             - Marshals floating point values`
 
 Transforms:
 * **Go type dispatch** ([`marshal()`](../../internal/libyaml/representer.go) type switch)
@@ -485,50 +480,80 @@ Transforms:
 * **TextMarshaler support** - detects and calls TextMarshaler interface methods
 * **Struct field ordering and filtering** (exported, by tag, omitempty)
 * **Map key sorting** (natural sort with numeric awareness) - ensures deterministic output
-* **Resolve-check for quoting decisions** via `resolve()` ⚠️
+* **Explicit tag assignment** - all nodes get explicit tags (e.g., `!!str`, `!!int`, `!!map`)
 * **YAML 1.1 compatibility checks** (`isBase60Float()`, `isOldBool()`)
-* **Style selection** (literal for multiline strings)
+* **Style selection** (literal for multiline strings, flow from struct tags)
 * **Binary data base64 encoding** - non-UTF-8 strings automatically tagged `!!binary` and base64 encoded
-* **Flow style from struct tags**
+* **Anchor assignment** for shared/circular references
 
 Notes:
-* Representer calls `resolve()` to determine if quoting is needed - this couples dump to load logic
-* When input is `*Node`, delegates to Serializer instead
+* Now returns `*Node` instead of emitting events directly
+* All output nodes have explicit tags - Desolver stage removes inferable ones
 * Map key sorting ensures deterministic output by using natural sort with numeric awareness
+* This stage is now symmetric with Constructor on the Load side
+
+
+### Desolver
+
+Removes inferable tags from Node tree (Stage 2 of Dump pipeline, inverse of Resolver).
+
+Info:
+- File: internal/libyaml/desolver.go (150+ lines)
+- Main Function: `func (d *Desolver) Desolve(node *Node)`
+- Input: `*Node` tree with explicit tags
+- Output: Modified Node tree with minimal tags (in-place)
+- Called From:
+  * Dumper ([`dumper.go:119`](../../internal/libyaml/dumper.go) / `Dumper.Dump()`)
+- Important Processes:
+  * `desolver.go / Desolve              - Walks node tree, removes inferable tags`
+  * `desolver.go / desolveScalar        - Checks if tag can be inferred`
+  * `desolver.go / canInferTag          - Tests if value would resolve to same tag`
+
+Transforms:
+* **Tag elision** for scalars where tag can be inferred (`!!str "hello"` → `hello`)
+* **Recursive tree walking** to process all scalars in sequences and mappings
+* **Preserve explicit tags** when content would be misresolved (e.g., `!!str "42"`)
+* **YAML 1.1 compatibility awareness** (checks for ambiguous old-style values)
+
+Notes:
+* NEW stage in v4, makes Dump symmetric with Load (mirrors Resolver)
+* Modifies the Node tree in-place (clears Tag field when inferable)
+* This is the inverse operation of Resolver - while Resolver adds tags based on content, Desolver removes tags that can be inferred
+* Results in cleaner YAML output without unnecessary type annotations
+* Called between Representer and Serializer in the dump pipeline
 
 
 ### Serializer
 
-Converts Node tree to events (used when marshaling from Node).
+Converts Node tree to events (Stage 3 of Dump pipeline).
 
 Info:
-- File: internal/libyaml/serializer.go (192 lines)
-- Main Function: `func (r *Representer) node(node *Node, tail string)`
-- Input: `*Node` tree
-- Output: Events pushed to Emitter (via Representer)
+- File: internal/libyaml/serializer.go (250+ lines)
+- Main Function: `func (s *Serializer) Serialize(node *Node)`
+- Input: `*Node` tree with minimal tags (from Desolver)
+- Output: Events pushed to owned Emitter
 - Called From:
-  * Representer ([`representer.go / Representer.nodev()`](../../internal/libyaml/representer.go))
-  * Representer ([`representer.go / marshal()`](../../internal/libyaml/representer.go))
+  * Dumper ([`dumper.go:122`](../../internal/libyaml/dumper.go) / `Dumper.Dump()`)
 - Important Processes:
-  * `representer.go / emit               - Sends event to Emitter (via Representer)`
-  * `representer.go / nilv               - Emits null scalar`
+  * `serializer.go / emit                - Sends event to owned Emitter`
   * `serializer.go / node (recursive)    - Walks child nodes`
   * `serializer.go / isSimpleCollection  - Checks if flow style appropriate`
-  * `emitter.go / Emitter.Emit           - Emits events (via Representer)`
-  * `resolver.go / resolve               - Checks if tag can be elided`
+  * `emitter.go / Emitter.Emit           - Emits events (owned Emitter)`
 
 Transforms:
 * **Node tree → event stream**
-* **Tag elision check** via `resolve()` ⚠️
-* **Force quoting** when tag would be misresolved
+* **Recursive tree walking** to emit events for all nodes
 * **Flow style detection for simple collections** (`WithFlowSimpleCollections` option) - automatically uses flow style for eligible collections
 * **Comment placement/shifting** (foot → tail)
-* **Style flag interpretation**
-* **Invalid UTF-8 → base64**
+* **Style flag interpretation** (converts Node.Style to Event.Style)
+* **Anchor emission** for nodes that need aliasing
+* **Invalid UTF-8 → base64** conversion for binary data
 
 Notes:
-* `resolve()` is called to check if tag can be elided - fourth place it's called
+* Now a proper stage that owns the Emitter (was part of Representer before)
+* Receives Node tree with tags already optimized by Desolver stage
 * Simple collection = all scalar children, fits within line width
+* This stage is now symmetric with Composer on the Load side
 
 
 ### Emitter
@@ -737,21 +762,24 @@ This is the final output of the Load stack and the input to the Dump stack. Repr
 
 ## Potential Problems and Inconsistencies
 
-See also:
-- [Resolver Problem Diagram](resolver-problem.mmd)
+### 1. ~~resolve() Called in Four Places~~ FIXED ✓
 
-### 1. resolve() Called in Four Places
+**Status:** This problem has been resolved in the current refactor.
 
-| Location | Stage | Purpose |
-|----------|-------|---------|
-| [`composer.go`](../../internal/libyaml/composer.go) / `scalar()` | Load | Set Node.Tag for untagged scalars |
-| [`constructor.go`](../../internal/libyaml/constructor.go) / `scalar()` | Load | Get actual Go value |
-| [`representer.go`](../../internal/libyaml/representer.go) / `stringv()` | Dump | Check if quoting needed |
-| [`serializer.go`](../../internal/libyaml/serializer.go) / `node()` | Dump | Check if tag can be elided |
+**Old Problem:** The `resolve()` function was called from 4 different places:
+- Composer (to set Node.Tag)
+- Constructor (to get typed value) - duplicate work
+- Representer (to check if quoting needed)
+- Serializer (to check if tag can be elided)
 
-**Problem:** Same expensive resolution logic runs multiple times. Tags are resolved but values aren't stored.
+**Solution Implemented:**
+- **Load Stack:** Resolver is now a proper stage with `Resolve()` method, called once in `Loader.Load()` between Composer and Constructor
+- **Dump Stack:** Desolver is a new stage with `Desolve()` method, called once in `Dumper.Dump()` between Representer and Serializer
+- **Result:** Both stacks now have clean 3-stage pipelines with symmetric tag resolution/desolving stages
 
-**Better:** Store `(tag, resolvedValue)` at first resolution, or defer ALL resolution to Constructor.
+The pipelines are now:
+- **Load:** Composer → Resolver → Constructor
+- **Dump:** Representer → Desolver → Serializer
 
 
 ### 2. Style Decisions Split Across Stages
@@ -785,11 +813,15 @@ These checks appear in multiple files:
 **Problem:** No single configuration point for YAML version semantics.
 
 
-### 5. Representer Has Parser Logic
+### 5. ~~Representer Has Parser Logic~~ FIXED ✓
 
-The representer calls `resolve()` to check if strings would be misresolved - this is parser-era logic living in the dump stack.
+**Status:** This problem has been resolved in the current refactor.
 
-**Problem:** Changes to resolution affect both stacks. Round-trip safety depends on this coupling.
+**Old Problem:** The Representer called `resolve()` to check if strings would be misresolved - this was parser-era logic living in the dump stack.
+
+**Solution Implemented:** The Desolver stage now handles tag removal using the same resolution logic, but as a proper inverse operation of the Resolver. The Representer no longer needs to call resolution functions - it simply creates a fully-tagged Node tree, and the Desolver removes inferable tags in a separate stage.
+
+**Result:** Clean separation of concerns - Representer focuses on Go→Node conversion, Desolver handles tag optimization.
 
 
 ### 6. Scanner and Parser Share Struct

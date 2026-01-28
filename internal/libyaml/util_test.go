@@ -12,8 +12,8 @@ import (
 	"go.yaml.in/yaml/v4/internal/testutil/assert"
 )
 
-func TestYAMLPrivate(t *testing.T) {
-	RunTestCases(t, "yamlprivate.yaml", map[string]TestHandler{
+func TestUtil(t *testing.T) {
+	RunTestCases(t, "util.yaml", map[string]TestHandler{
 		"char-predicate": runCharPredicateTest,
 		"char-convert":   runCharConvertTest,
 	})

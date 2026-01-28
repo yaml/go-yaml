@@ -20,6 +20,27 @@ import (
 	"go.yaml.in/yaml/v4/internal/testutil/datatest"
 )
 
+// NodeSpec describes an input node for pipeline stage tests.
+// Used in nested test format for representer, desolver, and serializer tests.
+type NodeSpec struct {
+	Tag     string `yaml:"tag"`     // YAML tag (e.g., "!!int", "!!str")
+	Value   string `yaml:"value"`   // Scalar value
+	Kind    string `yaml:"kind"`    // Node kind: Scalar, Mapping, Sequence, Document
+	Style   string `yaml:"style"`   // Style: Tagged, SingleQuoted, DoubleQuoted, Flow
+	Content any    `yaml:"content"` // Nested content for collections
+}
+
+// WantSpec describes expected test results for pipeline stage tests.
+// Used in nested test format for representer, desolver, and serializer tests.
+type WantSpec struct {
+	Tag          string `yaml:"tag"`           // Expected tag
+	Value        string `yaml:"value"`         // Expected scalar value
+	Kind         string `yaml:"kind"`          // Expected node kind
+	Quoted       bool   `yaml:"quoted"`        // Whether scalar should be quoted
+	ContentCount int    `yaml:"content_count"` // Expected number of content children
+	Yaml         string `yaml:"yaml"`          // Expected YAML output
+}
+
 // TestCase represents a single test case loaded from YAML
 type TestCase struct {
 	Name string `yaml:"name"`
@@ -29,7 +50,9 @@ type TestCase struct {
 	Yaml       string      `yaml:"yaml"`
 	InputHex   string      `yaml:"input_hex"`
 	InputBytes string      `yaml:"input_bytes"`
-	Want       any         `yaml:"want"`
+	From       any         `yaml:"from"` // Input data for tests
+	Want       any         `yaml:"want"` // Expected output
+	Also       string      `yaml:"also"` // Test modifiers (e.g., "unwrap")
 	Like       string      `yaml:"like"` // Regex pattern to match error message
 	WantSpecs  []EventSpec // Populated from Want for detailed tests
 
@@ -79,6 +102,23 @@ type TestCase struct {
 	Bytes  bool  `yaml:"byte"`
 	Method []any `yaml:"call"`
 	Setup  any   `yaml:"init"` // Can be []interface{} (api tests) or map[string]interface{} (reader tests)
+
+	// Pipeline stage tests (representer, desolver, serializer) - nested format
+	// For representer: use From for input value
+	// For desolver: use Node for input node to desolve
+	// For serializer: use Node for input node to serialize, Yaml for expected output
+	// Note: Want field (type any) is used - cast to map in test handlers for representer/desolver
+	Node   NodeSpec `yaml:"node"`   // Input/expected node specification
+	Indent int      `yaml:"indent"` // Indentation setting for serializer tests
+
+	// Error test specific fields
+	As           string `yaml:"as"`            // Type name for errors.As tests
+	Is           string `yaml:"is"`            // Error message for errors.Is tests
+	WantAs       bool   `yaml:"want_as"`       // Expected result for errors.As
+	WantIs       bool   `yaml:"want_is"`       // Expected result for errors.Is
+	WantLine     int    `yaml:"want_line"`     // Expected line for ConstructError
+	WantMessage  string `yaml:"want_message"`  // Expected message for ConstructError
+	WantMessages []any  `yaml:"want_messages"` // Expected messages for TypeError
 }
 
 // constantRegistry holds libyaml-specific constants
@@ -340,8 +380,8 @@ func LoadTestCases(filename string) ([]TestCase, error) {
 		return nil, fmt.Errorf("failed to read %s: %w", filename, err)
 	}
 
-	// Load YAML using local LoadYAML from yamldatatest_loader.go
-	rawData, err := LoadYAML(data)
+	// Load YAML using LoadAny from loader.go
+	rawData, err := LoadAny(data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse %s: %w", filename, err)
 	}

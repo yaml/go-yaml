@@ -112,6 +112,7 @@ foo: &a1 bar
   - `make fmt`
   - `make tidy`
   - `make lint`
+  - `make typos`
   - `make test`
   - You can use `make check` to run all of the above
 - Submit a [Pull Request](https://github.com/yaml/go-yaml/pulls)

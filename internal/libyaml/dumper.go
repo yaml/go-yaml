@@ -7,15 +7,13 @@
 // - Dump: Encode value(s) to YAML (use WithAll for multi-doc)
 // - NewDumper: Create a streaming dumper to io.Writer
 
-package yaml
+package libyaml
 
 import (
 	"bytes"
 	"errors"
 	"io"
 	"reflect"
-
-	"go.yaml.in/yaml/v4/internal/libyaml"
 )
 
 // Dump encodes a value to YAML with the given options.
@@ -34,13 +32,13 @@ import (
 func Dump(in any, opts ...Option) (out []byte, err error) {
 	defer handleErr(&err)
 
-	o, err := libyaml.ApplyOptions(opts...)
+	o, err := ApplyOptions(opts...)
 	if err != nil {
 		return nil, err
 	}
 
 	var buf bytes.Buffer
-	d, err := NewDumper(&buf, func(opts *libyaml.Options) error {
+	d, err := NewDumper(&buf, func(opts *Options) error {
 		*opts = *o // Copy options
 		return nil
 	})
@@ -52,7 +50,7 @@ func Dump(in any, opts ...Option) (out []byte, err error) {
 		// Multi-document mode: in must be a slice
 		inVal := reflect.ValueOf(in)
 		if inVal.Kind() != reflect.Slice {
-			return nil, &LoadErrors{Errors: []*libyaml.ConstructError{{
+			return nil, &LoadErrors{Errors: []*ConstructError{{
 				Err: errors.New("yaml: WithAllDocuments requires a slice input"),
 			}}}
 		}
@@ -77,22 +75,30 @@ func Dump(in any, opts ...Option) (out []byte, err error) {
 }
 
 // A Dumper writes YAML values to an output stream with configurable options.
+// It uses a 3-stage pipeline mirroring the Loader:
+//  1. Representer: Go values → Tagged Node tree
+//  2. Desolver: Remove inferable tags
+//  3. Serializer: Node tree → Events → YAML
 type Dumper struct {
-	encoder *libyaml.Representer
-	opts    *libyaml.Options
+	representer *Representer
+	desolver    *Desolver
+	serializer  *Serializer
+	options     *Options
 }
 
 // NewDumper returns a new Dumper that writes to w with the given options.
 //
 // The Dumper should be closed after use to flush all data to w.
 func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
-	o, err := libyaml.ApplyOptions(opts...)
+	o, err := ApplyOptions(opts...)
 	if err != nil {
 		return nil, err
 	}
 	return &Dumper{
-		encoder: libyaml.NewRepresenter(w, o),
-		opts:    o,
+		representer: NewRepresenter(nil, o), // No writer - builds nodes
+		desolver:    NewDesolver(o),
+		serializer:  NewSerializer(w, o), // Writer here - emits YAML
+		options:     o,
 	}, nil
 }
 
@@ -105,7 +111,16 @@ func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
 // values to YAML.
 func (d *Dumper) Dump(v any) (err error) {
 	defer handleErr(&err)
-	d.encoder.MarshalDoc("", reflect.ValueOf(v))
+
+	// Stage 1: Represent - Go values → Tagged Node tree
+	node := d.representer.Represent("", reflect.ValueOf(v))
+
+	// Stage 2: Desolve - Remove inferable tags
+	d.desolver.Desolve(node)
+
+	// Stage 3: Serialize - Node tree → Events → YAML
+	d.serializer.Serialize(node)
+
 	return nil
 }
 
@@ -113,6 +128,22 @@ func (d *Dumper) Dump(v any) (err error) {
 // It does not write a stream terminating string "...".
 func (d *Dumper) Close() (err error) {
 	defer handleErr(&err)
-	d.encoder.Finish()
+	d.serializer.Finish()
 	return nil
+}
+
+// SetIndent changes the indentation used when encoding.
+// This is used by the legacy Encoder.SetIndent() method.
+func (d *Dumper) SetIndent(spaces int) {
+	if spaces < 0 {
+		panic("yaml: cannot indent to a negative number of spaces")
+	}
+	// Set on serializer's emitter
+	d.serializer.Emitter.BestIndent = spaces
+}
+
+// SetCompactSeqIndent controls whether '- ' is considered part of the indentation.
+// This is used by the legacy Encoder methods.
+func (d *Dumper) SetCompactSeqIndent(compact bool) {
+	d.serializer.Emitter.CompactSequenceIndent = compact
 }

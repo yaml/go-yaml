@@ -14,6 +14,20 @@ import (
 	"fmt"
 )
 
+// CommentContext provides comment data to comment processors.
+type CommentContext struct {
+	HeadComment []byte
+	LineComment []byte
+	FootComment []byte
+	TailComment []byte
+	StemComment []byte
+}
+
+// CommentProcessor is a callback for processing comments on nodes.
+// It receives the node and comment context, and should populate the node's
+// HeadComment, LineComment, and FootComment fields as appropriate.
+type CommentProcessor func(node *Node, ctx *CommentContext) error
+
 // Options holds configuration for both loading and dumping YAML.
 type Options struct {
 	// Loading options
@@ -34,6 +48,14 @@ type Options struct {
 	ExplicitEnd           bool       // Always emit ...
 	FlowSimpleCollections bool       // Use flow style for simple collections
 	QuotePreference       QuoteStyle // Preferred quote style when quoting is required
+
+	// Plugin callbacks
+	CommentProcessor CommentProcessor // Callback for processing comments
+	V3Comments       bool             // Enable V3-style comment handling
+	SkipComments     bool             // Skip comment scanning for performance
+
+	// Private options (not exported, used internally)
+	FromLegacy bool // Indicates legacy Unmarshal()/Decoder path (check Unmarshaler, allow trailing content)
 }
 
 // Option allows configuring YAML loading and dumping operations.
@@ -344,6 +366,32 @@ func WithQuotePreference(style QuoteStyle) Option {
 	}
 }
 
+// WithV3Comments enables V3-style comment handling for backward compatibility.
+//
+// When enabled, comments are populated in Node.HeadComment, Node.LineComment,
+// and Node.FootComment fields during loading. This provides compatibility with
+// go-yaml v3 behavior.
+//
+// When called without arguments, defaults to true.
+//
+// The default is false (comments are not loaded unless using a comment plugin).
+// For new code, consider using comment plugins via WithPlugin() instead.
+func WithV3Comments(enable ...bool) Option {
+	if len(enable) > 1 {
+		return func(o *Options) error {
+			return errors.New("yaml: WithV3Comments accepts at most one argument")
+		}
+	}
+	val := len(enable) == 0 || enable[0]
+	return func(o *Options) error {
+		o.V3Comments = val
+		if val {
+			o.SkipComments = false
+		}
+		return nil
+	}
+}
+
 // CombineOptions combines multiple options into a single Option.
 // This is useful for creating option presets or combining version defaults
 // with custom options.
@@ -381,10 +429,12 @@ func ApplyOptions(opts ...Option) (*Options, error) {
 }
 
 // DefaultOptions holds the default options for APIs that don't accept options.
+// In v4, node comments are opt-in via WithV3Comments() or comment plugins.
 var DefaultOptions = &Options{
 	Indent:          4,
 	LineWidth:       -1,
 	Unicode:         true,
 	UniqueKeys:      true,
 	QuotePreference: QuoteLegacy,
+	V3Comments:      false, // Node comments are opt-in in v4
 }

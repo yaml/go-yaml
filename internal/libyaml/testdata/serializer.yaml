@@ -1,0 +1,162 @@
+# Copyright 2025 The go-yaml Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+# Serializer stage test cases
+#
+# Purpose: Tests the Serializer's ability to convert nodes to YAML output
+#
+# Test Types:
+#   serialize-scalar - Tests serializing scalar nodes
+#   serialize-collection - Tests serializing maps and sequences
+#   serialize-style - Tests different YAML styles (flow, literal, etc)
+#
+# Field Descriptions:
+#   name: Human-readable test name
+#   node: Input node structure to serialize
+#     kind: Node kind (Document, Scalar, Sequence, Mapping)
+#     value: Scalar value
+#     style: Style (Single, Double, Flow, etc.)
+#     content: Child nodes (array of node objects)
+#   indent: Indentation width (2 or 4 spaces)
+#   want: Expected YAML output (literal block scalar)
+
+- serialize-scalar:
+    name: Plain string
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        value: hello
+    want: |
+      hello
+
+- serialize-scalar:
+    name: Integer
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        value: '42'
+    want: |
+      42
+
+- serialize-scalar:
+    name: Single quoted string
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        value: '123'
+        style: Single
+    want: |
+      '123'
+
+- serialize-scalar:
+    name: Double quoted string
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        value: 'hello'
+        style: Double
+    want: |
+      "hello"
+
+- serialize-collection:
+    name: Sequence
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        content:
+        - kind: Scalar
+          value: a
+        - kind: Scalar
+          value: b
+    want: |
+      - a
+      - b
+
+- serialize-collection:
+    name: Mapping
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          value: key
+        - kind: Scalar
+          value: value
+    want: |
+      key: value
+
+- serialize-style:
+    name: Flow sequence
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        style: Flow
+        content:
+        - kind: Scalar
+          value: a
+        - kind: Scalar
+          value: b
+    want: |
+      [a, b]
+
+- serialize-style:
+    name: Flow mapping
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        style: Flow
+        content:
+        - kind: Scalar
+          value: key
+        - kind: Scalar
+          value: value
+    want: |
+      {key: value}
+
+- serialize-collection:
+    name: Nested mapping with 2-space indent
+    indent: 2
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          value: outer
+        - kind: Mapping
+          content:
+          - kind: Scalar
+            value: inner
+          - kind: Scalar
+            value: value
+    want: |
+      outer:
+        inner: value
+
+- serialize-collection:
+    name: Nested mapping with 4-space indent
+    indent: 4
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          value: outer
+        - kind: Mapping
+          content:
+          - kind: Scalar
+            value: inner
+          - kind: Scalar
+            value: value
+    want: |
+      outer:
+          inner: value

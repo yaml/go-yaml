@@ -1,0 +1,161 @@
+# Copyright 2025 The go-yaml Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+# Resolver stage test cases
+#
+# Purpose: Tests the Resolver's ability to infer YAML tags from scalar values
+#
+# Test Types:
+#   resolve-infer - Tests inferring tags from plain scalar values
+#   resolve-preserve - Tests that tagged/styled scalars keep their tags
+#
+# Field Descriptions:
+#   name: Human-readable test name
+#   node: Input node to resolve
+#     value: Scalar value
+#     tag: Pre-existing tag (for preserve tests)
+#     style: Node style (for preserve tests)
+#   want: Expected results after resolution
+#     tag: Expected tag after resolution
+
+- resolve-infer:
+    name: Infer int tag from decimal
+    node:
+      value: '123'
+    want:
+      tag: '!!int'
+
+- resolve-infer:
+    name: Infer int tag from negative
+    node:
+      value: '-42'
+    want:
+      tag: '!!int'
+
+- resolve-infer:
+    name: Infer int tag from hex
+    node:
+      value: '0x1A'
+    want:
+      tag: '!!int'
+
+- resolve-infer:
+    name: Infer int tag from octal
+    node:
+      value: '0o17'
+    want:
+      tag: '!!int'
+
+- resolve-infer:
+    name: Infer float tag from decimal
+    node:
+      value: '3.14'
+    want:
+      tag: '!!float'
+
+- resolve-infer:
+    name: Infer float tag from positive infinity
+    node:
+      value: '.inf'
+    want:
+      tag: '!!float'
+
+- resolve-infer:
+    name: Infer float tag from negative infinity
+    node:
+      value: '-.inf'
+    want:
+      tag: '!!float'
+
+- resolve-infer:
+    name: Infer float tag from NaN
+    node:
+      value: '.nan'
+    want:
+      tag: '!!float'
+
+- resolve-infer:
+    name: Infer bool tag from true
+    node:
+      value: 'true'
+    want:
+      tag: '!!bool'
+
+- resolve-infer:
+    name: Infer bool tag from false
+    node:
+      value: 'false'
+    want:
+      tag: '!!bool'
+
+- resolve-infer:
+    name: Infer bool tag from True
+    node:
+      value: 'True'
+    want:
+      tag: '!!bool'
+
+- resolve-infer:
+    name: Infer bool tag from FALSE
+    node:
+      value: 'FALSE'
+    want:
+      tag: '!!bool'
+
+- resolve-infer:
+    name: Infer null tag from null
+    node:
+      value: 'null'
+    want:
+      tag: '!!null'
+
+- resolve-infer:
+    name: Infer null tag from tilde
+    node:
+      value: '~'
+    want:
+      tag: '!!null'
+
+- resolve-infer:
+    name: Infer null tag from empty
+    node:
+      value: ''
+    want:
+      tag: '!!null'
+
+- resolve-infer:
+    name: Infer timestamp tag from date
+    node:
+      value: '2006-01-02'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer str tag from plain text
+    node:
+      value: 'hello world'
+    want:
+      tag: '!!str'
+
+- resolve-infer:
+    name: Infer str tag from number-like string
+    node:
+      value: '123abc'
+    want:
+      tag: '!!str'
+
+- resolve-preserve:
+    name: Preserve explicit str tag
+    node:
+      value: '123'
+      tag: '!!str'
+    want:
+      tag: '!!str'
+
+- resolve-preserve:
+    name: Preserve custom tag
+    node:
+      value: '123'
+      tag: '!custom'
+    want:
+      tag: '!custom'

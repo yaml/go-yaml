@@ -4,7 +4,7 @@
 # Auto-install https://github.com/makeplus/makes at specific commit:
 MAKES := .cache/makes
 MAKES-LOCAL := .cache/local
-MAKES-COMMIT ?= 4e48a743c3652b88adc4a257398d895a801e6d11
+MAKES-COMMIT ?= 87b6789863c40bd877f1651d0ce4729ff08fd151
 $(shell [ -d $(MAKES) ] || ( \
   git clone -q https://github.com/makeplus/makes $(MAKES) && \
   git -C $(MAKES) reset -q --hard $(MAKES-COMMIT)))
@@ -16,6 +16,7 @@ endif
 
 include $(MAKES)/init.mk
 include $(MAKES)/shellcheck.mk
+include $(MAKES)/typos.mk
 
 # Auto-install go unless GO_YAML_PATH is set:
 ifdef GO_YAML_PATH
@@ -104,6 +105,7 @@ check:
 	$(MAKE) fmt
 	$(MAKE) tidy
 	$(MAKE) lint
+	$(MAKE) typos
 	$(MAKE) test
 
 test-main: $(GO-DEPS)
@@ -154,6 +156,9 @@ lint: $(GOLANGCI-LINT-VERSIONED)
 
 tidy: $(GO-DEPS)
 	go mod tidy
+
+typos: $(TYPOS)
+	$@
 
 cli: $(CLI-BINARY)
 

@@ -12,7 +12,9 @@ flowchart TB
         L_parser[Parser]
         L_events[/Events/]
         L_composer[Composer]
-        L_nodes[/Nodes/]
+        L_nodes_unresolved[/Nodes - unresolved/]
+        L_resolver[Resolver]
+        L_nodes_resolved[/Nodes - resolved/]
         L_constructor[Constructor]
         L_native[/Native Go Values/]
 
@@ -23,8 +25,10 @@ flowchart TB
         L_tokens --> L_parser
         L_parser --> L_events
         L_events --> L_composer
-        L_composer --> L_nodes
-        L_nodes --> L_constructor
+        L_composer --> L_nodes_unresolved
+        L_nodes_unresolved --> L_resolver
+        L_resolver --> L_nodes_resolved
+        L_nodes_resolved --> L_constructor
         L_constructor --> L_native
     end
 
@@ -32,7 +36,9 @@ flowchart TB
         direction TB
         D_native[/Native Go Values/]
         D_representer[Representer]
-        D_nodes[/Nodes - optional/]
+        D_nodes_tagged[/Nodes - tagged/]
+        D_desolver[Desolver]
+        D_nodes_minimal[/Nodes - minimal tags/]
         D_serializer[Serializer]
         D_events[/Events/]
         D_emitter[Emitter]
@@ -41,8 +47,10 @@ flowchart TB
         D_bytes[/Raw Bytes/]
 
         D_native --> D_representer
-        D_representer --> D_events
-        D_nodes --> D_serializer
+        D_representer --> D_nodes_tagged
+        D_nodes_tagged --> D_desolver
+        D_desolver --> D_nodes_minimal
+        D_nodes_minimal --> D_serializer
         D_serializer --> D_events
         D_events --> D_emitter
         D_emitter --> D_codepoints
@@ -50,15 +58,8 @@ flowchart TB
         D_writer --> D_bytes
     end
 
-    RESOLVER{{Resolver<br/>resolve function<br/>NOT a stage}}
-
-    L_composer -.->|"calls for<br/>untagged scalars"| RESOLVER
-    L_constructor -.->|"calls for<br/>typed values"| RESOLVER
-    D_representer -.->|"calls to check<br/>quoting needed"| RESOLVER
-    D_serializer -.->|"calls to check<br/>tag elision"| RESOLVER
-
     L_native <--> D_native
-    L_nodes <-.-> D_nodes
+    L_nodes_resolved <-.-> D_nodes_minimal
     L_events <-.-> D_events
     L_codepoints <-.-> D_codepoints
     L_bytes <-.-> D_bytes

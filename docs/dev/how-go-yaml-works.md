@@ -43,11 +43,11 @@ Data flows through different representations at each stage:
             ↑                        ↓
        Constructor              Representer
             ↑                        ↓
-         (Repr)                      ↓
+         (Nodes)             (Nodes - tagged)
             ↑                        ↓
-        Resolver                     ↓
+        Resolver                 Desolver
             ↑                        ↓
-         (Nodes)        ←→        (Nodes)
+   (Nodes - unresolved)   (Nodes - minimal tags)
             ↑                        ↓
         Composer                Serializer
             ↑                        ↓
@@ -66,15 +66,18 @@ Data flows through different representations at each stage:
        (Raw Bytes)      ←→      (Raw Bytes)
 ```
 
-**Stack Asymmetry**
+**Stack Symmetry Improvements**
 
-1. **Load vs Dump Asymmetry**: Load has more stages than Dump
-2. **Scanner+Parser on Load** break tokenization and parsing into
-   separate steps, while **Emitter on Dump** combines these
-3. **Resolver on Load** handles tag resolution as a separate stage,
-   while **Representer on Dump** produces nodes directly
-4. **Representations align** across the pipelines, showing the paired
-   nature of the transforms
+The v4 refactor has made the stacks more symmetric:
+
+1. **3-Stage Pipelines**: Both Load and Dump now have clean 3-stage pipelines:
+   - **Load:** Composer → Resolver → Constructor
+   - **Dump:** Representer → Desolver → Serializer
+2. **Symmetric Tag Handling**:
+   - **Resolver** (Load) infers tags from content
+   - **Desolver** (Dump) removes inferable tags - NEW in v4
+3. **Node Trees on Both Sides**: Both stacks work with Node trees as intermediate representation
+4. **Remaining Asymmetry**: Scanner+Parser on Load vs single Emitter on Dump (due to YAML's complex indentation-based syntax)
 
 ## Data Representations
 
@@ -224,20 +227,32 @@ This is where YAML becomes usable Go data structures.
 
 ## Dumping Pipeline Stages
 
-### 1. Representer (Native Values → Nodes)
+### 1. Representer (Native Values → Tagged Nodes)
 
 **File**: `internal/libyaml/representer.go`
 
-The Representer converts Go values to YAML representation:
+The Representer converts Go values to a tagged Node tree:
 - Handles basic types (maps, structs, slices, strings, numbers, bools)
 - Calls custom `MarshalYAML` methods when defined
 - Supports `encoding.TextMarshaler` interface
 - Makes style decisions (literal vs. quoted scalars, flow vs. block
   collections)
 - Processes struct tags (`yaml:"name,omitempty,flow"`)
-- Produces nodes directly (skips the Repr stage)
+- Assigns explicit tags to all nodes (`!!str`, `!!int`, `!!map`, etc.)
+- **Returns a Node tree** (no longer emits events directly)
 
-### 2. Serializer (Nodes → Events)
+### 2. Desolver (Tagged Nodes → Minimal Nodes)
+
+**File**: `internal/libyaml/desolver.go`
+
+The Desolver removes inferable tags (NEW in v4, inverse of Resolver):
+- Walks the tagged node tree from Representer
+- Removes tags that can be inferred during parsing
+- Preserves explicit tags when content would be misresolved
+- Produces cleaner YAML output without unnecessary type annotations
+- **Example:** `!!str "hello"` becomes `hello`, but `!!str "42"` keeps the tag
+
+### 3. Serializer (Nodes → Events)
 
 **File**: `internal/libyaml/serializer.go`
 
@@ -246,8 +261,9 @@ The Serializer linearizes the node tree:
 - Produces a stream of events
 - Handles anchor assignment for sharing/circular references
 - Determines whether collections should use flow style
+- Pushes events to the Emitter
 
-### 3. Emitter (Events → Code Points)
+### 4. Emitter (Events → Code Points)
 
 **File**: `internal/libyaml/emitter.go`
 
@@ -261,7 +277,7 @@ The Emitter generates formatted YAML:
 
 This stage combines the work that Scanner+Parser do on the Load side.
 
-### 4. Writer (Code Points → Raw Bytes)
+### 5. Writer (Code Points → Raw Bytes)
 
 **File**: `internal/libyaml/writer.go`
 
@@ -323,9 +339,11 @@ YAML processing is a pipeline, not a single operation:
 
 - **Loading** flows through: Reader → Scanner → Parser → Composer →
   Resolver → Constructor
-- **Dumping** flows through: Representer → Serializer → Emitter → Writer
+- **Dumping** flows through: Representer → Desolver → Serializer → Emitter → Writer
 - Each stage transforms data from one representation to another
-- The stages are asymmetric: Load has more steps than Dump
+- The v4 refactor has made the stacks more symmetric with 3-stage pipelines:
+  - **Load:** Composer → Resolver → Constructor
+  - **Dump:** Representer → Desolver → Serializer
 - "Parsing" is just one stage (tokens → events), not the whole process
 
 Understanding these stages helps you work with YAML more effectively,

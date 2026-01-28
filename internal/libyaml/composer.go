@@ -24,26 +24,39 @@ type Composer struct {
 	returnStream bool     // flag to return stream node next
 	atStreamEnd  bool     // at stream end
 	encoding     Encoding // stream encoding from STREAM_START
+	opts         *Options // options for comment handling
 }
 
 // NewComposer creates a new composer from a byte slice.
-func NewComposer(b []byte) *Composer {
+func NewComposer(b []byte, opts *Options) *Composer {
 	p := Composer{
 		Parser: NewParser(),
+		opts:   opts,
 	}
 	if len(b) == 0 {
 		b = []byte{'\n'}
 	}
 	p.Parser.SetInputString(b)
+
+	// Configure comment scanning
+	if opts != nil && opts.SkipComments {
+		p.Parser.SetSkipComments(true)
+	}
 	return &p
 }
 
 // NewComposerFromReader creates a new composer from an io.Reader.
-func NewComposerFromReader(r io.Reader) *Composer {
+func NewComposerFromReader(r io.Reader, opts *Options) *Composer {
 	p := Composer{
 		Parser: NewParser(),
+		opts:   opts,
 	}
 	p.Parser.SetInputReader(r)
+
+	// Configure comment scanning
+	if opts != nil && opts.SkipComments {
+		p.Parser.SetSkipComments(true)
+	}
 	return &p
 }
 
@@ -121,8 +134,8 @@ func (c *Composer) anchor(n *Node, anchor []byte) {
 	}
 }
 
-// Parse parses the next YAML node from the event stream.
-func (c *Composer) Parse() *Node {
+// Compose composes the next YAML node from the event stream.
+func (c *Composer) Compose() *Node {
 	c.init()
 
 	// Handle stream nodes if enabled
@@ -177,10 +190,9 @@ func (c *Composer) node(kind Kind, defaultTag, tag, value string) *Node {
 		style = TaggedStyle
 	} else if defaultTag != "" {
 		tag = defaultTag
-	} else if kind == ScalarNode {
-		// Delegate to resolver to determine tag from value
-		tag, _ = resolve("", value)
 	}
+	// Note: Scalars without explicit tags are left unresolved.
+	// Resolution happens in a separate stage via ResolveNode().
 	n := &Node{
 		Kind:  kind,
 		Tag:   tag,
@@ -190,15 +202,34 @@ func (c *Composer) node(kind Kind, defaultTag, tag, value string) *Node {
 	if !c.Textless {
 		n.Line = c.event.StartMark.Line + 1
 		n.Column = c.event.StartMark.Column + 1
-		n.HeadComment = string(c.event.HeadComment)
-		n.LineComment = string(c.event.LineComment)
-		n.FootComment = string(c.event.FootComment)
+
+		// Handle comments based on configuration
+		if c.opts != nil && c.opts.CommentProcessor != nil {
+			// Use comment plugin to process comments
+			ctx := &CommentContext{
+				HeadComment: c.event.HeadComment,
+				LineComment: c.event.LineComment,
+				FootComment: c.event.FootComment,
+				TailComment: c.event.TailComment,
+			}
+			if err := c.opts.CommentProcessor(n, ctx); err != nil {
+				// For now, ignore errors in comment processing
+				// TODO: Consider how to handle comment plugin errors
+				_ = err
+			}
+		} else if c.opts != nil && c.opts.V3Comments {
+			// V3 default behavior (backward compatible for deprecated functions)
+			n.HeadComment = string(c.event.HeadComment)
+			n.LineComment = string(c.event.LineComment)
+			n.FootComment = string(c.event.FootComment)
+		}
+		// else: no comments (new API default)
 	}
 	return n
 }
 
 func (c *Composer) parseChild(parent *Node) *Node {
-	child := c.Parse()
+	child := c.Compose()
 	parent.Content = append(parent.Content, child)
 	return child
 }
@@ -223,8 +254,8 @@ func (c *Composer) document() *Node {
 
 func (c *Composer) createStreamNode() *Node {
 	n := &Node{
-		Kind:     StreamNode,
-		Encoding: c.encoding,
+		Kind:   StreamNode,
+		Stream: &Stream{Encoding: c.encoding},
 	}
 	if !c.Textless && c.event.Type != NO_EVENT {
 		n.Line = c.event.StartMark.Line + 1
@@ -237,15 +268,15 @@ func (c *Composer) createStreamNode() *Node {
 func (c *Composer) captureDirectives(n *Node) {
 	if c.peek() == DOCUMENT_START_EVENT {
 		if vd := c.event.GetVersionDirective(); vd != nil {
-			n.Version = &StreamVersionDirective{
+			n.Stream.Version = &StreamVersionDirective{
 				Major: vd.Major(),
 				Minor: vd.Minor(),
 			}
 		}
 		if tds := c.event.GetTagDirectives(); len(tds) > 0 {
-			n.TagDirectives = make([]StreamTagDirective, len(tds))
+			n.Stream.TagDirectives = make([]StreamTagDirective, len(tds))
 			for i, td := range tds {
-				n.TagDirectives[i] = StreamTagDirective{
+				n.Stream.TagDirectives[i] = StreamTagDirective{
 					Handle: td.GetHandle(),
 					Prefix: td.GetPrefix(),
 				}

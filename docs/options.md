@@ -440,6 +440,51 @@ override security-critical keys.
 
 **Default:** true (enabled)
 
+##### `yaml.WithV3Comments(...bool)`
+
+Controls whether comments are loaded into Node fields during parsing.
+When enabled, comments are populated in `Node.HeadComment`, `Node.LineComment`,
+and `Node.FootComment` fields, providing v3-style comment handling.
+
+```go
+// Enable comment loading (short form)
+loader, _ := yaml.NewLoader(reader,
+    yaml.WithV3Comments(),
+)
+
+var node yaml.Node
+loader.Load(&node)
+
+// Access comments
+fmt.Println(node.HeadComment)  // Comments before the node
+fmt.Println(node.LineComment)  // Comments on the same line
+fmt.Println(node.FootComment)  // Comments after the node
+
+// Disable comment loading
+loader, _ := yaml.NewLoader(reader,
+    yaml.WithV3Comments(false),
+)
+```
+
+**Example YAML:**
+
+```yaml
+# This is a head comment
+key: value  # This is a line comment
+# This is a foot comment
+```
+
+**Use cases:**
+- **Preserving comments:** When you need to read, modify, and write back YAML while keeping comments intact
+- **Comment-aware processing:** Tools that need to understand or manipulate comments
+- **V3 compatibility:** Maintaining backward compatibility with go-yaml v3 code that uses comment fields
+
+**Performance note:** Comment scanning has a small performance cost. In v4, comments are opt-in (disabled by default) for better performance when comments aren't needed.
+
+**Alternative:** For new code, consider using comment plugins via `WithPlugin()` for more flexible comment handling.
+
+**Default:** false (comments not loaded)
+
 ## Version-Specific Option Presets
 
 Instead of setting options one by one, you can use version presets that match
@@ -550,6 +595,7 @@ dumper, _ := yaml.NewDumper(writer, opts)
 - `known-fields` - Boolean
 - `single-document` - Boolean
 - `unique-keys` - Boolean
+- `v3-comments` - Boolean
 
 **Any field not in your config uses the version's defaults.**
 

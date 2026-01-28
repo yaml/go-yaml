@@ -13,7 +13,6 @@ This directory contains internal documentation for go-yaml developers and contri
 - **[pipeline-overview.mmd](pipeline-overview.mmd)** - Complete processing pipeline from bytes to Go values and back
 - **[call-hierarchy.mmd](call-hierarchy.mmd)** - Function call hierarchy showing pull-based (load) vs push-based (dump) architecture
 - **[comment-flow.mmd](comment-flow.mmd)** - Comment handling flow through Scanner → Parser → Composer
-- **[resolver-problem.mmd](resolver-problem.mmd)** - Diagram illustrating the architectural issue of `resolve()` being called from 4 different places
 
 ## For Users
 

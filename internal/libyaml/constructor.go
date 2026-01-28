@@ -343,9 +343,9 @@ func NewConstructor(opts *Options) *Constructor {
 // Returns a [LoadErrors] if type mismatches occur during decoding.
 func Construct(in []byte, out any, opts *Options) error {
 	d := NewConstructor(opts)
-	p := NewComposer(in)
+	p := NewComposer(in, opts)
 	defer p.Destroy()
-	node := p.Parse()
+	node := p.Compose()
 	if node != nil {
 		v := reflect.ValueOf(out)
 		if v.Kind() == reflect.Pointer && !v.IsNil() {

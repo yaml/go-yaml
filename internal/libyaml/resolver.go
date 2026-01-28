@@ -229,3 +229,44 @@ func parseTimestamp(s string) (time.Time, bool) {
 	}
 	return time.Time{}, false
 }
+
+// Resolver handles tag resolution for YAML nodes.
+type Resolver struct {
+	opts *Options
+}
+
+// NewResolver creates a new Resolver with the given options.
+func NewResolver(opts *Options) *Resolver {
+	return &Resolver{opts: opts}
+}
+
+// Resolve walks the node tree and resolves tags for untagged scalars.
+// This is called after composition to determine implicit types (int, float,
+// bool, null, timestamp) from scalar values.
+func (r *Resolver) Resolve(n *Node) {
+	if n == nil {
+		return
+	}
+
+	switch n.Kind {
+	case ScalarNode:
+		// Only resolve if tag is empty (not explicitly tagged)
+		if n.Tag == "" {
+			n.Tag, _ = resolve("", n.Value)
+		}
+	case DocumentNode, SequenceNode, MappingNode:
+		// Recursively resolve children
+		for _, child := range n.Content {
+			r.Resolve(child)
+		}
+	case AliasNode:
+		// Alias nodes point to already-resolved nodes, nothing to do
+	}
+}
+
+// ResolveNode is a convenience function that creates a Resolver and calls Resolve.
+// This is provided for backward compatibility and for simple use cases.
+func ResolveNode(n *Node) {
+	r := NewResolver(nil)
+	r.Resolve(n)
+}

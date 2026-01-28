@@ -13,15 +13,13 @@
 // - Options API (WithIndent, WithKnownFields, etc.)
 // - Type and constant re-exports from internal/libyaml
 // - Helper functions for struct field handling
+// - Load/Dump API (Load, Dump, Loader, Dumper)
 // - Classic APIs (Decoder, Encoder, Unmarshal, Marshal)
-//
-// For the main API, see:
-// - loader.go: Load, Loader
-// - dumper.go: Dump, Dumper
 
 package yaml
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -124,7 +122,105 @@ var (
 	// WithQuotePreference sets preferred quote style when quoting is required.
 	// See internal/libyaml.WithQuotePreference.
 	WithQuotePreference = libyaml.WithQuotePreference
+	// WithV3Comments enables V3-style comment handling.
+	// See internal/libyaml.WithV3Comments.
+	WithV3Comments = libyaml.WithV3Comments
 )
+
+// Plugin options
+
+// validPluginKinds defines the only acceptable plugin kinds.
+// Third parties cannot invent new kinds.
+var validPluginKinds = map[string]bool{
+	"comment": true,
+	"resolve": true,
+}
+
+// WithPlugin adds plugins for YAML processing.
+//
+// Example:
+//
+//	import "go.yaml.in/yaml/v4/plugin/comment/v3"
+//	yaml.Load(data, &out, yaml.V3, yaml.WithPlugin(v3.New()))
+//
+// Add multiple plugins:
+//
+//	yaml.Load(data, &out, yaml.WithPlugin(v3.New(), someOtherPlugin))
+func WithPlugin(plugins ...Plugin) Option {
+	return func(o *libyaml.Options) error {
+		for _, p := range plugins {
+			if p == nil {
+				return errors.New("yaml: plugin cannot be nil")
+			}
+			kind := p.Kind()
+			if !validPluginKinds[kind] {
+				return fmt.Errorf("yaml: unknown plugin kind %q", kind)
+			}
+
+			// Set plugin based on kind
+			switch kind {
+			case "comment":
+				if cp, ok := p.(CommentPlugin); ok {
+					o.CommentProcessor = func(node *libyaml.Node, ctx *libyaml.CommentContext) error {
+						// Convert internal context to public API
+						pubCtx := &CommentContext{
+							HeadComment: ctx.HeadComment,
+							LineComment: ctx.LineComment,
+							FootComment: ctx.FootComment,
+							TailComment: ctx.TailComment,
+							StemComment: ctx.StemComment,
+						}
+						return cp.ProcessNodeComments(node, pubCtx)
+					}
+					o.SkipComments = false
+				}
+			case "resolve":
+				// TODO: implement resolve plugin
+			}
+		}
+		return nil
+	}
+}
+
+// WithoutPlugin removes plugins by kind.
+// Use "*" to remove all plugins.
+//
+// Example:
+//
+//	yaml.Load(data, &out, yaml.V3, yaml.WithoutPlugin("comment"))
+//
+// Remove all plugins:
+//
+//	yaml.Load(data, &out, yaml.V3, yaml.WithoutPlugin("*"))
+func WithoutPlugin(kinds ...string) Option {
+	return func(o *libyaml.Options) error {
+		for _, kind := range kinds {
+			if kind == "*" {
+				o.CommentProcessor = nil
+				o.SkipComments = true
+				return nil
+			}
+			switch kind {
+			case "comment":
+				o.CommentProcessor = nil
+				if !o.V3Comments {
+					o.SkipComments = true
+				}
+			}
+		}
+		return nil
+	}
+}
+
+// withV3Comments enables V3 default comment behavior for deprecated functions.
+// This is an internal option not exposed to users.
+func withV3Comments() Option {
+	return func(o *libyaml.Options) error {
+		o.V3Comments = true
+		o.SkipComments = false
+		return nil
+	}
+}
 
 // Options combines multiple options into a single Option.
 // This is useful for creating option presets or combining version defaults
@@ -265,6 +361,7 @@ type Unmarshaler interface {
 
 // Re-export stream-related types
 type (
+	Stream           = libyaml.Stream
 	VersionDirective = libyaml.StreamVersionDirective
 	TagDirective     = libyaml.StreamTagDirective
 	Encoding         = libyaml.Encoding
@@ -518,13 +615,42 @@ func handleErr(err *error) {
 }
 
 //-----------------------------------------------------------------------------
+// Load/Dump API
+//-----------------------------------------------------------------------------
+
+// Loader and Dumper are re-exported from internal/libyaml for advanced use.
+type (
+	Loader = libyaml.Loader
+	Dumper = libyaml.Dumper
+)
+
+// NewLoader returns a new Loader that reads from r with the given options.
+func NewLoader(r io.Reader, opts ...Option) (*Loader, error) {
+	return libyaml.NewLoader(r, opts...)
+}
+
+// NewDumper returns a new Dumper that writes to w with the given options.
+func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
+	return libyaml.NewDumper(w, opts...)
+}
+
+// Load loads YAML document(s) with the given options.
+func Load(in []byte, out any, opts ...Option) error {
+	return libyaml.Load(in, out, opts...)
+}
+
+// Dump encodes a value to YAML with the given options.
+func Dump(in any, opts ...Option) (out []byte, err error) {
+	return libyaml.Dump(in, opts...)
+}
+
+//-----------------------------------------------------------------------------
 // Classic APIs
 //-----------------------------------------------------------------------------
 
 // A Decoder reads and decodes YAML values from an input stream.
 type Decoder struct {
-	composer    *libyaml.Composer
-	knownFields bool
+	loader *Loader
 }
 
 // NewDecoder returns a new decoder that reads from r.
@@ -532,15 +658,15 @@ type Decoder struct {
 // The decoder introduces its own buffering and may read
 // data from r beyond the YAML values requested.
 func NewDecoder(r io.Reader) *Decoder {
-	return &Decoder{
-		composer: libyaml.NewComposerFromReader(r),
-	}
+	// NewLoader won't return error with V3 preset and withFromLegacy
+	loader, _ := NewLoader(r, V3, withFromLegacy())
+	return &Decoder{loader: loader}
 }
 
 // KnownFields ensures that the keys in decoded mappings to
 // exist as fields in the struct being decoded into.
 func (dec *Decoder) KnownFields(enable bool) {
-	dec.knownFields = enable
+	dec.loader.SetKnownFields(enable)
 }
 
 // Decode reads the next YAML-encoded value from its input
@@ -548,37 +674,22 @@ func (dec *Decoder) KnownFields(enable bool) {
 //
 // See the documentation for Unmarshal for details about the
 // conversion of YAML into a Go value.
-func (dec *Decoder) Decode(v any) (err error) {
-	d := libyaml.NewConstructor(libyaml.DefaultOptions)
-	d.KnownFields = dec.knownFields
-	defer handleErr(&err)
-	node := dec.composer.Parse()
-	if node == nil {
-		return io.EOF
-	}
-	out := reflect.ValueOf(v)
-	if out.Kind() == reflect.Pointer && !out.IsNil() {
-		out = out.Elem()
-	}
-	d.Construct(node, out)
-	if len(d.TypeErrors) > 0 {
-		return &LoadErrors{Errors: d.TypeErrors}
-	}
-	return nil
+func (dec *Decoder) Decode(v any) error {
+	return dec.loader.Load(v)
 }
 
 // An Encoder writes YAML values to an output stream.
 type Encoder struct {
-	encoder *libyaml.Representer
+	dumper *Dumper
 }
 
 // NewEncoder returns a new encoder that writes to w.
 // The Encoder should be closed after use to flush all data
 // to w.
 func NewEncoder(w io.Writer) *Encoder {
-	return &Encoder{
-		encoder: libyaml.NewRepresenter(w, libyaml.DefaultOptions),
-	}
+	// NewDumper won't return error with V3 preset
+	dumper, _ := NewDumper(w, V3)
+	return &Encoder{dumper: dumper}
 }
 
 // Encode writes the YAML encoding of v to the stream.
@@ -588,36 +699,29 @@ func NewEncoder(w io.Writer) *Encoder {
 //
 // See the documentation for Marshal for details about the conversion of Go
 // values to YAML.
-func (e *Encoder) Encode(v any) (err error) {
-	defer handleErr(&err)
-	e.encoder.MarshalDoc("", reflect.ValueOf(v))
-	return nil
+func (e *Encoder) Encode(v any) error {
+	return e.dumper.Dump(v)
 }
 
 // SetIndent changes the used indentation used when encoding.
 func (e *Encoder) SetIndent(spaces int) {
-	if spaces < 0 {
-		panic("yaml: cannot indent to a negative number of spaces")
-	}
-	e.encoder.Indent = spaces
+	e.dumper.SetIndent(spaces)
 }
 
 // CompactSeqIndent makes it so that '- ' is considered part of the indentation.
 func (e *Encoder) CompactSeqIndent() {
-	e.encoder.Emitter.CompactSequenceIndent = true
+	e.dumper.SetCompactSeqIndent(true)
 }
 
 // DefaultSeqIndent makes it so that '- ' is not considered part of the indentation.
 func (e *Encoder) DefaultSeqIndent() {
-	e.encoder.Emitter.CompactSequenceIndent = false
+	e.dumper.SetCompactSeqIndent(false)
 }
 
 // Close closes the encoder by writing any remaining data.
 // It does not write a stream terminating string "...".
-func (e *Encoder) Close() (err error) {
-	defer handleErr(&err)
-	e.encoder.Finish()
-	return nil
+func (e *Encoder) Close() error {
+	return e.dumper.Close()
 }
 
 // Unmarshal decodes the first document found within the in byte slice
@@ -654,28 +758,33 @@ func (e *Encoder) Close() (err error) {
 // See the documentation of Marshal for the format of tags and a list of
 // supported tag options.
 func Unmarshal(in []byte, out any) (err error) {
-	return unmarshal(in, out, V3)
+	// Check for Unmarshaler interface first
+	if u, ok := out.(Unmarshaler); ok {
+		l, err := libyaml.NewLoader(bytes.NewReader(in), V3, withFromLegacy())
+		if err != nil {
+			return err
+		}
+		// Compose and resolve to get the node
+		node := l.ComposeAndResolve()
+		if node == nil {
+			return &libyaml.LoadErrors{Errors: []*libyaml.ConstructError{{
+				Err: errors.New("yaml: no documents in stream"),
+			}}}
+		}
+		return u.UnmarshalYAML(node)
+	}
+	// Normal path
+	return Load(in, out, V3, withFromLegacy())
 }
 
-func unmarshal(in []byte, out any, opts ...Option) (err error) {
-	defer handleErr(&err)
-	o, err := libyaml.ApplyOptions(opts...)
-	if err != nil {
-		return err
-	}
-
-	// Check if out implements yaml.Unmarshaler
-	if u, ok := out.(Unmarshaler); ok {
-		p := libyaml.NewComposer(in)
-		defer p.Destroy()
-		node := p.Parse()
-		if node != nil {
-			return u.UnmarshalYAML(node)
-		}
+// withFromLegacy is a private option that indicates this call is from
+// a legacy API (Unmarshal/Decoder). It enables Unmarshaler interface
+// checking and allows trailing content for backward compatibility.
+func withFromLegacy() Option {
+	return func(o *libyaml.Options) error {
+		o.FromLegacy = true
 		return nil
 	}
-
-	return libyaml.Construct(in, out, o)
 }
 
 // Marshal serializes the value provided into a YAML document. The structure
@@ -722,11 +831,6 @@ func unmarshal(in []byte, out any, opts ...Option) (err error) {
 //	yaml.Marshal(&T{B: 2}) // Returns "b: 2\n"
 //	yaml.Marshal(&T{F: 1}} // Returns "a: 1\nb: 0\n"
 func Marshal(in any) (out []byte, err error) {
-	defer handleErr(&err)
-	e := libyaml.NewRepresenter(noWriter, libyaml.DefaultOptions)
-	defer e.Destroy()
-	e.MarshalDoc("", reflect.ValueOf(in))
-	e.Finish()
-	out = e.Out
-	return out, err
+	// Use V3 preset with unlimited line width to match legacy DefaultOptions
+	return Dump(in, V3, WithLineWidth(-1))
 }

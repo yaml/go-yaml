@@ -99,6 +99,14 @@ type StreamTagDirective struct {
 	Prefix string
 }
 
+// Stream holds stream-level metadata for StreamNode.
+// This includes encoding, version directive, and tag directives.
+type Stream struct {
+	Encoding      Encoding
+	Version       *StreamVersionDirective
+	TagDirectives []StreamTagDirective
+}
+
 // Node represents an element in the YAML document hierarchy. While documents
 // are typically encoded and decoded into higher level types, such as structs
 // and maps, Node is an intermediate representation that allows detailed
@@ -171,26 +179,15 @@ type Node struct {
 	Line   int
 	Column int
 
-	// StreamNode-specific fields (only valid when Kind == StreamNode)
-
-	// Encoding holds the stream encoding (UTF-8, UTF-16LE, UTF-16BE).
-	// Only valid for StreamNode.
-	Encoding Encoding
-
-	// Version holds the YAML version directive (%YAML).
-	// Only valid for StreamNode.
-	Version *StreamVersionDirective
-
-	// TagDirectives holds the %TAG directives.
-	// Only valid for StreamNode.
-	TagDirectives []StreamTagDirective
+	// Stream holds stream metadata (non-nil only when Kind == StreamNode).
+	Stream *Stream
 }
 
 // IsZero returns whether the node has all of its fields unset.
 func (n *Node) IsZero() bool {
 	return n.Kind == 0 && n.Style == 0 && n.Tag == "" && n.Value == "" && n.Anchor == "" && n.Alias == nil && n.Content == nil &&
 		n.HeadComment == "" && n.LineComment == "" && n.FootComment == "" && n.Line == 0 && n.Column == 0 &&
-		n.Encoding == 0 && n.Version == nil && n.TagDirectives == nil
+		n.Stream == nil
 }
 
 // LongTag returns the long form of the tag that indicates the data type for
@@ -327,11 +324,12 @@ func (n *Node) Encode(v any) (err error) {
 	e := NewRepresenter(noWriter, DefaultOptions)
 	defer e.Destroy()
 	e.MarshalDoc("", reflect.ValueOf(v))
-	e.Finish()
-	p := NewComposer(e.Out)
+	// Note: MarshalDoc now handles Finish() internally
+	p := NewComposer(e.Out, nil)
 	p.Textless = true
 	defer p.Destroy()
-	doc := p.Parse()
+	doc := p.Compose()
+	ResolveNode(doc)
 	*n = *doc.Content[0]
 	return nil
 }
@@ -353,11 +351,12 @@ func (n *Node) Dump(v any, opts ...Option) (err error) {
 	e := NewRepresenter(noWriter, o)
 	defer e.Destroy()
 	e.MarshalDoc("", reflect.ValueOf(v))
-	e.Finish()
-	p := NewComposer(e.Out)
+	// Note: MarshalDoc now handles Finish() internally
+	p := NewComposer(e.Out, nil)
 	p.Textless = true
 	defer p.Destroy()
-	doc := p.Parse()
+	doc := p.Compose()
+	ResolveNode(doc)
 	*n = *doc.Content[0]
 	return nil
 }

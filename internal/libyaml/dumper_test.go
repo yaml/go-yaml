@@ -1,12 +1,11 @@
 // Tests for the Dump API, including WithAllDocuments functionality.
 
-package yaml_test
+package libyaml
 
 import (
 	"strings"
 	"testing"
 
-	"go.yaml.in/yaml/v4"
 	"go.yaml.in/yaml/v4/internal/testutil/assert"
 )
 
@@ -17,7 +16,7 @@ func TestDump_SingleValue(t *testing.T) {
 	}
 
 	config := Config{Name: "myconfig"}
-	data, err := yaml.Dump(config)
+	data, err := Dump(config)
 	assert.NoError(t, err)
 
 	// Should not have document separator for single document
@@ -36,7 +35,7 @@ func TestDumpWithAllDocuments_TypedSlice(t *testing.T) {
 		{Name: "third"},
 	}
 
-	data, err := yaml.Dump(configs, yaml.WithAllDocuments())
+	data, err := Dump(configs, WithAllDocuments())
 	assert.NoError(t, err)
 
 	// Should have document separators
@@ -53,7 +52,7 @@ func TestDumpWithAllDocuments_UntypedSlice(t *testing.T) {
 		map[string]string{"name": "second"},
 	}
 
-	data, err := yaml.Dump(docs, yaml.WithAllDocuments())
+	data, err := Dump(docs, WithAllDocuments())
 	assert.NoError(t, err)
 
 	// Should have document separator
@@ -66,7 +65,7 @@ func TestDumpWithAllDocuments_UntypedSlice(t *testing.T) {
 func TestDumpWithAllDocuments_EmptySlice(t *testing.T) {
 	var docs []any
 
-	data, err := yaml.Dump(docs, yaml.WithAllDocuments())
+	data, err := Dump(docs, WithAllDocuments())
 	// Empty slice produces an empty YAML stream
 	// This may produce an error or empty output depending on implementation
 	if err != nil {
@@ -82,7 +81,7 @@ func TestDumpWithAllDocuments_EmptySlice(t *testing.T) {
 func TestDumpWithAllDocuments_NonSlice(t *testing.T) {
 	single := map[string]string{"name": "single"}
 
-	_, err := yaml.Dump(single, yaml.WithAllDocuments())
+	_, err := Dump(single, WithAllDocuments())
 	assert.NotNil(t, err)
 	assert.ErrorMatches(t, ".*WithAllDocuments requires a slice input.*", err)
 }

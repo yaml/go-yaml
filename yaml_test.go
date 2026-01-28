@@ -561,7 +561,7 @@ func TestUnmarshal(t *testing.T) {
 
 func TestDecodeFromYAML(t *testing.T) {
 	datatest.RunTestCases(t, func() ([]map[string]any, error) {
-		return datatest.LoadTestCasesFromFile("testdata/decode.yaml", libyaml.LoadYAML)
+		return datatest.LoadTestCasesFromFile("testdata/decode.yaml", libyaml.LoadAny)
 	}, map[string]datatest.TestHandler{
 		"decode": runDecodeTest,
 	})
@@ -729,7 +729,7 @@ func TestUnmarshalDurationInt(t *testing.T) {
 
 func TestUnmarshalErrorsFromYAML(t *testing.T) {
 	datatest.RunTestCases(t, func() ([]map[string]any, error) {
-		return datatest.LoadTestCasesFromFile("testdata/unmarshal_errors.yaml", libyaml.LoadYAML)
+		return datatest.LoadTestCasesFromFile("testdata/unmarshal_errors.yaml", libyaml.LoadAny)
 	}, map[string]datatest.TestHandler{
 		"unmarshal-error": runUnmarshalErrorTest,
 	})
@@ -763,7 +763,7 @@ func runUnmarshalErrorTest(t *testing.T, tc map[string]any) {
 
 func TestDecoderErrors(t *testing.T) {
 	datatest.RunTestCases(t, func() ([]map[string]any, error) {
-		return datatest.LoadTestCasesFromFile("testdata/unmarshal_errors.yaml", libyaml.LoadYAML)
+		return datatest.LoadTestCasesFromFile("testdata/unmarshal_errors.yaml", libyaml.LoadAny)
 	}, map[string]datatest.TestHandler{
 		"unmarshal-error": func(t *testing.T, tc map[string]any) {
 			t.Helper()
@@ -1734,7 +1734,7 @@ func (t *textUnmarshaler) UnmarshalText(s []byte) error {
 
 func TestFuzzCrashersFromYAML(t *testing.T) {
 	datatest.RunTestCases(t, func() ([]map[string]any, error) {
-		return datatest.LoadTestCasesFromFile("testdata/fuzz_crashers.yaml", libyaml.LoadYAML)
+		return datatest.LoadTestCasesFromFile("testdata/fuzz_crashers.yaml", libyaml.LoadAny)
 	}, map[string]datatest.TestHandler{
 		"fuzz-crasher": runFuzzCrasherTest,
 	})
@@ -2160,7 +2160,7 @@ func TestMarshal(t *testing.T) {
 
 func TestEncodeToYAML(t *testing.T) {
 	datatest.RunTestCases(t, func() ([]map[string]any, error) {
-		return datatest.LoadTestCasesFromFile("testdata/encode.yaml", libyaml.LoadYAML)
+		return datatest.LoadTestCasesFromFile("testdata/encode.yaml", libyaml.LoadAny)
 	}, map[string]datatest.TestHandler{
 		"encode":      runEncodeTest,
 		"encode-opts": runEncodeOptsTest,
@@ -2996,7 +2996,7 @@ unique-keys: true
 // FuzzEncodeFromJSON checks that any JSON encoded value can also be encoded as YAML... and decoded.
 func FuzzEncodeFromJSON(f *testing.F) {
 	// Load seed corpus from testdata YAML file
-	cases, err := datatest.LoadTestCasesFromFile("testdata/fuzz_json_roundtrip.yaml", libyaml.LoadYAML)
+	cases, err := datatest.LoadTestCasesFromFile("testdata/fuzz_json_roundtrip.yaml", libyaml.LoadAny)
 	if err != nil {
 		f.Fatalf("Failed to load seed corpus: %v", err)
 	}
@@ -3046,7 +3046,7 @@ func FuzzEncodeFromJSON(f *testing.F) {
 
 func TestLimits(t *testing.T) {
 	datatest.RunTestCases(t, func() ([]map[string]any, error) {
-		return datatest.LoadTestCasesFromFile("testdata/limit.yaml", libyaml.LoadYAML)
+		return datatest.LoadTestCasesFromFile("testdata/limit.yaml", libyaml.LoadAny)
 	}, map[string]datatest.TestHandler{
 		"limit":       runLimitTest,
 		"limit-error": runLimitTest,
@@ -3150,7 +3150,7 @@ func BenchmarkLimits(b *testing.B) {
 
 func TestParserGetEvents(t *testing.T) {
 	datatest.RunTestCases(t, func() ([]map[string]any, error) {
-		return datatest.LoadTestCasesFromFile("testdata/parser_events.yaml", libyaml.LoadYAML)
+		return datatest.LoadTestCasesFromFile("testdata/parser_events.yaml", libyaml.LoadAny)
 	}, map[string]datatest.TestHandler{
 		"parser-events": runParserEventsTest,
 	})
