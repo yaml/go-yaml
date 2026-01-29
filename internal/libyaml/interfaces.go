@@ -28,6 +28,9 @@ type IsZeroer interface {
 // their unmarshaling behavior. It receives a Node directly and modifies
 // the receiver in place.
 // This is the preferred interface for new code.
+//
+// Note: This interface is reserved for the v4 API and is not yet fully
+// integrated into the current implementation.
 type FromYAMLNode interface {
 	FromYAMLNode(*Node) error
 }
@@ -35,6 +38,9 @@ type FromYAMLNode interface {
 // ToYAMLNode is a new interface that types can implement to customize
 // their marshaling behavior. It returns a Node directly.
 // This is the preferred interface for new code.
+//
+// Note: This interface is reserved for the v4 API and is not yet fully
+// integrated into the current implementation.
 type ToYAMLNode interface {
 	ToYAMLNode() (*Node, error)
 }

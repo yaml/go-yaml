@@ -53,12 +53,229 @@ import (
 	"strings"
 )
 
+// ReadHandler is called by the [Parser] when it needs to read more bytes
+// from the input source.  The handler should fill the provided buffer with
+// up to len(buffer) bytes from the input source.
+//
+// The arguments are as follows:
+//
+// [in]       parser      The parser object.
+// [out]      buffer      The buffer for reading.
+// [out]      size_read   The actual number of bytes read from the source.
+//
+// On success, the handler should return 1.  If the handler failed,
+// the returned value should be 0. On EOF, the handler should set the
+// size_read to 0 and return 1.
+type ReadHandler func(parser *Parser, buffer []byte) (n int, err error)
+
+// SimpleKey holds information about a potential simple key.
+type SimpleKey struct {
+	flow_level   int  // What flow level is the key at?
+	required     bool // Is a simple key required?
+	token_number int  // The number of the token.
+	mark         Mark // The position mark.
+}
+
+// ParserState represents the state of the parser.
+type ParserState int
+
+const (
+	PARSE_STREAM_START_STATE ParserState = iota
+
+	PARSE_IMPLICIT_DOCUMENT_START_STATE           // Expect the beginning of an implicit document.
+	PARSE_DOCUMENT_START_STATE                    // Expect DOCUMENT-START.
+	PARSE_DOCUMENT_CONTENT_STATE                  // Expect the content of a document.
+	PARSE_DOCUMENT_END_STATE                      // Expect DOCUMENT-END.
+	PARSE_BLOCK_NODE_STATE                        // Expect a block node.
+	PARSE_BLOCK_SEQUENCE_FIRST_ENTRY_STATE        // Expect the first entry of a block sequence.
+	PARSE_BLOCK_SEQUENCE_ENTRY_STATE              // Expect an entry of a block sequence.
+	PARSE_INDENTLESS_SEQUENCE_ENTRY_STATE         // Expect an entry of an indentless sequence.
+	PARSE_BLOCK_MAPPING_FIRST_KEY_STATE           // Expect the first key of a block mapping.
+	PARSE_BLOCK_MAPPING_KEY_STATE                 // Expect a block mapping key.
+	PARSE_BLOCK_MAPPING_VALUE_STATE               // Expect a block mapping value.
+	PARSE_FLOW_SEQUENCE_FIRST_ENTRY_STATE         // Expect the first entry of a flow sequence.
+	PARSE_FLOW_SEQUENCE_ENTRY_STATE               // Expect an entry of a flow sequence.
+	PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_KEY_STATE   // Expect a key of an ordered mapping.
+	PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_VALUE_STATE // Expect a value of an ordered mapping.
+	PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_END_STATE   // Expect the and of an ordered mapping entry.
+	PARSE_FLOW_MAPPING_FIRST_KEY_STATE            // Expect the first key of a flow mapping.
+	PARSE_FLOW_MAPPING_KEY_STATE                  // Expect a key of a flow mapping.
+	PARSE_FLOW_MAPPING_VALUE_STATE                // Expect a value of a flow mapping.
+	PARSE_FLOW_MAPPING_EMPTY_VALUE_STATE          // Expect an empty value of a flow mapping.
+	PARSE_END_STATE                               // Expect nothing.
+)
+
+func (ps ParserState) String() string {
+	switch ps {
+	case PARSE_STREAM_START_STATE:
+		return "PARSE_STREAM_START_STATE"
+	case PARSE_IMPLICIT_DOCUMENT_START_STATE:
+		return "PARSE_IMPLICIT_DOCUMENT_START_STATE"
+	case PARSE_DOCUMENT_START_STATE:
+		return "PARSE_DOCUMENT_START_STATE"
+	case PARSE_DOCUMENT_CONTENT_STATE:
+		return "PARSE_DOCUMENT_CONTENT_STATE"
+	case PARSE_DOCUMENT_END_STATE:
+		return "PARSE_DOCUMENT_END_STATE"
+	case PARSE_BLOCK_NODE_STATE:
+		return "PARSE_BLOCK_NODE_STATE"
+	case PARSE_BLOCK_SEQUENCE_FIRST_ENTRY_STATE:
+		return "PARSE_BLOCK_SEQUENCE_FIRST_ENTRY_STATE"
+	case PARSE_BLOCK_SEQUENCE_ENTRY_STATE:
+		return "PARSE_BLOCK_SEQUENCE_ENTRY_STATE"
+	case PARSE_INDENTLESS_SEQUENCE_ENTRY_STATE:
+		return "PARSE_INDENTLESS_SEQUENCE_ENTRY_STATE"
+	case PARSE_BLOCK_MAPPING_FIRST_KEY_STATE:
+		return "PARSE_BLOCK_MAPPING_FIRST_KEY_STATE"
+	case PARSE_BLOCK_MAPPING_KEY_STATE:
+		return "PARSE_BLOCK_MAPPING_KEY_STATE"
+	case PARSE_BLOCK_MAPPING_VALUE_STATE:
+		return "PARSE_BLOCK_MAPPING_VALUE_STATE"
+	case PARSE_FLOW_SEQUENCE_FIRST_ENTRY_STATE:
+		return "PARSE_FLOW_SEQUENCE_FIRST_ENTRY_STATE"
+	case PARSE_FLOW_SEQUENCE_ENTRY_STATE:
+		return "PARSE_FLOW_SEQUENCE_ENTRY_STATE"
+	case PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_KEY_STATE:
+		return "PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_KEY_STATE"
+	case PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_VALUE_STATE:
+		return "PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_VALUE_STATE"
+	case PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_END_STATE:
+		return "PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_END_STATE"
+	case PARSE_FLOW_MAPPING_FIRST_KEY_STATE:
+		return "PARSE_FLOW_MAPPING_FIRST_KEY_STATE"
+	case PARSE_FLOW_MAPPING_KEY_STATE:
+		return "PARSE_FLOW_MAPPING_KEY_STATE"
+	case PARSE_FLOW_MAPPING_VALUE_STATE:
+		return "PARSE_FLOW_MAPPING_VALUE_STATE"
+	case PARSE_FLOW_MAPPING_EMPTY_VALUE_STATE:
+		return "PARSE_FLOW_MAPPING_EMPTY_VALUE_STATE"
+	case PARSE_END_STATE:
+		return "PARSE_END_STATE"
+	}
+	return "<unknown parser state>"
+}
+
+// AliasData holds information about aliases.
+type AliasData struct {
+	anchor []byte // The anchor.
+	index  int    // The node id.
+	mark   Mark   // The anchor mark.
+}
+
+type Comment struct {
+	ScanMark  Mark // Position where scanning for comments started
+	TokenMark Mark // Position after which tokens will be associated with this comment
+	StartMark Mark // Position of '#' comment mark
+	EndMark   Mark // Position where comment terminated
+
+	Head []byte
+	Line []byte
+	Foot []byte
+}
+
+// Parser structure holds all information about the current
+// state of the parser.
+type Parser struct {
+	lastError error
+
+	// Reader stuff
+	read_handler ReadHandler // Read handler.
+
+	input_reader io.Reader // File input data.
+	input        []byte    // String input data.
+	input_pos    int
+
+	eof bool // EOF flag
+
+	buffer     []byte // The working buffer.
+	buffer_pos int    // The current position of the buffer.
+
+	unread int // The number of unread characters in the buffer.
+
+	newlines int // The number of line breaks since last non-break/non-blank character
+
+	raw_buffer     []byte // The raw buffer.
+	raw_buffer_pos int    // The current position of the buffer.
+
+	encoding Encoding // The input encoding.
+
+	offset int  // The offset of the current position (in bytes).
+	mark   Mark // The mark of the current position.
+
+	// Comments
+
+	HeadComment  []byte // The current head comments
+	LineComment  []byte // The current line comments
+	FootComment  []byte // The current foot comments
+	tail_comment []byte // Foot comment that happens at the end of a block.
+	stem_comment []byte // Comment in item preceding a nested structure (list inside list item, etc)
+
+	comments      []Comment // The folded comments for all parsed tokens
+	comments_head int
+
+	skip_comments bool // Skip comment scanning for performance
+
+	// Scanner stuff
+
+	stream_start_produced bool // Have we started to scan the input stream?
+	stream_end_produced   bool // Have we reached the end of the input stream?
+
+	flow_level int // The number of unclosed '[' and '{' indicators.
+
+	tokens          []Token // The tokens queue.
+	tokens_head     int     // The head of the tokens queue.
+	tokens_parsed   int     // The number of tokens fetched from the queue.
+	token_available bool    // Does the tokens queue contain a token ready for dequeueing.
+
+	indent  int   // The current indentation level.
+	indents []int // The indentation levels stack.
+
+	simple_key_allowed  bool        // May a simple key occur at the current position?
+	simple_key_possible bool        // Is the current simple key possible?
+	simple_key          SimpleKey   // The current simple key.
+	simple_key_stack    []SimpleKey // The stack of simple keys.
+
+	// Parser stuff
+
+	state          ParserState    // The current parser state.
+	states         []ParserState  // The parser states stack.
+	marks          []Mark         // The stack of marks.
+	tag_directives []TagDirective // The list of TAG directives.
+
+	// Representer stuff
+
+	aliases []AliasData // The alias data.
+}
+
 // NewParser creates a new parser object.
 func NewParser() Parser {
 	return Parser{
 		raw_buffer: make([]byte, 0, input_raw_buffer_size),
 		buffer:     make([]byte, 0, input_buffer_size),
 	}
+}
+
+// Parse gets the next event.
+func (parser *Parser) Parse(event *Event) error {
+	// Erase the event object.
+	*event = Event{}
+
+	if parser.lastError != nil {
+		return parser.lastError
+	}
+
+	// No events after the end of the stream or error.
+	if parser.stream_end_produced || parser.state == PARSE_END_STATE {
+		return io.EOF
+	}
+
+	// Generate the next event.
+	if err := parser.stateMachine(event); err != nil {
+		parser.lastError = err
+		return err
+	}
+
+	return nil
 }
 
 // Delete a parser object.
@@ -122,29 +339,6 @@ func (parser *Parser) GetCommentsHead() int {
 // When enabled, the scanner skips comment tokens for better performance.
 func (parser *Parser) SetSkipComments(skip bool) {
 	parser.skip_comments = skip
-}
-
-// Parse gets the next event.
-func (parser *Parser) Parse(event *Event) error {
-	// Erase the event object.
-	*event = Event{}
-
-	if parser.lastError != nil {
-		return parser.lastError
-	}
-
-	// No events after the end of the stream or error.
-	if parser.stream_end_produced || parser.state == PARSE_END_STATE {
-		return io.EOF
-	}
-
-	// Generate the next event.
-	if err := parser.stateMachine(event); err != nil {
-		parser.lastError = err
-		return err
-	}
-
-	return nil
 }
 
 // default_tag_directives defines the standard tag directives (! and !!)

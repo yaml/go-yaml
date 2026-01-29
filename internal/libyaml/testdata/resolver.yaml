@@ -3,20 +3,72 @@
 
 # Resolver stage test cases
 #
-# Purpose: Tests the Resolver's ability to infer YAML tags from scalar values
+# Purpose: Tests the Resolver's ability to assign default tags and infer types
 #
 # Test Types:
+#   resolve-default - Tests default tag assignment (quoted scalars, collections)
 #   resolve-infer - Tests inferring tags from plain scalar values
 #   resolve-preserve - Tests that tagged/styled scalars keep their tags
 #
 # Field Descriptions:
 #   name: Human-readable test name
 #   node: Input node to resolve
+#     kind: Node kind (Scalar, Sequence, Mapping)
 #     value: Scalar value
 #     tag: Pre-existing tag (for preserve tests)
 #     style: Node style (for preserve tests)
 #   want: Expected results after resolution
 #     tag: Expected tag after resolution
+
+- resolve-default:
+    name: Default single quoted scalar to str
+    node:
+      kind: Scalar
+      value: '123'
+      style: Single
+    want:
+      tag: '!!str'
+
+- resolve-default:
+    name: Default double quoted scalar to str
+    node:
+      kind: Scalar
+      value: 'hello'
+      style: Double
+    want:
+      tag: '!!str'
+
+- resolve-default:
+    name: Default literal scalar to str
+    node:
+      kind: Scalar
+      value: 'line 1\nline 2\n'
+      style: Literal
+    want:
+      tag: '!!str'
+
+- resolve-default:
+    name: Default folded scalar to str
+    node:
+      kind: Scalar
+      value: 'line 1 line 2\n'
+      style: Folded
+    want:
+      tag: '!!str'
+
+- resolve-default:
+    name: Default sequence to seq
+    node:
+      kind: Sequence
+    want:
+      tag: '!!seq'
+
+- resolve-default:
+    name: Default mapping to map
+    node:
+      kind: Mapping
+    want:
+      tag: '!!map'
 
 - resolve-infer:
     name: Infer int tag from decimal
