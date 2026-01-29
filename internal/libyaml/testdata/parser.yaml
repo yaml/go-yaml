@@ -342,3 +342,54 @@
     name: Error state
     yaml: |
       key: : invalid
+
+# Parser API tests (from api.yaml)
+- api-new:
+    name: New parser
+    with: NewParser
+    test:
+    - nil: [raw-buffer, false]
+    - cap: [raw-buffer, 512]  # input_raw_buffer_size
+    - nil: [buffer, false]
+    - cap: [buffer, 1536]  # input_buffer_size
+
+- api-method:
+    name: Parser set input string
+    with: NewParser
+    byte: true
+    call: [SetInputString, 'key: value']
+    test:
+    - eq: [input, 'key: value']
+    - eq: [input-pos, 0]
+    - nil: [read-handler, false]
+
+- api-method:
+    name: Parser set encoding
+    with: NewParser
+    call: [SetEncoding, UTF8_ENCODING]
+    test:
+    - eq: [encoding, UTF8_ENCODING]
+
+- api-panic:
+    name: Parser set input string twice
+    with: NewParser
+    byte: true
+    init: [SetInputString, first]
+    call: [SetInputString, second]
+    want: must set the input source only once
+
+- api-panic:
+    name: Parser set encoding twice
+    with: NewParser
+    init: [SetEncoding, UTF8_ENCODING]
+    call: [SetEncoding, UTF16LE_ENCODING]
+    want: must set the encoding only once
+
+- api-delete:
+    name: Parser delete
+    with: NewParser
+    byte: true
+    init: [SetInputString, test]
+    test:
+    - len: [input, 0]
+    - len: [buffer, 0]

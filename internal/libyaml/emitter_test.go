@@ -16,10 +16,15 @@ import (
 
 func TestEmitter(t *testing.T) {
 	RunTestCases(t, "emitter.yaml", map[string]TestHandler{
-		"emit":        RunEmitTest,
-		"emit-config": RunEmitTest,
-		"roundtrip":   RunRoundTripTest,
-		"emit-writer": runEmitWriterTest,
+		"emit":          RunEmitTest,
+		"emit-config":   RunEmitTest,
+		"roundtrip":     RunRoundTripTest,
+		"emit-writer":   runEmitWriterTest,
+		"api-new":       runAPINewTest,
+		"api-method":    runAPIMethodTest,
+		"api-panic":     runAPIPanicTest,
+		"api-delete":    runAPIDeleteTest,
+		"api-new-event": runAPINewEventTest,
 	})
 }
 
