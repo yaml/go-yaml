@@ -380,6 +380,18 @@ const (
 
 // Error types for YAML loading and dumping
 type (
+	// ParserError represents a YAML syntax error during parsing.
+	// Use errors.As to check for this error type and access location info.
+	ParserError = libyaml.ParserError
+
+	// ScannerError represents a YAML scanning/lexing error.
+	// Use errors.As to check for this error type and access location info.
+	ScannerError = libyaml.ScannerError
+
+	// Mark represents a position in the YAML input.
+	// Used by ParserError and ScannerError to indicate error location.
+	Mark = libyaml.Mark
+
 	// LoadError represents an error encountered while decoding a YAML document.
 	//
 	// It contains details about the location in the document where the error

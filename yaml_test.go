@@ -1101,6 +1101,50 @@ func TestLoadErrors_Unwrapping_Failures(t *testing.T) {
 	assert.ErrorIs(t, errTarget, errSentinel)
 }
 
+func TestErrorTypeDistinction(t *testing.T) {
+	// Parser error - flow sequence syntax issue
+	err := yaml.Unmarshal([]byte("foo: [unclosed"), &struct{}{})
+	if err == nil {
+		t.Fatal("expected error for syntax issue with unclosed bracket")
+	}
+	var pe yaml.ParserError
+	if !errors.As(err, &pe) {
+		t.Errorf("expected ParserError for flow sequence syntax issue, got: %T: %v", err, err)
+	} else if pe.Mark.Line != 1 {
+		t.Errorf("expected error on line 1, got line %d", pe.Mark.Line)
+	}
+
+	// Scanner error - invalid document structure
+	err = yaml.Unmarshal([]byte("a: 1\n=\nb: 2"), &struct{}{})
+	var se yaml.ScannerError
+	if !errors.As(err, &se) {
+		t.Errorf("expected ScannerError for invalid YAML syntax, got: %T: %v", err, err)
+	} else if se.Mark.Line != 3 {
+		t.Errorf("expected error on line 3, got line %d", se.Mark.Line)
+	}
+
+	// Load error - type mismatch
+	err = yaml.Unmarshal([]byte("foo: not-an-int"), &struct{ Foo int }{})
+	var le *yaml.LoadError
+	if !errors.As(err, &le) {
+		t.Errorf("expected LoadError for type mismatch, got: %T: %v", err, err)
+	} else if le.Line != 1 {
+		t.Errorf("expected error on line 1, got line %d", le.Line)
+	}
+
+	// Verify Mark type is exported and accessible
+	err = yaml.Unmarshal([]byte("foo: [unclosed"), &struct{}{})
+	var pe2 yaml.ParserError
+	if errors.As(err, &pe2) {
+		// Explicitly declare mark as yaml.Mark to verify type is exported
+		//nolint:staticcheck // intentional type declaration to test export
+		var mark yaml.Mark = pe2.Mark
+		if mark.Line < 1 {
+			t.Error("Mark should have valid line number")
+		}
+	}
+}
+
 type proxyTypeError struct{}
 
 func (v *proxyTypeError) UnmarshalYAML(node *yaml.Node) error {
