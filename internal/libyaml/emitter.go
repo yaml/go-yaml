@@ -14,6 +14,148 @@ import (
 	"io"
 )
 
+// WriteHandler is called when the [Emitter] needs to flush the accumulated
+// characters to the output.  The handler should write @a size bytes of the
+// @a buffer to the output.
+//
+// @param[in,out]   data        A pointer to an application data specified by
+//
+//	yamlEmitter.setOutput().
+//
+// @param[in]       buffer      The buffer with bytes to be written.
+// @param[in]       size        The size of the buffer.
+//
+// @returns On success, the handler should return @c 1.  If the handler failed,
+// the returned value should be @c 0.
+type WriteHandler func(emitter *Emitter, buffer []byte) error
+
+type EmitterState int
+
+// The emitter states.
+const (
+	// Expect STREAM-START.
+	EMIT_STREAM_START_STATE EmitterState = iota
+
+	EMIT_FIRST_DOCUMENT_START_STATE       // Expect the first DOCUMENT-START or STREAM-END.
+	EMIT_DOCUMENT_START_STATE             // Expect DOCUMENT-START or STREAM-END.
+	EMIT_DOCUMENT_CONTENT_STATE           // Expect the content of a document.
+	EMIT_DOCUMENT_END_STATE               // Expect DOCUMENT-END.
+	EMIT_FLOW_SEQUENCE_FIRST_ITEM_STATE   // Expect the first item of a flow sequence.
+	EMIT_FLOW_SEQUENCE_TRAIL_ITEM_STATE   // Expect the next item of a flow sequence, with the comma already written out
+	EMIT_FLOW_SEQUENCE_ITEM_STATE         // Expect an item of a flow sequence.
+	EMIT_FLOW_MAPPING_FIRST_KEY_STATE     // Expect the first key of a flow mapping.
+	EMIT_FLOW_MAPPING_TRAIL_KEY_STATE     // Expect the next key of a flow mapping, with the comma already written out
+	EMIT_FLOW_MAPPING_KEY_STATE           // Expect a key of a flow mapping.
+	EMIT_FLOW_MAPPING_SIMPLE_VALUE_STATE  // Expect a value for a simple key of a flow mapping.
+	EMIT_FLOW_MAPPING_VALUE_STATE         // Expect a value of a flow mapping.
+	EMIT_BLOCK_SEQUENCE_FIRST_ITEM_STATE  // Expect the first item of a block sequence.
+	EMIT_BLOCK_SEQUENCE_ITEM_STATE        // Expect an item of a block sequence.
+	EMIT_BLOCK_MAPPING_FIRST_KEY_STATE    // Expect the first key of a block mapping.
+	EMIT_BLOCK_MAPPING_KEY_STATE          // Expect the key of a block mapping.
+	EMIT_BLOCK_MAPPING_SIMPLE_VALUE_STATE // Expect a value for a simple key of a block mapping.
+	EMIT_BLOCK_MAPPING_VALUE_STATE        // Expect a value of a block mapping.
+	EMIT_END_STATE                        // Expect nothing.
+)
+
+// Emitter holds all information about the current state of the emitter.
+type Emitter struct {
+	// Writer stuff
+
+	write_handler WriteHandler // Write handler.
+
+	output_buffer *[]byte   // String output data.
+	output_writer io.Writer // File output data.
+
+	buffer     []byte // The working buffer.
+	buffer_pos int    // The current position of the buffer.
+
+	encoding Encoding // The stream encoding.
+
+	// Emitter stuff
+
+	canonical       bool       // If the output is in the canonical style?
+	BestIndent      int        // The number of indentation spaces.
+	best_width      int        // The preferred width of the output lines.
+	unicode         bool       // Allow unescaped non-ASCII characters?
+	line_break      LineBreak  // The preferred line break.
+	quotePreference QuoteStyle // Preferred quote style when quoting is required.
+
+	state  EmitterState   // The current emitter state.
+	states []EmitterState // The stack of states.
+
+	events      []Event // The event queue.
+	events_head int     // The head of the event queue.
+
+	indents []int // The stack of indentation levels.
+
+	tag_directives []TagDirective // The list of tag directives.
+
+	indent int // The current indentation level.
+
+	CompactSequenceIndent bool // Is '- ' is considered part of the indentation for sequence elements?
+
+	flow_level int // The current flow level.
+
+	root_context       bool // Is it the document root context?
+	sequence_context   bool // Is it a sequence context?
+	mapping_context    bool // Is it a mapping context?
+	simple_key_context bool // Is it a simple mapping key context?
+
+	line       int  // The current line.
+	column     int  // The current column.
+	whitespace bool // If the last character was a whitespace?
+	indention  bool // If the last character was an indentation character (' ', '-', '?', ':')?
+	OpenEnded  bool // If an explicit document end is required?
+
+	space_above bool // Is there's an empty line above?
+	foot_indent int  // The indent used to write the foot comment above, or -1 if none.
+
+	// Anchor analysis.
+	anchor_data struct {
+		anchor []byte // The anchor value.
+		alias  bool   // Is it an alias?
+	}
+
+	// Tag analysis.
+	tag_data struct {
+		handle []byte // The tag handle.
+		suffix []byte // The tag suffix.
+	}
+
+	// Scalar analysis.
+	scalar_data struct {
+		value                 []byte      // The scalar value.
+		multiline             bool        // Does the scalar contain line breaks?
+		flow_plain_allowed    bool        // Can the scalar be expressed in the flow plain style?
+		block_plain_allowed   bool        // Can the scalar be expressed in the block plain style?
+		single_quoted_allowed bool        // Can the scalar be expressed in the single quoted style?
+		block_allowed         bool        // Can the scalar be expressed in the literal or folded styles?
+		style                 ScalarStyle // The output style.
+	}
+
+	// Comments
+	HeadComment []byte
+	LineComment []byte
+	FootComment []byte
+	TailComment []byte
+
+	key_line_comment []byte
+
+	// Representer stuff
+
+	opened bool // If the stream was already opened?
+	closed bool // If the stream was already closed?
+
+	// The information associated with the document nodes.
+	anchors *struct {
+		references int  // The number of references.
+		anchor     int  // The anchor id.
+		serialized bool // If the node has been emitted?
+	}
+
+	last_anchor_id int // The last assigned anchor id.
+}
+
 // NewEmitter creates a new emitter object.
 func NewEmitter() Emitter {
 	return Emitter{
@@ -22,6 +164,23 @@ func NewEmitter() Emitter {
 		events:     make([]Event, 0, initial_queue_size),
 		best_width: -1,
 	}
+}
+
+// Emit an event.
+func (emitter *Emitter) Emit(event *Event) error {
+	emitter.events = append(emitter.events, *event)
+	for !emitter.needMoreEvents() {
+		event := &emitter.events[emitter.events_head]
+		if err := emitter.analyzeEvent(event); err != nil {
+			return err
+		}
+		if err := emitter.stateMachine(event); err != nil {
+			return err
+		}
+		event.Delete()
+		emitter.events_head++
+	}
+	return nil
 }
 
 // Delete an emitter object.
@@ -97,23 +256,6 @@ func (emitter *Emitter) SetUnicode(unicode bool) {
 // SetLineBreak sets the preferred line break character.
 func (emitter *Emitter) SetLineBreak(line_break LineBreak) {
 	emitter.line_break = line_break
-}
-
-// Emit an event.
-func (emitter *Emitter) Emit(event *Event) error {
-	emitter.events = append(emitter.events, *event)
-	for !emitter.needMoreEvents() {
-		event := &emitter.events[emitter.events_head]
-		if err := emitter.analyzeEvent(event); err != nil {
-			return err
-		}
-		if err := emitter.stateMachine(event); err != nil {
-			return err
-		}
-		event.Delete()
-		emitter.events_head++
-	}
-	return nil
 }
 
 // State dispatcher.

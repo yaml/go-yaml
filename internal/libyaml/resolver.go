@@ -34,9 +34,12 @@ func NewResolver(opts *Options) *Resolver {
 	return &Resolver{opts: opts}
 }
 
-// Resolve walks the node tree and resolves tags for untagged scalars.
-// This is called after composition to determine implicit types (int, float,
-// bool, null, timestamp) from scalar values.
+// Resolve walks the node tree and resolves tags for untagged nodes.
+// This is called after composition to:
+// - Default quoted scalars to !!str
+// - Default sequences to !!seq
+// - Default mappings to !!map
+// - Resolve plain scalars to implicit types (int, float, bool, null, timestamp)
 func (r *Resolver) Resolve(n *Node) {
 	if n == nil {
 		return
@@ -44,17 +47,39 @@ func (r *Resolver) Resolve(n *Node) {
 
 	switch n.Kind {
 	case ScalarNode:
-		// Only resolve if tag is empty (not explicitly tagged)
 		if n.Tag == "" {
-			n.Tag, _ = resolve("", n.Value)
+			if n.Style&(SingleQuotedStyle|DoubleQuotedStyle|LiteralStyle|FoldedStyle) != 0 {
+				// Quoted scalars default to !!str without value resolution
+				n.Tag = strTag
+			} else {
+				// Plain scalars: resolve type from value
+				n.Tag, _ = resolve("", n.Value)
+			}
 		}
-	case DocumentNode, SequenceNode, MappingNode:
-		// Recursively resolve children
+
+	case SequenceNode:
+		if n.Tag == "" {
+			n.Tag = seqTag
+		}
 		for _, child := range n.Content {
 			r.Resolve(child)
 		}
+
+	case MappingNode:
+		if n.Tag == "" {
+			n.Tag = mapTag
+		}
+		for _, child := range n.Content {
+			r.Resolve(child)
+		}
+
+	case DocumentNode:
+		for _, child := range n.Content {
+			r.Resolve(child)
+		}
+
 	case AliasNode:
-		// Alias nodes point to already-resolved nodes, nothing to do
+		// Alias nodes point to already-resolved nodes
 	}
 }
 
