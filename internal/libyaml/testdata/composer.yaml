@@ -15,7 +15,7 @@
 #   from: Input YAML text to parse (literal block scalar)
 #   want: Expected node structure after parsing
 #     kind: Expected node kind (Scalar, Sequence, Mapping)
-#     tag: Expected YAML tag (default tags applied by composer)
+#     tag: Expected YAML tag (only explicit tags; defaults applied by resolver)
 #     value: Expected scalar value (for Scalar nodes)
 #     style: Expected style flags
 #     content: Expected child nodes (array of node objects)
@@ -42,7 +42,6 @@
       '123'
     want:
       kind: Scalar
-      tag: '!!str'
       value: '123'
       style: Single
 
@@ -52,7 +51,6 @@
       "hello"
     want:
       kind: Scalar
-      tag: '!!str'
       value: hello
       style: Double
 
@@ -64,7 +62,6 @@
         line 2
     want:
       kind: Scalar
-      tag: '!!str'
       value: "line 1\nline 2\n"
       style: Literal
 
@@ -76,7 +73,6 @@
         line 2
     want:
       kind: Scalar
-      tag: '!!str'
       value: "line 1 line 2\n"
       style: Folded
 
@@ -88,7 +84,6 @@
       - c
     want:
       kind: Sequence
-      tag: '!!seq'
       content:
       - kind: Scalar
         value: a
@@ -104,7 +99,6 @@
       key2: value2
     want:
       kind: Mapping
-      tag: '!!map'
       content:
       - kind: Scalar
         value: key1
@@ -121,7 +115,6 @@
       [a, b, c]
     want:
       kind: Sequence
-      tag: '!!seq'
       style: Flow
       content:
       - kind: Scalar
@@ -137,7 +130,6 @@
       {key: value}
     want:
       kind: Mapping
-      tag: '!!map'
       style: Flow
       content:
       - kind: Scalar
@@ -152,12 +144,10 @@
         inner: value
     want:
       kind: Mapping
-      tag: '!!map'
       content:
       - kind: Scalar
         value: outer
       - kind: Mapping
-        tag: '!!map'
         content:
         - kind: Scalar
           value: inner

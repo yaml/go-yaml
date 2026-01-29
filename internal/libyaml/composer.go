@@ -103,17 +103,15 @@ func (c *Composer) Compose() *Node {
 
 // node creates a new node with the given kind, tag, and value, and attaches
 // position and comment information from the current event.
-func (c *Composer) node(kind Kind, defaultTag, tag, value string) *Node {
+func (c *Composer) node(kind Kind, tag, value string) *Node {
 	var style Style
 	if tag != "" && tag != "!" {
 		// Normalize tag to short form (e.g., tag:yaml.org,2002:str -> !!str)
 		tag = shortTag(tag)
 		style = TaggedStyle
-	} else if defaultTag != "" {
-		tag = defaultTag
 	}
-	// Note: Scalars without explicit tags are left unresolved.
-	// Resolution happens in a separate stage via ResolveNode().
+	// Note: Nodes without explicit tags are left with empty tags.
+	// Tag defaulting happens in a separate stage via Resolver.
 	n := &Node{
 		Kind:  kind,
 		Tag:   tag,
@@ -133,7 +131,7 @@ func (c *Composer) node(kind Kind, defaultTag, tag, value string) *Node {
 // document composes a document node by parsing its content between
 // DOCUMENT_START and DOCUMENT_END events.
 func (c *Composer) document() *Node {
-	n := c.node(DocumentNode, "", "", "")
+	n := c.node(DocumentNode, "", "")
 	c.doc = n
 	c.expect(DOCUMENT_START_EVENT)
 	c.parseChild(n)
@@ -165,7 +163,7 @@ func (c *Composer) createStreamNode() *Node {
 
 // alias composes an alias node by resolving the referenced anchor.
 func (c *Composer) alias() *Node {
-	n := c.node(AliasNode, "", "", string(c.event.Anchor))
+	n := c.node(AliasNode, "", string(c.event.Anchor))
 	n.Alias = c.anchors[n.Value]
 	if n.Alias == nil {
 		msg := fmt.Sprintf("unknown anchor '%s' referenced", n.Value)
@@ -197,11 +195,7 @@ func (c *Composer) scalar() *Node {
 	}
 	nodeValue := string(c.event.Value)
 	nodeTag := string(c.event.Tag)
-	var defaultTag string
-	if nodeStyle != 0 {
-		defaultTag = strTag
-	}
-	n := c.node(ScalarNode, defaultTag, nodeTag, nodeValue)
+	n := c.node(ScalarNode, nodeTag, nodeValue)
 	n.Style |= nodeStyle
 	c.anchor(n, c.event.Anchor)
 	c.expect(SCALAR_EVENT)
@@ -211,7 +205,7 @@ func (c *Composer) scalar() *Node {
 // sequence composes a sequence node by parsing elements between
 // SEQUENCE_START and SEQUENCE_END events.
 func (c *Composer) sequence() *Node {
-	n := c.node(SequenceNode, seqTag, string(c.event.Tag), "")
+	n := c.node(SequenceNode, string(c.event.Tag), "")
 	if c.event.SequenceStyle()&FLOW_SEQUENCE_STYLE != 0 {
 		n.Style |= FlowStyle
 	}
@@ -229,7 +223,7 @@ func (c *Composer) sequence() *Node {
 // mapping composes a mapping node by parsing key-value pairs between
 // MAPPING_START and MAPPING_END events, handling foot comments appropriately.
 func (c *Composer) mapping() *Node {
-	n := c.node(MappingNode, mapTag, string(c.event.Tag), "")
+	n := c.node(MappingNode, string(c.event.Tag), "")
 	block := true
 	if c.event.MappingStyle()&FLOW_MAPPING_STYLE != 0 {
 		block = false
