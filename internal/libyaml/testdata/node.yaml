@@ -1,0 +1,324 @@
+# Tests for node.go functions
+# Testing isZero(), SetString(), shortTag(), longTag(), and Node methods
+
+# isZero function tests
+- name: isZero with empty string
+  type: isZero
+  from: ""
+  want: true
+
+- name: isZero with non-empty string
+  type: isZero
+  from: "hello"
+  want: false
+
+- name: isZero with zero int
+  type: isZero
+  from: 0
+  want: true
+
+- name: isZero with non-zero int
+  type: isZero
+  from: 42
+  want: false
+
+- name: isZero with zero float
+  type: isZero
+  from: 0.0
+  want: true
+
+- name: isZero with non-zero float
+  type: isZero
+  from: 3.14
+  want: false
+
+- name: isZero with false bool
+  type: isZero
+  from: false
+  want: true
+
+- name: isZero with true bool
+  type: isZero
+  from: true
+  want: false
+
+- name: isZero with nil slice
+  type: isZero
+  from: null
+  want: true
+  also: slice
+
+- name: isZero with empty slice
+  type: isZero
+  from: []
+  want: true
+
+- name: isZero with non-empty slice
+  type: isZero
+  from: [1, 2, 3]
+  want: false
+
+- name: isZero with nil map
+  type: isZero
+  from: null
+  want: true
+  also: map
+
+- name: isZero with empty map
+  type: isZero
+  from: {}
+  want: true
+
+- name: isZero with non-empty map
+  type: isZero
+  from: {key: value}
+  want: false
+
+# SetString method tests
+- name: SetString with simple ASCII string
+  type: set-string
+  from: "hello world"
+  want:
+    kind: ScalarNode
+    tag: "!!str"
+    value: "hello world"
+    style: plain
+
+- name: SetString with valid UTF-8 string
+  type: set-string
+  from: "hello 世界"
+  want:
+    kind: ScalarNode
+    tag: "!!str"
+    value: "hello 世界"
+    style: plain
+
+- name: SetString with multiline string
+  type: set-string
+  from: "line1\nline2\nline3"
+  want:
+    kind: ScalarNode
+    tag: "!!str"
+    value: "line1\nline2\nline3"
+    style: literal
+
+- name: SetString with multiline containing non-whitespace
+  type: set-string
+  from: "a\nb"
+  want:
+    kind: ScalarNode
+    tag: "!!str"
+    value: "a\nb"
+    style: literal
+
+- name: SetString with short newline string
+  type: set-string
+  from: "a"
+  want:
+    kind: ScalarNode
+    tag: "!!str"
+    value: "a"
+    style: plain
+
+- name: SetString with only whitespace and newline
+  type: set-string
+  from: " \n "
+  want:
+    kind: ScalarNode
+    tag: "!!str"
+    value: " \n "
+    style: plain
+
+- name: SetString with empty string
+  type: set-string
+  from: ""
+  want:
+    kind: ScalarNode
+    tag: "!!str"
+    value: ""
+    style: plain
+
+- name: SetString with invalid UTF-8
+  type: set-string-binary
+  input_hex: "fffe"
+  want:
+    kind: ScalarNode
+    tag: "!!binary"
+    style: plain
+
+# shortTag and longTag tests
+- name: shortTag for standard str tag
+  type: short-tag
+  node:
+    kind: Scalar
+    tag: "tag:yaml.org,2002:str"
+  want: "!!str"
+
+- name: shortTag for standard int tag
+  type: short-tag
+  node:
+    kind: Scalar
+    tag: "tag:yaml.org,2002:int"
+  want: "!!int"
+
+- name: shortTag for standard seq tag
+  type: short-tag
+  node:
+    kind: Sequence
+    tag: "tag:yaml.org,2002:seq"
+  want: "!!seq"
+
+- name: shortTag for standard map tag
+  type: short-tag
+  node:
+    kind: Mapping
+    tag: "tag:yaml.org,2002:map"
+  want: "!!map"
+
+- name: shortTag for custom long tag
+  type: short-tag
+  node:
+    kind: Scalar
+    tag: "tag:yaml.org,2002:custom"
+  want: "!!custom"
+
+- name: shortTag for already short tag
+  type: short-tag
+  node:
+    kind: Scalar
+    tag: "!!str"
+  want: "!!str"
+
+- name: shortTag for custom short tag
+  type: short-tag
+  node:
+    kind: Scalar
+    tag: "!mytag"
+  want: "!mytag"
+
+- name: shortTag for empty tag on mapping
+  type: short-tag
+  node:
+    kind: Mapping
+    tag: ""
+  want: "!!map"
+
+- name: shortTag for empty tag on sequence
+  type: short-tag
+  node:
+    kind: Sequence
+    tag: ""
+  want: "!!seq"
+
+- name: shortTag for empty tag on scalar
+  type: short-tag
+  node:
+    kind: Scalar
+    tag: ""
+  want: "!!str"
+
+- name: shortTag for quoted scalar
+  type: short-tag
+  node:
+    kind: Scalar
+    tag: ""
+    style: DoubleQuoted
+  want: "!!str"
+
+- name: longTag for standard str tag
+  type: long-tag
+  node:
+    kind: Scalar
+    tag: "!!str"
+  want: "tag:yaml.org,2002:str"
+
+- name: longTag for standard int tag
+  type: long-tag
+  node:
+    kind: Scalar
+    tag: "!!int"
+  want: "tag:yaml.org,2002:int"
+
+- name: longTag for custom short tag
+  type: long-tag
+  node:
+    kind: Scalar
+    tag: "!!custom"
+  want: "tag:yaml.org,2002:custom"
+
+- name: longTag for already long tag
+  type: long-tag
+  node:
+    kind: Scalar
+    tag: "tag:yaml.org,2002:str"
+  want: "tag:yaml.org,2002:str"
+
+- name: longTag for non-standard tag
+  type: long-tag
+  node:
+    kind: Scalar
+    tag: "!mytag"
+  want: "!mytag"
+
+# Node.IsZero tests
+- name: Node.IsZero on zero node
+  type: node-is-zero
+  node:
+    kind: ""
+  want: true
+
+- name: Node.IsZero on node with kind
+  type: node-is-zero
+  node:
+    kind: Scalar
+  want: false
+
+- name: Node.IsZero on node with tag
+  type: node-is-zero
+  node:
+    kind: ""
+    tag: "!!str"
+  want: false
+
+- name: Node.IsZero on node with value
+  type: node-is-zero
+  node:
+    kind: ""
+    value: "test"
+  want: false
+
+# shouldUseLiteralStyle helper tests
+- name: shouldUseLiteralStyle with no newline
+  type: should-literal
+  from: "hello world"
+  want: false
+
+- name: shouldUseLiteralStyle with newline and content
+  type: should-literal
+  from: "hello\nworld"
+  want: true
+
+- name: shouldUseLiteralStyle with single char
+  type: should-literal
+  from: "a"
+  want: false
+
+- name: shouldUseLiteralStyle with newline but length < 2
+  type: should-literal
+  from: "\n"
+  want: false
+
+- name: shouldUseLiteralStyle with only whitespace
+  type: should-literal
+  from: "  \n  \n  "
+  want: false
+
+- name: shouldUseLiteralStyle with whitespace and one char
+  type: should-literal
+  from: " a\n "
+  want: true
+
+- name: shouldUseLiteralStyle with empty string
+  type: should-literal
+  from: ""
+  want: false
