@@ -1387,6 +1387,58 @@ func TestLegacyUnmarshalerRetry(t *testing.T) {
 	assert.DeepEqual(t, legacySliceUnmarshaler([]int{1}), su)
 }
 
+// nodeKindRecorder records the Kind of the node passed to UnmarshalYAML
+type nodeKindRecorder struct {
+	Kind libyaml.Kind
+	Data any
+}
+
+func (n *nodeKindRecorder) UnmarshalYAML(node *yaml.Node) error {
+	n.Kind = node.Kind
+	return node.Decode(&n.Data)
+}
+
+// TestUnmarshalerNodeKind verifies that custom unmarshalers receive the
+// correct node kind (SequenceNode, ScalarNode, MappingNode) rather than
+// DocumentNode. This is a regression test for issue #274.
+func TestUnmarshalerNodeKind(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		wantKind libyaml.Kind
+		wantData any
+	}{
+		{
+			name:     "sequence",
+			input:    "[1, 2, 3]",
+			wantKind: libyaml.SequenceNode,
+			wantData: []any{1, 2, 3},
+		},
+		{
+			name:     "mapping",
+			input:    "foo: bar",
+			wantKind: libyaml.MappingNode,
+			wantData: map[string]any{"foo": "bar"},
+		},
+		{
+			name:     "scalar",
+			input:    "hello",
+			wantKind: libyaml.ScalarNode,
+			wantData: "hello",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var recorder nodeKindRecorder
+			err := yaml.Unmarshal([]byte(tt.input), &recorder)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantKind, recorder.Kind)
+			assert.DeepEqual(t, tt.wantData, recorder.Data)
+		})
+	}
+}
+
 // From http://yaml.org/type/merge.html
 var mergeTests = `
 anchors:

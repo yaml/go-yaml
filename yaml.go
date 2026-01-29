@@ -585,6 +585,10 @@ func Unmarshal(in []byte, out any) (err error) {
 				Err: errors.New("yaml: no documents in stream"),
 			}}}
 		}
+		// Unwrap DocumentNode to get the actual content
+		if node.Kind == libyaml.DocumentNode && len(node.Content) == 1 {
+			node = node.Content[0]
+		}
 		return u.UnmarshalYAML(node)
 	}
 	// Normal path
