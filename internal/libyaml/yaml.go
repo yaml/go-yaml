@@ -38,6 +38,7 @@ func (t *TagDirective) GetHandle() string { return string(t.handle) }
 // GetPrefix returns the tag prefix.
 func (t *TagDirective) GetPrefix() string { return string(t.prefix) }
 
+// Encoding represents the character encoding of a YAML stream.
 type Encoding int
 
 // The stream encoding.
@@ -50,6 +51,7 @@ const (
 	UTF16BE_ENCODING // The UTF-16-BE encoding with BOM.
 )
 
+// LineBreak represents the line break style used in YAML output.
 type LineBreak int
 
 // Line break types.
@@ -62,6 +64,7 @@ const (
 	CRLN_BREAK // Use CR LN for line breaks (DOS style).
 )
 
+// QuoteStyle represents the preferred quote style for scalar values.
 type QuoteStyle int
 
 // Quote style types for required quoting.
@@ -81,6 +84,7 @@ func (q QuoteStyle) ScalarStyle() ScalarStyle {
 	return SINGLE_QUOTED_SCALAR_STYLE
 }
 
+// ErrorType represents the category of error that occurred during processing.
 type ErrorType int
 
 // Many bad things could happen with the parser and emitter.
@@ -104,6 +108,7 @@ type Mark struct {
 	Column int // The position column (0-indexed internally, displayed as 1-indexed).
 }
 
+// String returns a human-readable string representation of the position mark.
 func (m Mark) String() string {
 	var builder strings.Builder
 	if m.Line == 0 {
@@ -120,8 +125,10 @@ func (m Mark) String() string {
 
 // Node Styles
 
+// styleInt is the underlying type for style constants.
 type styleInt int8
 
+// ScalarStyle represents the formatting style of a scalar value.
 type ScalarStyle styleInt
 
 // Scalar styles.
@@ -154,6 +161,7 @@ func (style ScalarStyle) String() string {
 	}
 }
 
+// SequenceStyle represents the formatting style of a sequence node.
 type SequenceStyle styleInt
 
 // Sequence styles.
@@ -165,6 +173,7 @@ const (
 	FLOW_SEQUENCE_STYLE  // The flow sequence style.
 )
 
+// MappingStyle represents the formatting style of a mapping node.
 type MappingStyle styleInt
 
 // Mapping styles.
@@ -178,6 +187,7 @@ const (
 
 // Tokens
 
+// TokenType represents the type of a scanned token.
 type TokenType int
 
 // Token types.
@@ -214,6 +224,7 @@ const (
 	COMMENT_TOKEN // A COMMENT token.
 )
 
+// String returns a string representation of the token type.
 func (tt TokenType) String() string {
 	switch tt {
 	case NO_TOKEN:
@@ -296,6 +307,7 @@ type Token struct {
 
 // Events
 
+// EventType represents the type of a parsing or emitting event.
 type EventType int8
 
 // Event types.
@@ -316,6 +328,7 @@ const (
 	TAIL_COMMENT_EVENT
 )
 
+// eventStrings maps EventType constants to their string representations.
 var eventStrings = []string{
 	NO_EVENT:             "none",
 	STREAM_START_EVENT:   "stream start",
@@ -331,6 +344,7 @@ var eventStrings = []string{
 	TAIL_COMMENT_EVENT:   "tail comment",
 }
 
+// String returns a string representation of the event type.
 func (e EventType) String() string {
 	if e < 0 || int(e) >= len(eventStrings) {
 		return fmt.Sprintf("unknown event %d", e)
@@ -381,9 +395,14 @@ type Event struct {
 	Style Style
 }
 
-func (e *Event) ScalarStyle() ScalarStyle     { return ScalarStyle(e.Style) }
+// ScalarStyle returns the style of a scalar event.
+func (e *Event) ScalarStyle() ScalarStyle { return ScalarStyle(e.Style) }
+
+// SequenceStyle returns the style of a sequence event.
 func (e *Event) SequenceStyle() SequenceStyle { return SequenceStyle(e.Style) }
-func (e *Event) MappingStyle() MappingStyle   { return MappingStyle(e.Style) }
+
+// MappingStyle returns the style of a mapping event.
+func (e *Event) MappingStyle() MappingStyle { return MappingStyle(e.Style) }
 
 // GetEncoding returns the stream encoding (for STREAM_START_EVENT).
 func (e *Event) GetEncoding() Encoding { return e.encoding }
@@ -395,7 +414,6 @@ func (e *Event) GetVersionDirective() *VersionDirective { return e.versionDirect
 func (e *Event) GetTagDirectives() []TagDirective { return e.tagDirectives }
 
 // Nodes
-
 const (
 	NULL_TAG      = "tag:yaml.org,2002:null"      // The tag !!null with the only possible value: null.
 	BOOL_TAG      = "tag:yaml.org,2002:bool"      // The tag !!bool with the values: true and false.

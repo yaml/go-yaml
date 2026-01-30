@@ -20,11 +20,13 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
+// version is the current version of the go-yaml CLI tool.
 const version = "4.0.0.1"
 
 // stringSlice is a custom flag type for collecting multiple -o flags
 type stringSlice []string
 
+// String returns the string representation of the slice for flag.Value interface.
 func (s *stringSlice) String() string {
 	if s == nil {
 		return ""
@@ -32,6 +34,7 @@ func (s *stringSlice) String() string {
 	return fmt.Sprint(*s)
 }
 
+// Set appends a value to the slice for flag.Value interface.
 func (s *stringSlice) Set(value string) error {
 	// Special case: empty value or explicit help request
 	if value == "" || value == "help" || value == "?" {

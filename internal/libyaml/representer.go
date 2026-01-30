@@ -403,7 +403,10 @@ func (r *Representer) nodev(in reflect.Value) *Node {
 	return in.Interface().(*Node)
 }
 
-func (l keyList) Len() int      { return len(l) }
+// Len returns the number of keys in the list.
+func (l keyList) Len() int { return len(l) }
+
+// Swap exchanges the positions of two keys in the list.
 func (l keyList) Swap(i, j int) { l[i], l[j] = l[j], l[i] }
 
 // Less implements a natural sort order for map keys: numeric values sort

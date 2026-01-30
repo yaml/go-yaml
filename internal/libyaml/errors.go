@@ -12,6 +12,7 @@ import (
 	"strings"
 )
 
+// MarkedYAMLError represents a YAML error with position information.
 type MarkedYAMLError struct {
 	// optional context
 	ContextMark    Mark
@@ -21,6 +22,7 @@ type MarkedYAMLError struct {
 	Message string
 }
 
+// Error returns the error message with position information.
 func (e MarkedYAMLError) Error() string {
 	var builder strings.Builder
 	builder.WriteString("yaml: ")
@@ -34,48 +36,60 @@ func (e MarkedYAMLError) Error() string {
 	return builder.String()
 }
 
+// ParserError represents an error that occurred during parsing.
 type ParserError MarkedYAMLError
 
+// Error returns the error message.
 func (e ParserError) Error() string {
 	return MarkedYAMLError(e).Error()
 }
 
+// ScannerError represents an error that occurred during scanning.
 type ScannerError MarkedYAMLError
 
+// Error returns the error message.
 func (e ScannerError) Error() string {
 	return MarkedYAMLError(e).Error()
 }
 
+// ReaderError represents an error that occurred while reading input.
 type ReaderError struct {
 	Offset int
 	Value  int
 	Err    error
 }
 
+// Error returns the error message with offset information.
 func (e ReaderError) Error() string {
 	return fmt.Sprintf("yaml: offset %d: %s", e.Offset, e.Err)
 }
 
+// Unwrap returns the underlying error.
 func (e ReaderError) Unwrap() error {
 	return e.Err
 }
 
+// EmitterError represents an error that occurred during emitting.
 type EmitterError struct {
 	Message string
 }
 
+// Error returns the error message.
 func (e EmitterError) Error() string {
 	return fmt.Sprintf("yaml: %s", e.Message)
 }
 
+// WriterError represents an error that occurred while writing output.
 type WriterError struct {
 	Err error
 }
 
+// Error returns the error message.
 func (e WriterError) Error() string {
 	return fmt.Sprintf("yaml: %s", e.Err)
 }
 
+// Unwrap returns the underlying error.
 func (e WriterError) Unwrap() error {
 	return e.Err
 }
@@ -88,10 +102,12 @@ type ConstructError struct {
 	Column int
 }
 
+// Error returns the error message with line number.
 func (e *ConstructError) Error() string {
 	return fmt.Sprintf("line %d: %s", e.Line, e.Err.Error())
 }
 
+// Unwrap returns the underlying error.
 func (e *ConstructError) Unwrap() error {
 	return e.Err
 }
@@ -101,6 +117,7 @@ type LoadErrors struct {
 	Errors []*ConstructError
 }
 
+// Error returns a formatted error message listing all construct errors.
 func (e *LoadErrors) Error() string {
 	var b strings.Builder
 	b.WriteString("yaml: construct errors:")
@@ -157,6 +174,7 @@ type TypeError struct {
 	Errors []string
 }
 
+// Error returns a formatted error message listing all unmarshal errors.
 func (e *TypeError) Error() string {
 	return fmt.Sprintf("yaml: unmarshal errors:\n  %s", strings.Join(e.Errors, "\n  "))
 }
@@ -166,6 +184,7 @@ type YAMLError struct {
 	Err error
 }
 
+// Error returns the error message.
 func (e *YAMLError) Error() string {
 	return e.Err.Error()
 }

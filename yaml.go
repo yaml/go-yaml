@@ -76,6 +76,7 @@ var V4 = Options(
 // Re-exported from internal/libyaml.
 type Option = libyaml.Option
 
+// Re-exported option functions from internal/libyaml.
 var (
 	// WithIndent sets indentation spaces (2-9).
 	// See internal/libyaml.WithIndent.
@@ -300,6 +301,9 @@ const (
 
 // The code in this section was copied from mgo/bson.
 
+// structMap caches struct reflection information for efficient unmarshaling.
+// fieldMapMutex protects access to structMap.
+// unmarshalerType holds the reflect.Type for the Unmarshaler interface.
 var (
 	structMap       = make(map[reflect.Type]*structInfo)
 	fieldMapMutex   sync.RWMutex
@@ -321,6 +325,7 @@ type structInfo struct {
 	InlineUnmarshalers [][]int
 }
 
+// fieldInfo holds information about a single struct field.
 type fieldInfo struct {
 	Key       string
 	Num       int
@@ -334,6 +339,7 @@ type fieldInfo struct {
 	Inline []int
 }
 
+// getStructInfo retrieves or builds struct reflection metadata for marshaling/unmarshaling.
 func getStructInfo(st reflect.Type) (*structInfo, error) {
 	fieldMapMutex.RLock()
 	sinfo, found := structMap[st]
@@ -459,8 +465,10 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 	return sinfo, nil
 }
 
+// noWriter is a placeholder io.Writer for contexts where no output is needed.
 var noWriter io.Writer
 
+// handleErr recovers from panics caused by yaml errors.
 func handleErr(err *error) {
 	if v := recover(); v != nil {
 		if e, ok := v.(*libyaml.YAMLError); ok {

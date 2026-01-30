@@ -358,7 +358,7 @@ func (parser *Parser) updateBuffer(length int) error {
 	return nil
 }
 
-// Byte order marks.
+// Byte order marks for UTF-8, UTF-16LE, and UTF-16BE encodings.
 const (
 	bom_UTF8    = "\xef\xbb\xbf"
 	bom_UTF16LE = "\xff\xfe"
