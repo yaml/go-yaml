@@ -17,6 +17,7 @@ import (
 // EventType represents the type of a YAML event
 type EventType string
 
+// Event type constants for CLI output formatting.
 const (
 	EventDocumentStart EventType = "DOCUMENT-START"
 	EventDocumentEnd   EventType = "DOCUMENT-END"

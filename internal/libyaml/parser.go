@@ -79,6 +79,7 @@ type SimpleKey struct {
 // ParserState represents the state of the parser.
 type ParserState int
 
+// Parser state constants define the different states the parser can be in.
 const (
 	PARSE_STREAM_START_STATE ParserState = iota
 
@@ -105,6 +106,7 @@ const (
 	PARSE_END_STATE                               // Expect nothing.
 )
 
+// String returns a string representation of the parser state.
 func (ps ParserState) String() string {
 	switch ps {
 	case PARSE_STREAM_START_STATE:
@@ -162,6 +164,7 @@ type AliasData struct {
 	mark   Mark   // The anchor mark.
 }
 
+// Comment holds information about a comment in the YAML stream.
 type Comment struct {
 	ScanMark  Mark // Position where scanning for comments started
 	TokenMark Mark // Position after which tokens will be associated with this comment

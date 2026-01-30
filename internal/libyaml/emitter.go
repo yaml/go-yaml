@@ -29,6 +29,7 @@ import (
 // the returned value should be @c 0.
 type WriteHandler func(emitter *Emitter, buffer []byte) error
 
+// EmitterState represents the current state of the emitter.
 type EmitterState int
 
 // The emitter states.

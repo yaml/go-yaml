@@ -28,13 +28,17 @@ const (
 	mergeTag     = "!!merge"
 )
 
+// longTagPrefix is the standard YAML tag prefix for core types.
 const longTagPrefix = "tag:yaml.org,2002:"
 
+// longTags maps short tags to their long form representations.
+// shortTags maps long tags to their short form representations.
 var (
 	longTags  = make(map[string]string)
 	shortTags = make(map[string]string)
 )
 
+// init initializes the tag conversion maps.
 func init() {
 	for _, stag := range []string{nullTag, boolTag, strTag, intTag, floatTag, timestampTag, seqTag, mapTag, binaryTag, mergeTag} {
 		ltag := longTag(stag)
@@ -43,6 +47,7 @@ func init() {
 	}
 }
 
+// shortTag converts a long-form tag to its short form (e.g., "tag:yaml.org,2002:str" to "!!str").
 func shortTag(tag string) string {
 	if strings.HasPrefix(tag, longTagPrefix) {
 		if stag, ok := shortTags[tag]; ok {
@@ -53,6 +58,7 @@ func shortTag(tag string) string {
 	return tag
 }
 
+// longTag converts a short-form tag to its long form (e.g., "!!str" to "tag:yaml.org,2002:str").
 func longTag(tag string) string {
 	if strings.HasPrefix(tag, "!!") {
 		if ltag, ok := longTags[tag]; ok {
@@ -66,6 +72,7 @@ func longTag(tag string) string {
 // Kind represents the type of YAML node
 type Kind uint32
 
+// Kind constants define the different types of YAML nodes.
 const (
 	DocumentNode Kind = 1 << iota
 	SequenceNode
@@ -78,6 +85,7 @@ const (
 // Style represents the formatting style of a YAML node
 type Style uint32
 
+// Style constants define different formatting styles for YAML nodes.
 const (
 	TaggedStyle Style = 1 << iota
 	DoubleQuotedStyle
@@ -230,6 +238,7 @@ func (n *Node) ShortTag() string {
 	return shortTag(n.Tag)
 }
 
+// indicatedString returns true if the node's style explicitly indicates a string type.
 func (n *Node) indicatedString() bool {
 	return n.Kind == ScalarNode &&
 		(shortTag(n.Tag) == strTag ||

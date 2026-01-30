@@ -191,6 +191,7 @@ func GenerateData(spec any) ([]byte, error) {
 	return nil, fmt.Errorf("data spec must have 'loop' or 'join' field")
 }
 
+// generateSimpleLoop generates test data by repeating a string value n times.
 func generateSimpleLoop(loopVal any) ([]byte, error) {
 	loopArr, ok := loopVal.([]any)
 	if !ok {
@@ -214,6 +215,7 @@ func generateSimpleLoop(loopVal any) ([]byte, error) {
 	return []byte(strings.Repeat(value, count)), nil
 }
 
+// generateJoin generates test data by joining multiple strings.
 func generateJoin(joinVal any) ([]byte, error) {
 	joinList, ok := joinVal.([]any)
 	if !ok {

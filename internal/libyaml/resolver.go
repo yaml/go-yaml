@@ -196,6 +196,8 @@ var negativeZero = math.Copysign(0.0, -1.0)
 // scientific notation and numbers starting with a dot).
 var yamlStyleFloat = regexp.MustCompile(`^[-+]?(\.[0-9]+|[0-9]+(\.[0-9]*)?)([eE][-+]?[0-9]+)?$`)
 
+// allowedTimestampFormats lists the timestamp formats supported by the
+// resolver.
 // This is a subset of the formats allowed by the regular expression
 // defined at http://yaml.org/type/timestamp.html.
 var allowedTimestampFormats = []string{
@@ -207,6 +209,7 @@ var allowedTimestampFormats = []string{
 	// from the set of examples.
 }
 
+// init initializes the resolveTable with character class mappings for tag resolution.
 func init() {
 	t := resolveTable
 	t[int('+')] = 'S' // Sign

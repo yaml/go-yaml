@@ -135,7 +135,6 @@ func (c *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
 
 // --------------------------------------------------------------------------
 // Package-level Variables and Constants
-
 var (
 	nodeType       = reflect.TypeOf(Node{})
 	durationType   = reflect.TypeOf(time.Duration(0))
@@ -156,6 +155,7 @@ var scalarConstructors = map[string]ScalarConstructFunc{
 	mergeTag:     (*Constructor).constructMerge,
 }
 
+// Alias expansion limits to prevent DoS attacks via excessive aliasing.
 const (
 	// 400,000 decode operations is ~500kb of dense object declarations, or
 	// ~5kb of dense object declarations with 10000% alias expansion
