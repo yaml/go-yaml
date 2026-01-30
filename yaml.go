@@ -264,6 +264,7 @@ type Unmarshaler interface {
 }
 
 // Re-export stream-related types
+
 type (
 	VersionDirective = libyaml.StreamVersionDirective
 	TagDirective     = libyaml.StreamTagDirective
@@ -271,6 +272,7 @@ type (
 )
 
 // Re-export encoding constants
+
 const (
 	EncodingAny     = libyaml.ANY_ENCODING
 	EncodingUTF8    = libyaml.UTF8_ENCODING
@@ -279,6 +281,7 @@ const (
 )
 
 // Re-export error types
+
 type (
 
 	// LoadError represents an error encountered while decoding a YAML document.
@@ -301,6 +304,7 @@ type (
 )
 
 // Re-export Kind constants
+
 const (
 	DocumentNode = libyaml.DocumentNode
 	SequenceNode = libyaml.SequenceNode
@@ -311,6 +315,7 @@ const (
 )
 
 // Re-export Style constants
+
 const (
 	TaggedStyle       = libyaml.TaggedStyle
 	DoubleQuotedStyle = libyaml.DoubleQuotedStyle
@@ -324,6 +329,7 @@ const (
 type LineBreak = libyaml.LineBreak
 
 // Line break constants for different platforms.
+
 const (
 	LineBreakLN   = libyaml.LN_BREAK   // Unix-style \n (default)
 	LineBreakCR   = libyaml.CR_BREAK   // Old Mac-style \r
