@@ -16,6 +16,6 @@ jobs:
     steps:
     - name: Run Forbid Merge Commits Action
       # yamllint disable-line rule:line-length
-      uses: motlin/forbid-merge-commits-action@1b1f54566e417ffc7694b722f894560a179bdd12  # v1.0.6
+      uses: motlin/forbid-merge-commits-action@d508a7b3148cc98b51a5f062d60396f09f5bc269  # v1.0.7
       with:
         fail-on-merge-commits: true
