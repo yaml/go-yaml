@@ -45,17 +45,15 @@ type (
 	// behavior when being marshaled into a YAML document.
 	Marshaler = libyaml.Marshaler
 
+	// Unmarshaler is the interface implemented by types that can unmarshal
+	// a YAML description of themselves.
+	Unmarshaler = libyaml.Unmarshaler
+
 	// IsZeroer is used to check whether an object is zero to determine whether
 	// it should be omitted when marshaling with the ,omitempty flag.
 	// One notable implementation is time.Time.
 	IsZeroer = libyaml.IsZeroer
 )
-
-// Unmarshaler is the interface implemented by types
-// that can unmarshal a YAML description of themselves.
-type Unmarshaler interface {
-	UnmarshalYAML(node *Node) error
-}
 
 // Kind constants define the different types of YAML nodes.
 const (

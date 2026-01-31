@@ -393,6 +393,12 @@ type Marshaler interface {
 	MarshalYAML() (any, error)
 }
 
+// Unmarshaler is the interface implemented by types that can unmarshal
+// a YAML description of themselves.
+type Unmarshaler interface {
+	UnmarshalYAML(node *Node) error
+}
+
 // IsZeroer is used to check whether an object is zero to determine whether
 // it should be omitted when marshaling with the ,omitempty flag. One notable
 // implementation is time.Time.
