@@ -351,6 +351,7 @@ func (c *Composer) parseChild(parent *Node) *Node {
 
 // captureDirectives captures version and tag directives from upcoming
 // DOCUMENT_START.
+// The node n must have Stream initialized (as created by createStreamNode).
 func (c *Composer) captureDirectives(n *Node) {
 	if c.peek() == DOCUMENT_START_EVENT {
 		if vd := c.event.GetVersionDirective(); vd != nil {
