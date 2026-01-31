@@ -73,55 +73,171 @@ var V4 = Options(
 //-----------------------------------------------------------------------------
 
 // Option allows configuring YAML loading and dumping operations.
-// Re-exported from internal/libyaml.
 type Option = libyaml.Option
 
-// Re-exported option functions from internal/libyaml.
+// Option configuration functions
 var (
-	// WithIndent sets indentation spaces (2-9).
-	// See internal/libyaml.WithIndent.
+	// WithIndent sets the number of spaces to use for indentation when
+	// dumping YAML content.
+	//
+	// Valid values are 2-9. Common choices: 2 (compact), 4 (readable).
 	WithIndent = libyaml.WithIndent
-	// WithCompactSeqIndent configures '- ' as part of indentation.
-	// See internal/libyaml.WithCompactSeqIndent.
+
+	// WithCompactSeqIndent configures whether the sequence indicator '- ' is
+	// considered part of the indentation when dumping YAML content.
+	//
+	// If compact is true, '- ' is treated as part of the indentation.
+	// If compact is false, '- ' is not treated as part of the indentation.
+	// When called without arguments, defaults to true.
 	WithCompactSeqIndent = libyaml.WithCompactSeqIndent
-	// WithKnownFields enables strict field checking during loading.
-	// See internal/libyaml.WithKnownFields.
+
+	// WithKnownFields enables or disables strict field checking during YAML
+	// loading.
+	//
+	// When enabled, loading will return an error if the YAML input contains
+	// fields that do not correspond to any fields in the target struct.
+	// When called without arguments, defaults to true.
 	WithKnownFields = libyaml.WithKnownFields
-	// WithSingleDocument only processes first document in stream.
-	// See internal/libyaml.WithSingleDocument.
+
+	// WithSingleDocument configures the Loader to only process the first
+	// document in a YAML stream. After the first document is loaded,
+	// subsequent calls to Load will return io.EOF.
+	//
+	// When called without arguments, defaults to true.
+	//
+	// This is useful when you expect exactly one document and want behavior
+	// similar to Unmarshal.
 	WithSingleDocument = libyaml.WithSingleDocument
-	// WithStreamNodes enables stream boundary nodes when loading.
-	// See internal/libyaml.WithStreamNodes.
+
+	// WithStreamNodes enables returning stream boundary nodes when loading
+	// YAML.
+	//
+	// When enabled, Loader.Load returns an interleaved sequence of
+	// StreamNode and DocumentNode values:
+	//
+	//	[StreamNode, DocNode, StreamNode, DocNode, ..., StreamNode]
+	//
+	// StreamNodes contain metadata about the stream including:
+	//   - Encoding (UTF-8, UTF-16LE, UTF-16BE)
+	//   - YAML version directive (%YAML)
+	//   - Tag directives (%TAG)
+	//   - Position information (Line, Column)
+	//
+	// An empty YAML stream returns a single StreamNode.
+	// When called without arguments, defaults to true.
+	//
+	// The default is false.
 	WithStreamNodes = libyaml.WithStreamNodes
-	// WithAllDocuments enables multi-document mode for Load and Dump.
-	// See internal/libyaml.WithAllDocuments.
+
+	// WithAllDocuments enables multi-document mode for Load and Dump
+	// operations.
+	//
+	// When used with Load, the target must be a pointer to a slice.
+	// All documents in the YAML stream will be decoded into the slice.
+	// Zero documents results in an empty slice (no error).
+	//
+	// When used with Dump, the input must be a slice.
+	// Each element will be encoded as a separate YAML document
+	// with "---" separators.
+	//
+	// When called without arguments, defaults to true.
+	//
+	// The default is false (single-document mode).
 	WithAllDocuments = libyaml.WithAllDocuments
-	// WithLineWidth sets preferred line width for output.
-	// See internal/libyaml.WithLineWidth.
+
+	// WithLineWidth sets the preferred line width for YAML output.
+	//
+	// When encoding long strings, the encoder will attempt to wrap them at
+	// this width using literal block style (|). Set to -1 or 0 for unlimited
+	// width.
+	//
+	// The default is 80 characters.
 	WithLineWidth = libyaml.WithLineWidth
-	// WithUnicode controls non-ASCII characters in output.
-	// See internal/libyaml.WithUnicode.
+
+	// WithUnicode controls whether non-ASCII characters are allowed in YAML
+	// output.
+	//
+	// When true, non-ASCII characters appear as-is (e.g., "café").
+	// When false, non-ASCII characters are escaped (e.g., "caf\u00e9").
+	// When called without arguments, defaults to true.
+	//
+	// The default is true.
 	WithUnicode = libyaml.WithUnicode
-	// WithUniqueKeys enables duplicate key detection.
-	// See internal/libyaml.WithUniqueKeys.
+
+	// WithUniqueKeys enables or disables duplicate key detection during YAML
+	// loading.
+	//
+	// When enabled, loading will return an error if the YAML input contains
+	// duplicate keys in any mapping. This is a security feature that prevents
+	// key override attacks.
+	// When called without arguments, defaults to true.
+	//
+	// The default is true.
 	WithUniqueKeys = libyaml.WithUniqueKeys
+
 	// WithCanonical forces canonical YAML output format.
-	// See internal/libyaml.WithCanonical.
+	//
+	// When enabled, the encoder outputs strictly canonical YAML with explicit
+	// tags for all values. This produces verbose output primarily useful for
+	// debugging and YAML spec compliance testing.
+	// When called without arguments, defaults to true.
+	//
+	// The default is false.
 	WithCanonical = libyaml.WithCanonical
-	// WithLineBreak sets line ending style for output.
-	// See internal/libyaml.WithLineBreak.
+
+	// WithLineBreak sets the line ending style for YAML output.
+	//
+	// Available options:
+	//   - LineBreakLN: Unix-style \n (default)
+	//   - LineBreakCR: Old Mac-style \r
+	//   - LineBreakCRLN: Windows-style \r\n
+	//
+	// The default is LineBreakLN.
 	WithLineBreak = libyaml.WithLineBreak
-	// WithExplicitStart controls document start markers (---).
-	// See internal/libyaml.WithExplicitStart.
+
+	// WithExplicitStart controls whether document start markers (---) are
+	// always emitted.
+	//
+	// When true, every document begins with an explicit "---" marker.
+	// When false (default), the marker is omitted for the first document.
+	// When called without arguments, defaults to true.
 	WithExplicitStart = libyaml.WithExplicitStart
-	// WithExplicitEnd controls document end markers (...).
-	// See internal/libyaml.WithExplicitEnd.
+
+	// WithExplicitEnd controls whether document end markers (...) are always
+	// emitted.
+	//
+	// When true, every document ends with an explicit "..." marker.
+	// When false (default), the marker is omitted.
+	// When called without arguments, defaults to true.
 	WithExplicitEnd = libyaml.WithExplicitEnd
-	// WithFlowSimpleCollections controls flow style for simple collections.
-	// See internal/libyaml.WithFlowSimpleCollections.
+
+	// WithFlowSimpleCollections controls whether simple collections use flow
+	// style.
+	//
+	// When true, sequences and mappings containing only scalar values (no
+	// nested collections) are rendered in flow style if they fit within the
+	// line width.
+	// Example: {name: test, count: 42} or [a, b, c]
+	// When called without arguments, defaults to true.
+	//
+	// When false (default), all collections use block style.
 	WithFlowSimpleCollections = libyaml.WithFlowSimpleCollections
-	// WithQuotePreference sets preferred quote style when quoting is required.
-	// See internal/libyaml.WithQuotePreference.
+
+	// WithQuotePreference sets the preferred quote style for strings that
+	// require quoting.
+	//
+	// This option only affects strings that require quoting per the YAML spec.
+	// Plain strings that don't need quoting remain unquoted regardless of this
+	// setting. Quoting is required for:
+	//   - Strings that look like other YAML types (true, false, null, 123, etc.)
+	//   - Strings with leading/trailing whitespace
+	//   - Strings containing special YAML syntax characters
+	//   - Empty strings in certain contexts
+	//
+	// Quote styles:
+	//   - QuoteSingle: Use single quotes (v4 default)
+	//   - QuoteDouble: Use double quotes
+	//   - QuoteLegacy: Legacy v2/v3 behavior (mixed quoting)
 	WithQuotePreference = libyaml.WithQuotePreference
 )
 
@@ -238,24 +354,36 @@ func OptsYAML(yamlStr string) (Option, error) {
 // Type and constant re-exports
 //-----------------------------------------------------------------------------
 
-// Re-export stream-related types
+// Stream-related types for advanced YAML processing
 type (
+	// VersionDirective represents a YAML %YAML version directive for stream
+	// nodes.
 	VersionDirective = libyaml.StreamVersionDirective
-	TagDirective     = libyaml.StreamTagDirective
-	Encoding         = libyaml.Encoding
+
+	// TagDirective represents a YAML %TAG directive for stream nodes.
+	TagDirective = libyaml.StreamTagDirective
+
+	// Encoding represents the character encoding of a YAML stream.
+	Encoding = libyaml.Encoding
 )
 
-// Re-export encoding constants
+// Encoding constants for YAML stream encoding
 const (
-	EncodingAny     = libyaml.ANY_ENCODING
-	EncodingUTF8    = libyaml.UTF8_ENCODING
+	// EncodingAny lets the parser choose the encoding.
+	EncodingAny = libyaml.ANY_ENCODING
+
+	// EncodingUTF8 is the default UTF-8 encoding.
+	EncodingUTF8 = libyaml.UTF8_ENCODING
+
+	// EncodingUTF16LE is UTF-16-LE encoding with BOM.
 	EncodingUTF16LE = libyaml.UTF16LE_ENCODING
+
+	// EncodingUTF16BE is UTF-16-BE encoding with BOM.
 	EncodingUTF16BE = libyaml.UTF16BE_ENCODING
 )
 
-// Re-export error types
+// Error types for YAML loading and dumping
 type (
-
 	// LoadError represents an error encountered while decoding a YAML document.
 	//
 	// It contains details about the location in the document where the error
@@ -483,9 +611,13 @@ func handleErr(err *error) {
 // Load/Dump API
 //-----------------------------------------------------------------------------
 
-// Loader and Dumper are re-exported from internal/libyaml for advanced use.
+// Advanced streaming API types
 type (
+	// Loader reads and loads YAML values from an input stream with
+	// configurable options.
 	Loader = libyaml.Loader
+
+	// Dumper writes YAML values to an output stream with configurable options.
 	Dumper = libyaml.Dumper
 )
 
