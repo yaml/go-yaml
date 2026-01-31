@@ -16,7 +16,8 @@ contributors.
 ### Mermaid Diagrams
 
 - **[pipeline-overview.mmd](pipeline-overview.mmd)** - Complete processing
-  pipeline from bytes to Go values and back
+  pipeline from bytes to Go values and back, showing the symmetric 3-stage
+  load/dump architecture with Resolver and Desolver stages
 - **[call-hierarchy.mmd](call-hierarchy.mmd)** - Function call hierarchy
   showing pull-based (load) vs push-based (dump) architecture
 - **[comment-flow.mmd](comment-flow.mmd)** - Comment handling flow through
