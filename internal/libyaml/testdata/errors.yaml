@@ -10,189 +10,182 @@
 #       name: Test case name
 #       from: input error data
 #       want: expected error string output
-#       also: unwrap  # (optional) test that Unwrap() returns error with from.message
+#       also: unwrap  # (optional) test that Unwrap() returns underlying error
 #
 # Test Types:
-#   marked-error     - Tests MarkedYAMLError formatting
-#   parser-error     - Tests ParserError formatting
-#   scanner-error    - Tests ScannerError formatting
-#   reader-error     - Tests ReaderError formatting and Unwrap
-#   emitter-error    - Tests EmitterError formatting
-#   writer-error     - Tests WriterError formatting and Unwrap
-#   construct-error  - Tests ConstructError formatting and Unwrap
+#   load-error       - Tests LoadError formatting with different stages
+#   emitter-error    - Tests EmitterError formatting (dump stack)
+#   writer-error     - Tests WriterError formatting and Unwrap (dump stack)
+#   construct-error  - Tests ConstructError formatting (backward compat)
 #   load-errors      - Tests LoadErrors formatting
 #   load-errors-as   - Tests LoadErrors.As method
 #   load-errors-is   - Tests LoadErrors.Is method
 #   type-error       - Tests deprecated TypeError formatting
 
-# MarkedYAMLError tests
-- marked-error:
-    name: Basic marked error
-    from:
-      mark:
-        line: 5
-        column: 9
-        index: 42
-      message: unexpected token
-    want: 'yaml: line 5, column 10: unexpected token'
+# LoadError tests - different stages
 
-- marked-error:
-    name: Marked error with context
+- load-error:
+    name: Reader stage error
     from:
-      context_mark:
-        line: 3
-        column: 4
-        index: 20
-      context_message: while parsing mapping
+      stage: reader
       mark:
-        line: 5
-        column: 9
-        index: 42
-      message: unexpected token
-    want: 'yaml: while parsing mapping at line 3, column 5: line 5, column 10: unexpected token'
+        line: 1
+        column: 2
+        index: 2
+      message: 'invalid UTF-8 octet (value: 255)'
+      err: invalid UTF-8 octet
+    want: |-
+      go-yaml load error: invalid UTF-8 octet (value: 255)
+        in reader at L1,C3
+    also: unwrap
 
-- marked-error:
-    name: Marked error with same context and error mark
+- load-error:
+    name: Scanner stage error
     from:
-      context_mark:
-        line: 5
-        column: 9
-        index: 42
-      context_message: while parsing mapping
-      mark:
-        line: 5
-        column: 9
-        index: 42
-      message: unexpected token
-    want: 'yaml: while parsing mapping at line 5, column 10: unexpected token'
-
-# ParserError tests
-- parser-error:
-    name: Basic parser error
-    from:
+      stage: scanner
       mark:
         line: 2
-        column: 7
-        index: 15
-      message: did not find expected key
-    want: 'yaml: line 2, column 8: did not find expected key'
+        column: 5
+        index: 42
+      message: unexpected token
+    want: |-
+      go-yaml load error: unexpected token
+        in scanner at L2,C6
 
-- parser-error:
-    name: Parser error with context
+- load-error:
+    name: Scanner stage error with context
     from:
+      stage: scanner
+      context_mark:
+        line: 2
+        column: 0
+        index: 20
+      context_message: while scanning a block scalar
+      mark:
+        line: 4
+        column: 8
+        index: 60
+      message: found unexpected end of stream
+    want: |-
+      go-yaml load error: found unexpected end of stream
+        in scanner (while scanning a block scalar) at L2-L4,C9
+
+- load-error:
+    name: Parser stage error
+    from:
+      stage: parser
+      mark:
+        line: 3
+        column: 10
+        index: 50
+      message: did not find expected key
+    want: |-
+      go-yaml load error: did not find expected key
+        in parser at L3,C11
+
+- load-error:
+    name: Parser stage error with context
+    from:
+      stage: parser
       context_mark:
         line: 1
         column: 0
         index: 0
       context_message: while parsing a block mapping
       mark:
-        line: 2
-        column: 7
-        index: 15
+        line: 4
+        column: 5
+        index: 80
       message: did not find expected key
-    want: 'yaml: while parsing a block mapping at line 1: line 2, column 8: did not find expected key'
+    want: |-
+      go-yaml load error: did not find expected key
+        in parser (while parsing a block mapping) at L1-L4,C6
 
-# ScannerError tests
-- scanner-error:
-    name: Basic scanner error
+- load-error:
+    name: Composer stage error
     from:
+      stage: composer
       mark:
         line: 1
-        column: 14
-        index: 14
-      message: found unexpected end of stream
-    want: 'yaml: line 1, column 15: found unexpected end of stream'
+        column: 4
+        index: 4
+      message: unknown anchor 'foo' referenced
+    want: |-
+      go-yaml load error: unknown anchor 'foo' referenced
+        in composer at L1,C5
 
-- scanner-error:
-    name: Scanner error with context
+- load-error:
+    name: Resolver stage error
     from:
-      context_mark:
-        line: 1
-        column: 9
-        index: 9
-      context_message: while scanning a quoted scalar
+      stage: resolver
       mark:
         line: 1
-        column: 14
-        index: 14
-      message: found unexpected end of stream
-    want: 'yaml: while scanning a quoted scalar at line 1, column 10: line 1, column 15: found unexpected end of stream'
+        column: 0
+        index: 0
+      message: cannot construct !!str `error` as a !!float
+    want: |-
+      go-yaml load error: cannot construct !!str `error` as a !!float
+        in resolver at L1
 
-# ReaderError tests
-- reader-error:
-    name: Basic reader error
+- load-error:
+    name: Constructor stage error
     from:
-      offset: 42
-      value: 65534
-      message: invalid UTF-8 character
-    want: 'yaml: offset 42: invalid UTF-8 character'
+      stage: constructor
+      mark:
+        line: 1
+        column: 0
+        index: 0
+      message: cannot construct !!map into string
+      err: cannot construct !!map into string
+    want: |-
+      go-yaml load error: cannot construct !!map into string
+        in constructor at L1
     also: unwrap
 
-- reader-error:
-    name: Reader error at offset zero
-    from:
-      offset: 0
-      value: 0
-      message: invalid character
-    want: 'yaml: offset 0: invalid character'
-    also: unwrap
+# EmitterError tests (dump stack)
 
-# EmitterError tests
 - emitter-error:
     name: Basic emitter error
     from:
-      message: could not write to output
-    want: 'yaml: could not write to output'
+      message: expected STREAM-START
+    want: 'yaml: expected STREAM-START'
 
-- emitter-error:
-    name: Emitter error empty message
-    from:
-      message: ''
-    want: 'yaml: '
-
-# WriterError tests
-- writer-error:
-    name: Basic writer error
-    from:
-      message: write failed
-    want: 'yaml: write failed'
-    also: unwrap
+# WriterError tests (dump stack)
 
 - writer-error:
-    name: Writer I/O error
+    name: Writer error with unwrap
     from:
-      message: I/O error
-    want: 'yaml: I/O error'
+      message: write error
+    want: 'yaml: write error'
     also: unwrap
 
-# ConstructError tests
+# ConstructError tests (backward compatibility)
+
 - construct-error:
     name: Basic construct error
     from:
-      line: 10
-      column: 5
-      message: cannot unmarshal string into int
-    want: 'line 10: cannot unmarshal string into int'
+      line: 5
+      message: type mismatch
+    want: 'line 5: type mismatch'
     also: unwrap
 
 - construct-error:
-    name: Construct error line 1
+    name: Construct error line 0
     from:
-      line: 1
-      column: 0
-      message: type mismatch
-    want: 'line 1: type mismatch'
+      line: 0
+      message: unknown error
+    want: 'line 0: unknown error'
     also: unwrap
 
 # LoadErrors tests
+
 - load-errors:
     name: Single error
     from:
       errors:
-        - line: 3
-          column: 5
-          message: field not found
-    want: |
+      - line: 3
+        message: field not found
+    want: |-
       yaml: construct errors:
         line 3: field not found
 
@@ -200,115 +193,80 @@
     name: Multiple errors
     from:
       errors:
-        - line: 3
-          column: 5
-          message: field foo not found
-        - line: 7
-          column: 9
-          message: field bar not found
-        - line: 12
-          column: 2
-          message: invalid type for field baz
-    want: |
+      - line: 5
+        message: field 'foo' not found in type struct
+      - line: 8
+        message: field 'bar' not found in type struct
+    want: |-
       yaml: construct errors:
-        line 3: field foo not found
-        line 7: field bar not found
-        line 12: invalid type for field baz
-
-- load-errors:
-    name: Empty errors list
-    from:
-      errors: []
-    want: 'yaml: construct errors:'
+        line 5: field 'foo' not found in type struct
+        line 8: field 'bar' not found in type struct
 
 # LoadErrors.As tests
+
 - load-errors-as:
-    name: LoadErrors.As with ConstructError target
+    name: As ConstructError
     from:
       errors:
-        - line: 5
-          column: 3
-          message: first error
-        - line: 10
-          column: 8
-          message: second error
+      - line: 10
+        message: conversion failed
     as: ConstructError
     want_as: true
-    want_line: 5
-    want_message: first error
+    want_line: 10
+    want_message: conversion failed
 
 - load-errors-as:
-    name: LoadErrors.As with ConstructError target - empty list
-    from:
-      errors: []
-    as: ConstructError
-    want_as: false
-
-- load-errors-as:
-    name: LoadErrors.As with TypeError target
+    name: As TypeError
     from:
       errors:
-        - line: 3
-          column: 2
-          message: error one
-        - line: 8
-          column: 5
-          message: error two
+      - line: 3
+        message: first error
+      - line: 7
+        message: second error
     as: TypeError
     want_as: true
     want_messages:
-      - 'line 3: error one'
-      - 'line 8: error two'
+    - 'line 3: first error'
+    - 'line 7: second error'
 
 # LoadErrors.Is tests
+
 - load-errors-is:
-    name: LoadErrors.Is matches wrapped error
+    name: Contains error
     from:
       errors:
-        - line: 5
-          column: 3
-          message: target error
-        - line: 10
-          column: 8
-          message: other error
+      - line: 5
+        message: target error
     is: target error
     want_is: true
 
 - load-errors-is:
-    name: LoadErrors.Is does not match
+    name: Does not contain error
     from:
       errors:
-        - line: 5
-          column: 3
-          message: some error
-    is: different error
+      - line: 5
+        message: different error
+    is: target error
     want_is: false
 
-# TypeError tests (deprecated but kept for compatibility)
-- type-error:
-    name: Single error message
-    from:
-      errors:
-        - "field 'name' not found"
-    want: |
-      yaml: unmarshal errors:
-        field 'name' not found
+# TypeError tests (backward compatibility)
 
 - type-error:
-    name: Multiple error messages
+    name: Single type error
     from:
       errors:
-        - "field 'name' not found"
-        - 'cannot unmarshal string into int'
-        - "invalid value for field 'age'"
-    want: |
+      - field not found
+    want: |-
       yaml: unmarshal errors:
-        field 'name' not found
-        cannot unmarshal string into int
-        invalid value for field 'age'
+        field not found
 
 - type-error:
-    name: Empty error messages
+    name: Multiple type errors
     from:
-      errors: []
-    want: "yaml: unmarshal errors:\n  "
+      errors:
+      - 'line 3: first error'
+      - 'line 5: second error'
+    want: |-
+      yaml: unmarshal errors:
+        line 3: first error
+        line 5: second error

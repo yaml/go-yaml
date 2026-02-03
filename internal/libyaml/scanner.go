@@ -3393,28 +3393,29 @@ func (parser *Parser) readLine(s []byte) []byte {
 	return s
 }
 
-// Scan gets the next token.
-func formatScannerError(problem string, problem_mark Mark) error {
+// formatScannerError creates a LoadError for scanner-stage errors.
+func formatScannerError(problem string, problem_mark Mark) *LoadError {
 	problem_mark.Line += 1
 
-	return ScannerError{
+	return &LoadError{
+		Stage:   ScannerStage,
 		Mark:    problem_mark,
 		Message: problem,
 	}
 }
 
-// formatScannerErrorContext creates a ScannerError with both context and
+// formatScannerErrorContext creates a LoadError with both context and
 // problem information, each with their own mark positions.
-func formatScannerErrorContext(context string, context_mark Mark, problem string, problem_mark Mark) error {
+func formatScannerErrorContext(context string, context_mark Mark, problem string, problem_mark Mark) *LoadError {
 	context_mark.Line += 1
 	problem_mark.Line += 1
 
-	return ScannerError{
-		ContextMark:    context_mark,
-		ContextMessage: context,
-
-		Mark:    problem_mark,
-		Message: problem,
+	return &LoadError{
+		Stage:       ScannerStage,
+		ContextMark: context_mark,
+		ContextMsg:  context,
+		Mark:        problem_mark,
+		Message:     problem,
 	}
 }
 

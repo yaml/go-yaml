@@ -123,8 +123,8 @@ func (parser *Parser) updateBuffer(length int) error {
 				default:
 					// The leading octet is invalid.
 					return formatReaderError(
-						"invalid leading UTF-8 octet",
-						parser.offset, int(octet))
+						fmt.Sprintf("invalid leading UTF-8 octet (value: %d)", octet),
+						Mark{Index: parser.offset})
 				}
 
 				// Check if the raw buffer contains an incomplete character.
@@ -132,7 +132,7 @@ func (parser *Parser) updateBuffer(length int) error {
 					if parser.eof {
 						return formatReaderError(
 							"incomplete UTF-8 octet sequence",
-							parser.offset, -1)
+							Mark{Index: parser.offset})
 					}
 					break inner
 				}
@@ -158,8 +158,8 @@ func (parser *Parser) updateBuffer(length int) error {
 					// Check if the octet is valid.
 					if (octet & 0xC0) != 0x80 {
 						return formatReaderError(
-							"invalid trailing UTF-8 octet",
-							parser.offset+k, int(octet))
+							fmt.Sprintf("invalid trailing UTF-8 octet (value: %d)", octet),
+							Mark{Index: parser.offset + k})
 					}
 
 					// Decode the octet.
@@ -175,14 +175,14 @@ func (parser *Parser) updateBuffer(length int) error {
 				default:
 					return formatReaderError(
 						"invalid length of a UTF-8 sequence",
-						parser.offset, -1)
+						Mark{Index: parser.offset})
 				}
 
 				// Check the range of the value.
 				if value >= 0xD800 && value <= 0xDFFF || value > 0x10FFFF {
 					return formatReaderError(
-						"invalid Unicode character",
-						parser.offset, int(value))
+						fmt.Sprintf("invalid Unicode character (value: %d)", value),
+						Mark{Index: parser.offset})
 				}
 
 			case UTF16LE_ENCODING, UTF16BE_ENCODING:
@@ -222,7 +222,7 @@ func (parser *Parser) updateBuffer(length int) error {
 					if parser.eof {
 						return formatReaderError(
 							"incomplete UTF-16 character",
-							parser.offset, -1)
+							Mark{Index: parser.offset})
 					}
 					break inner
 				}
@@ -234,8 +234,8 @@ func (parser *Parser) updateBuffer(length int) error {
 				// Check for unexpected low surrogate area.
 				if value&0xFC00 == 0xDC00 {
 					return formatReaderError(
-						"unexpected low surrogate area",
-						parser.offset, int(value))
+						fmt.Sprintf("unexpected low surrogate area (value: %d)", value),
+						Mark{Index: parser.offset})
 				}
 
 				// Check for a high surrogate area.
@@ -247,7 +247,7 @@ func (parser *Parser) updateBuffer(length int) error {
 						if parser.eof {
 							return formatReaderError(
 								"incomplete UTF-16 surrogate pair",
-								parser.offset, -1)
+								Mark{Index: parser.offset})
 						}
 						break inner
 					}
@@ -259,8 +259,8 @@ func (parser *Parser) updateBuffer(length int) error {
 					// Check for a low surrogate area.
 					if value2&0xFC00 != 0xDC00 {
 						return formatReaderError(
-							"expected low surrogate area",
-							parser.offset+2, int(value2))
+							fmt.Sprintf("expected low surrogate area (value: %d)", value2),
+							Mark{Index: parser.offset + 2})
 					}
 
 					// Generate the value of the surrogate pair.
@@ -301,8 +301,8 @@ func (parser *Parser) updateBuffer(length int) error {
 			case value >= 0x10000 && value <= 0x10FFFF:
 			default:
 				return formatReaderError(
-					"control characters are not allowed",
-					parser.offset, int(value))
+					fmt.Sprintf("control characters are not allowed (value: %d)", value),
+					Mark{Index: parser.offset})
 			}
 
 			// Move the raw pointers.
@@ -425,21 +425,22 @@ func (parser *Parser) updateRawBuffer() error {
 	if err == io.EOF {
 		parser.eof = true
 	} else if err != nil {
-		return ReaderError{
-			Offset: parser.offset,
-			Value:  -1,
-			Err:    fmt.Errorf("input error: %w", err),
+		return &LoadError{
+			Stage:   ReaderStage,
+			Message: fmt.Sprintf("input error: %v", err),
+			Mark:    Mark{Index: parser.offset},
+			err:     err,
 		}
 	}
 	return nil
 }
 
-// formatReaderError creates a ReaderError with the given problem description,
-// byte offset, and invalid value.
-func formatReaderError(problem string, offset int, value int) error {
-	return ReaderError{
-		Offset: offset,
-		Value:  value,
-		Err:    errors.New(problem),
+// formatReaderError creates a LoadError for reader-stage errors.
+func formatReaderError(message string, mark Mark) *LoadError {
+	return &LoadError{
+		Stage:   ReaderStage,
+		Message: message,
+		Mark:    mark,
+		err:     errors.New(message),
 	}
 }

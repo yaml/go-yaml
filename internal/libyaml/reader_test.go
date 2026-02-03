@@ -7,6 +7,7 @@
 package libyaml
 
 import (
+	"fmt"
 	"testing"
 
 	"go.yaml.in/yaml/v4/internal/testutil/assert"
@@ -36,7 +37,12 @@ func runReaderSetErrorTest(t *testing.T, tc TestCase) {
 	value, ok := tc.Args[2].(int)
 	assert.Truef(t, ok, "Args[2] should be int, got %T", tc.Args[2])
 
-	err := formatReaderError(problem, offset, value)
+	// Format message with value if provided
+	message := problem
+	if value != -1 {
+		message = fmt.Sprintf("%s (value: %d)", problem, value)
+	}
+	err := formatReaderError(message, Mark{Index: offset})
 
 	// Check return value: Want is a bool where true means success (no error).
 	want, ok := tc.Want.(bool)

@@ -10,6 +10,7 @@ package libyaml
 
 import (
 	"encoding/base64"
+	"fmt"
 	"math"
 	"regexp"
 	"strconv"
@@ -112,7 +113,10 @@ func resolve(tag string, in string) (rtag string, out any) {
 				}
 			}
 		}
-		failf("cannot construct %s `%s` as a %s", shortTag(rtag), in, shortTag(tag))
+		Fail(formatResolverError(
+			fmt.Sprintf("cannot construct %s `%s` as a %s", shortTag(rtag), in, shortTag(tag)),
+			Mark{},
+		))
 	}()
 
 	// Any data is accepted as a !!str or !!binary.
@@ -304,4 +308,25 @@ func parseTimestamp(s string) (time.Time, bool) {
 		}
 	}
 	return time.Time{}, false
+}
+
+// formatResolverError creates a LoadError for resolver-stage errors.
+func formatResolverError(message string, mark Mark) *LoadError {
+	return &LoadError{
+		Stage:   ResolverStage,
+		Mark:    mark,
+		Message: message,
+	}
+}
+
+// formatResolverErrorContext creates a LoadError with both context and
+// problem information for resolver-stage errors.
+func formatResolverErrorContext(context string, context_mark Mark, message string, mark Mark) *LoadError {
+	return &LoadError{
+		Stage:       ResolverStage,
+		ContextMark: context_mark,
+		ContextMsg:  context,
+		Mark:        mark,
+		Message:     message,
+	}
 }

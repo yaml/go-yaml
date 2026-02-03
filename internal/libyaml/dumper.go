@@ -78,8 +78,11 @@ func Dump(in any, opts ...Option) (out []byte, err error) {
 		// Multi-document mode: in must be a slice
 		inVal := reflect.ValueOf(in)
 		if inVal.Kind() != reflect.Slice {
-			return nil, &LoadErrors{Errors: []*ConstructError{{
-				Err: errors.New("yaml: WithAllDocuments requires a slice input"),
+			msg := "yaml: WithAllDocuments requires a slice input"
+			return nil, &LoadErrors{Errors: []*LoadError{{
+				Stage:   ConstructorStage,
+				Message: msg,
+				err:     errors.New(msg),
 			}}}
 		}
 
