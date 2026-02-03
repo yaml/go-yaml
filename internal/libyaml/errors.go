@@ -12,61 +12,80 @@ import (
 	"strings"
 )
 
-// MarkedYAMLError represents a YAML error with position information.
-type MarkedYAMLError struct {
-	// optional context
-	ContextMark    Mark
-	ContextMessage string
+// Stage identifies the processing stage where an error occurred during YAML loading.
+type Stage string
 
-	Mark    Mark
-	Message string
+const (
+	ReaderStage      Stage = "reader"      // Input reading and encoding
+	ScannerStage     Stage = "scanner"     // Tokenization
+	ParserStage      Stage = "parser"      // Event stream parsing
+	ComposerStage    Stage = "composer"    // Node tree construction
+	ResolverStage    Stage = "resolver"    // Tag resolution
+	ConstructorStage Stage = "constructor" // Go value construction
+)
+
+// LoadError represents an error that occurred while loading a YAML document.
+//
+// It provides detailed location information and identifies the processing
+// stage where the error occurred.
+type LoadError struct {
+	Stage   Stage  // Processing stage where error occurred
+	Message string // Error description
+
+	// Position information
+	Mark        Mark   // Primary error position
+	ContextMark Mark   // Optional context position (e.g., start of construct)
+	ContextMsg  string // Optional context message
+
+	// Error chaining
+	err error // Underlying error (for Unwrap support)
 }
 
-// Error returns the error message with position information.
-func (e MarkedYAMLError) Error() string {
-	var builder strings.Builder
-	builder.WriteString("yaml: ")
-	if len(e.ContextMessage) > 0 {
-		fmt.Fprintf(&builder, "%s at %s: ", e.ContextMessage, e.ContextMark)
+// Error returns the error message with stage and position information.
+// Format: "go-yaml load error: <message>\n  in <stage> at L:C"
+// Or with context: "go-yaml load error: <message>\n  in <stage> (while <ctx>) at L:C-L:C"
+func (e *LoadError) Error() string {
+	if len(e.ContextMsg) > 0 {
+		return fmt.Sprintf("go-yaml load error: %s\n  in %s (%s) at %s",
+			e.Message, e.Stage, e.ContextMsg, e.ContextMark.rangeString(e.Mark))
 	}
-	if len(e.ContextMessage) == 0 || e.ContextMark != e.Mark {
-		fmt.Fprintf(&builder, "%s: ", e.Mark)
+	return fmt.Sprintf("go-yaml load error: %s\n  in %s at %s",
+		e.Message, e.Stage, e.Mark.shortString())
+}
+
+// simpleError returns the error message without the "yaml: Load error (in stage)" prefix.
+// Used for formatting errors within LoadErrors collections.
+// Format: "line L: <message>" (backwards compatible - no column info)
+func (e *LoadError) simpleError() string {
+	var builder strings.Builder
+	if len(e.ContextMsg) > 0 {
+		fmt.Fprintf(&builder, "%s at %s: ", e.ContextMsg, e.ContextMark)
+	}
+	if len(e.ContextMsg) == 0 || e.ContextMark != e.Mark {
+		if e.Mark.Line > 0 {
+			fmt.Fprintf(&builder, "line %d: ", e.Mark.Line)
+		} else {
+			builder.WriteString("<unknown position>: ")
+		}
 	}
 	builder.WriteString(e.Message)
 	return builder.String()
 }
 
-// ParserError represents an error that occurred during parsing.
-type ParserError MarkedYAMLError
-
-// Error returns the error message.
-func (e ParserError) Error() string {
-	return MarkedYAMLError(e).Error()
-}
-
-// ScannerError represents an error that occurred during scanning.
-type ScannerError MarkedYAMLError
-
-// Error returns the error message.
-func (e ScannerError) Error() string {
-	return MarkedYAMLError(e).Error()
-}
-
-// ReaderError represents an error that occurred while reading input.
-type ReaderError struct {
-	Offset int
-	Value  int
-	Err    error
-}
-
-// Error returns the error message with offset information.
-func (e ReaderError) Error() string {
-	return fmt.Sprintf("yaml: offset %d: %s", e.Offset, e.Err)
-}
-
 // Unwrap returns the underlying error.
-func (e ReaderError) Unwrap() error {
-	return e.Err
+func (e *LoadError) Unwrap() error {
+	return e.err
+}
+
+// NewLoadError creates a LoadError with an underlying cause.
+// The cause is accessible via Unwrap for use with [errors.Is] and [errors.As].
+func NewLoadError(stage Stage, message string, mark Mark, cause error) *LoadError {
+	return &LoadError{
+		Stage:   stage,
+		Message: message,
+		Mark:    mark,
+		err:     cause,
+	}
 }
 
 // EmitterError represents an error that occurred during emitting.
@@ -96,6 +115,8 @@ func (e WriterError) Unwrap() error {
 
 // ConstructError represents a single, non-fatal error that occurred during
 // the constructing of a YAML document into a Go value.
+//
+// Deprecated: Use LoadError instead.
 type ConstructError struct {
 	Err    error
 	Line   int
@@ -114,7 +135,7 @@ func (e *ConstructError) Unwrap() error {
 
 // LoadErrors is returned when one or more fields cannot be properly decoded.
 type LoadErrors struct {
-	Errors []*ConstructError
+	Errors []*LoadError
 }
 
 // Error returns a formatted error message listing all construct errors.
@@ -123,26 +144,39 @@ func (e *LoadErrors) Error() string {
 	b.WriteString("yaml: construct errors:")
 	for _, err := range e.Errors {
 		b.WriteString("\n  ")
-		b.WriteString(err.Error())
+		b.WriteString(err.simpleError())
 	}
 	return b.String()
 }
 
 // As implements [errors.As] for Go versions prior to 1.20 that don't support
 // the Unwrap() []error interface. It allows [LoadErrors] to match against
-// *ConstructError targets by returning the first error in the list.
+// *LoadError, *ConstructError, or *TypeError targets.
 func (e *LoadErrors) As(target any) bool {
 	switch t := target.(type) {
-	case **ConstructError:
+	case **LoadError:
 		if len(e.Errors) == 0 {
 			return false
 		}
 		*t = e.Errors[0]
 		return true
+	case **ConstructError:
+		// Backwards compatibility: convert LoadError to ConstructError.
+		// This case remains live; internal tests use errors.As against *ConstructError.
+		if len(e.Errors) == 0 {
+			return false
+		}
+		first := e.Errors[0]
+		*t = &ConstructError{
+			Err:    first.err,
+			Line:   first.Mark.Line,
+			Column: first.Mark.Column,
+		}
+		return true
 	case **TypeError:
 		var msgs []string
 		for _, err := range e.Errors {
-			msgs = append(msgs, err.Error())
+			msgs = append(msgs, err.simpleError())
 		}
 		*t = &TypeError{Errors: msgs}
 		return true

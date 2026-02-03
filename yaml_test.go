@@ -743,7 +743,7 @@ func (errReader) Read([]byte) (int, error) {
 
 func TestDecoderReadError(t *testing.T) {
 	err := yaml.NewDecoder(errReader{}).Decode(&struct{}{})
-	assert.ErrorMatches(t, `yaml: offset 0: input error: some read error`, err)
+	assert.ErrorMatches(t, `go-yaml load error: input error: some read error\n  in reader at <unknown position>`, err)
 }
 
 func TestUnmarshalNaN(t *testing.T) {
@@ -757,7 +757,7 @@ func TestUnmarshalDurationInt(t *testing.T) {
 	// Don't accept plain ints as durations as it's unclear (issue #200).
 	var d time.Duration
 	err := yaml.Unmarshal([]byte("123"), &d)
-	assert.ErrorMatches(t, "line 1: cannot construct !!int `123` into time.Duration", err)
+	assert.ErrorMatches(t, "yaml: construct errors:\n  line 1: cannot construct !!int `123` into time.Duration", err)
 }
 
 func TestUnmarshalErrorsFromYAML(t *testing.T) {
@@ -831,15 +831,16 @@ func TestParserErrorUnmarshal(t *testing.T) {
 	}
 	data := "a: 1\n=\nb: 2"
 	err := yaml.Unmarshal([]byte(data), &v)
-	var asErr libyaml.ScannerError
+	var asErr *libyaml.LoadError
 	assert.ErrorAs(t, err, &asErr)
-	expectedErr := libyaml.ScannerError{
+	expectedErr := &libyaml.LoadError{
+		Stage: libyaml.ScannerStage,
 		ContextMark: libyaml.Mark{
 			Index:  5,
 			Line:   2,
 			Column: 0,
 		},
-		ContextMessage: "while scanning a simple key",
+		ContextMsg: "while scanning a simple key",
 
 		Mark: libyaml.Mark{
 			Index:  7,
@@ -855,9 +856,10 @@ func TestParserErrorDecoder(t *testing.T) {
 	var v any
 	data := "value: -"
 	err := yaml.NewDecoder(strings.NewReader(data)).Decode(&v)
-	var asErr libyaml.ScannerError
+	var asErr *libyaml.LoadError
 	assert.ErrorAs(t, err, &asErr)
-	expectedErr := libyaml.ScannerError{
+	expectedErr := &libyaml.LoadError{
+		Stage: libyaml.ScannerStage,
 		Mark: libyaml.Mark{
 			Index:  7,
 			Line:   1,
@@ -1012,8 +1014,8 @@ func TestUnmarshalerWholeDocumentNull(t *testing.T) {
 }
 
 func TestUnmarshalerLoadErrors(t *testing.T) {
-	unmarshalerResult[2] = &yaml.LoadErrors{Errors: []*yaml.LoadError{{Err: errors.New("foo"), Line: 1, Column: 1}}}
-	unmarshalerResult[4] = &yaml.LoadErrors{Errors: []*yaml.LoadError{{Err: errors.New("bar"), Line: 1, Column: 1}}}
+	unmarshalerResult[2] = &yaml.LoadErrors{Errors: []*yaml.LoadError{{Stage: yaml.ConstructorStage, Message: "foo", Mark: yaml.Mark{Line: 1, Column: 1}}}}
+	unmarshalerResult[4] = &yaml.LoadErrors{Errors: []*yaml.LoadError{{Stage: yaml.ConstructorStage, Message: "bar", Mark: yaml.Mark{Line: 1, Column: 1}}}}
 	defer func() {
 		delete(unmarshalerResult, 2)
 		delete(unmarshalerResult, 4)
@@ -1044,8 +1046,8 @@ func TestUnmarshalerLoadErrors(t *testing.T) {
 }
 
 func TestLegacyUnmarshalerLoadErrors(t *testing.T) {
-	unmarshalerResult[2] = &yaml.LoadErrors{Errors: []*yaml.LoadError{{Err: errors.New("foo"), Line: 1, Column: 1}}}
-	unmarshalerResult[4] = &yaml.LoadErrors{Errors: []*yaml.LoadError{{Err: errors.New("bar"), Line: 1, Column: 1}}}
+	unmarshalerResult[2] = &yaml.LoadErrors{Errors: []*yaml.LoadError{{Stage: yaml.ConstructorStage, Message: "foo", Mark: yaml.Mark{Line: 1, Column: 1}}}}
+	unmarshalerResult[4] = &yaml.LoadErrors{Errors: []*yaml.LoadError{{Stage: yaml.ConstructorStage, Message: "bar", Mark: yaml.Mark{Line: 1, Column: 1}}}}
 	defer func() {
 		delete(unmarshalerResult, 2)
 		delete(unmarshalerResult, 4)
@@ -1080,17 +1082,8 @@ func TestLoadErrors_Unwrapping(t *testing.T) {
 	errSentinel := errors.New("foo")
 	errSentinel2 := errors.New("bar")
 
-	errUnmarshal := &yaml.LoadError{
-		Line:   1,
-		Column: 2,
-		Err:    errSentinel,
-	}
-
-	errUnmarshal2 := &yaml.LoadError{
-		Line:   2,
-		Column: 2,
-		Err:    errSentinel2,
-	}
+	errUnmarshal := yaml.NewLoadError(yaml.ConstructorStage, "foo", yaml.Mark{Line: 1, Column: 2}, errSentinel)
+	errUnmarshal2 := yaml.NewLoadError(yaml.ConstructorStage, "bar", yaml.Mark{Line: 2, Column: 2}, errSentinel2)
 
 	// Simulate a LoadErrors
 	err := &yaml.LoadErrors{
@@ -1119,17 +1112,8 @@ func TestLoadErrors_Unwrapping(t *testing.T) {
 func TestLoadErrors_Unwrapping_Failures(t *testing.T) {
 	errSentinel := errors.New("foo")
 
-	errUnmarshal := &yaml.LoadError{
-		Line:   1,
-		Column: 2,
-		Err:    errSentinel,
-	}
-
-	errUnmarshal2 := &yaml.LoadError{
-		Line:   2,
-		Column: 2,
-		Err:    errors.New("bar"),
-	}
+	errUnmarshal := yaml.NewLoadError(yaml.ConstructorStage, "foo", yaml.Mark{Line: 1, Column: 2}, errSentinel)
+	errUnmarshal2 := yaml.NewLoadError(yaml.ConstructorStage, "bar", yaml.Mark{Line: 2, Column: 2}, errors.New("bar"))
 
 	// Simulate a LoadErrors
 	err := &yaml.LoadErrors{
@@ -1246,7 +1230,7 @@ func TestUnmarshalerError(t *testing.T) {
 	err := yaml.Unmarshal([]byte(data), &dst)
 	expectedErr := &yaml.LoadErrors{
 		Errors: []*yaml.LoadError{
-			{Line: 1, Column: 17, Err: errFailing},
+			yaml.NewLoadError(yaml.ConstructorStage, errFailing.Error(), yaml.Mark{Line: 1, Column: 17}, errFailing),
 		},
 	}
 	assert.DeepEqual(t, expectedErr, err)
@@ -1272,7 +1256,7 @@ func TestLegacyUnmarshalerError(t *testing.T) {
 	err := yaml.Unmarshal([]byte(data), &dst)
 	expectedErr := &yaml.LoadErrors{
 		Errors: []*yaml.LoadError{
-			{Line: 1, Column: 17, Err: errFailing},
+			yaml.NewLoadError(yaml.ConstructorStage, errFailing.Error(), yaml.Mark{Line: 1, Column: 17}, errFailing),
 		},
 	}
 	assert.DeepEqual(t, expectedErr, err)
@@ -1300,7 +1284,7 @@ func TestTextUnmarshalerError(t *testing.T) {
 	err := yaml.Unmarshal([]byte(data), &dst)
 	expectedErr := &yaml.LoadErrors{
 		Errors: []*yaml.LoadError{
-			{Line: 1, Column: 17, Err: errFailing},
+			yaml.NewLoadError(yaml.ConstructorStage, errFailing.Error(), yaml.Mark{Line: 1, Column: 17}, errFailing),
 		},
 	}
 	assert.DeepEqual(t, expectedErr, err)
@@ -1312,13 +1296,7 @@ func TestTextUnmarshalerError(t *testing.T) {
 
 func TestUnmarshalError_Unwrapping(t *testing.T) {
 	errSentinel := errors.New("foo")
-
-	errUnmarshal := &yaml.LoadError{
-		Line:   1,
-		Column: 2,
-		Err:    errSentinel,
-	}
-
+	errUnmarshal := yaml.NewLoadError(yaml.ConstructorStage, "foo", yaml.Mark{Line: 1, Column: 2}, errSentinel)
 	assert.ErrorIs(t, errUnmarshal, errSentinel)
 }
 
@@ -1881,9 +1859,10 @@ func TestParserErrorUnknownAnchorPosition(t *testing.T) {
 	for _, test := range tests {
 		var n yaml.Node
 		err := yaml.Unmarshal([]byte(test.data), &n)
-		asErr := new(libyaml.ParserError)
+		asErr := new(libyaml.LoadError)
 		assert.ErrorAs(t, err, &asErr)
-		expected := &libyaml.ParserError{
+		expected := &libyaml.LoadError{
+			Stage:   libyaml.ComposerStage,
 			Message: "unknown anchor 'x' referenced",
 			Mark: libyaml.Mark{
 				Line:   test.line,
@@ -3187,7 +3166,7 @@ func runLimitTest(t *testing.T, tc map[string]any) {
 		if err == nil {
 			t.Fatalf("expected error %q, got nil", expectedError)
 		}
-		assert.Equal(t, expectedError, err.Error())
+		assert.ErrorMatches(t, expectedError, err)
 		return
 	}
 	assert.NoError(t, err)

@@ -159,16 +159,21 @@ func (l *Loader) Load(v any) (err error) {
 func loadAll(in []byte, out any, opts *Options) error {
 	outVal := reflect.ValueOf(out)
 	if outVal.Kind() != reflect.Pointer || outVal.IsNil() {
-		return &LoadErrors{Errors: []*ConstructError{{
-			Err: errors.New(
-				"yaml: WithAllDocuments requires a non-nil pointer to a slice"),
+		msg := "yaml: WithAllDocuments requires a non-nil pointer to a slice"
+		return &LoadErrors{Errors: []*LoadError{{
+			Stage:   ConstructorStage,
+			Message: msg,
+			err:     errors.New(msg),
 		}}}
 	}
 
 	sliceVal := outVal.Elem()
 	if sliceVal.Kind() != reflect.Slice {
-		return &LoadErrors{Errors: []*ConstructError{{
-			Err: errors.New("yaml: WithAllDocuments requires a pointer to a slice"),
+		msg := "yaml: WithAllDocuments requires a pointer to a slice"
+		return &LoadErrors{Errors: []*LoadError{{
+			Stage:   ConstructorStage,
+			Message: msg,
+			err:     errors.New(msg),
 		}}}
 	}
 
@@ -216,8 +221,11 @@ func loadSingle(in []byte, out any, opts *Options) error {
 	// Load first document
 	err = l.Load(out)
 	if err == io.EOF {
-		return &LoadErrors{Errors: []*ConstructError{{
-			Err: errors.New("yaml: no documents in stream"),
+		msg := "yaml: no documents in stream"
+		return &LoadErrors{Errors: []*LoadError{{
+			Stage:   ConstructorStage,
+			Message: msg,
+			err:     errors.New(msg),
 		}}}
 	}
 	if err != nil {
@@ -238,8 +246,11 @@ func loadSingle(in []byte, out any, opts *Options) error {
 			return err
 		}
 		// Successfully loaded a second document - this is an error in strict mode
-		return &LoadErrors{Errors: []*ConstructError{{
-			Err: errors.New("yaml: expected single document, found multiple"),
+		msg := "yaml: expected single document, found multiple"
+		return &LoadErrors{Errors: []*LoadError{{
+			Stage:   ConstructorStage,
+			Message: msg,
+			err:     errors.New(msg),
 		}}}
 	}
 

@@ -167,13 +167,10 @@ func (c *Composer) alias() *Node {
 	n.Alias = c.anchors[n.Value]
 	if n.Alias == nil {
 		msg := fmt.Sprintf("unknown anchor '%s' referenced", n.Value)
-		Fail(&ParserError{
-			Message: msg,
-			Mark: Mark{
-				Line:   n.Line,
-				Column: n.Column,
-			},
-		})
+		Fail(formatComposerError(msg, Mark{
+			Line:   n.Line,
+			Column: n.Column,
+		}))
 	}
 	c.expect(ALIAS_EVENT)
 	return n
@@ -305,10 +302,16 @@ func (c *Composer) expect(e EventType) {
 		}
 	}
 	if c.event.Type == STREAM_END_EVENT {
-		failf("attempted to go past the end of stream; corrupted value?")
+		Fail(formatComposerError(
+			"attempted to go past the end of stream; corrupted value?",
+			Mark{Line: c.event.StartMark.Line + 1, Column: c.event.StartMark.Column},
+		))
 	}
 	if c.event.Type != e {
-		c.fail(fmt.Errorf("expected %s event but got %s", e, c.event.Type))
+		Fail(formatComposerError(
+			fmt.Sprintf("expected %s event but got %s", e, c.event.Type),
+			Mark{Line: c.event.StartMark.Line + 1, Column: c.event.StartMark.Column},
+		))
 	}
 	c.event.Delete()
 	c.event.Type = NO_EVENT
@@ -380,4 +383,25 @@ func Fail(err error) {
 // failf panics with a YAMLError containing a formatted error message.
 func failf(format string, args ...any) {
 	panic(&YAMLError{fmt.Errorf("yaml: "+format, args...)})
+}
+
+// formatComposerError creates a LoadError for composer-stage errors.
+func formatComposerError(message string, mark Mark) *LoadError {
+	return &LoadError{
+		Stage:   ComposerStage,
+		Mark:    mark,
+		Message: message,
+	}
+}
+
+// formatComposerErrorContext creates a LoadError with both context and
+// problem information for composer-stage errors.
+func formatComposerErrorContext(context string, context_mark Mark, message string, mark Mark) *LoadError {
+	return &LoadError{
+		Stage:       ComposerStage,
+		ContextMark: context_mark,
+		ContextMsg:  context,
+		Mark:        mark,
+		Message:     message,
+	}
 }

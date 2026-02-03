@@ -26,73 +26,87 @@
 - unmarshal-error:
     name: Invalid float value
     yaml: 'v: !!float ''error'''
-    want: 'yaml: cannot construct !!str `error` as a !!float'
+    want: |-
+      go-yaml load error: cannot construct !!str `error` as a !!float
+        in resolver at <unknown position>
 
 - unmarshal-error:
     name: Incomplete flow sequence
     yaml: 'v: [A,'
-    want: 'yaml: while parsing a flow node at line 1:
-            did not find expected node content'
+    want: |-
+      go-yaml load error: did not find expected node content
+        in parser (while parsing a flow node) at L1
 
 - unmarshal-error:
     name: Incomplete flow sequence in list
     yaml: |
       v:
       - [A,
-    want: 'yaml: while parsing a flow node at line 2:
-            did not find expected node content'
+    want: |-
+      go-yaml load error: did not find expected node content
+        in parser (while parsing a flow node) at L2
 
 - unmarshal-error:
     name: Invalid alias syntax
     yaml: |
       a:
       - b: *,
-    want: 'yaml: while scanning an alias at line 2, column 6:
-            line 2, column 7:
-            did not find expected alphabetic or numeric character'
+    want: |-
+      go-yaml load error: did not find expected alphabetic or numeric character
+        in scanner (while scanning an alias) at L2,C6-C7
 
 - unmarshal-error:
     name: Unknown anchor referenced
     yaml: "a: *b\n"
-    want: "yaml: line 1, column 5: unknown anchor 'b' referenced"
+    want: |-
+      go-yaml load error: unknown anchor 'b' referenced
+        in composer at L1,C5
 
 - unmarshal-error:
     name: Anchor contains itself
     yaml: |
       a: &a
         b: *a
-    want: "yaml: anchor 'a' value contains itself"
+    want: |-
+      go-yaml load error: anchor 'a' value contains itself
+        in composer at L2,C7
 
 - unmarshal-error:
     name: Block sequence in invalid context
     yaml: 'value: -'
-    want: 'yaml: line 1, column 8:
-            block sequence entries are not allowed in this context'
+    want: |-
+      go-yaml load error: block sequence entries are not allowed in this context
+        in scanner at L1,C8
 
 - unmarshal-error:
     name: Invalid base64 in binary
     yaml: 'a: !!binary =='
-    want: 'yaml: !!binary value contains invalid base64 data'
+    want: |-
+      go-yaml load error: !!binary value contains invalid base64 data
+        in constructor at L1,C5
 
 - unmarshal-error:
     name: Slice as map key
     yaml: '{[.]}'
-    want: 'yaml: cannot use ''[]interface {}{"."}'' as a map key;
-            try decoding into yaml.Node'
+    want: |-
+      go-yaml load error: cannot use '[]interface {}{"."}' as a map key; try decoding into yaml.Node
+        in constructor at L1,C3
 
 - unmarshal-error:
     name: Map as map key
     yaml: '{{.}}'
-    want: 'yaml: cannot use
-            ''map[string]interface {}{".":interface {}(nil)}''
-            as a map key; try decoding into yaml.Node'
+    want: |-
+      go-yaml load error: cannot use 'map[string]interface {}{".":interface {}(nil)}' as a map key; try decoding into yaml.Node
+        in constructor at L1,C3
 
 - unmarshal-error:
     name: Forward reference to anchor
     yaml: |
       b: *a
       a: &a {c: 1}
-    want: "yaml: line 1, column 5: unknown anchor 'a' referenced"
+    want: |-
+      go-yaml load error: unknown anchor 'a' referenced
+        in composer at L1,C5
 
 - unmarshal-error:
     name: Invalid TAG directive
@@ -100,8 +114,9 @@
       %TAG !%79! tag:yaml.org,2002:
       ---
       v: !%79!int '1'
-    want: 'yaml: while scanning a %TAG directive at line 1: line 1, column 7:
-            did not find expected whitespace'
+    want: |-
+      go-yaml load error: did not find expected whitespace
+        in scanner (while scanning a %TAG directive) at L1-L1,C7
 
 - unmarshal-error:
     name: Missing colon in mapping (multiline)
@@ -110,7 +125,9 @@
         1:
       b
         2:
-    want: "yaml: line 4, column 4: mapping values are not allowed in this context"
+    want: |-
+      go-yaml load error: mapping values are not allowed in this context
+        in scanner at L4,C4
 
 - unmarshal-error:
     name: Missing colon in mapping (inline)
@@ -119,8 +136,9 @@
       b: 2
       c 2
       d: 3
-    want: "yaml: while scanning a simple key at line 3: line 4:
-            could not find expected ':'"
+    want: |-
+      go-yaml load error: could not find expected ':'
+        in scanner (while scanning a simple key) at L3-L4
 
 - unmarshal-error:
     name: Missing colon after comment and list (Issue 665)
@@ -128,22 +146,25 @@
       #
       -
       {
-    want: "yaml: while parsing a flow node at line 3:
-            did not find expected node content"
+    want: |-
+      go-yaml load error: did not find expected node content
+        in parser (while parsing a flow node) at L3
 
 - unmarshal-error:
     name: Incomplete UTF-8 sequence (Issue 666)
     yaml: "0: [:!00 \xEF"
-    want: "yaml: while parsing a flow sequence at <unknown position>:
-            line 1: did not find expected ',' or ']'"
+    want: |-
+      go-yaml load error: did not find expected ',' or ']'
+        in parser (while parsing a flow sequence) at L1,C4-L1
 
 - unmarshal-error:
     name: Anchor with colon (Issue 109)
     yaml: |
       foo: &bar: bar
       *bar: : quz
-    want: 'yaml: line 1, column 10:
-            mapping values are not allowed in this context'
+    want: |-
+      go-yaml load error: mapping values are not allowed in this context
+        in scanner at L1,C10
 
 - unmarshal-error:
     name: Excessive aliasing
@@ -157,7 +178,9 @@
       g: &g [*f,*f,*f,*f,*f,*f,*f,*f,*f]
       h: &h [*g,*g,*g,*g,*g,*g,*g,*g,*g]
       i: &i [*h,*h,*h,*h,*h,*h,*h,*h,*h]
-    want: 'yaml: document contains excessive aliasing'
+    want: |-
+      go-yaml load error: document contains excessive aliasing
+        in constructor at L2,C18
 
 # TextUnmarshaler validation errors
 

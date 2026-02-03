@@ -123,6 +123,43 @@ func (m Mark) String() string {
 	return builder.String()
 }
 
+// shortString returns a compact position string.
+// Returns "<unknown position>" when Line is 0 (position not known).
+// Returns "L{line}" when Column is 0, or "L{line},C{col}" otherwise.
+// Line and column values are stored 1-based and displayed as-is.
+func (m Mark) shortString() string {
+	if m.Line == 0 {
+		return "<unknown position>"
+	}
+	if m.Column != 0 {
+		return fmt.Sprintf("L%d,C%d", m.Line, m.Column+1)
+	}
+	return fmt.Sprintf("L%d", m.Line)
+}
+
+// rangeString formats a position range from start mark m to end mark.
+// Both marks use shortString for their individual display.
+// When marks are on the same line:
+//   - Both Column==0: just "L2" (no range shown, positions are equal)
+//   - Both Column!=0: "L2,C6-C7" (compact column range)
+//   - Mixed columns: "L1,C4-L1" (full start with line-only end)
+//
+// When marks are on different lines: "L1,C8-L2,C3"
+func (m Mark) rangeString(end Mark) string {
+	start := m.shortString()
+	if m.Line == end.Line {
+		if m.Column == 0 && end.Column == 0 {
+			// Same line, no columns: just "L2"
+			return start
+		}
+		if m.Column != 0 && end.Column != 0 {
+			// Same line with columns: "L2,C6-C7"
+			return fmt.Sprintf("%s-C%d", start, end.Column+1)
+		}
+	}
+	return fmt.Sprintf("%s-%s", start, end.shortString())
+}
+
 // Node Styles
 
 // styleInt is the underlying type for style constants.

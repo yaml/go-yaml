@@ -16,10 +16,7 @@ import (
 
 func TestErrors(t *testing.T) {
 	RunTestCases(t, "errors.yaml", map[string]TestHandler{
-		"marked-error":    runMarkedYAMLErrorTest,
-		"parser-error":    runParserYAMLErrorTest,
-		"scanner-error":   runScannerYAMLErrorTest,
-		"reader-error":    runReaderYAMLErrorTest,
+		"load-error":      runLoadErrorTest,
 		"emitter-error":   runEmitterYAMLErrorTest,
 		"writer-error":    runWriterYAMLErrorTest,
 		"construct-error": runConstructYAMLErrorTest,
@@ -30,77 +27,36 @@ func TestErrors(t *testing.T) {
 	})
 }
 
-func runMarkedYAMLErrorTest(t *testing.T, tc TestCase) {
+func runLoadErrorTest(t *testing.T, tc TestCase) {
 	t.Helper()
 
 	// Extract error spec from 'from' field
 	errorSpec, ok := tc.From.(map[string]any)
 	assert.Truef(t, ok, "from should be map[string]any, got %T", tc.From)
 
-	err := buildMarkedError(t, errorSpec)
+	err := buildLoadError(t, errorSpec)
 	got := err.Error()
 	want, ok := tc.Want.(string)
 	assert.Truef(t, ok, "want should be string, got %T", tc.Want)
 
 	assert.Equalf(t, want, got, "error message mismatch")
-}
 
-func runParserYAMLErrorTest(t *testing.T, tc TestCase) {
-	t.Helper()
-
-	errorSpec, ok := tc.From.(map[string]any)
-	assert.Truef(t, ok, "from should be map[string]any, got %T", tc.From)
-
-	markedErr := buildMarkedError(t, errorSpec)
-	err := ParserError(markedErr)
-	got := err.Error()
-	want, ok := tc.Want.(string)
-	assert.Truef(t, ok, "want should be string, got %T", tc.Want)
-
-	assert.Equalf(t, want, got, "error message mismatch")
-}
-
-func runScannerYAMLErrorTest(t *testing.T, tc TestCase) {
-	t.Helper()
-
-	errorSpec, ok := tc.From.(map[string]any)
-	assert.Truef(t, ok, "from should be map[string]any, got %T", tc.From)
-
-	markedErr := buildMarkedError(t, errorSpec)
-	err := ScannerError(markedErr)
-	got := err.Error()
-	want, ok := tc.Want.(string)
-	assert.Truef(t, ok, "want should be string, got %T", tc.Want)
-
-	assert.Equalf(t, want, got, "error message mismatch")
-}
-
-func runReaderYAMLErrorTest(t *testing.T, tc TestCase) {
-	t.Helper()
-
-	errorSpec, ok := tc.From.(map[string]any)
-	assert.Truef(t, ok, "from should be map[string]any, got %T", tc.From)
-
-	offset := getInt(t, errorSpec, "offset")
-	value := getInt(t, errorSpec, "value")
-	message := getString(t, errorSpec, "message")
-
-	err := ReaderError{
-		Offset: offset,
-		Value:  value,
-		Err:    errors.New(message),
+	// Verify Stage field if specified
+	if stageStr, ok := errorSpec["stage"].(string); ok {
+		assert.Equalf(t, Stage(stageStr), err.Stage, "Stage mismatch")
 	}
-
-	got := err.Error()
-	want, ok := tc.Want.(string)
-	assert.Truef(t, ok, "want should be string, got %T", tc.Want)
-	assert.Equalf(t, want, got, "error message mismatch")
 
 	// Test Unwrap if specified
 	if tc.Also == "unwrap" {
 		unwrapped := err.Unwrap()
-		assert.NotNilf(t, unwrapped, "Unwrap() should return non-nil")
-		assert.Equalf(t, message, unwrapped.Error(), "Unwrap() error message mismatch")
+		if err.err != nil {
+			assert.NotNilf(t, unwrapped, "Unwrap() should return non-nil when Err is set")
+			assert.Equalf(t, err.err.Error(), unwrapped.Error(), "Unwrap() error message mismatch")
+		} else {
+			if unwrapped != nil {
+				t.Fatalf("Unwrap() should return nil when Err is not set, got %v", unwrapped)
+			}
+		}
 	}
 }
 
@@ -239,7 +195,7 @@ func runLoadErrorsIsTest(t *testing.T, tc TestCase) {
 	// Check if any of the wrapped errors contains the target message
 	gotIs := false
 	for _, cerr := range err.Errors {
-		if cerr.Err != nil && cerr.Err.Error() == tc.Is {
+		if cerr.err != nil && cerr.err.Error() == tc.Is {
 			gotIs = true
 			break
 		}
@@ -270,18 +226,24 @@ func runTypeYAMLErrorTest(t *testing.T, tc TestCase) {
 
 // Helper functions
 
-func buildMarkedError(t *testing.T, spec map[string]any) MarkedYAMLError {
+func buildLoadError(t *testing.T, spec map[string]any) *LoadError {
 	t.Helper()
 
-	err := MarkedYAMLError{
+	err := &LoadError{
+		Stage:   Stage(getString(t, spec, "stage")),
 		Mark:    buildMark(t, spec, "mark"),
 		Message: getString(t, spec, "message"),
 	}
 
 	// Add context if specified
 	if contextMsg, ok := spec["context_message"].(string); ok {
-		err.ContextMessage = contextMsg
+		err.ContextMsg = contextMsg
 		err.ContextMark = buildMark(t, spec, "context_mark")
+	}
+
+	// Add underlying error if specified
+	if errMsg, ok := spec["err"].(string); ok {
+		err.err = errors.New(errMsg)
 	}
 
 	return err
@@ -302,7 +264,7 @@ func buildMark(t *testing.T, spec map[string]any, key string) Mark {
 	}
 }
 
-func buildConstructErrorList(t *testing.T, spec map[string]any) []*ConstructError {
+func buildConstructErrorList(t *testing.T, spec map[string]any) []*LoadError {
 	t.Helper()
 
 	errorsSpec, ok := spec["errors"].([]any)
@@ -310,7 +272,7 @@ func buildConstructErrorList(t *testing.T, spec map[string]any) []*ConstructErro
 		return nil
 	}
 
-	var result []*ConstructError
+	var result []*LoadError
 	for _, errSpec := range errorsSpec {
 		errMap, ok := errSpec.(map[string]any)
 		assert.Truef(t, ok, "error spec should be map[string]any")
@@ -318,9 +280,11 @@ func buildConstructErrorList(t *testing.T, spec map[string]any) []*ConstructErro
 		line := getInt(t, errMap, "line")
 		message := getString(t, errMap, "message")
 
-		result = append(result, &ConstructError{
-			Line: line,
-			Err:  errors.New(message),
+		result = append(result, &LoadError{
+			Stage:   ConstructorStage,
+			Mark:    Mark{Line: line},
+			Message: message,
+			err:     errors.New(message),
 		})
 	}
 
