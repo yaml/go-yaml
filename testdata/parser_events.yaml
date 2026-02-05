@@ -61,3 +61,45 @@
       -MAP
       -DOC
       -STR
+
+- parser-events:
+    name: FlowAnchorTagOrdering
+    yaml: |
+      a: &aaa !aaa []
+      b: &aab !aaa {}
+      c: !aaa &aac "test"
+
+    want: |
+      +STR
+      +DOC
+      +MAP
+      =VAL :a
+      +SEQ [] &aaa <!aaa>
+      -SEQ
+      =VAL :b
+      +MAP {} &aab <!aaa>
+      -MAP
+      =VAL :c
+      =VAL &aac <!aaa> "test
+      -MAP
+      -DOC
+      -STR
+
+- parser-events:
+    name: ScalarEscaping
+    yaml: |
+      ["\\", "\0", "\b", "\n", "\r", "\t"]
+
+    want: |
+      +STR
+      +DOC
+      +SEQ []
+      =VAL "\\
+      =VAL "\0
+      =VAL "\b
+      =VAL "\n
+      =VAL "\r
+      =VAL "\t
+      -SEQ
+      -DOC
+      -STR
