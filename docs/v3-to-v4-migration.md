@@ -7,7 +7,7 @@ This guide will help you migrate your code from `go.yaml.in/yaml/v3`
 
 - [ ] Update import path
 - [ ] Optionally migrate to new API (Load/Dump, Loader/Dumper)
-- [ ] Adjust formatting expectations or use yaml.V3 preset
+- [ ] Adjust formatting expectations or use yaml.WithV3Defaults() preset
 - [ ] Update tests
 
 ## Import Path Change
@@ -94,9 +94,9 @@ v4 introduces a functional options pattern for configuration:
 
 ```go
 // Version presets
-yaml.Dump(&data, yaml.V2)  // Use v2 defaults
-yaml.Dump(&data, yaml.V3)  // Use v3 defaults
-yaml.Dump(&data, yaml.V4)  // Use v4 defaults (2-space, compact)
+yaml.Dump(&data, yaml.WithV2Defaults())  // Use v2 defaults
+yaml.Dump(&data, yaml.WithV3Defaults())  // Use v3 defaults
+yaml.Dump(&data, yaml.WithV4Defaults())  // Use v4 defaults (2-space, compact)
 
 // Custom options
 yaml.Dump(&data,
@@ -106,7 +106,7 @@ yaml.Dump(&data,
 )
 
 // Combine presets with overrides
-yaml.Dump(&data, yaml.V3, yaml.WithIndent(2))
+yaml.Dump(&data, yaml.WithV3Defaults(), yaml.WithIndent(2))
 
 // Loading options
 yaml.Load(data, &config,
@@ -180,11 +180,11 @@ items:
 
 ### Preserving v3 Behavior
 
-If you need v3's formatting, use the `yaml.V3` preset:
+If you need v3's formatting, use the `yaml.WithV3Defaults()` preset:
 
 ```go
 // Get v3-style formatting in v4
-data, err := yaml.Dump(&config, yaml.V3)
+data, err := yaml.Dump(&config, yaml.WithV3Defaults())
 ```
 
 Or customize individual options:
@@ -218,12 +218,12 @@ You can migrate incrementally:
 
 1. Update import path
 2. If using TypeError.Errors directly, update that code
-3. Add `yaml.V3` preset to maintain v3 formatting
+3. Add `yaml.WithV3Defaults()` preset to maintain v3 formatting
 4. Done!
 
 ```go
 // Only change needed for basic migration
-data, err := yaml.Dump(&config, yaml.V3)
+data, err := yaml.Dump(&config, yaml.WithV3Defaults())
 ```
 
 ### Strategy 2: Adopt New API (Recommended)
@@ -256,9 +256,9 @@ go install go.yaml.in/yaml/v4/cmd/go-yaml@latest
 
 ### Issue: Output formatting changed
 
-**Solution:** Use `yaml.V3` preset to maintain v3 formatting:
+**Solution:** Use `yaml.WithV3Defaults()` preset to maintain v3 formatting:
 ```go
-yaml.Dump(&data, yaml.V3)
+yaml.Dump(&data, yaml.WithV3Defaults())
 ```
 
 ### Issue: Want more flexibility from classic API

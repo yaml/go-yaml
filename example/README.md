@@ -59,7 +59,7 @@ go run basic_loader.go
 ## Options System Examples
 
 **`with_v4_option.go`** - Using v4 option presets
-- Demonstrates yaml.V4
+- Demonstrates yaml.WithV4Defaults()
 - Shows v4 defaults (2-space indent)
 - Compares with default (v3) output
 
@@ -140,7 +140,7 @@ dumper.Close()
 
 ```go
 dumper, _ := yaml.NewDumper(writer,
-    yaml.V4,
+    yaml.WithV4Defaults(),
 )
 ```
 

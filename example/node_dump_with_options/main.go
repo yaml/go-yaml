@@ -45,7 +45,7 @@ func main() {
 
 	// Example 3: With v3 preset
 	var node3 yaml.Node
-	if err := node3.Dump(&config, yaml.V3); err != nil {
+	if err := node3.Dump(&config, yaml.WithV3Defaults()); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("3. With V3 preset:")

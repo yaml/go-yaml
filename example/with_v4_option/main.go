@@ -85,7 +85,7 @@ metadata:
 	// Compare with v3 defaults for backward compatibility
 	fmt.Println("\n--- For comparison: v3 defaults (4-space indent, non-compact) ---")
 	buf.Reset()
-	dumper2, err := yaml.NewDumper(&buf, yaml.V3)
+	dumper2, err := yaml.NewDumper(&buf, yaml.WithV3Defaults())
 	if err != nil {
 		panic(err)
 	}
