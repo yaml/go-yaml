@@ -216,7 +216,8 @@ type Parser struct {
 	comments      []Comment // The folded comments for all parsed tokens
 	comments_head int
 
-	skip_comments bool // Skip comment scanning for performance
+	skip_comments bool     // Skip comment scanning for performance
+	opts          *Options // Options for plugin hooks
 
 	// Scanner stuff
 
@@ -610,7 +611,7 @@ func (parser *Parser) parseDocumentEnd(event *Event) error {
 		EndMark:   end_mark,
 		Implicit:  implicit,
 	}
-	parser.setEventComments(event)
+	parser.handleEventComments(event)
 	if len(event.HeadComment) > 0 && len(event.FootComment) == 0 {
 		event.FootComment = event.HeadComment
 		event.HeadComment = nil
@@ -752,7 +753,7 @@ func (parser *Parser) parseNode(event *Event, block, indentless_sequence bool) e
 			EndMark:   token.EndMark,
 			Anchor:    token.Value,
 		}
-		parser.setEventComments(event)
+		parser.handleEventComments(event)
 		parser.skipToken()
 		return nil
 	}
@@ -861,7 +862,7 @@ func (parser *Parser) parseNode(event *Event, block, indentless_sequence bool) e
 			quoted_implicit: quoted_implicit,
 			Style:           Style(token.Style),
 		}
-		parser.setEventComments(event)
+		parser.handleEventComments(event)
 		parser.skipToken()
 		return nil
 	}
@@ -878,7 +879,7 @@ func (parser *Parser) parseNode(event *Event, block, indentless_sequence bool) e
 			Implicit:  implicit,
 			Style:     Style(FLOW_SEQUENCE_STYLE),
 		}
-		parser.setEventComments(event)
+		parser.handleEventComments(event)
 		return nil
 	}
 	if token.Type == FLOW_MAPPING_START_TOKEN {
@@ -893,7 +894,7 @@ func (parser *Parser) parseNode(event *Event, block, indentless_sequence bool) e
 			Implicit:  implicit,
 			Style:     Style(FLOW_MAPPING_STYLE),
 		}
-		parser.setEventComments(event)
+		parser.handleEventComments(event)
 		return nil
 	}
 	if block && token.Type == BLOCK_SEQUENCE_START_TOKEN {
@@ -1152,7 +1153,7 @@ func (parser *Parser) parseBlockMappingKey(event *Event, first bool) error {
 			StartMark: token.StartMark,
 			EndMark:   token.EndMark,
 		}
-		parser.setEventComments(event)
+		parser.handleEventComments(event)
 		parser.skipToken()
 		return nil
 	}
@@ -1265,7 +1266,7 @@ func (parser *Parser) parseFlowSequenceEntry(event *Event, first bool) error {
 		StartMark: token.StartMark,
 		EndMark:   token.EndMark,
 	}
-	parser.setEventComments(event)
+	parser.handleEventComments(event)
 
 	parser.skipToken()
 	return nil
@@ -1406,7 +1407,7 @@ func (parser *Parser) parseFlowMappingKey(event *Event, first bool) error {
 		StartMark: token.StartMark,
 		EndMark:   token.EndMark,
 	}
-	parser.setEventComments(event)
+	parser.handleEventComments(event)
 	parser.skipToken()
 	return nil
 }
@@ -1524,6 +1525,34 @@ func (parser *Parser) setEventComments(event *Event) {
 	parser.FootComment = nil
 	parser.tail_comment = nil
 	parser.stem_comment = nil
+}
+
+// handleEventComments calls the plugin hook if registered, otherwise runs
+// default setEventComments logic.
+func (parser *Parser) handleEventComments(event *Event) {
+	// If plugin is registered, call ProcessEventComments
+	if parser.opts != nil && parser.opts.CommentPlugin != nil {
+		ctx := &EventCommentContext{
+			Event:        event,
+			HeadComment:  parser.HeadComment,
+			LineComment:  parser.LineComment,
+			FootComment:  parser.FootComment,
+			Comments:     parser.comments,
+			CommentsHead: &parser.comments_head,
+		}
+		handled := parser.opts.CommentPlugin.ProcessEventComments(ctx)
+		if handled {
+			// Plugin handled it, clear parser state
+			parser.HeadComment = nil
+			parser.LineComment = nil
+			parser.FootComment = nil
+			parser.tail_comment = nil
+			parser.stem_comment = nil
+			return
+		}
+	}
+	// Default behavior
+	parser.setEventComments(event)
 }
 
 // Generate an empty scalar event.

@@ -36,7 +36,8 @@ type Options struct {
 	QuotePreference       QuoteStyle // Preferred quote style when quoting is required
 
 	// Plugin options
-	CommentProcessor CommentProcessor // Callback for processing comments
+	CommentPlugin    CommentPlugin    // Full plugin interface for comment processing
+	CommentProcessor CommentProcessor // Legacy callback (deprecated)
 	V3Comments       bool             // Enable V3-style comment handling
 	SkipComments     bool             // Skip comment scanning for performance
 
@@ -48,7 +49,7 @@ type Options struct {
 type Option func(*Options) error
 
 // CommentContext holds comment data for a node.
-// This is passed to CommentProcessor callbacks to allow plugins to handle
+// This is passed to CommentPlugin callbacks to allow plugins to handle
 // comments.
 type CommentContext struct {
 	HeadComment []byte
@@ -58,9 +59,78 @@ type CommentContext struct {
 	StemComment []byte
 }
 
+// EventCommentContext holds comment data at parser level when creating events.
+// This allows plugins to control how accumulated comments are attached to
+// events.
+type EventCommentContext struct {
+	Event        *Event    // event being created (mutable)
+	HeadComment  []byte    // accumulated head (from UnfoldComments)
+	LineComment  []byte    // accumulated line
+	FootComment  []byte    // accumulated foot
+	Comments     []Comment // the comment queue (mutable)
+	CommentsHead *int      // queue head pointer (mutable)
+}
+
+// MappingPairContext holds context for processing mapping key-value pairs.
+// This allows plugins to handle foot comment migration and tail comments.
+type MappingPairContext struct {
+	Mapping     *Node  // parent mapping node
+	Key         *Node  // current key
+	Value       *Node  // current value
+	Block       bool   // block vs flow style
+	TailComment []byte // from TAIL_COMMENT_EVENT, if any
+}
+
+// CommentPlugin processes comments during YAML parsing.
+// Each method returns a bool indicating whether it handled the comment.
+// If handled=false, the caller runs default behavior.
+//
+// Plugins should embed DefaultCommentBehavior and override only the methods
+// they need.
+type CommentPlugin interface {
+	// ProcessEventComments is called at event creation (8 sites in parser).
+	// Plugin can modify the event's comment fields and/or the comment queue.
+	// Return true to skip default processing.
+	ProcessEventComments(ctx *EventCommentContext) bool
+
+	// ProcessComment is called when each node is created in the composer.
+	// Plugin attaches event comments to the node.
+	// Return true to skip default processing.
+	ProcessComment(node *Node, ctx *CommentContext) (bool, error)
+
+	// ProcessMappingPair is called after each mapping key-value pair.
+	// Plugin handles foot comment migration, tail comments.
+	// Return true to skip default processing.
+	ProcessMappingPair(ctx *MappingPairContext) (bool, error)
+
+	// ProcessEndComments is called after composing a collection or document.
+	// Plugin handles end-event comments (Line, Foot).
+	// Return true to skip default processing.
+	ProcessEndComments(node *Node, ctx *CommentContext) (bool, error)
+}
+
+// DefaultCommentBehavior returns handled=false for all hooks.
+// Embed in plugin structs to only override methods you need.
+type DefaultCommentBehavior struct{}
+
+func (DefaultCommentBehavior) ProcessEventComments(*EventCommentContext) bool {
+	return false
+}
+func (DefaultCommentBehavior) ProcessComment(*Node, *CommentContext) (bool, error) {
+	return false, nil
+}
+func (DefaultCommentBehavior) ProcessMappingPair(*MappingPairContext) (bool, error) {
+	return false, nil
+}
+func (DefaultCommentBehavior) ProcessEndComments(*Node, *CommentContext) (bool, error) {
+	return false, nil
+}
+
 // CommentProcessor is a callback function that allows plugins to process
 // comments for a node.
 // The callback receives the node and a context containing comment data.
+//
+// Deprecated: Use CommentPlugin interface instead for full plugin functionality.
 type CommentProcessor func(node *Node, ctx *CommentContext) error
 
 // WithIndent sets the number of spaces to use for indentation when

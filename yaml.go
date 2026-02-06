@@ -242,15 +242,7 @@ var (
 	//   - QuoteLegacy: Legacy v2/v3 behavior (mixed quoting)
 	WithQuotePreference = libyaml.WithQuotePreference
 
-	// WithV3LegacyComments enables V3-style comment handling.
-	//
-	// When enabled, comments are automatically attached to nodes during parsing
-	// without requiring a plugin. This provides backward compatibility with v3
-	// comment behavior.
-	// When called without arguments, defaults to true.
-	//
-	// For more flexibility, consider using the comment plugin system instead.
-	WithV3LegacyComments = libyaml.WithV3LegacyComments
+	// Note: WithV3LegacyComments is defined below (not re-exported)
 )
 
 // Options combines multiple options into a single Option.
@@ -286,7 +278,8 @@ func WithPlugin(plugins ...any) Option {
 		for _, p := range plugins {
 			registered := false
 			if cp, ok := p.(CommentPlugin); ok {
-				o.CommentProcessor = cp.ProcessComment
+				// Wire up the full plugin interface
+				o.CommentPlugin = libyaml.CommentPlugin(cp)
 				o.V3Comments = false   // Disable direct comment attachment
 				o.SkipComments = false // Enable comment scanning
 				registered = true
@@ -298,6 +291,85 @@ func WithPlugin(plugins ...any) Option {
 		}
 		return nil
 	}
+}
+
+// WithV3LegacyComments enables V3-style comment handling.
+//
+// When enabled, comments are automatically attached to nodes during parsing
+// using the v3legacy plugin. This provides backward compatibility with v3
+// comment behavior.
+// When called without arguments, defaults to true.
+//
+// For more flexibility, consider implementing a custom CommentPlugin instead.
+func WithV3LegacyComments(enable ...bool) Option {
+	if len(enable) > 1 {
+		return func(o *libyaml.Options) error {
+			return errors.New("yaml: WithV3LegacyComments accepts at most one argument")
+		}
+	}
+	val := len(enable) == 0 || enable[0]
+	if !val {
+		// Disable comments
+		return func(o *libyaml.Options) error {
+			o.CommentPlugin = nil
+			o.V3Comments = false
+			o.SkipComments = true
+			return nil
+		}
+	}
+	// Enable by registering the v3legacy plugin
+	return func(o *libyaml.Options) error {
+		// Import inline to avoid circular dependency
+		// We use the internal implementation directly
+		o.CommentPlugin = &v3LegacyPlugin{}
+		o.V3Comments = false   // Plugin handles it
+		o.SkipComments = false // Enable comment scanning
+		return nil
+	}
+}
+
+// v3LegacyPlugin implements the V3-style comment plugin inline to avoid
+// circular dependency with the plugin package.
+type v3LegacyPlugin struct {
+	libyaml.DefaultCommentBehavior
+}
+
+func (p *v3LegacyPlugin) ProcessComment(node *libyaml.Node, ctx *libyaml.CommentContext) (bool, error) {
+	node.HeadComment = string(ctx.HeadComment)
+	node.LineComment = string(ctx.LineComment)
+	node.FootComment = string(ctx.FootComment)
+	return true, nil
+}
+
+func (p *v3LegacyPlugin) ProcessMappingPair(ctx *libyaml.MappingPairContext) (bool, error) {
+	k, v, n := ctx.Key, ctx.Value, ctx.Mapping
+	if ctx.Block && k.FootComment != "" {
+		if len(n.Content) > 2 {
+			n.Content[len(n.Content)-3].FootComment = k.FootComment
+			k.FootComment = ""
+		}
+	}
+	if k.FootComment == "" && v.FootComment != "" {
+		k.FootComment = v.FootComment
+		v.FootComment = ""
+	}
+	if ctx.TailComment != nil && k.FootComment == "" {
+		k.FootComment = string(ctx.TailComment)
+	}
+	return true, nil
+}
+
+func (p *v3LegacyPlugin) ProcessEndComments(node *libyaml.Node, ctx *libyaml.CommentContext) (bool, error) {
+	node.LineComment = string(ctx.LineComment)
+	node.FootComment = string(ctx.FootComment)
+	if node.Kind == libyaml.MappingNode &&
+		node.Style&libyaml.FlowStyle == 0 &&
+		node.FootComment != "" &&
+		len(node.Content) > 1 {
+		node.Content[len(node.Content)-2].FootComment = node.FootComment
+		node.FootComment = ""
+	}
+	return true, nil
 }
 
 // WithoutPlugin disables plugins of the specified kinds.
@@ -314,6 +386,7 @@ func WithoutPlugin(kinds ...string) Option {
 		for _, kind := range kinds {
 			switch kind {
 			case "comment":
+				o.CommentPlugin = nil
 				o.CommentProcessor = nil
 				o.V3Comments = false
 				o.SkipComments = true // Skip comment scanning for performance
