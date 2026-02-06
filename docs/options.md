@@ -462,7 +462,7 @@ the historical non-compact behavior for backward compatibility.
 ### Using v2 Options
 
 ```go
-dumper, _ := yaml.NewDumper(writer, yaml.V2)
+dumper, _ := yaml.NewDumper(writer, yaml.WithV2Defaults())
 ```
 
 **When to use:** Matching go-yaml v2 output format (2-space indent).
@@ -470,7 +470,7 @@ dumper, _ := yaml.NewDumper(writer, yaml.V2)
 ### Using v3 Options
 
 ```go
-dumper, _ := yaml.NewDumper(writer, yaml.V3)
+dumper, _ := yaml.NewDumper(writer, yaml.WithV3Defaults())
 ```
 
 **When to use:** Explicitly requesting v3 behavior (4-space indent, non-compact
@@ -481,11 +481,11 @@ code that expects v3 formatting.
 ### Using v4 Options (Default)
 
 ```go
-dumper, _ := yaml.NewDumper(writer, yaml.V4)
+dumper, _ := yaml.NewDumper(writer, yaml.WithV4Defaults())
 ```
 
 **When to use:** Modern YAML output with 2-space indent and compact sequences.
-This is the default, so you usually don't need to specify `yaml.V4` unless you
+This is the default, so you usually don't need to specify `yaml.WithV4Defaults()` unless you
 want to be explicit.
 
 ## Mixing Presets with Individual Options
@@ -496,7 +496,7 @@ You can start with a preset and override specific options.
 ```go
 // Start with v3 defaults (4-space), then override to 2-space
 dumper, _ := yaml.NewDumper(writer,
-    yaml.V3,
+    yaml.WithV3Defaults(),
     yaml.WithIndent(2),  // This wins
 )
 ```
@@ -512,7 +512,7 @@ dumper, _ := yaml.NewDumper(writer,
 // Start with 2-space, then apply v3 (4-space wins)
 dumper, _ := yaml.NewDumper(writer,
     yaml.WithIndent(2),
-    yaml.V3,  // This overrides to 4
+    yaml.WithV3Defaults(),  // This overrides to 4
 )
 ```
 
@@ -571,7 +571,7 @@ func LoadConfig(filename string) (*AppConfig, error) {
     defer f.Close()
 
     loader, err := yaml.NewLoader(f,
-        yaml.V4,
+        yaml.WithV4Defaults(),
         yaml.WithKnownFields(),          // Catch typos (defaults to true)
         yaml.WithSingleDocument(),       // Expect exactly one doc
     )
@@ -597,7 +597,7 @@ func GenerateCI(config *CIConfig) ([]byte, error) {
     var buf bytes.Buffer
 
     dumper, err := yaml.NewDumper(&buf,
-        yaml.V2,
+        yaml.WithV2Defaults(),
     )
     if err != nil {
         return nil, err
@@ -687,7 +687,7 @@ dumper, _ := yaml.NewDumper(output)  // Uses v4 defaults (2-space, compact)
 ### Pattern: Match Legacy Format
 
 ```go
-dumper, _ := yaml.NewDumper(output, yaml.V3)  // 4-space like old go-yaml
+dumper, _ := yaml.NewDumper(output, yaml.WithV3Defaults())  // 4-space like old go-yaml
 ```
 
 ## Tips & Tricks
@@ -697,8 +697,8 @@ compact sequences).
 
 **Order matters:** Options are applied left-to-right, with later options
 overriding earlier ones.
-For example, `yaml.WithIndent(2), yaml.V3` gives you 4 spaces (V3 wins),
-while `yaml.V3, yaml.WithIndent(2)` gives you 2 spaces.
+For example, `yaml.WithIndent(2), yaml.WithV3Defaults()` gives you 4 spaces (V3 wins),
+while `yaml.WithV3Defaults(), yaml.WithIndent(2)` gives you 2 spaces.
 
 **Load from files:** Use `yaml.OptsYAML()` to make formatting configurable by
 users.

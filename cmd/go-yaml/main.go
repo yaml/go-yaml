@@ -59,13 +59,13 @@ func initOptionRegistry() {
 	optionRegistry = map[string]optionSpec{
 		// Version presets
 		"v2": {typ: "preset", handler: func(string) ([]yaml.Option, error) {
-			return []yaml.Option{yaml.V2}, nil
+			return []yaml.Option{yaml.WithV2Defaults()}, nil
 		}},
 		"v3": {typ: "preset", handler: func(string) ([]yaml.Option, error) {
-			return []yaml.Option{yaml.V3}, nil
+			return []yaml.Option{yaml.WithV3Defaults()}, nil
 		}},
 		"v4": {typ: "preset", handler: func(string) ([]yaml.Option, error) {
-			return []yaml.Option{yaml.V4}, nil
+			return []yaml.Option{yaml.WithV4Defaults()}, nil
 		}},
 
 		// Formatting options
@@ -295,7 +295,7 @@ func buildOptions(configFile string, optionFlags []string) ([]yaml.Option, error
 	var opts []yaml.Option
 
 	// Default to V4 preset
-	opts = append(opts, yaml.V4)
+	opts = append(opts, yaml.WithV4Defaults())
 
 	// Load config file if specified
 	if configFile != "" {

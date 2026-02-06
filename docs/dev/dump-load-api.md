@@ -53,9 +53,9 @@ With `Dump` and `Load`, you can choose your starting point:
 
 - **v4 semantics**: `yaml.Dump(&data)` (default: 2-space indent, compact
   sequences)
-- **v3 semantics**: `yaml.Dump(&data, yaml.V3)` (matches Marshal: 4-space
-  indent, non-compact)
-- **v2 semantics**: `yaml.Dump(&data, yaml.V2)` (2-space indent, non-compact)
+- **v3 semantics**: `yaml.Dump(&data, yaml.WithV3Defaults())` (same
+  indentation and sequence style as Marshal: 4-space indent, non-compact)
+- **v2 semantics**: `yaml.Dump(&data, yaml.WithV2Defaults())` (2-space indent, non-compact)
 - **Custom options**: `yaml.Dump(&data, yaml.WithIndent(4),
   yaml.WithExplicitStart())`
 
@@ -275,7 +275,7 @@ data, err := yaml.Marshal(&config)
 
 ```go
 config := Config{Name: "myapp", Port: 8080, Enabled: true}
-data, err := yaml.Dump(&config, yaml.V3)
+data, err := yaml.Dump(&config, yaml.WithV3Defaults())
 // Same output as Marshal (4-space indent, non-compact)
 ```
 
@@ -297,7 +297,7 @@ fmt.Println(config.Name)  // "myapp"
 
 ```go
 var config Config
-err := yaml.Load(yamlData, &config, yaml.V3)
+err := yaml.Load(yamlData, &config, yaml.WithV3Defaults())
 fmt.Println(config.Name)  // "myapp"
 ```
 
@@ -340,7 +340,7 @@ name: third
 file, _ := os.Create("output.yaml")
 defer file.Close()
 
-dumper, _ := yaml.NewDumper(file, yaml.V3)
+dumper, _ := yaml.NewDumper(file, yaml.WithV3Defaults())
 dumper.Dump(&doc1)
 dumper.Dump(&doc2)
 dumper.Dump(&doc3)
@@ -377,7 +377,7 @@ for {
 file, _ := os.Open("config.yaml")
 defer file.Close()
 
-loader, _ := yaml.NewLoader(file, yaml.V3)
+loader, _ := yaml.NewLoader(file, yaml.WithV3Defaults())
 
 for {
     var doc map[string]any
@@ -423,13 +423,13 @@ Use preset options that match different go-yaml versions:
 
 ```go
 // v2: 2-space indent, non-compact sequences
-yaml.Dump(&config, yaml.V2)
+yaml.Dump(&config, yaml.WithV2Defaults())
 
 // v3: 4-space indent, non-compact sequences
-yaml.Dump(&config, yaml.V3)
+yaml.Dump(&config, yaml.WithV3Defaults())
 
 // v4: 2-space indent, compact sequences (default)
-yaml.Dump(&config, yaml.V4)  // or just yaml.Dump(&config)
+yaml.Dump(&config, yaml.WithV4Defaults())  // or just yaml.Dump(&config)
 ```
 
 ### Combining Options
@@ -439,7 +439,7 @@ Mix presets with individual overrides:
 ```go
 // Start with v3, then override indent to 2
 yaml.NewDumper(w,
-    yaml.V3,
+    yaml.WithV3Defaults(),
     yaml.WithIndent(2),  // This wins
 )
 ```

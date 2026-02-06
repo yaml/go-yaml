@@ -81,14 +81,14 @@
 //
 // Or use version-specific option presets for consistent formatting:
 //
-//	yaml.NewDumper(w, yaml.V3)
+//	yaml.NewDumper(w, yaml.WithV3Defaults())
 //
 // Options can be combined and later options override earlier ones:
 //
 //	// Start with v3 defaults, then override indent
 //	yaml.NewDumper(w,
-//	    yaml.V3,
-//	    yaml.WithIndent(4),
+//	    yaml.WithV3Defaults(),
+//	    yaml.WithIndent(2),
 //	)
 //
 // Load options from YAML configuration files:

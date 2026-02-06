@@ -721,13 +721,13 @@ func TestNodeDumpWithOptions(t *testing.T) {
 
 	// Dump with V4 (default)
 	var node1 yaml.Node
-	err := node1.Dump(value, yaml.V4)
+	err := node1.Dump(value, yaml.WithV4Defaults())
 	assert.NoError(t, err)
 	assert.Equal(t, yaml.MappingNode, node1.Kind)
 
 	// Dump with V3
 	var node2 yaml.Node
-	err = node2.Dump(value, yaml.V3)
+	err = node2.Dump(value, yaml.WithV3Defaults())
 	assert.NoError(t, err)
 	assert.Equal(t, yaml.MappingNode, node2.Kind)
 

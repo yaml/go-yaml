@@ -9,7 +9,7 @@
 //	https://github.com/yaml/go-yaml
 //
 // This file contains:
-// - Version presets (V2, V3, V4)
+// - Version preset functions (WithV2Defaults, WithV3Defaults, WithV4Defaults)
 // - Options API (WithIndent, WithKnownFields, etc.)
 // - Type and constant re-exports from internal/libyaml
 // - Helper functions for struct field handling
@@ -31,38 +31,44 @@ import (
 //-----------------------------------------------------------------------------
 
 // Usage:
-//	yaml.Dump(&data, yaml.V3)
-//	yaml.Dump(&data, yaml.V3, yaml.WithIndent(2), yaml.WithCompactSeqIndent())
+//	yaml.Dump(&data, yaml.WithV3Defaults())
+//	yaml.Dump(&data, yaml.WithV3Defaults(), yaml.WithIndent(2), yaml.WithCompactSeqIndent())
 
-// V2 defaults:
-var V2 = Options(
-	WithIndent(2),
-	WithCompactSeqIndent(false),
-	WithLineWidth(80),
-	WithUnicode(true),
-	WithUniqueKeys(true),
-	WithQuotePreference(QuoteLegacy),
-)
+// WithV2Defaults returns V2-compatible default options.
+func WithV2Defaults() Option {
+	return Options(
+		WithIndent(2),
+		WithCompactSeqIndent(false),
+		WithLineWidth(80),
+		WithUnicode(true),
+		WithUniqueKeys(true),
+		WithQuotePreference(QuoteLegacy),
+	)
+}
 
-// V3 defaults:
-var V3 = Options(
-	WithIndent(4),
-	WithCompactSeqIndent(false),
-	WithLineWidth(80),
-	WithUnicode(true),
-	WithUniqueKeys(true),
-	WithQuotePreference(QuoteLegacy),
-)
+// WithV3Defaults returns V3-compatible default options.
+func WithV3Defaults() Option {
+	return Options(
+		WithIndent(4),
+		WithCompactSeqIndent(false),
+		WithLineWidth(80),
+		WithUnicode(true),
+		WithUniqueKeys(true),
+		WithQuotePreference(QuoteLegacy),
+	)
+}
 
-// V4 defaults:
-var V4 = Options(
-	WithIndent(2),
-	WithCompactSeqIndent(true),
-	WithLineWidth(80),
-	WithUnicode(true),
-	WithUniqueKeys(true),
-	WithQuotePreference(QuoteSingle),
-)
+// WithV4Defaults returns the current V4 default options.
+func WithV4Defaults() Option {
+	return Options(
+		WithIndent(2),
+		WithCompactSeqIndent(true),
+		WithLineWidth(80),
+		WithUnicode(true),
+		WithUniqueKeys(true),
+		WithQuotePreference(QuoteSingle),
+	)
+}
 
 //-----------------------------------------------------------------------------
 // Options
@@ -243,7 +249,7 @@ var (
 //
 // Example:
 //
-//	opts := yaml.Options(yaml.V4, yaml.WithIndent(3))
+//	opts := yaml.Options(yaml.WithV4Defaults(), yaml.WithIndent(3))
 //	yaml.Dump(&data, opts)
 func Options(opts ...Option) Option {
 	return libyaml.CombineOptions(opts...)
@@ -467,8 +473,8 @@ type Decoder struct {
 // The decoder introduces its own buffering and may read
 // data from r beyond the YAML values requested.
 func NewDecoder(r io.Reader) *Decoder {
-	// NewLoader won't return error with V3 preset and withFromLegacy
-	loader, _ := NewLoader(r, V3, withFromLegacy())
+	// NewLoader won't return error with WithV3Defaults() and withFromLegacy
+	loader, _ := NewLoader(r, WithV3Defaults(), withFromLegacy())
 	return &Decoder{loader: loader}
 }
 
@@ -496,8 +502,8 @@ type Encoder struct {
 // The Encoder should be closed after use to flush all data
 // to w.
 func NewEncoder(w io.Writer) *Encoder {
-	// NewDumper won't return error with V3 preset
-	dumper, _ := NewDumper(w, V3)
+	// NewDumper won't return an error when using WithV3Defaults()
+	dumper, _ := NewDumper(w, WithV3Defaults())
 	return &Encoder{dumper: dumper}
 }
 
@@ -569,7 +575,7 @@ func (e *Encoder) Close() error {
 func Unmarshal(in []byte, out any) (err error) {
 	// Check for Unmarshaler interface first
 	if u, ok := out.(Unmarshaler); ok {
-		l, err := libyaml.NewLoader(bytes.NewReader(in), V3, withFromLegacy())
+		l, err := libyaml.NewLoader(bytes.NewReader(in), WithV3Defaults(), withFromLegacy())
 		if err != nil {
 			return err
 		}
@@ -583,7 +589,7 @@ func Unmarshal(in []byte, out any) (err error) {
 		return u.UnmarshalYAML(node)
 	}
 	// Normal path
-	return Load(in, out, V3, withFromLegacy())
+	return Load(in, out, WithV3Defaults(), withFromLegacy())
 }
 
 // withFromLegacy is a private option that indicates this call is from
@@ -640,6 +646,6 @@ func withFromLegacy() Option {
 //	yaml.Marshal(&T{B: 2}) // Returns "b: 2\n"
 //	yaml.Marshal(&T{F: 1}} // Returns "a: 1\nb: 0\n"
 func Marshal(in any) (out []byte, err error) {
-	// Use V3 preset with unlimited line width to match legacy DefaultOptions
-	return Dump(in, V3, WithLineWidth(-1))
+	// Use WithV3Defaults() with unlimited line width to match legacy DefaultOptions
+	return Dump(in, WithV3Defaults(), WithLineWidth(-1))
 }
