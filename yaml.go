@@ -241,6 +241,16 @@ var (
 	//   - QuoteDouble: Use double quotes
 	//   - QuoteLegacy: Legacy v2/v3 behavior (mixed quoting)
 	WithQuotePreference = libyaml.WithQuotePreference
+
+	// WithV3LegacyComments enables V3-style comment handling.
+	//
+	// When enabled, comments are automatically attached to nodes during parsing
+	// without requiring a plugin. This provides backward compatibility with v3
+	// comment behavior.
+	// When called without arguments, defaults to true.
+	//
+	// For more flexibility, consider using the comment plugin system instead.
+	WithV3LegacyComments = libyaml.WithV3LegacyComments
 )
 
 // Options combines multiple options into a single Option.
@@ -253,6 +263,66 @@ var (
 //	yaml.Dump(&data, opts)
 func Options(opts ...Option) Option {
 	return libyaml.CombineOptions(opts...)
+}
+
+// CommentContext contains raw comment data from the parser.
+type CommentContext = libyaml.CommentContext
+
+// WithPlugin registers one or more plugins for YAML processing.
+//
+// Plugins extend the YAML library with custom processing logic.
+// Each plugin implements one or more plugin interfaces.
+// Currently supported plugin types:
+//   - CommentPlugin: Controls comment attachment during parsing
+//
+// Example:
+//
+//	import "go.yaml.in/yaml/v4/plugin/comment/v3legacy"
+//	loader := yaml.NewLoader(data, yaml.WithPlugin(v3legacy.New()))
+//
+// Plugins use public types and can be implemented by external packages.
+func WithPlugin(plugins ...any) Option {
+	return func(o *libyaml.Options) error {
+		for _, p := range plugins {
+			registered := false
+			if cp, ok := p.(CommentPlugin); ok {
+				o.CommentProcessor = cp.ProcessComment
+				o.V3Comments = false   // Disable direct comment attachment
+				o.SkipComments = false // Enable comment scanning
+				registered = true
+			}
+			// Future plugin types add cases here (non-exclusive if)
+			if !registered {
+				return errors.New("yaml: unsupported plugin type")
+			}
+		}
+		return nil
+	}
+}
+
+// WithoutPlugin disables plugins of the specified kinds.
+//
+// This can be used to override plugin settings from previous options.
+// Valid kinds: "comment"
+//
+// Example:
+//
+//	// Disable comment processing for performance
+//	loader := yaml.NewLoader(data, yaml.WithoutPlugin("comment"))
+func WithoutPlugin(kinds ...string) Option {
+	return func(o *libyaml.Options) error {
+		for _, kind := range kinds {
+			switch kind {
+			case "comment":
+				o.CommentProcessor = nil
+				o.V3Comments = false
+				o.SkipComments = true // Skip comment scanning for performance
+			default:
+				return errors.New("yaml: invalid plugin kind: " + kind)
+			}
+		}
+		return nil
+	}
 }
 
 // OptsYAML parses a YAML string containing option settings and returns
@@ -574,7 +644,7 @@ func (e *Encoder) Close() error {
 func Unmarshal(in []byte, out any) (err error) {
 	// Check for Unmarshaler interface first
 	if u, ok := out.(Unmarshaler); ok {
-		l, err := libyaml.NewLoader(bytes.NewReader(in), WithV3Defaults(), withFromLegacy())
+		l, err := libyaml.NewLoader(bytes.NewReader(in), WithV3Defaults(), WithV3LegacyComments(), withFromLegacy())
 		if err != nil {
 			return err
 		}
@@ -592,7 +662,7 @@ func Unmarshal(in []byte, out any) (err error) {
 		return u.UnmarshalYAML(node)
 	}
 	// Normal path
-	return Load(in, out, WithV3Defaults(), withFromLegacy())
+	return Load(in, out, WithV3Defaults(), WithV3LegacyComments(), withFromLegacy())
 }
 
 // withFromLegacy is a private option that indicates this call is from

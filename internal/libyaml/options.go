@@ -35,12 +35,33 @@ type Options struct {
 	FlowSimpleCollections bool       // Use flow style for simple collections
 	QuotePreference       QuoteStyle // Preferred quote style when quoting is required
 
+	// Plugin options
+	CommentProcessor CommentProcessor // Callback for processing comments
+	V3Comments       bool             // Enable V3-style comment handling
+	SkipComments     bool             // Skip comment scanning for performance
+
 	// Private options (not exported, used internally)
 	FromLegacy bool // Indicates legacy Unmarshal()/Decoder path (check Unmarshaler, allow trailing content)
 }
 
 // Option allows configuring YAML loading and dumping operations.
 type Option func(*Options) error
+
+// CommentContext holds comment data for a node.
+// This is passed to CommentProcessor callbacks to allow plugins to handle
+// comments.
+type CommentContext struct {
+	HeadComment []byte
+	LineComment []byte
+	FootComment []byte
+	TailComment []byte
+	StemComment []byte
+}
+
+// CommentProcessor is a callback function that allows plugins to process
+// comments for a node.
+// The callback receives the node and a context containing comment data.
+type CommentProcessor func(node *Node, ctx *CommentContext) error
 
 // WithIndent sets the number of spaces to use for indentation when
 // dumping YAML content.
@@ -347,6 +368,28 @@ func WithQuotePreference(style QuoteStyle) Option {
 	}
 }
 
+// WithV3LegacyComments enables V3-style comment handling.
+//
+// When enabled, comments are automatically attached to nodes during parsing
+// without requiring a plugin. This provides backward compatibility with v3
+// comment behavior.
+// When called without arguments, defaults to true.
+//
+// For more flexibility, consider using the comment plugin system instead.
+func WithV3LegacyComments(enable ...bool) Option {
+	if len(enable) > 1 {
+		return func(o *Options) error {
+			return errors.New("yaml: WithV3LegacyComments accepts at most one argument")
+		}
+	}
+	val := len(enable) == 0 || enable[0]
+	return func(o *Options) error {
+		o.V3Comments = val
+		o.SkipComments = !val // Skip comments when not enabled
+		return nil
+	}
+}
+
 // CombineOptions combines multiple options into a single Option.
 // This is useful for creating option presets or combining version defaults
 // with custom options.
@@ -374,6 +417,7 @@ func ApplyOptions(opts ...Option) (*Options, error) {
 		LineWidth:        80,
 		Unicode:          true,
 		UniqueKeys:       true,
+		SkipComments:     true, // Skip comments by default for performance
 	}
 	for _, opt := range opts {
 		if err := opt(o); err != nil {

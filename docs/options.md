@@ -440,6 +440,39 @@ override security-critical keys.
 
 **Default:** true (enabled)
 
+##### `yaml.WithV3LegacyComments(...bool)`
+
+Enables V3-style comment handling for backward compatibility.
+
+When enabled, comments from the YAML source are attached to nodes during
+parsing.
+When disabled (default), comments are skipped for better performance.
+
+```go
+// Enable comment processing
+loader, _ := yaml.NewLoader(reader,
+    yaml.WithV3LegacyComments(),
+)
+
+// Disable comment processing (default)
+loader, _ := yaml.NewLoader(reader,
+    yaml.WithV3LegacyComments(false),
+)
+```
+
+**Note:** The classic `Unmarshal()` function automatically enables
+`WithV3LegacyComments()` for backward compatibility with v3.
+The new `Load()` function skips comments by default for better performance.
+
+**Performance impact:** Comment processing adds overhead for scanning, parsing,
+and storing comment text.
+If you don't need comments, use the default (disabled) for best performance.
+
+**Alternative:** For more flexibility, use the plugin system instead.
+See [Plugin System](plugins.md) for details.
+
+**Default:** false (disabled) for `Load()`, true (enabled) for `Unmarshal()`
+
 ## Version-Specific Option Presets
 
 Instead of setting options one by one, you can use version presets that match

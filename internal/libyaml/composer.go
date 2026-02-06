@@ -37,6 +37,10 @@ func NewComposer(b []byte, opts *Options) *Composer {
 		b = []byte{'\n'}
 	}
 	p.Parser.SetInputString(b)
+	// Configure comment scanning based on options
+	if opts != nil {
+		p.Parser.skip_comments = opts.SkipComments
+	}
 	return &p
 }
 
@@ -47,6 +51,10 @@ func NewComposerFromReader(r io.Reader, opts *Options) *Composer {
 		opts:   opts,
 	}
 	p.Parser.SetInputReader(r)
+	// Configure comment scanning based on options
+	if opts != nil {
+		p.Parser.skip_comments = opts.SkipComments
+	}
 	return &p
 }
 
@@ -121,9 +129,26 @@ func (c *Composer) node(kind Kind, tag, value string) *Node {
 	if !c.Textless {
 		n.Line = c.event.StartMark.Line + 1
 		n.Column = c.event.StartMark.Column + 1
-		n.HeadComment = string(c.event.HeadComment)
-		n.LineComment = string(c.event.LineComment)
-		n.FootComment = string(c.event.FootComment)
+
+		// Handle comments via plugin or directly
+		if c.opts != nil && c.opts.CommentProcessor != nil {
+			// Use plugin callback
+			ctx := &CommentContext{
+				HeadComment: c.event.HeadComment,
+				LineComment: c.event.LineComment,
+				FootComment: c.event.FootComment,
+				// TailComment and StemComment are handled separately
+			}
+			if err := c.opts.CommentProcessor(n, ctx); err != nil {
+				c.fail(err)
+			}
+		} else if c.opts != nil && c.opts.V3Comments {
+			// Use V3-style direct comment attachment
+			n.HeadComment = string(c.event.HeadComment)
+			n.LineComment = string(c.event.LineComment)
+			n.FootComment = string(c.event.FootComment)
+		}
+		// Otherwise, skip comments for performance
 	}
 	return n
 }

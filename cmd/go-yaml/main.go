@@ -523,7 +523,9 @@ func main() {
 		}
 	} else if *yamlPreserveMode {
 		// Use YAML formatting mode with preserve
-		if err := ProcessYAML(input, true, unmarshalMode, decodeMode, marshalMode, encodeMode, opts); err != nil {
+		// Enable comment processing for preserve mode
+		preserveOpts := append(opts, yaml.WithV3LegacyComments())
+		if err := ProcessYAML(input, true, unmarshalMode, decodeMode, marshalMode, encodeMode, preserveOpts); err != nil {
 			log.Fatal("Failed to process YAML:", err)
 		}
 	} else {
@@ -536,7 +538,9 @@ func main() {
 			}
 		} else {
 			// Use Loader mode with options
-			loader, err := yaml.NewLoader(input, opts...)
+			// Enable comments for node inspection mode
+			nodeOpts := append(opts, yaml.WithV3LegacyComments())
+			loader, err := yaml.NewLoader(input, nodeOpts...)
 			if err != nil {
 				log.Fatal("Failed to create loader:", err)
 			}
