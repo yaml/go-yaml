@@ -151,8 +151,8 @@ func (c *Composer) document() *Node {
 // createStreamNode creates a stream node with encoding information.
 func (c *Composer) createStreamNode() *Node {
 	n := &Node{
-		Kind:     StreamNode,
-		Encoding: c.encoding,
+		Kind:   StreamNode,
+		Stream: &Stream{Encoding: c.encoding},
 	}
 	if !c.Textless && c.event.Type != NO_EVENT {
 		n.Line = c.event.StartMark.Line + 1
@@ -355,15 +355,15 @@ func (c *Composer) parseChild(parent *Node) *Node {
 func (c *Composer) captureDirectives(n *Node) {
 	if c.peek() == DOCUMENT_START_EVENT {
 		if vd := c.event.GetVersionDirective(); vd != nil {
-			n.Version = &StreamVersionDirective{
+			n.Stream.Version = &StreamVersionDirective{
 				Major: vd.Major(),
 				Minor: vd.Minor(),
 			}
 		}
 		if tds := c.event.GetTagDirectives(); len(tds) > 0 {
-			n.TagDirectives = make([]StreamTagDirective, len(tds))
+			n.Stream.TagDirectives = make([]StreamTagDirective, len(tds))
 			for i, td := range tds {
-				n.TagDirectives[i] = StreamTagDirective{
+				n.Stream.TagDirectives[i] = StreamTagDirective{
 					Handle: td.GetHandle(),
 					Prefix: td.GetPrefix(),
 				}

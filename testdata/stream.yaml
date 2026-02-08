@@ -25,10 +25,11 @@
 #   want - List of expected nodes with kind and optional properties
 #
 # Node Format in 'want':
-#   kind     - Node kind: Stream or Document (required)
-#   encoding - Encoding name: UTF-8, UTF-16LE, UTF-16BE (for Stream nodes)
-#   version  - Version string like "1.1" (for Stream nodes)
-#   tag-directives - List of tag directive objects (for Stream nodes)
+#   kind:    - Node kind: Stream or Document (required)
+#   stream:  - Stream metadata (for Stream nodes only, nested structure):
+#     encoding:       - Encoding name: UTF-8, UTF-16LE, UTF-16BE
+#     version:        - Version string like "1.1"
+#     tag-directives: - List of tag directive objects
 
 # Empty stream returns single StreamNode
 - stream-test:
@@ -36,7 +37,8 @@
     yaml: ''
     want:
     - kind: Stream
-      encoding: UTF-8
+      stream:
+        encoding: UTF-8
 
 # Single document returns [Stream, Doc, Stream]
 - stream-test:
@@ -44,10 +46,12 @@
     yaml: 'key: value'
     want:
     - kind: Stream
-      encoding: UTF-8
+      stream:
+        encoding: UTF-8
     - kind: Document
     - kind: Stream
-      encoding: UTF-8
+      stream:
+        encoding: UTF-8
 
 # Multiple documents return interleaved pattern
 - stream-test:
@@ -59,13 +63,16 @@
       key2: value2
     want:
     - kind: Stream
-      encoding: UTF-8
+      stream:
+        encoding: UTF-8
     - kind: Document
     - kind: Stream
-      encoding: UTF-8
+      stream:
+        encoding: UTF-8
     - kind: Document
     - kind: Stream
-      encoding: UTF-8
+      stream:
+        encoding: UTF-8
 
 # YAML version directive captured on first StreamNode
 - stream-test:
@@ -77,14 +84,16 @@
       key: value
     want:
     - kind: Stream
-      encoding: UTF-8
-      version: "1.1"
-      tag-directives:
-      - handle: "!"
-        prefix: "tag:example.com,2000:app/"
+      stream:
+        encoding: UTF-8
+        version: "1.1"
+        tag-directives:
+        - handle: "!"
+          prefix: "tag:example.com,2000:app/"
     - kind: Document
     - kind: Stream
-      encoding: UTF-8
+      stream:
+        encoding: UTF-8
 
 # Encoding is set on all StreamNodes
 - stream-test:
@@ -92,10 +101,12 @@
     yaml: 'key: value'
     want:
     - kind: Stream
-      encoding: UTF-8
+      stream:
+        encoding: UTF-8
     - kind: Document
     - kind: Stream
-      encoding: UTF-8
+      stream:
+        encoding: UTF-8
 
 # Backward compatibility - without stream nodes option
 - stream-test:

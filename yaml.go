@@ -356,10 +356,9 @@ func OptsYAML(yamlStr string) (Option, error) {
 // Type and constant re-exports
 //-----------------------------------------------------------------------------
 
-// Stream-related types for advanced YAML processing
+// Re-export stream-related types
 type (
-	// VersionDirective represents a YAML %YAML version directive for stream
-	// nodes.
+	Stream           = libyaml.Stream
 	VersionDirective = libyaml.StreamVersionDirective
 
 	// TagDirective represents a YAML %TAG directive for stream nodes.
