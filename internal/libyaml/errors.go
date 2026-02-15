@@ -44,12 +44,42 @@ func (e ParserError) Error() string {
 	return MarkedYAMLError(e).Error()
 }
 
+// Line returns the line number (1-indexed) of the error position.
+func (e ParserError) Line() int {
+	return e.Mark.Line
+}
+
+// Column returns the column number (1-indexed) of the error position.
+func (e ParserError) Column() int {
+	return e.Mark.Column + 1
+}
+
+// Offset returns the byte offset of the error position.
+func (e ParserError) Offset() int {
+	return e.Mark.Index
+}
+
 // ScannerError represents an error that occurred during scanning.
 type ScannerError MarkedYAMLError
 
 // Error returns the error message.
 func (e ScannerError) Error() string {
 	return MarkedYAMLError(e).Error()
+}
+
+// Line returns the line number (1-indexed) of the error position.
+func (e ScannerError) Line() int {
+	return e.Mark.Line
+}
+
+// Column returns the column number (1-indexed) of the error position.
+func (e ScannerError) Column() int {
+	return e.Mark.Column + 1
+}
+
+// Offset returns the byte offset of the error position.
+func (e ScannerError) Offset() int {
+	return e.Mark.Index
 }
 
 // ReaderError represents an error that occurred while reading input.

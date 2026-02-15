@@ -58,6 +58,10 @@ func runParserYAMLErrorTest(t *testing.T, tc TestCase) {
 	assert.Truef(t, ok, "want should be string, got %T", tc.Want)
 
 	assert.Equalf(t, want, got, "error message mismatch")
+
+	assert.Equal(t, err.Mark.Line, err.Line())
+	assert.Equal(t, err.Mark.Column+1, err.Column())
+	assert.Equal(t, err.Mark.Index, err.Offset())
 }
 
 func runScannerYAMLErrorTest(t *testing.T, tc TestCase) {
@@ -73,6 +77,10 @@ func runScannerYAMLErrorTest(t *testing.T, tc TestCase) {
 	assert.Truef(t, ok, "want should be string, got %T", tc.Want)
 
 	assert.Equalf(t, want, got, "error message mismatch")
+
+	assert.Equal(t, err.Mark.Line, err.Line())
+	assert.Equal(t, err.Mark.Column+1, err.Column())
+	assert.Equal(t, err.Mark.Index, err.Offset())
 }
 
 func runReaderYAMLErrorTest(t *testing.T, tc TestCase) {

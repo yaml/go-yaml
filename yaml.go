@@ -397,6 +397,12 @@ type (
 	// It contains multiple *[LoadError] instances with details about each error.
 	LoadErrors = libyaml.LoadErrors
 
+	// ScannerError represents an error that occurred during scanning.
+	ScannerError = libyaml.ScannerError
+
+	// ParserError represents an error that occurred during parsing.
+	ParserError = libyaml.ParserError
+
 	// TypeError is a legacy error type retained for compatibility.
 	//
 	// Deprecated: Use [LoadErrors] instead.

@@ -798,9 +798,9 @@ func TestParserErrorUnmarshal(t *testing.T) {
 	}
 	data := "a: 1\n=\nb: 2"
 	err := yaml.Unmarshal([]byte(data), &v)
-	var asErr libyaml.ScannerError
+	var asErr yaml.ScannerError
 	assert.ErrorAs(t, err, &asErr)
-	expectedErr := libyaml.ScannerError{
+	expectedErr := yaml.ScannerError{
 		ContextMark: libyaml.Mark{
 			Index:  5,
 			Line:   2,
@@ -822,9 +822,9 @@ func TestParserErrorDecoder(t *testing.T) {
 	var v any
 	data := "value: -"
 	err := yaml.NewDecoder(strings.NewReader(data)).Decode(&v)
-	var asErr libyaml.ScannerError
+	var asErr yaml.ScannerError
 	assert.ErrorAs(t, err, &asErr)
-	expectedErr := libyaml.ScannerError{
+	expectedErr := yaml.ScannerError{
 		Mark: libyaml.Mark{
 			Index:  7,
 			Line:   1,
@@ -1780,9 +1780,9 @@ func TestParserErrorUnknownAnchorPosition(t *testing.T) {
 	for _, test := range tests {
 		var n yaml.Node
 		err := yaml.Unmarshal([]byte(test.data), &n)
-		asErr := new(libyaml.ParserError)
+		asErr := new(yaml.ParserError)
 		assert.ErrorAs(t, err, &asErr)
-		expected := &libyaml.ParserError{
+		expected := &yaml.ParserError{
 			Message: "unknown anchor 'x' referenced",
 			Mark: libyaml.Mark{
 				Line:   test.line,
