@@ -714,6 +714,24 @@ func isBlankOrZero(b []byte, i int) bool {
 		b[i] == 0)
 }
 
+func isEndOfScalarInFlowContentChar(b []byte, i int) bool {
+	switch b[i] {
+	// ",", "[", "]", "{" and "}"
+	case ',', '[', ']', '{', '}':
+		return true
+	// "? "
+	case '?':
+		return isBlankOrZero(b, i+1)
+	// ": ", ":,", ":[", ":]", ":{" and ":}"
+	case ':':
+		return b[i+1] == ' ' || b[i+1] == ',' ||
+			b[i+1] == '[' || b[i+1] == ']' ||
+			b[i+1] == '{' || b[i+1] == '}'
+	default:
+		return false
+	}
+}
+
 // Determine the width of the character.
 func width(b byte) int {
 	// Don't replace these by a switch without first
@@ -2467,24 +2485,9 @@ func (parser *Parser) scanPlainScalar(token *Token) error {
 		for !isBlankOrZero(parser.buffer, parser.buffer_pos) {
 
 			// Check for indicators that may end a plain scalar.
-			// Check for ": ".
-			// Check for ",", "? ", "[", "]", "{" and "}" inside a flow content.
-			// Check for ":,", ":[", ":]", ":{" and ":}" inside a flow content.
+			// Check for ": " or isEndOfScalarInFlowContentChar in flow context.
 			if (parser.buffer[parser.buffer_pos] == ':' && isBlankOrZero(parser.buffer, parser.buffer_pos+1)) ||
-				(parser.flow_level > 0 &&
-					(parser.buffer[parser.buffer_pos] == ',' ||
-						(parser.buffer[parser.buffer_pos] == '?' && isBlankOrZero(parser.buffer, parser.buffer_pos+1)) ||
-						parser.buffer[parser.buffer_pos] == '[' ||
-						parser.buffer[parser.buffer_pos] == ']' ||
-						parser.buffer[parser.buffer_pos] == '{' ||
-						parser.buffer[parser.buffer_pos] == '}')) ||
-				(parser.flow_level > 0 &&
-					(parser.buffer[parser.buffer_pos] == ':') &&
-					(parser.buffer[parser.buffer_pos+1] == ',' ||
-						parser.buffer[parser.buffer_pos+1] == '[' ||
-						parser.buffer[parser.buffer_pos+1] == ']' ||
-						parser.buffer[parser.buffer_pos+1] == '{' ||
-						parser.buffer[parser.buffer_pos+1] == '}')) {
+				(parser.flow_level > 0 && isEndOfScalarInFlowContentChar(parser.buffer, parser.buffer_pos)) {
 				break
 			}
 
