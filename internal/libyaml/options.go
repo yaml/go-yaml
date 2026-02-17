@@ -23,6 +23,11 @@ type Options struct {
 	StreamNodes    bool // Enable stream node emission
 	AllDocuments   bool // Load/Dump all documents in multi-document streams
 
+	AliasingRestrictionsNotEnforced bool    // Disable aliasing limits
+	AliasRatioRangeLow              int     // Low range of aliasing expansion limits
+	AliasRatioRangeHigh             int     // High range of aliasing expansion limits
+	AliasRatioRange                 float64 // Range over which allowed alias ratios are scaled
+
 	// Dumping options
 	Indent                int        // Indentation spaces (2-9)
 	CompactSeqIndent      bool       // Whether '- ' counts as indentation
@@ -344,6 +349,38 @@ func WithQuotePreference(style QuoteStyle) Option {
 		default:
 			return fmt.Errorf("invalid QuoteStyle value: %d", style)
 		}
+	}
+}
+
+// WithAliasingRestrictionsNotEnforced sets whether aliasing restrictions are enforced.
+func WithAliasingRestrictionsNotEnforced(value bool) Option {
+	return func(o *Options) error {
+		o.AliasingRestrictionsNotEnforced = value
+		return nil
+	}
+}
+
+// WithAliasRatioRangeLow sets the low range of alias expansion limits
+func WithAliasRatioRangeLow(value int) Option {
+	return func(o *Options) error {
+		o.AliasRatioRangeLow = value
+		return nil
+	}
+}
+
+// WithAliasRatioRangeHigh sets the low range of alias expansion limits
+func WithAliasRatioRangeHigh(value int) Option {
+	return func(o *Options) error {
+		o.AliasRatioRangeHigh = value
+		return nil
+	}
+}
+
+// WithAliasRatioRange sets the range over which allowed alias ratios are scaled
+func WithAliasRatioRange(value float64) Option {
+	return func(o *Options) error {
+		o.AliasRatioRange = value
+		return nil
 	}
 }
 

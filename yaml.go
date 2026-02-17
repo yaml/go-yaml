@@ -241,6 +241,14 @@ var (
 	//   - QuoteDouble: Use double quotes
 	//   - QuoteLegacy: Legacy v2/v3 behavior (mixed quoting)
 	WithQuotePreference = libyaml.WithQuotePreference
+
+	WithAliasingRestrictionsNotEnforced = libyaml.WithAliasingRestrictionsNotEnforced
+
+	WithAliasRatioRangeLow = libyaml.WithAliasRatioRangeLow
+
+	WithAliasRatioRangeHigh = libyaml.WithAliasRatioRangeHigh
+
+	WithAliasRatioRange = libyaml.WithAliasRatioRange
 )
 
 // Options combines multiple options into a single Option.

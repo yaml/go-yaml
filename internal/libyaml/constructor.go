@@ -48,11 +48,15 @@ type Constructor struct {
 	stringMapType  reflect.Type
 	generalMapType reflect.Type
 
-	KnownFields    bool
-	UniqueKeys     bool
-	constructCount int
-	aliasCount     int
-	aliasDepth     int
+	KnownFields                     bool
+	UniqueKeys                      bool
+	AliasingRestrictionsNotEnforced bool
+	AliasRatioRangeLow              int
+	AliasRatioRangeHigh             int
+	AliasRatioRange                 float64
+	constructCount                  int
+	aliasCount                      int
+	aliasDepth                      int
 
 	mergedFields map[any]bool
 }
@@ -60,12 +64,34 @@ type Constructor struct {
 // NewConstructor creates a new Constructor initialized with the provided
 // options.
 func NewConstructor(opts *Options) *Constructor {
+	// Detect if alias ratios have been manually configured in a sensible way
+	aliasRatioRangeLow := opts.AliasRatioRangeLow
+	aliasRatioRangeHigh := opts.AliasRatioRangeHigh
+	aliasRatioRange := opts.AliasRatioRange
+
+	if aliasRatioRangeLow <= 0 {
+		aliasRatioRangeLow = alias_ratio_range_low
+
+	}
+	if aliasRatioRangeHigh <= 0 {
+		aliasRatioRangeHigh = alias_ratio_range_high
+
+	}
+	// If not set, use default
+	if aliasRatioRange <= 0 {
+		aliasRatioRange = float64(aliasRatioRangeHigh - aliasRatioRangeLow)
+	}
+
 	return &Constructor{
-		stringMapType:  stringMapType,
-		generalMapType: generalMapType,
-		KnownFields:    opts.KnownFields,
-		UniqueKeys:     opts.UniqueKeys,
-		aliases:        make(map[*Node]bool),
+		stringMapType:                   stringMapType,
+		generalMapType:                  generalMapType,
+		KnownFields:                     opts.KnownFields,
+		UniqueKeys:                      opts.UniqueKeys,
+		AliasingRestrictionsNotEnforced: opts.AliasingRestrictionsNotEnforced,
+		AliasRatioRangeLow:              aliasRatioRangeLow,
+		AliasRatioRangeHigh:             aliasRatioRangeHigh,
+		AliasRatioRange:                 aliasRatioRange,
+		aliases:                         make(map[*Node]bool),
 	}
 }
 
@@ -81,8 +107,10 @@ func (c *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
 	if c.aliasDepth > 0 {
 		c.aliasCount++
 	}
-	if c.aliasCount > 100 && c.constructCount > 1000 && float64(c.aliasCount)/float64(c.constructCount) > allowedAliasRatio(c.constructCount) {
-		failf("document contains excessive aliasing")
+	if !c.AliasingRestrictionsNotEnforced {
+		if c.aliasCount > 100 && c.constructCount > 1000 && float64(c.aliasCount)/float64(c.constructCount) > c.allowedAliasRatio(c.constructCount) {
+			failf("document contains excessive aliasing")
+		}
 	}
 	if out.Type() == nodeType {
 		out.Set(reflect.ValueOf(n).Elem())
@@ -164,23 +192,19 @@ const (
 	// 4,000,000 decode operations is ~5MB of dense object declarations, or
 	// ~4.5MB of dense object declarations with 10% alias expansion
 	alias_ratio_range_high = 4000000
-
-	// alias_ratio_range is the range over which we scale allowed alias
-	// ratios
-	alias_ratio_range = float64(alias_ratio_range_high - alias_ratio_range_low)
 )
 
 // allowedAliasRatio calculates the maximum allowed ratio of alias-driven
 // decodes to total decodes based on the construct count.
 // This prevents excessive alias expansion attacks while allowing reasonable
 // alias usage in both small and large documents.
-func allowedAliasRatio(constructCount int) float64 {
+func (c *Constructor) allowedAliasRatio(constructCount int) float64 {
 	switch {
-	case constructCount <= alias_ratio_range_low:
+	case constructCount <= c.AliasRatioRangeLow:
 		// allow 99% to come from alias expansion for small-to-medium
 		// documents
 		return 0.99
-	case constructCount >= alias_ratio_range_high:
+	case constructCount >= c.AliasRatioRangeHigh:
 		// allow 10% to come from alias expansion for very large
 		// documents
 		return 0.10
@@ -190,7 +214,7 @@ func allowedAliasRatio(constructCount int) float64 {
 		// over the range.
 		// 400,000 decode operations is ~100MB of allocations in
 		// worst-case scenarios (single-item maps).
-		return 0.99 - 0.89*(float64(constructCount-alias_ratio_range_low)/alias_ratio_range)
+		return 0.99 - 0.89*(float64(constructCount-c.AliasRatioRangeLow)/c.AliasRatioRange)
 	}
 }
 
