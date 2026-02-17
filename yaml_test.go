@@ -3181,6 +3181,34 @@ func BenchmarkLimits(b *testing.B) {
 	}
 }
 
+// aliasingLimitTests is a copy of the above benchmarks used to test removing the
+// aliasing limits (hence the copy)
+var aliasingLimitTests = []struct {
+	name  string
+	data  []byte
+	error string
+}{
+	{
+		name:  "8kb of maps with 100 aliases",
+		data:  []byte(`{a: &a [{a}` + strings.Repeat(`,{a}`, 1000*8/4-100) + `], b: &b [*a` + strings.Repeat(`,*a`, 99) + `]}`),
+		error: "yaml: document contains excessive aliasing",
+	},
+}
+
+// TestReplacingAliasingLimits tests that aliasing limits can be removed with options.
+func TestReplacingAliasingLimits(t *testing.T) {
+	for _, tc := range aliasingLimitTests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			var v any
+			err := yaml.Load(tc.data, &v)
+			assert.ErrorMatches(t, tc.error, err)
+			err = yaml.Load(tc.data, &v, yaml.WithAliasingRestrictionFunction(libyaml.NoAliasingRestrictions))
+			assert.NoError(t, err)
+		})
+	}
+}
+
 func TestParserGetEvents(t *testing.T) {
 	datatest.RunTestCases(t, func() ([]map[string]any, error) {
 		return datatest.LoadTestCasesFromFile("testdata/parser_events.yaml", libyaml.LoadAny)

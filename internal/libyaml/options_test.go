@@ -14,22 +14,23 @@ import (
 
 func TestOptions(t *testing.T) {
 	handlers := map[string]TestHandler{
-		"with-indent":                  runWithIndentTest,
-		"with-compact-seq-indent":      runWithCompactSeqIndentTest,
-		"with-known-fields":            runWithKnownFieldsTest,
-		"with-single-document":         runWithSingleDocumentTest,
-		"with-stream-nodes":            runWithStreamNodesTest,
-		"with-all-documents":           runWithAllDocumentsTest,
-		"with-line-width":              runWithLineWidthTest,
-		"with-unicode":                 runWithUnicodeTest,
-		"with-unique-keys":             runWithUniqueKeysTest,
-		"with-canonical":               runWithCanonicalTest,
-		"with-line-break":              runWithLineBreakTest,
-		"with-explicit-start":          runWithExplicitStartTest,
-		"with-explicit-end":            runWithExplicitEndTest,
-		"with-flow-simple-collections": runWithFlowSimpleCollectionsTest,
-		"with-quote-preference":        runWithQuotePreferenceTest,
-		"apply-options":                runApplyOptionsTest,
+		"with-indent":                   runWithIndentTest,
+		"with-compact-seq-indent":       runWithCompactSeqIndentTest,
+		"with-known-fields":             runWithKnownFieldsTest,
+		"with-single-document":          runWithSingleDocumentTest,
+		"with-stream-nodes":             runWithStreamNodesTest,
+		"with-all-documents":            runWithAllDocumentsTest,
+		"with-line-width":               runWithLineWidthTest,
+		"with-unicode":                  runWithUnicodeTest,
+		"with-unique-keys":              runWithUniqueKeysTest,
+		"with-canonical":                runWithCanonicalTest,
+		"with-line-break":               runWithLineBreakTest,
+		"with-explicit-start":           runWithExplicitStartTest,
+		"with-explicit-end":             runWithExplicitEndTest,
+		"with-flow-simple-collections":  runWithFlowSimpleCollectionsTest,
+		"with-quote-preference":         runWithQuotePreferenceTest,
+		"with-no-aliasing-restrictions": runWithAliasingRestrictionFunctionTest,
+		"apply-options":                 runApplyOptionsTest,
 	}
 
 	RunTestCases(t, "options.yaml", handlers)
@@ -344,6 +345,33 @@ func runWithQuotePreferenceTest(t *testing.T, tc TestCase) {
 	}
 }
 
+// runWithAliasingRestrictionFunctionTest tests that WithAliasingRestrictionFunction
+// correctly can set a restriction function.
+func runWithAliasingRestrictionFunctionTest(t *testing.T, tc TestCase) {
+	t.Helper()
+
+	var altFn AliasingRestrictionFunction
+	altFn = func(aliasCount int, constructCount int) bool {
+		return true
+	}
+
+	opt := WithAliasingRestrictionFunction(altFn)
+
+	opts := &Options{}
+	err := opt(opts)
+
+	if tc.Like != "" {
+		assert.NotNilf(t, err, "expected error matching %q", tc.Like)
+		if err != nil {
+			matched, _ := regexp.MatchString(tc.Like, err.Error())
+			assert.Truef(t, matched, "error %q should match %q", err.Error(), tc.Like)
+		}
+	} else {
+		assert.NoErrorf(t, err, "WithAliasingRestrictionFunction error: %v", err)
+		checkWantFields(t, opts, tc.Want)
+	}
+}
+
 // runApplyOptionsTest tests ApplyOptions
 func runApplyOptionsTest(t *testing.T, tc TestCase) {
 	t.Helper()
@@ -548,6 +576,14 @@ func checkWantFields(t *testing.T, opts *Options, want any) {
 			}
 			expected := parseQuoteStyle(t, expectedStr)
 			assert.Equalf(t, expected, opts.QuotePreference, "QuotePreference = %v, want %v", opts.QuotePreference, expected)
+
+		case "aliasing_restriction_function":
+			expected, ok := expectedValue.(bool)
+			if !ok {
+				t.Fatalf("want.quote_preference should be bool, got %T", expectedValue)
+			}
+			result := opts.AliasingRestrictionFunction(0, 0)
+			assert.Equalf(t, expected, result, "AliasingRestrictionFunction call = %v, want %v", expected, result)
 
 		default:
 			t.Fatalf("unknown want field: %s", key)
