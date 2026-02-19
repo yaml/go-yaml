@@ -722,11 +722,10 @@ func isEndOfScalarInFlowContentChar(b []byte, i int) bool {
 	// "? "
 	case '?':
 		return isBlankOrZero(b, i+1)
-	// ": ", ":,", ":[", ":]", ":{" and ":}"
+	// ": ", ":,", ":]" and ":}"
 	case ':':
 		return b[i+1] == ' ' || b[i+1] == ',' ||
-			b[i+1] == '[' || b[i+1] == ']' ||
-			b[i+1] == '{' || b[i+1] == '}'
+			b[i+1] == ']' || b[i+1] == '}'
 	default:
 		return false
 	}
