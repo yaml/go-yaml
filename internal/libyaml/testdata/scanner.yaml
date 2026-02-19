@@ -304,34 +304,34 @@
 - scan-tokens-detailed:
     name: Flow mapping colon followed by comma, bracket, or brace
     yaml: |-
-        {a:,b:[c:],d:{e:}}
+        {a:,b: [c:],d: {e:}}
     want:
     - STREAM_START_TOKEN
     - FLOW_MAPPING_START_TOKEN
     - KEY_TOKEN
     - SCALAR_TOKEN:
-        value: "a"
+        value: a
     - VALUE_TOKEN
     - FLOW_ENTRY_TOKEN
     - KEY_TOKEN
     - SCALAR_TOKEN:
-        value: "b"
+        value: b
     - VALUE_TOKEN
     - FLOW_SEQUENCE_START_TOKEN
     - KEY_TOKEN
     - SCALAR_TOKEN:
-        value: "c"
+        value: c
     - VALUE_TOKEN
     - FLOW_SEQUENCE_END_TOKEN
     - FLOW_ENTRY_TOKEN
     - KEY_TOKEN
     - SCALAR_TOKEN:
-        value: "d"
+        value: d
     - VALUE_TOKEN
     - FLOW_MAPPING_START_TOKEN
     - KEY_TOKEN
     - SCALAR_TOKEN:
-        value: "e"
+        value: e
     - VALUE_TOKEN
     - FLOW_MAPPING_END_TOKEN
     - FLOW_MAPPING_END_TOKEN
