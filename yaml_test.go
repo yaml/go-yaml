@@ -118,7 +118,39 @@ type (
 	testStructA_TextUnmarshalerPtrPtr struct {
 		A **simpleTextUnmarshaler
 	}
+	testStructAB_TextUnmarshaler struct {
+		A simpleTextUnmarshaler
+		B simpleTextUnmarshaler
+	}
 )
+
+type textUnmarshalerWithYAMLUnmarshaler []string
+
+var _ interface {
+	encoding.TextUnmarshaler
+	yaml.Unmarshaler
+} = &textUnmarshalerWithYAMLUnmarshaler{}
+
+func (ty *textUnmarshalerWithYAMLUnmarshaler) UnmarshalText(text []byte) error {
+	panic("UnmarshalText called on type with UnmarshalYAML")
+}
+
+func (ty *textUnmarshalerWithYAMLUnmarshaler) UnmarshalYAML(node *yaml.Node) error {
+	return node.Decode((*[]string)(ty))
+}
+
+func TestTextUnmarshalerWithYAMLUnmarshaler(t *testing.T) {
+	var target textUnmarshalerWithYAMLUnmarshaler
+	const input = `[foo, bar]`
+
+	// NOTE: can't use [yaml.Unmarshal] here: it has [yaml.Unmarshaler]
+	// shortcut, so it skips Constructor, and this test is a regression
+	// test for [libyaml.Constructor.Construct].
+	err := yaml.NewDecoder(strings.NewReader(input)).Decode(&target)
+
+	assert.NoError(t, err)
+	assert.DeepEqual(t, textUnmarshalerWithYAMLUnmarshaler{"foo", "bar"}, target)
+}
 
 // Type and value registries for data-driven tests
 var (
@@ -228,6 +260,7 @@ func init() {
 	decodeTypes.Register("testStructA_TextUnmarshaler", testStructA_TextUnmarshaler{})
 	decodeTypes.Register("testStructA_TextUnmarshalerPtr", testStructA_TextUnmarshalerPtr{})
 	decodeTypes.Register("testStructA_TextUnmarshalerPtrPtr", testStructA_TextUnmarshalerPtrPtr{})
+	decodeTypes.Register("testStructAB_TextUnmarshaler", testStructAB_TextUnmarshaler{})
 
 	// Register math constants
 	decodeValues.Register("+Inf", math.Inf(+1))

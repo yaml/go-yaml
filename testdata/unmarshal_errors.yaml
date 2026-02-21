@@ -183,7 +183,7 @@
     yaml: 'a: {foo: bar}'
     want: |-
       yaml: construct errors:
-        line 1: cannot construct !!map into *yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
+        line 1: cannot construct !!map into yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
 
 - unmarshal-error:
     name: Sequence into TextUnmarshaler (pointer field)
@@ -191,7 +191,7 @@
     yaml: 'a: [foo, bar]'
     want: |-
       yaml: construct errors:
-        line 1: cannot construct !!seq into *yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
+        line 1: cannot construct !!seq into yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
 
 - unmarshal-error:
     name: Mapping into TextUnmarshaler (pointer-pointer field)
@@ -199,7 +199,7 @@
     yaml: 'a: {foo: bar}'
     want: |-
       yaml: construct errors:
-        line 1: cannot construct !!map into **yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
+        line 1: cannot construct !!map into yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
 
 - unmarshal-error:
     name: Sequence into TextUnmarshaler (pointer-pointer field)
@@ -207,4 +207,4 @@
     yaml: 'a: [foo, bar]'
     want: |-
       yaml: construct errors:
-        line 1: cannot construct !!seq into **yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
+        line 1: cannot construct !!seq into yaml_test.simpleTextUnmarshaler (TextUnmarshaler)

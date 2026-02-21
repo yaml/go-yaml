@@ -89,6 +89,18 @@ func (c *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
 		return true
 	}
 
+	switch n.Kind {
+	case DocumentNode:
+		return c.document(n, out)
+	case AliasNode:
+		return c.alias(n, out)
+	}
+
+	out, constructed, good := c.prepare(n, out)
+	if constructed {
+		return good
+	}
+
 	// When out type implements [encoding.TextUnmarshaler], ensure the node
 	// is a scalar. Otherwise, for example, constructing a YAML mapping
 	// into a struct having no exported fields, but implementing
@@ -105,16 +117,7 @@ func (c *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
 		})
 		return false
 	}
-	switch n.Kind {
-	case DocumentNode:
-		return c.document(n, out)
-	case AliasNode:
-		return c.alias(n, out)
-	}
-	out, constructed, good := c.prepare(n, out)
-	if constructed {
-		return good
-	}
+
 	switch n.Kind {
 	case ScalarNode:
 		good = c.scalar(n, out)
