@@ -28,35 +28,6 @@ Update all import statements throughout your codebase.
 
 ## API Changes
 
-### Breaking Change: `Node` Stream Metadata Consolidated
-
-v4 removes the `Encoding`, `Version`, and `TagDirectives` fields from
-`Node` and replaces them with a single `Stream *Stream` field.
-The `Stream` pointer is non-nil only on `StreamNode` nodes.
-
-**v3:**
-```go
-if node.Kind == yaml.DocumentNode {
-    enc := node.Encoding
-    ver := node.Version       // *yaml.VersionDirective
-    tags := node.TagDirectives // []yaml.TagDirective
-}
-```
-
-**v4:**
-```go
-if node.Kind == yaml.StreamNode && node.Stream != nil {
-    enc := node.Stream.Encoding
-    ver := node.Stream.Version       // *yaml.VersionDirective
-    tags := node.Stream.TagDirectives // []yaml.TagDirective
-}
-```
-
-Note that in v4 stream metadata is carried by `StreamNode`, not
-`DocumentNode`.
-Use the `NewLoader` API with `WithStreamNodes()` to receive
-`StreamNode` values.
-
 ### Recommended: Use New API
 
 v4 introduces a cleaner API with better naming.
@@ -116,6 +87,36 @@ dumper.Close()
 ```
 
 ## New Features in v4
+
+### Stream Nodes
+
+v4 adds `StreamNode`, a new node kind that exposes stream-level
+metadata not available in v3: encoding, `%YAML` version directives,
+and `%TAG` directives.
+This is accessed via `Node.Stream`, which is non-nil only on
+`StreamNode` nodes.
+
+Enable stream nodes with `WithStreamNodes()`:
+
+```go
+loader := yaml.NewLoader(reader, yaml.WithStreamNodes())
+for {
+    var node yaml.Node
+    err := loader.Load(&node)
+    if errors.Is(err, io.EOF) {
+        break
+    }
+    if node.Kind == yaml.StreamNode && node.Stream != nil {
+        enc := node.Stream.Encoding
+        ver := node.Stream.Version        // *yaml.VersionDirective
+        tags := node.Stream.TagDirectives // []yaml.TagDirective
+    }
+}
+```
+
+With stream nodes enabled, the loader emits nodes in the pattern
+`[Stream, Doc, Stream, Doc, ..., Stream]` — one opening stream node
+per document boundary, plus a final closing stream node.
 
 ### Functional Options
 
