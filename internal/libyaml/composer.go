@@ -40,7 +40,7 @@ func NewComposer(b []byte, opts *Options) *Composer {
 	return &p
 }
 
-// NewComposerFromReader creates a new composer from an io.Reader.
+// NewComposerFromReader creates a new composer from an [io.Reader].
 func NewComposerFromReader(r io.Reader, opts *Options) *Composer {
 	p := Composer{
 		Parser: NewParser(),

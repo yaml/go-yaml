@@ -57,7 +57,7 @@ type fieldInfo struct {
 
 // structMap caches struct reflection information.
 // fieldMapMutex protects access to structMap.
-// constructorType holds the reflect.Type for the constructor interface.
+// constructorType holds the [reflect.Type] for the constructor interface.
 var (
 	structMap       = make(map[reflect.Type]*structInfo)
 	fieldMapMutex   sync.RWMutex
@@ -70,7 +70,7 @@ type constructor interface {
 	UnmarshalYAML(value *Node) error
 }
 
-// init initializes the constructorType variable with the reflect.Type of constructor interface.
+// init initializes the constructorType variable with the [reflect.Type] of constructor interface.
 func init() {
 	var v constructor
 	constructorType = reflect.ValueOf(&v).Elem().Type()

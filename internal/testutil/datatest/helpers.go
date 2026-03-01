@@ -42,7 +42,7 @@ func GetField(t *testing.T, obj any, fieldName string) any {
 
 // CallMethod calls a method on an object using reflection.
 // This is useful for test cases that need to call methods dynamically.
-// Returns the slice of return values from the method call as reflect.Value wrappers.
+// Returns the slice of return values from the method call as [reflect.Value] wrappers.
 // Callers must extract the actual values using methods like .Interface(), .Int(), .String(), etc.
 func CallMethod(t *testing.T, obj any, methodName string, args []any) []reflect.Value {
 	t.Helper()

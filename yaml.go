@@ -103,7 +103,7 @@ var (
 
 	// WithSingleDocument configures the Loader to only process the first
 	// document in a YAML stream. After the first document is loaded,
-	// subsequent calls to Load will return io.EOF.
+	// subsequent calls to Load will return [io.EOF].
 	//
 	// When called without arguments, defaults to true.
 	//

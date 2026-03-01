@@ -96,7 +96,7 @@ type (
 	}
 )
 
-// simpleTextUnmarshaler is a simple type implementing encoding.TextUnmarshaler
+// simpleTextUnmarshaler is a simple type implementing [encoding.TextUnmarshaler]
 // for testing TextUnmarshaler validation.
 type simpleTextUnmarshaler struct {
 	Value string

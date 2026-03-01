@@ -346,7 +346,7 @@ func (r *Representer) uintv(tag string, in reflect.Value) *Node {
 	}
 }
 
-// timev converts a Go time.Time to a YAML scalar node in RFC3339Nano format.
+// timev converts a Go [time.Time] to a YAML scalar node in RFC3339Nano format.
 func (r *Representer) timev(tag string, in reflect.Value) *Node {
 	t := in.Interface().(time.Time)
 	s := t.Format(time.RFC3339Nano)
