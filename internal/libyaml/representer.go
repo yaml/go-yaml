@@ -72,6 +72,11 @@ func (r *Representer) Represent(tag string, in reflect.Value) *Node {
 // is bogus. In practice parsers do not enforce the "\.[0-9_]*" suffix.
 var base60float = regexp.MustCompile(`^[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+(?:\.[0-9_]*)?$`)
 
+// YAML 1.1 spec Examples 2.19/2.20 show comma as digit separator (+12,345, 1,230.15).
+// Some parsers interpret these literally, so quote for compatibility.
+// See: https://yaml.org/spec/1.1/
+var yaml11CommaNumber = regexp.MustCompile(`^[-+]?(?:0|[1-9][0-9,]*)(?:\.[0-9]*)?$`)
+
 // represent is the core conversion method that handles the actual
 // type-specific conversion from Go values to YAML nodes.
 func (r *Representer) represent(tag string, in reflect.Value) *Node {
@@ -275,7 +280,7 @@ func (r *Representer) stringv(tag string, in reflect.Value) *Node {
 		tag = strTag
 		// Check if this string needs quoting for compatibility
 		// even though it would resolve as !!str
-		needsQuoting = isBase60Float(s) || isOldBool(s) || looksLikeMerge(s)
+		needsQuoting = isBase60Float(s) || isOldBool(s) || isCommaNumber(s) || looksLikeMerge(s)
 	}
 
 	// Set the style based on content
@@ -571,6 +576,16 @@ func isOldBool(s string) (result bool) {
 	default:
 		return false
 	}
+}
+
+// isCommaNumber returns whether s matches YAML 1.1 comma-separated number notation.
+// Quote matching strings for compatibility with parsers interpreting spec Examples 2.19/2.20.
+func isCommaNumber(s string) bool {
+	// Fast path: must contain a comma to be relevant
+	if !strings.ContainsRune(s, ',') {
+		return false
+	}
+	return yaml11CommaNumber.MatchString(s)
 }
 
 // looksLikeMerge returns true if the given string is the merge indicator "<<".
