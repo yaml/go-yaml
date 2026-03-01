@@ -48,11 +48,12 @@ type Constructor struct {
 	stringMapType  reflect.Type
 	generalMapType reflect.Type
 
-	KnownFields    bool
-	UniqueKeys     bool
-	constructCount int
-	aliasCount     int
-	aliasDepth     int
+	KnownFields          bool
+	UniqueKeys           bool
+	AliasingExceededFunc AliasingRestrictionFunction
+	constructCount       int
+	aliasCount           int
+	aliasDepth           int
 
 	mergedFields map[any]bool
 }
@@ -60,12 +61,18 @@ type Constructor struct {
 // NewConstructor creates a new Constructor initialized with the provided
 // options.
 func NewConstructor(opts *Options) *Constructor {
+	aliasingRestrictionFunction := opts.AliasingRestrictionFunction
+	if aliasingRestrictionFunction == nil {
+		aliasingRestrictionFunction = DefaultAliasingRestrictions
+	}
+
 	return &Constructor{
-		stringMapType:  stringMapType,
-		generalMapType: generalMapType,
-		KnownFields:    opts.KnownFields,
-		UniqueKeys:     opts.UniqueKeys,
-		aliases:        make(map[*Node]bool),
+		stringMapType:                   stringMapType,
+		generalMapType:                  generalMapType,
+		KnownFields:                     opts.KnownFields,
+		UniqueKeys:                      opts.UniqueKeys,
+		AliasingExceededFunc:   aliasingRestrictionFunction,
+		aliases:                         make(map[*Node]bool),
 	}
 }
 
@@ -81,7 +88,7 @@ func (c *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
 	if c.aliasDepth > 0 {
 		c.aliasCount++
 	}
-	if c.aliasCount > 100 && c.constructCount > 1000 && float64(c.aliasCount)/float64(c.constructCount) > allowedAliasRatio(c.constructCount) {
+	if c.AliasingExceededFunc(c.aliasCount, c.constructCount) {
 		failf("document contains excessive aliasing")
 	}
 	if out.Type() == nodeType {
@@ -167,35 +174,7 @@ const (
 	// 4,000,000 decode operations is ~5MB of dense object declarations, or
 	// ~4.5MB of dense object declarations with 10% alias expansion
 	alias_ratio_range_high = 4000000
-
-	// alias_ratio_range is the range over which we scale allowed alias
-	// ratios
-	alias_ratio_range = float64(alias_ratio_range_high - alias_ratio_range_low)
 )
-
-// allowedAliasRatio calculates the maximum allowed ratio of alias-driven
-// decodes to total decodes based on the construct count.
-// This prevents excessive alias expansion attacks while allowing reasonable
-// alias usage in both small and large documents.
-func allowedAliasRatio(constructCount int) float64 {
-	switch {
-	case constructCount <= alias_ratio_range_low:
-		// allow 99% to come from alias expansion for small-to-medium
-		// documents
-		return 0.99
-	case constructCount >= alias_ratio_range_high:
-		// allow 10% to come from alias expansion for very large
-		// documents
-		return 0.10
-	default:
-		// scale smoothly from 99% down to 10% over the range.
-		// this maps to 396,000 - 400,000 allowed alias-driven decodes
-		// over the range.
-		// 400,000 decode operations is ~100MB of allocations in
-		// worst-case scenarios (single-item maps).
-		return 0.99 - 0.89*(float64(constructCount-alias_ratio_range_low)/alias_ratio_range)
-	}
-}
 
 // --------------------------------------------------------------------------
 // Scalar tag constructors
