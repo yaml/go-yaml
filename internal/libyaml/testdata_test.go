@@ -976,7 +976,7 @@ func RunRoundTripTest(t *testing.T, tc TestCase) {
 	}
 }
 
-// GetWriter extracts an io.Writer from an interface value
+// GetWriter extracts an [io.Writer] from an interface value
 func GetWriter(t *testing.T, v any) io.Writer {
 	t.Helper()
 	if w, ok := v.(io.Writer); ok {
@@ -986,7 +986,7 @@ func GetWriter(t *testing.T, v any) io.Writer {
 	return nil
 }
 
-// GetReader extracts an io.Reader from an interface value
+// GetReader extracts an [io.Reader] from an interface value
 func GetReader(t *testing.T, v any) io.Reader {
 	t.Helper()
 	if r, ok := v.(io.Reader); ok {

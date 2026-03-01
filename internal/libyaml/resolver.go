@@ -85,7 +85,7 @@ func (r *Resolver) Resolve(n *Node) {
 
 // resolve determines the YAML tag and Go value for a scalar string.
 // It takes a tag hint and the scalar string value, and returns the resolved
-// tag and the corresponding Go value (int, float, bool, time.Time, etc.).
+// tag and the corresponding Go value (int, float, bool, [time.Time], etc.).
 // If the tag is already specified and non-resolvable, it returns the input
 // unchanged.
 func resolve(tag string, in string) (rtag string, out any) {

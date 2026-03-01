@@ -1093,7 +1093,7 @@ func (c *Constructor) null(out reflect.Value) bool {
 	return false
 }
 
-// isTextUnmarshaler checks if a value implements encoding.TextUnmarshaler.
+// isTextUnmarshaler checks if a value implements [encoding.TextUnmarshaler].
 // It dereferences pointers to check the underlying type.
 func isTextUnmarshaler(out reflect.Value) bool {
 	// Dereference pointers to check the underlying type,
@@ -1113,7 +1113,7 @@ func isTextUnmarshaler(out reflect.Value) bool {
 	return false
 }
 
-// settableValueOf returns a settable reflect.Value for the given value.
+// settableValueOf returns a settable [reflect.Value] for the given value.
 func settableValueOf(i any) reflect.Value {
 	v := reflect.ValueOf(i)
 	sv := reflect.New(v.Type()).Elem()

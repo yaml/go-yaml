@@ -128,7 +128,7 @@ func (e *LoadErrors) Error() string {
 	return b.String()
 }
 
-// As implements errors.As for Go versions prior to 1.20 that don't support
+// As implements [errors.As] for Go versions prior to 1.20 that don't support
 // the Unwrap() []error interface. It allows [LoadErrors] to match against
 // *ConstructError targets by returning the first error in the list.
 func (e *LoadErrors) As(target any) bool {
@@ -150,7 +150,7 @@ func (e *LoadErrors) As(target any) bool {
 	return false
 }
 
-// Is implements errors.Is for Go versions prior to 1.20 that don't support
+// Is implements [errors.Is] for Go versions prior to 1.20 that don't support
 // the Unwrap() []error interface. It checks if any wrapped error matches
 // the target error.
 func (e *LoadErrors) Is(target error) bool {

@@ -123,7 +123,7 @@ func UnmarshalStruct(target any, data map[string]any) error {
 	return nil
 }
 
-// setField sets a reflect.Value from an interface{} value
+// setField sets a [reflect.Value] from an interface{} value
 func setField(field reflect.Value, value any) error {
 	if !field.CanSet() {
 		return fmt.Errorf("field cannot be set")

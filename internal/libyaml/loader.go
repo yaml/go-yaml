@@ -106,9 +106,9 @@ func Load(in []byte, out any, opts ...Option) error {
 // Load reads the next YAML-encoded document from its input and stores it
 // in the value pointed to by v.
 //
-// Returns io.EOF when there are no more documents to read.
+// Returns [io.EOF] when there are no more documents to read.
 // If WithSingleDocument option was set and a document was already read,
-// subsequent calls return io.EOF.
+// subsequent calls return [io.EOF].
 //
 // Maps and pointers (to a struct, string, int, etc) are accepted as v
 // values. If an internal pointer within a struct is not initialized,
