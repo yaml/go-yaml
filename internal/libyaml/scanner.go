@@ -2218,6 +2218,10 @@ func (parser *Parser) scanFlowScalar(token *Token, single bool) error {
 					code_length = 4
 				case 'U':
 					code_length = 8
+				case '/':
+					// Support escaped slash ("\/"), as required by YAML 1.2.0+
+					// for strict JSON compatibility
+					s = append(s, '/')
 				default:
 					return formatScannerErrorContext("while scanning a quoted scalar", start_mark,
 						"found unknown escape character", parser.mark)
