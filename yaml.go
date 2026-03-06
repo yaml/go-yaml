@@ -241,6 +241,11 @@ var (
 	//   - QuoteDouble: Use double quotes
 	//   - QuoteLegacy: Legacy v2/v3 behavior (mixed quoting)
 	WithQuotePreference = libyaml.WithQuotePreference
+
+	// WithAliasingRestrictionFunction changes the default excessive aliasing check
+	// function. The function should return true if excessive aliasing in a YAML document
+	// has been detected.
+	WithAliasingRestrictionFunction = libyaml.WithAliasingRestrictionFunction
 )
 
 // Options combines multiple options into a single Option.
@@ -254,6 +259,14 @@ var (
 func Options(opts ...Option) Option {
 	return libyaml.CombineOptions(opts...)
 }
+
+// AliasingRestrictionFunction is the function signature for setting aliasing
+// restrictions.
+type AliasingRestrictionFunction = libyaml.AliasingRestrictionFunction
+
+// NoAliasingRestrictions simply returns false when set as the aliasing
+// restriction function, thus disabling the check.
+var NoAliasingRestrictions = libyaml.NoAliasingRestrictions
 
 // OptsYAML parses a YAML string containing option settings and returns
 // an Option that can be combined with other options using Options().
