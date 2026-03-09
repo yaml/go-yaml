@@ -143,9 +143,9 @@ func TestTextUnmarshalerWithYAMLUnmarshaler(t *testing.T) {
 	var target textUnmarshalerWithYAMLUnmarshaler
 	const input = `[foo, bar]`
 
-	// NOTE: can't use [yaml.Unmarshal] here: it has [yaml.Unmarshaler]
-	// shortcut, so it skips Constructor, and this test is a regression
-	// test for [libyaml.Constructor.Construct].
+	// NOTE: also verified with [yaml.Unmarshal] — no shortcut bypasses
+	// Constructor since PR #310, so this is a regression test for
+	// [libyaml.Constructor.Construct] via both paths.
 	err := yaml.NewDecoder(strings.NewReader(input)).Decode(&target)
 
 	assert.NoError(t, err)
@@ -993,6 +993,22 @@ func TestUnmarshalerWholeDocument(t *testing.T) {
 	value, ok := obj.value.(map[string]any)
 	assert.Truef(t, ok, "value: %#v", obj.value)
 	assert.DeepEqual(t, unmarshalerTests[0].value, value["_"])
+}
+
+func TestUnmarshalerWholeDocumentModern(t *testing.T) {
+	obj := &unmarshalerType{}
+	err := yaml.Unmarshal([]byte(unmarshalerTests[0].data), obj)
+	assert.NoError(t, err)
+	value, ok := obj.value.(map[string]any)
+	assert.Truef(t, ok, "value: %#v", obj.value)
+	assert.DeepEqual(t, unmarshalerTests[0].value, value["_"])
+}
+
+func TestUnmarshalerWholeDocumentNull(t *testing.T) {
+	obj := &unmarshalerType{}
+	err := yaml.Unmarshal([]byte("null"), obj)
+	assert.NoError(t, err)
+	assert.DeepEqual(t, unmarshalerType{}, *obj)
 }
 
 func TestUnmarshalerLoadErrors(t *testing.T) {
