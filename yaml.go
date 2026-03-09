@@ -19,7 +19,6 @@
 package yaml
 
 import (
-	"bytes"
 	"errors"
 	"io"
 
@@ -572,26 +571,6 @@ func (e *Encoder) Close() error {
 // See the documentation of Marshal for the format of tags and a list of
 // supported tag options.
 func Unmarshal(in []byte, out any) (err error) {
-	// Check for Unmarshaler interface first
-	if u, ok := out.(Unmarshaler); ok {
-		l, err := libyaml.NewLoader(bytes.NewReader(in), WithV3Defaults(), withFromLegacy())
-		if err != nil {
-			return err
-		}
-		// Compose and resolve to get the node
-		node := l.ComposeAndResolve()
-		if node == nil {
-			return &libyaml.LoadErrors{Errors: []*libyaml.ConstructError{{
-				Err: errors.New("yaml: no documents in stream"),
-			}}}
-		}
-		// Unwrap DocumentNode to get the actual content
-		if node.Kind == libyaml.DocumentNode && len(node.Content) == 1 {
-			node = node.Content[0]
-		}
-		return u.UnmarshalYAML(node)
-	}
-	// Normal path
 	return Load(in, out, WithV3Defaults(), withFromLegacy())
 }
 
