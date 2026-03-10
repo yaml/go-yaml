@@ -131,7 +131,7 @@ func (c *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
 		fallthrough
 	default:
 		Fail(formatConstructorError(
-			fmt.Errorf("cannot construct node with unknown kind %d", n.Kind),
+			fmt.Errorf("cannot construct node with unknown kind: '%d'", n.Kind),
 			Mark{Line: n.Line, Column: n.Column},
 		))
 	}
