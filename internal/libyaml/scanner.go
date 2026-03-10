@@ -3394,39 +3394,39 @@ func (parser *Parser) readLine(s []byte) []byte {
 }
 
 // formatScannerError creates a LoadError for scanner-stage errors.
-func formatScannerError(problem string, problem_mark Mark) *LoadError {
-	problem_mark.Line += 1
+func formatScannerError(problem string, problemMark Mark) *LoadError {
+	problemMark.Line += 1
 
 	return &LoadError{
 		Stage:   ScannerStage,
-		Mark:    problem_mark,
+		Mark:    problemMark,
 		Message: problem,
 	}
 }
 
 // formatScannerErrorContext creates a LoadError with both context and
 // problem information, each with their own mark positions.
-func formatScannerErrorContext(context string, context_mark Mark, problem string, problem_mark Mark) *LoadError {
-	context_mark.Line += 1
-	problem_mark.Line += 1
+func formatScannerErrorContext(context string, contextMark Mark, problem string, problemMark Mark) *LoadError {
+	contextMark.Line += 1
+	problemMark.Line += 1
 
 	return &LoadError{
 		Stage:       ScannerStage,
-		ContextMark: context_mark,
+		ContextMark: contextMark,
 		ContextMsg:  context,
-		Mark:        problem_mark,
+		Mark:        problemMark,
 		Message:     problem,
 	}
 }
 
 // setScannerTagError creates a tag-related scanner error with appropriate
 // context based on whether it's from a directive or tag parsing.
-func (parser *Parser) setScannerTagError(directive bool, context_mark Mark, problem string) error {
+func (parser *Parser) setScannerTagError(directive bool, contextMark Mark, problem string) error {
 	context := "while parsing a tag"
 	if directive {
 		context = "while parsing a %TAG directive"
 	}
-	return formatScannerErrorContext(context, context_mark, problem, parser.mark)
+	return formatScannerErrorContext(context, contextMark, problem, parser.mark)
 }
 
 // trace is a debug utility that prints entry/exit messages for function calls.

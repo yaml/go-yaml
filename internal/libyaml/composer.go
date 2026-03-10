@@ -396,10 +396,10 @@ func formatComposerError(message string, mark Mark) *LoadError {
 
 // formatComposerErrorContext creates a LoadError with both context and
 // problem information for composer-stage errors.
-func formatComposerErrorContext(context string, context_mark Mark, message string, mark Mark) *LoadError {
+func formatComposerErrorContext(context string, contextMark Mark, message string, mark Mark) *LoadError {
 	return &LoadError{
 		Stage:       ComposerStage,
-		ContextMark: context_mark,
+		ContextMark: contextMark,
 		ContextMsg:  context,
 		Mark:        mark,
 		Message:     message,

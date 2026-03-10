@@ -321,10 +321,10 @@ func formatResolverError(message string, mark Mark) *LoadError {
 
 // formatResolverErrorContext creates a LoadError with both context and
 // problem information for resolver-stage errors.
-func formatResolverErrorContext(context string, context_mark Mark, message string, mark Mark) *LoadError {
+func formatResolverErrorContext(context string, contextMark Mark, message string, mark Mark) *LoadError {
 	return &LoadError{
 		Stage:       ResolverStage,
-		ContextMark: context_mark,
+		ContextMark: contextMark,
 		ContextMsg:  context,
 		Mark:        mark,
 		Message:     message,
