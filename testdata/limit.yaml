@@ -52,15 +52,13 @@
       - text: '], b: &b [*a'
       - loop: [',*a', 99]
       - text: ']}'
-    want: 'go-yaml load error: document contains excessive aliasing\n  in constructor at L[0-9]+,C[0-9]+'
+    want: 'go-yaml load error: document contains excessive aliasing; in constructor at L[0-9]+,C[0-9]+'
 
 - limit-error:
     name: 1000kb of deeply nested slices
     data:
       loop: ['[', 1024000]  # 1000*1024
-    want: |-
-      go-yaml load error: exceeded max depth of 10000
-        in scanner \(while increasing flow level\) at L1,C10001
+    want: 'go-yaml load error: exceeded max depth of 10000; in scanner \(while increasing flow level\) at L1,C10001'
 
 - limit-error:
     name: 1000kb of deeply nested maps
@@ -68,17 +66,13 @@
       join:
       - text: 'x: '
       - loop: ['{', 1024000]  # 1000*1024
-    want: |-
-      go-yaml load error: exceeded max depth of 10000
-        in scanner \(while increasing flow level\) at L1,C10004
+    want: 'go-yaml load error: exceeded max depth of 10000; in scanner \(while increasing flow level\) at L1,C10004'
 
 - limit-error:
     name: 1000kb of deeply nested indents
     data:
       loop: ['- ', 1024000]  # 1000*1024
-    want: |-
-      go-yaml load error: exceeded max depth of 10000
-        in scanner \(while increasing indent level\) at L1-L1,C20001
+    want: 'go-yaml load error: exceeded max depth of 10000; in scanner \(while increasing indent level\) at L1-L1,C20001'
 
 - limit-pass:
     name: 1000kb of 1000-indent lines

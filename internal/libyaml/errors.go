@@ -42,14 +42,14 @@ type LoadError struct {
 }
 
 // Error returns the error message with stage and position information.
-// Format: "go-yaml load error: <message>\n  in <stage> at L:C"
-// Or with context: "go-yaml load error: <message>\n  in <stage> (while <ctx>) at L:C-L:C"
+// Format: "go-yaml load error: <message>; in <stage> at L:C"
+// Or with context: "go-yaml load error: <message>; in <stage> (while <ctx>) at L:C-L:C"
 func (e *LoadError) Error() string {
 	if len(e.ContextMsg) > 0 {
-		return fmt.Sprintf("go-yaml load error: %s\n  in %s (%s) at %s",
+		return fmt.Sprintf("go-yaml load error: %s; in %s (%s) at %s",
 			e.Message, e.Stage, e.ContextMsg, e.ContextMark.rangeString(e.Mark))
 	}
-	return fmt.Sprintf("go-yaml load error: %s\n  in %s at %s",
+	return fmt.Sprintf("go-yaml load error: %s; in %s at %s",
 		e.Message, e.Stage, e.Mark.shortString())
 }
 
@@ -121,9 +121,11 @@ type LoadErrors struct {
 // Error returns a formatted error message listing all construct errors.
 func (e *LoadErrors) Error() string {
 	var b strings.Builder
-	b.WriteString("yaml: construct errors:")
-	for _, err := range e.Errors {
-		b.WriteString("\n  ")
+	b.WriteString("yaml: construct errors: ")
+	for i, err := range e.Errors {
+		if i > 0 {
+			b.WriteString("; ")
+		}
 		b.WriteString(err.simpleError())
 	}
 	return b.String()
@@ -177,7 +179,7 @@ type TypeError struct {
 
 // Error returns a formatted error message listing all unmarshal errors.
 func (e *TypeError) Error() string {
-	return fmt.Sprintf("yaml: unmarshal errors:\n  %s", strings.Join(e.Errors, "\n  "))
+	return fmt.Sprintf("yaml: unmarshal errors: %s", strings.Join(e.Errors, "; "))
 }
 
 // YAMLError is an internal error wrapper type.

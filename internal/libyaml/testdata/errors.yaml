@@ -33,9 +33,7 @@
         index: 2
       message: 'invalid UTF-8 octet (value: 255)'
       err: invalid UTF-8 octet
-    want: |-
-      go-yaml load error: invalid UTF-8 octet (value: 255)
-        in reader at L1,C3
+    want: 'go-yaml load error: invalid UTF-8 octet (value: 255); in reader at L1,C3'
     also: unwrap
 
 - load-error:
@@ -47,9 +45,7 @@
         column: 5
         index: 42
       message: unexpected token
-    want: |-
-      go-yaml load error: unexpected token
-        in scanner at L2,C6
+    want: 'go-yaml load error: unexpected token; in scanner at L2,C6'
 
 - load-error:
     name: Scanner stage error with context
@@ -65,9 +61,7 @@
         column: 8
         index: 60
       message: found unexpected end of stream
-    want: |-
-      go-yaml load error: found unexpected end of stream
-        in scanner (while scanning a block scalar) at L2-L4,C9
+    want: 'go-yaml load error: found unexpected end of stream; in scanner (while scanning a block scalar) at L2-L4,C9'
 
 - load-error:
     name: Parser stage error
@@ -78,9 +72,7 @@
         column: 10
         index: 50
       message: did not find expected key
-    want: |-
-      go-yaml load error: did not find expected key
-        in parser at L3,C11
+    want: 'go-yaml load error: did not find expected key; in parser at L3,C11'
 
 - load-error:
     name: Parser stage error with context
@@ -96,9 +88,7 @@
         column: 5
         index: 80
       message: did not find expected key
-    want: |-
-      go-yaml load error: did not find expected key
-        in parser (while parsing a block mapping) at L1-L4,C6
+    want: 'go-yaml load error: did not find expected key; in parser (while parsing a block mapping) at L1-L4,C6'
 
 - load-error:
     name: Composer stage error
@@ -109,9 +99,7 @@
         column: 4
         index: 4
       message: unknown anchor 'foo' referenced
-    want: |-
-      go-yaml load error: unknown anchor 'foo' referenced
-        in composer at L1,C5
+    want: "go-yaml load error: unknown anchor 'foo' referenced; in composer at L1,C5"
 
 - load-error:
     name: Resolver stage error
@@ -122,9 +110,7 @@
         column: 0
         index: 0
       message: cannot construct !!str `error` as a !!float
-    want: |-
-      go-yaml load error: cannot construct !!str `error` as a !!float
-        in resolver at L1
+    want: 'go-yaml load error: cannot construct !!str `error` as a !!float; in resolver at L1'
 
 - load-error:
     name: Constructor stage error
@@ -136,9 +122,7 @@
         index: 0
       message: cannot construct !!map into string
       err: cannot construct !!map into string
-    want: |-
-      go-yaml load error: cannot construct !!map into string
-        in constructor at L1
+    want: 'go-yaml load error: cannot construct !!map into string; in constructor at L1'
     also: unwrap
 
 - load-error:
@@ -147,9 +131,7 @@
       stage: constructor
       message: cannot construct value
       err: cannot construct value
-    want: |-
-      go-yaml load error: cannot construct value
-        in constructor at <unknown position>
+    want: 'go-yaml load error: cannot construct value; in constructor at <unknown position>'
     also: unwrap
 
 # EmitterError tests (dump stack)
@@ -177,9 +159,7 @@
       errors:
       - line: 3
         message: field not found
-    want: |-
-      yaml: construct errors:
-        line 3: field not found
+    want: 'yaml: construct errors: line 3: field not found'
 
 - load-errors:
     name: Multiple errors
@@ -189,10 +169,7 @@
         message: field 'foo' not found in type struct
       - line: 8
         message: field 'bar' not found in type struct
-    want: |-
-      yaml: construct errors:
-        line 5: field 'foo' not found in type struct
-        line 8: field 'bar' not found in type struct
+    want: "yaml: construct errors: line 5: field 'foo' not found in type struct; line 8: field 'bar' not found in type struct"
 
 - load-errors:
     name: Error at unknown position
@@ -200,9 +177,7 @@
       errors:
       - line: 0
         message: unknown field
-    want: |-
-      yaml: construct errors:
-        <unknown position>: unknown field
+    want: 'yaml: construct errors: <unknown position>: unknown field'
 
 # LoadErrors.As tests
 
@@ -247,9 +222,7 @@
     from:
       errors:
       - field not found
-    want: |-
-      yaml: unmarshal errors:
-        field not found
+    want: 'yaml: unmarshal errors: field not found'
 
 - type-error:
     name: Multiple type errors
@@ -257,7 +230,4 @@
       errors:
       - 'line 3: first error'
       - 'line 5: second error'
-    want: |-
-      yaml: unmarshal errors:
-        line 3: first error
-        line 5: second error
+    want: 'yaml: unmarshal errors: line 3: first error; line 5: second error'

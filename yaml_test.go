@@ -743,7 +743,7 @@ func (errReader) Read([]byte) (int, error) {
 
 func TestDecoderReadError(t *testing.T) {
 	err := yaml.NewDecoder(errReader{}).Decode(&struct{}{})
-	assert.ErrorMatches(t, `go-yaml load error: input error: some read error\n  in reader at <unknown position>`, err)
+	assert.ErrorMatches(t, `go-yaml load error: input error: some read error; in reader at <unknown position>`, err)
 }
 
 func TestUnmarshalNaN(t *testing.T) {
@@ -757,7 +757,7 @@ func TestUnmarshalDurationInt(t *testing.T) {
 	// Don't accept plain ints as durations as it's unclear (issue #200).
 	var d time.Duration
 	err := yaml.Unmarshal([]byte("123"), &d)
-	assert.ErrorMatches(t, "yaml: construct errors:\n  line 1: cannot construct !!int `123` into time.Duration", err)
+	assert.ErrorMatches(t, "yaml: construct errors: line 1: cannot construct !!int `123` into time.Duration", err)
 }
 
 func TestUnmarshalErrorsFromYAML(t *testing.T) {
@@ -1030,11 +1030,11 @@ func TestUnmarshalerLoadErrors(t *testing.T) {
 	data := `{before: A, m: {abc: 1, def: 2, ghi: 3, jkl: 4}, after: B}`
 	err := yaml.Unmarshal([]byte(data), &v)
 	expectedError := "" +
-		"yaml: construct errors:\n" +
-		"  line 1: cannot construct !!str `A` into int\n" +
-		"  line 1: foo\n" +
-		"  line 1: bar\n" +
-		"  line 1: cannot construct !!str `B` into int"
+		"yaml: construct errors: " +
+		"line 1: cannot construct !!str `A` into int; " +
+		"line 1: foo; " +
+		"line 1: bar; " +
+		"line 1: cannot construct !!str `B` into int"
 	assert.ErrorMatches(t, expectedError, err)
 	assert.NotNil(t, v.M["abc"])
 	assert.IsNil(t, v.M["def"])
@@ -1062,11 +1062,11 @@ func TestLegacyUnmarshalerLoadErrors(t *testing.T) {
 	data := `{before: A, m: {abc: 1, def: 2, ghi: 3, jkl: 4}, after: B}`
 	err := yaml.Unmarshal([]byte(data), &v)
 	expectedError := "" +
-		"yaml: construct errors:\n" +
-		"  line 1: cannot construct !!str `A` into int\n" +
-		"  line 1: foo\n" +
-		"  line 1: bar\n" +
-		"  line 1: cannot construct !!str `B` into int"
+		"yaml: construct errors: " +
+		"line 1: cannot construct !!str `A` into int; " +
+		"line 1: foo; " +
+		"line 1: bar; " +
+		"line 1: cannot construct !!str `B` into int"
 	assert.ErrorMatches(t, expectedError, err)
 
 	assert.NotNil(t, v.M["abc"])
@@ -1165,11 +1165,11 @@ func TestUnmarshalerLoadErrorsProxying(t *testing.T) {
 	data := `{before: A, m: {abc: a, def: b}, after: B}`
 	err := yaml.Unmarshal([]byte(data), &v)
 	expectedError := "" +
-		"yaml: construct errors:\n" +
-		"  line 1: cannot construct !!str `A` into int\n" +
-		"  line 1: cannot construct !!str `a` into int32\n" +
-		"  line 1: cannot construct !!str `b` into int64\n" +
-		"  line 1: cannot construct !!str `B` into int"
+		"yaml: construct errors: " +
+		"line 1: cannot construct !!str `A` into int; " +
+		"line 1: cannot construct !!str `a` into int32; " +
+		"line 1: cannot construct !!str `b` into int64; " +
+		"line 1: cannot construct !!str `B` into int"
 	assert.ErrorMatches(t, expectedError, err)
 }
 
@@ -1204,11 +1204,11 @@ func TestLegacyUnmarshalerLoadErrorsProxying(t *testing.T) {
 	data := `{before: A, m: {abc: a, def: b}, after: B}`
 	err := yaml.Unmarshal([]byte(data), &v)
 	expectedError := "" +
-		"yaml: construct errors:\n" +
-		"  line 1: cannot construct !!str `A` into int\n" +
-		"  line 1: cannot construct !!str `a` into int32\n" +
-		"  line 1: cannot construct !!str `b` into int64\n" +
-		"  line 1: cannot construct !!str `B` into int"
+		"yaml: construct errors: " +
+		"line 1: cannot construct !!str `A` into int; " +
+		"line 1: cannot construct !!str `a` into int32; " +
+		"line 1: cannot construct !!str `b` into int64; " +
+		"line 1: cannot construct !!str `B` into int"
 	assert.ErrorMatches(t, expectedError, err)
 }
 
@@ -1717,12 +1717,12 @@ var unmarshalStrictTests = []struct {
 	known: true,
 	data:  "a: 1\nc: 2\n",
 	value: struct{ A, B int }{A: 1},
-	error: `yaml: construct errors:\n  line 2: field c not found in type struct { A int; B int }`,
+	error: `yaml: construct errors: line 2: field c not found in type struct { A int; B int }`,
 }, {
 	unique: true,
 	data:   "a: 1\nb: 2\na: 3\n",
 	value:  struct{ A, B int }{A: 3, B: 2},
-	error:  `yaml: construct errors:\n  line 3: mapping key "a" already defined at line 1`,
+	error:  `yaml: construct errors: line 3: mapping key "a" already defined at line 1`,
 }, {
 	unique: true,
 	data:   "c: 3\na: 1\nb: 2\nc: 4\n",
@@ -1738,7 +1738,7 @@ var unmarshalStrictTests = []struct {
 			},
 		},
 	},
-	error: `yaml: construct errors:\n  line 4: mapping key "c" already defined at line 1`,
+	error: `yaml: construct errors: line 4: mapping key "c" already defined at line 1`,
 }, {
 	unique: true,
 	data:   "c: 0\na: 1\nb: 2\nc: 1\n",
@@ -1754,7 +1754,7 @@ var unmarshalStrictTests = []struct {
 			},
 		},
 	},
-	error: `yaml: construct errors:\n  line 4: mapping key "c" already defined at line 1`,
+	error: `yaml: construct errors: line 4: mapping key "c" already defined at line 1`,
 }, {
 	unique: true,
 	data:   "c: 1\na: 1\nb: 2\nc: 3\n",
@@ -1768,7 +1768,7 @@ var unmarshalStrictTests = []struct {
 			"c": 3,
 		},
 	},
-	error: `yaml: construct errors:\n  line 4: mapping key "c" already defined at line 1`,
+	error: `yaml: construct errors: line 4: mapping key "c" already defined at line 1`,
 }, {
 	unique: true,
 	data:   "a: 1\n9: 2\nnull: 3\n9: 4",
@@ -1777,7 +1777,7 @@ var unmarshalStrictTests = []struct {
 		nil: 3,
 		9:   4,
 	},
-	error: `yaml: construct errors:\n  line 4: mapping key "9" already defined at line 2`,
+	error: `yaml: construct errors: line 4: mapping key "9" already defined at line 2`,
 }}
 
 func TestUnmarshalKnownFields(t *testing.T) {
