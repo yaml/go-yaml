@@ -37,6 +37,9 @@ func NewComposer(b []byte, opts *Options) *Composer {
 		b = []byte{'\n'}
 	}
 	p.Parser.SetInputString(b)
+	if opts != nil {
+		p.Parser.depthCheck = opts.DepthCheck
+	}
 	return &p
 }
 
@@ -47,6 +50,9 @@ func NewComposerFromReader(r io.Reader, opts *Options) *Composer {
 		opts:   opts,
 	}
 	p.Parser.SetInputReader(r)
+	if opts != nil {
+		p.Parser.depthCheck = opts.DepthCheck
+	}
 	return &p
 }
 

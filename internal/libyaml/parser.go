@@ -238,6 +238,8 @@ type Parser struct {
 	simple_key          SimpleKey   // The current simple key.
 	simple_key_stack    []SimpleKey // The stack of simple keys.
 
+	depthCheck func(int, *DepthContext) error // Depth limit check function
+
 	// Parser stuff
 
 	state          ParserState    // The current parser state.

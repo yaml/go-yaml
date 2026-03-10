@@ -23,6 +23,7 @@ import (
 	"io"
 
 	"go.yaml.in/yaml/v4/internal/libyaml"
+	"go.yaml.in/yaml/v4/plugin/limits"
 )
 
 //-----------------------------------------------------------------------------
@@ -42,6 +43,7 @@ func WithV2Defaults() Option {
 		WithUnicode(true),
 		WithUniqueKeys(true),
 		WithQuotePreference(QuoteLegacy),
+		WithPlugin(limits.New()),
 	)
 }
 
@@ -54,6 +56,7 @@ func WithV3Defaults() Option {
 		WithUnicode(true),
 		WithUniqueKeys(true),
 		WithQuotePreference(QuoteLegacy),
+		WithPlugin(limits.New()),
 	)
 }
 
@@ -66,6 +69,7 @@ func WithV4Defaults() Option {
 		WithUnicode(true),
 		WithUniqueKeys(true),
 		WithQuotePreference(QuoteSingle),
+		WithPlugin(limits.New()),
 	)
 }
 
@@ -252,6 +256,64 @@ var (
 //	yaml.Dump(&data, opts)
 func Options(opts ...Option) Option {
 	return libyaml.CombineOptions(opts...)
+}
+
+// DepthContext holds context about a nesting depth check.
+type DepthContext = libyaml.DepthContext
+
+// WithPlugin registers one or more plugins for YAML processing.
+//
+// Plugins extend the YAML library with custom processing logic.
+// Each plugin implements one or more plugin interfaces.
+// Currently supported plugin types:
+//   - LimitsPlugin: Controls depth and alias expansion limits
+//
+// Example:
+//
+//	import "go.yaml.in/yaml/v4/plugin/limits"
+//	loader := yaml.NewLoader(data, yaml.WithPlugin(limits.New(limits.AliasNone())))
+//
+// Plugins use public types and can be implemented by external packages.
+func WithPlugin(plugins ...any) Option {
+	return func(o *libyaml.Options) error {
+		for _, p := range plugins {
+			registered := false
+			if lp, ok := p.(LimitsPlugin); ok {
+				o.DepthCheck = lp.CheckDepth
+				o.AliasCheck = lp.CheckAlias
+				registered = true
+			}
+			// Future plugin types add cases here (non-exclusive if)
+			if !registered {
+				return errors.New("yaml: unsupported plugin type")
+			}
+		}
+		return nil
+	}
+}
+
+// WithoutPlugin resets plugins of the specified kinds to their defaults.
+//
+// This can be used to override plugin settings from previous options.
+// Valid kinds: "limits"
+//
+// Example:
+//
+//	// Reset limits to library defaults
+//	loader := yaml.NewLoader(data, yaml.WithoutPlugin("limits"))
+func WithoutPlugin(kinds ...string) Option {
+	return func(o *libyaml.Options) error {
+		for _, kind := range kinds {
+			switch kind {
+			case "limits":
+				o.DepthCheck = libyaml.DefaultDepthCheck
+				o.AliasCheck = libyaml.DefaultAliasCheck
+			default:
+				return errors.New("yaml: invalid plugin kind: " + kind)
+			}
+		}
+		return nil
+	}
 }
 
 // OptsYAML parses a YAML string containing option settings and returns
