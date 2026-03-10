@@ -73,6 +73,32 @@ loader := yaml.NewLoader(data, yaml.WithoutPlugin("limits"))
 Both bare `NewLoader(data)` and version presets (`WithV4Defaults()`, etc.)
 include default limits equivalent to `limits.New()`.
 
+## YAML Configuration
+
+Plugins can be configured from YAML strings using `OptsYAML`:
+
+```go
+opts, err := yaml.OptsYAML(`
+  plugin:
+    limits:
+      depth: 50
+      alias: 1000
+`)
+```
+
+Each plugin key maps to a configuration object. For the limits plugin:
+- `depth` (int) — max nesting depth; `null` disables depth checking
+- `alias` (int) — max alias count; `null` disables alias checking
+- Omitted keys keep defaults
+- Bare `limits:` (null value) uses all defaults
+
+```yaml
+# Disable depth checking, keep default alias limits
+plugin:
+  limits:
+    depth:
+```
+
 ## Third-Party Plugins
 
 Implement [yaml.LimitsPlugin] directly for full control:

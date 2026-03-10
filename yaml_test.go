@@ -3145,6 +3145,58 @@ func FuzzEncodeFromJSON(f *testing.F) {
 	})
 }
 
+func TestPlugins(t *testing.T) {
+	datatest.RunTestCases(t, func() ([]map[string]any, error) {
+		return datatest.LoadTestCasesFromFile("testdata/plugin.yaml", libyaml.LoadAny)
+	}, map[string]datatest.TestHandler{
+		"plugin-pass":  runPluginTest,
+		"plugin-error": runPluginTest,
+	})
+}
+
+func runPluginTest(t *testing.T, tc map[string]any) {
+	t.Helper()
+
+	// Build YAML string from plugin config for OptsYAML
+	pluginCfg := tc["plugin"]
+	pluginYAML, err := yaml.Dump(map[string]any{"plugin": pluginCfg})
+	if err != nil {
+		t.Fatalf("Failed to marshal plugin config: %v", err)
+	}
+
+	opts, err := yaml.OptsYAML(string(pluginYAML))
+	if err != nil {
+		t.Fatalf("OptsYAML failed: %v", err)
+	}
+
+	// Generate data from spec
+	data, err := datatest.GenerateData(tc["data"])
+	if err != nil {
+		t.Fatalf("Failed to generate data: %v", err)
+	}
+
+	// Load with plugin options
+	var result any
+	err = yaml.Load(data, &result, opts)
+
+	// Check result
+	expectedError := ""
+	if wantVal, hasWant := tc["want"]; hasWant {
+		if s, ok := wantVal.(string); ok {
+			expectedError = s
+		}
+	}
+
+	if expectedError != "" {
+		if err == nil {
+			t.Fatalf("expected error %q, got nil", expectedError)
+		}
+		assert.Equal(t, expectedError, err.Error())
+		return
+	}
+	assert.NoError(t, err)
+}
+
 func TestLimits(t *testing.T) {
 	datatest.RunTestCases(t, func() ([]map[string]any, error) {
 		return datatest.LoadTestCasesFromFile("testdata/limit.yaml", libyaml.LoadAny)

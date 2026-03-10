@@ -134,6 +134,41 @@ func (p *Plugin) CheckDepth(depth int, ctx *libyaml.DepthContext) error {
 	return libyaml.DefaultDepthCheck(depth, ctx)
 }
 
+// NewFromYAML creates a limits plugin from a YAML config map.
+// Keys: "depth" (int or null), "alias" (int or null).
+// Null values disable the corresponding check.
+// Omitted keys use defaults.
+func NewFromYAML(cfg map[string]any) (*Plugin, error) {
+	var opts []Option
+	for key, val := range cfg {
+		switch key {
+		case "depth":
+			if val == nil {
+				opts = append(opts, DepthNone())
+			} else {
+				n, ok := val.(int)
+				if !ok {
+					return nil, fmt.Errorf("limits: depth must be int or null, got %T", val)
+				}
+				opts = append(opts, DepthValue(n))
+			}
+		case "alias":
+			if val == nil {
+				opts = append(opts, AliasNone())
+			} else {
+				n, ok := val.(int)
+				if !ok {
+					return nil, fmt.Errorf("limits: alias must be int or null, got %T", val)
+				}
+				opts = append(opts, AliasValue(n))
+			}
+		default:
+			return nil, fmt.Errorf("limits: unknown key %q", key)
+		}
+	}
+	return New(opts...), nil
+}
+
 // CheckAlias implements [yaml.LimitsPlugin].
 func (p *Plugin) CheckAlias(aliasCount, constructCount int) error {
 	if p.aliasFn != nil {

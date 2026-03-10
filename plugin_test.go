@@ -35,33 +35,6 @@ func generateDeepNesting(depth int) []byte {
 	return []byte(sb.String())
 }
 
-func TestWithPlugin_Limits_AliasNone(t *testing.T) {
-	// Without AliasNone, 11000 aliases would trigger the default limit.
-	data := generateAliases(11000)
-	var result any
-	err := yaml.Load(data, &result, yaml.WithPlugin(limits.New(limits.AliasNone())))
-	if err != nil {
-		t.Fatalf("Expected success with AliasNone, got: %v", err)
-	}
-}
-
-func TestWithPlugin_Limits_AliasValue(t *testing.T) {
-	data := generateAliases(200)
-	var result any
-
-	// Should succeed with high threshold
-	err := yaml.Load(data, &result, yaml.WithPlugin(limits.New(limits.AliasValue(10000))))
-	if err != nil {
-		t.Fatalf("Expected success with high AliasValue, got: %v", err)
-	}
-
-	// Should fail with low threshold
-	err = yaml.Load(data, &result, yaml.WithPlugin(limits.New(limits.AliasValue(5))))
-	if err == nil {
-		t.Fatal("Expected error with low AliasValue, got nil")
-	}
-}
-
 func TestWithPlugin_Limits_AliasFunc(t *testing.T) {
 	called := false
 	fn := func(aliasCount, constructCount int) error {
@@ -76,33 +49,6 @@ func TestWithPlugin_Limits_AliasFunc(t *testing.T) {
 	}
 	if !called {
 		t.Error("Expected custom AliasFunc to be called")
-	}
-}
-
-func TestWithPlugin_Limits_DepthValue(t *testing.T) {
-	data := generateDeepNesting(20)
-	var result any
-
-	// Should succeed with depth limit > 20
-	err := yaml.Load(data, &result, yaml.WithPlugin(limits.New(limits.DepthValue(50))))
-	if err != nil {
-		t.Fatalf("Expected success with DepthValue(50), got: %v", err)
-	}
-
-	// Should fail with depth limit < 20
-	err = yaml.Load(data, &result, yaml.WithPlugin(limits.New(limits.DepthValue(5))))
-	if err == nil {
-		t.Fatal("Expected error with DepthValue(5) and depth 20, got nil")
-	}
-}
-
-func TestWithPlugin_Limits_DepthNone(t *testing.T) {
-	// 10001 levels would exceed the default limit of 10000
-	data := generateDeepNesting(10001)
-	var result any
-	err := yaml.Load(data, &result, yaml.WithPlugin(limits.New(limits.DepthNone())))
-	if err != nil {
-		t.Fatalf("Expected success with DepthNone, got: %v", err)
 	}
 }
 
