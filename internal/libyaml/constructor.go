@@ -1167,10 +1167,10 @@ func formatConstructorError(err error, mark Mark) *LoadError {
 
 // formatConstructorErrorContext creates a LoadError with both context and
 // problem information for constructor-stage errors.
-func formatConstructorErrorContext(context string, context_mark Mark, err error, mark Mark) *LoadError {
+func formatConstructorErrorContext(context string, contextMark Mark, err error, mark Mark) *LoadError {
 	return &LoadError{
 		Stage:       ConstructorStage,
-		ContextMark: context_mark,
+		ContextMark: contextMark,
 		ContextMsg:  context,
 		Mark:        mark,
 		Message:     err.Error(),
