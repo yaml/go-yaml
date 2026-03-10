@@ -1,7 +1,5 @@
-//
-// Copyright (c) 2025 The go-yaml Project Contributors
+// Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
-//
 
 // Options configuration for loading and dumping YAML.
 // Provides centralized control for indentation, line width, strictness, and
@@ -35,12 +33,167 @@ type Options struct {
 	FlowSimpleCollections bool       // Use flow style for simple collections
 	QuotePreference       QuoteStyle // Preferred quote style when quoting is required
 
+	// Safety limit checks (set by ApplyOptions or WithPlugin(limits.New(...)))
+	DepthCheck func(depth int, ctx *DepthContext) error
+	AliasCheck func(aliasCount, constructCount int) error
+
+	// Comment plugin options
+	CommentPlugin     CommentPlugin     // Load-side comment processing
+	DumpCommentPlugin DumpCommentPlugin // Dump-side comment processing
+	SkipComments      bool              // Skip comment scanning for performance
+
 	// Private options (not exported, used internally)
 	FromLegacy bool // Indicates legacy Unmarshal()/Decoder path (check Unmarshaler, allow trailing content)
 }
 
 // Option allows configuring YAML loading and dumping operations.
 type Option func(*Options) error
+
+// DepthContext holds context about a nesting depth check.
+type DepthContext struct {
+	Kind string // "flow" or "block"
+}
+
+// DefaultDepthCheck is the default depth check function.
+// It returns an error when depth exceeds 10000.
+func DefaultDepthCheck(depth int, ctx *DepthContext) error {
+	const maxDepth = 10000
+	if depth > maxDepth {
+		return fmt.Errorf("exceeded max depth of %d", maxDepth)
+	}
+	return nil
+}
+
+// DefaultAliasCheck is the default alias check function.
+// It uses a ratio-based heuristic to prevent DoS attacks via excessive aliasing.
+func DefaultAliasCheck(aliasCount, constructCount int) error {
+	const (
+		aliasRatioRangeLow  = 400000
+		aliasRatioRangeHigh = 4000000
+		aliasRatioRange     = float64(aliasRatioRangeHigh - aliasRatioRangeLow)
+	)
+	if aliasCount <= 100 || constructCount <= 1000 {
+		return nil
+	}
+	var allowed float64
+	switch {
+	case constructCount <= aliasRatioRangeLow:
+		allowed = 0.99
+	case constructCount >= aliasRatioRangeHigh:
+		allowed = 0.10
+	default:
+		allowed = 0.99 - 0.89*(float64(constructCount-aliasRatioRangeLow)/aliasRatioRange)
+	}
+	if float64(aliasCount)/float64(constructCount) > allowed {
+		return errors.New("document contains excessive aliasing")
+	}
+	return nil
+}
+
+// CommentContext holds comment data for a node.
+// This is passed to CommentPlugin callbacks to allow plugins to handle
+// comments.
+type CommentContext struct {
+	HeadComment []byte
+	LineComment []byte
+	FootComment []byte
+	TailComment []byte
+	StemComment []byte
+}
+
+// EventCommentContext holds comment data at parser level when creating events.
+// This allows plugins to control how accumulated comments are attached to
+// events.
+type EventCommentContext struct {
+	Event        *Event    // event being created (mutable)
+	HeadComment  []byte    // accumulated head (from UnfoldComments)
+	LineComment  []byte    // accumulated line
+	FootComment  []byte    // accumulated foot
+	Comments     []Comment // the comment queue (mutable)
+	CommentsHead *int      // queue head pointer (mutable)
+}
+
+// MappingPairContext holds context for processing mapping key-value pairs.
+// This allows plugins to handle foot comment migration and tail comments.
+type MappingPairContext struct {
+	Mapping     *Node  // parent mapping node
+	Key         *Node  // current key
+	Value       *Node  // current value
+	Block       bool   // block vs flow style
+	TailComment []byte // from TAIL_COMMENT_EVENT, if any
+}
+
+// CommentPlugin processes comments during YAML parsing.
+// Each method returns a bool indicating whether it handled the comment.
+// If handled=false, the caller runs default behavior.
+//
+// Plugins should embed DefaultCommentBehavior and override only the methods
+// they need.
+type CommentPlugin interface {
+	// ProcessEventComments is called at event creation (8 sites in parser).
+	// Plugin can modify the event's comment fields and/or the comment queue.
+	// Return true to skip default processing.
+	ProcessEventComments(ctx *EventCommentContext) bool
+
+	// ProcessComment is called when each node is created in the composer.
+	// Plugin attaches event comments to the node.
+	// Return true to skip default processing.
+	ProcessComment(node *Node, ctx *CommentContext) (bool, error)
+
+	// ProcessMappingPair is called after each mapping key-value pair.
+	// Plugin handles foot comment migration, tail comments.
+	// Return true to skip default processing.
+	ProcessMappingPair(ctx *MappingPairContext) (bool, error)
+
+	// ProcessEndComments is called after composing a collection or document.
+	// Plugin handles end-event comments (Line, Foot).
+	// Return true to skip default processing.
+	ProcessEndComments(node *Node, ctx *CommentContext) (bool, error)
+}
+
+// DumpCommentPlugin processes comments during YAML serialization and
+// emission.
+// Plugins that implement both CommentPlugin and DumpCommentPlugin can
+// achieve full round-trip comment fidelity.
+type DumpCommentPlugin interface {
+	// SerializeComments is called in the serializer when converting
+	// Node comments to Event comments. The plugin can restore
+	// whitespace, inject blank-line markers, or modify comment text.
+	// Return true to skip default comment serialization.
+	SerializeComments(node *Node, event *Event) bool
+
+	// EmitComment is called in the emitter before writing a comment
+	// string. The plugin can control whitespace and alignment.
+	// Return nil to skip writing the comment entirely.
+	EmitComment(comment []byte, kind CommentKind) []byte
+}
+
+// CommentKind identifies the type of comment being emitted.
+type CommentKind int
+
+const (
+	HeadCommentKind CommentKind = iota
+	LineCommentKind
+	FootCommentKind
+	TailCommentKind
+)
+
+// DefaultCommentBehavior returns handled=false for all hooks.
+// Embed in plugin structs to only override methods you need.
+type DefaultCommentBehavior struct{}
+
+func (DefaultCommentBehavior) ProcessEventComments(*EventCommentContext) bool {
+	return false
+}
+func (DefaultCommentBehavior) ProcessComment(*Node, *CommentContext) (bool, error) {
+	return false, nil
+}
+func (DefaultCommentBehavior) ProcessMappingPair(*MappingPairContext) (bool, error) {
+	return false, nil
+}
+func (DefaultCommentBehavior) ProcessEndComments(*Node, *CommentContext) (bool, error) {
+	return false, nil
+}
 
 // WithIndent sets the number of spaces to use for indentation when
 // dumping YAML content.
@@ -374,6 +527,13 @@ func ApplyOptions(opts ...Option) (*Options, error) {
 		LineWidth:        80,
 		Unicode:          true,
 		UniqueKeys:       true,
+
+		// Default safety limits
+		DepthCheck: DefaultDepthCheck,
+		AliasCheck: DefaultAliasCheck,
+
+		// Skip comments by default for performance
+		SkipComments: true,
 	}
 	for _, opt := range opts {
 		if err := opt(o); err != nil {

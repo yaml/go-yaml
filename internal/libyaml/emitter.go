@@ -142,6 +142,8 @@ type Emitter struct {
 
 	key_line_comment []byte
 
+	dumpCommentPlugin DumpCommentPlugin
+
 	// Representer stuff
 
 	opened bool // If the stream was already opened?
@@ -1156,7 +1158,7 @@ func (emitter *Emitter) processHeadComment() error {
 		if err := emitter.writeIndent(); err != nil {
 			return err
 		}
-		if err := emitter.writeComment(emitter.TailComment); err != nil {
+		if err := emitter.writeCommentKind(emitter.TailComment, TailCommentKind); err != nil {
 			return err
 		}
 		emitter.TailComment = emitter.TailComment[:0]
@@ -1172,7 +1174,7 @@ func (emitter *Emitter) processHeadComment() error {
 	if err := emitter.writeIndent(); err != nil {
 		return err
 	}
-	if err := emitter.writeComment(emitter.HeadComment); err != nil {
+	if err := emitter.writeCommentKind(emitter.HeadComment, HeadCommentKind); err != nil {
 		return err
 	}
 	emitter.HeadComment = emitter.HeadComment[:0]
@@ -1204,7 +1206,7 @@ func (emitter *Emitter) processLineCommentLinebreak(linebreak bool) error {
 			return err
 		}
 	}
-	if err := emitter.writeComment(emitter.LineComment); err != nil {
+	if err := emitter.writeCommentKind(emitter.LineComment, LineCommentKind); err != nil {
 		return err
 	}
 	emitter.LineComment = emitter.LineComment[:0]
@@ -1219,7 +1221,7 @@ func (emitter *Emitter) processFootComment() error {
 	if err := emitter.writeIndent(); err != nil {
 		return err
 	}
-	if err := emitter.writeComment(emitter.FootComment); err != nil {
+	if err := emitter.writeCommentKind(emitter.FootComment, FootCommentKind); err != nil {
 		return err
 	}
 	emitter.FootComment = emitter.FootComment[:0]
@@ -2126,6 +2128,18 @@ func (emitter *Emitter) writeFoldedScalar(value []byte) error {
 		}
 	}
 	return nil
+}
+
+// writeCommentKind writes a comment with a known kind, allowing the
+// dump comment plugin to transform the comment before output.
+func (emitter *Emitter) writeCommentKind(comment []byte, kind CommentKind) error {
+	if emitter.dumpCommentPlugin != nil {
+		comment = emitter.dumpCommentPlugin.EmitComment(comment, kind)
+		if comment == nil {
+			return nil
+		}
+	}
+	return emitter.writeComment(comment)
 }
 
 // writeComment writes a comment to the output, ensuring each line starts

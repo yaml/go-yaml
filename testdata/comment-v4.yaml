@@ -1,0 +1,117 @@
+# Copyright 2025 The go-yaml Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+# V4 comment plugin round-trip test cases.
+#
+# Test Types:
+#   comment-v4-roundtrip - Load with v4 plugin, dump, compare to input
+#   comment-v4-node      - Load with v4 plugin, verify node comment fields
+#
+# Common Keys:
+#   name  - Test case name (string)
+#   opts  - Options for loading/dumping
+#   from  - YAML input
+#   want  - Expected output (defaults to from for round-trip)
+
+# --- Head comments ---
+
+- comment-v4-roundtrip:
+    name: Head comment on scalar
+    from: |
+      # This is a comment
+      key: value
+
+- comment-v4-roundtrip:
+    name: Multi-line head comment
+    from: |
+      # Line one
+      # Line two
+      # Line three
+      key: value
+
+# --- Line comments ---
+
+- comment-v4-roundtrip:
+    name: Line comment on scalar value
+    from: |
+      key: value # end of line
+
+- comment-v4-roundtrip:
+    name: Line comment on mapping key
+    from: |
+      key: # comment on key
+        nested: value
+
+# --- Foot comments ---
+
+- comment-v4-roundtrip:
+    name: Foot comment after mapping
+    from: |
+      key: value
+      # foot comment
+
+# --- Mapping pair comments ---
+
+- comment-v4-roundtrip:
+    name: Comment between mapping pairs
+    from: |
+      first: 1
+      # between pairs
+      second: 2
+
+# --- Sequence item comments ---
+
+- comment-v4-roundtrip:
+    name: Comments between sequence items
+    from: |
+      - item1
+      # between items
+      - item2
+
+# --- Head and line comment together ---
+
+- comment-v4-roundtrip:
+    name: Head and line comment
+    from: |
+      # head comment
+      key: value # line comment
+
+# --- Node verification tests ---
+
+- comment-v4-node:
+    name: Head comment attached to key
+    from: |
+      # head
+      key: value
+    check:
+      path: [0, 0]
+      head: "# head"
+
+- comment-v4-node:
+    name: Line comment attached to value
+    from: |
+      key: value # line
+    check:
+      path: [0, 1]
+      line: "# line"
+
+# --- RC gate tests ---
+
+- comment-v4-error:
+    name: Missing RC option
+    opts:
+      plugin:
+        comment/v4: {}
+    from: |
+      key: value
+    want: 'v4 comment plugin requires RC(...) option; current release candidate is "rc1"'
+
+- comment-v4-error:
+    name: Wrong RC version
+    opts:
+      plugin:
+        comment/v4:
+          rc: rc99
+    from: |
+      key: value
+    want: 'v4 comment plugin behavior has changed; you specified "rc99" but current is "rc1"; see changelog and update to RC("rc1") to accept'

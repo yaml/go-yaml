@@ -1,0 +1,143 @@
+# Copyright 2025 The go-yaml Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+# Plugin test cases for go-yaml
+#
+# Purpose: Tests YAML-based plugin configuration via OptsYAML.
+# Validates that plugins can be configured from YAML and enforce
+# their limits correctly.
+#
+# Test Types:
+#   plugin-pass  - Tests that should succeed with the given plugin config
+#   plugin-error - Tests that should fail with a specific error message
+#
+# Common Keys:
+#   name    - Test case name (string)
+#   plugin  - Plugin configuration (passed to OptsYAML)
+#   data    - YAML input specification (string or generator spec)
+#   want    - Expected error message (for plugin-error tests)
+
+- plugin-pass:
+    name: depth 50 allows nesting of 20
+    plugin:
+      limits:
+        depth: 50
+    data:
+      join:
+      - loop: ['[', 20]
+      - text: 'x'
+      - loop: [']', 20]
+
+- plugin-error:
+    name: depth 5 rejects nesting of 20
+    plugin:
+      limits:
+        depth: 5
+    data:
+      join:
+      - loop: ['[', 20]
+      - text: 'x'
+      - loop: [']', 20]
+    want: 'yaml: while increasing flow level at line 1, column 6: exceeded max depth of 5'
+
+- plugin-pass:
+    name: depth null disables depth checking (10001 nesting)
+    plugin:
+      limits:
+        depth:
+    data:
+      join:
+      - loop: ['[', 10001]
+      - text: 'x'
+      - loop: [']', 10001]
+
+- plugin-pass:
+    name: alias null disables alias checking (11000 aliases)
+    plugin:
+      limits:
+        alias:
+    data:
+      join:
+      - text: 'anchor: &anchor [1, 2, 3]'
+      - text: "\nrefs:\n"
+      - loop: ["- *anchor\n", 11000]
+
+- plugin-error:
+    name: alias 5 rejects excessive aliases
+    plugin:
+      limits:
+        alias: 5
+    data:
+      join:
+      - text: 'anchor: &anchor [1, 2, 3]'
+      - text: "\nrefs:\n"
+      - loop: ["- *anchor\n", 200]
+    want: 'yaml: exceeded max alias count of 5'
+
+- plugin-pass:
+    name: alias 10000 allows moderate aliases
+    plugin:
+      limits:
+        alias: 10000
+    data:
+      join:
+      - text: 'anchor: &anchor [1, 2, 3]'
+      - text: "\nrefs:\n"
+      - loop: ["- *anchor\n", 200]
+
+- plugin-pass:
+    name: default limits (bare limits key)
+    plugin:
+      limits:
+    data:
+      join:
+      - loop: ['[', 20]
+      - text: 'x'
+      - loop: [']', 20]
+
+- plugin-error:
+    name: default limits reject deep nesting (10001)
+    plugin:
+      limits:
+    data:
+      join:
+      - loop: ['[', 10001]
+      - text: 'x'
+      - loop: [']', 10001]
+    want: 'yaml: while increasing flow level at line 1, column 10001: exceeded max depth of 10000'
+
+- plugin-pass:
+    name: comment true enables comments
+    plugin:
+      comment: true
+    data:
+      join:
+      - text: "# head\nkey: value\n"
+
+- plugin-pass:
+    name: comment null enables comments
+    plugin:
+      comment:
+    data:
+      join:
+      - text: "# head\nkey: value\n"
+
+- plugin-pass:
+    name: comment false disables comments
+    plugin:
+      comment: false
+    data:
+      join:
+      - text: "# head\nkey: value\n"
+
+- plugin-pass:
+    name: limits and comment together
+    plugin:
+      limits:
+        depth: 50
+      comment: true
+    data:
+      join:
+      - loop: ['[', 20]
+      - text: 'x'
+      - loop: [']', 20]

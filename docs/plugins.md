@@ -1,0 +1,177 @@
+# Plugin System
+
+The go-yaml v4 plugin system extends YAML processing with custom logic while
+maintaining performance, safety and backward compatibility.
+
+## Overview
+
+Plugins allow you to customize certain internal processing during loading and
+dumping.
+Plugin interfaces use public types and can be implemented by external packages.
+
+## Available Plugins
+
+### Limits Plugin
+
+The limits plugin controls the maximum nesting depth and alias expansion
+allowed during parsing.
+By default, go-yaml enforces conservative limits to prevent DoS attacks.
+Use the limits plugin to relax or tighten those limits.
+
+```go
+import "go.yaml.in/yaml/v4/plugin/limits"
+
+// Default limits (same as library defaults)
+loader := yaml.NewLoader(data, yaml.WithPlugin(limits.New()))
+
+// Disable alias checking (e.g. for documents with many programmatic aliases)
+loader := yaml.NewLoader(data, yaml.WithPlugin(limits.New(limits.AliasNone())))
+
+// Custom depth limit
+loader := yaml.NewLoader(data, yaml.WithPlugin(limits.New(limits.DepthValue(50))))
+```
+
+#### Limits Options
+
+| Option | Effect |
+|---|---|
+| `DepthValue(n)` | Max nesting depth (both flow and block) |
+| `DepthNone()` | Disable depth checking |
+| `DepthFunc(fn)` | Custom `func(depth int, ctx *yaml.DepthContext) error` |
+| `AliasValue(n)` | Max alias expansion count (simple threshold) |
+| `AliasNone()` | Disable alias ratio checking |
+| `AliasFunc(fn)` | Custom `func(aliasCount, constructCount int) error` |
+
+### Comment Plugin
+
+The comment plugin controls how comments from YAML source are attached to
+nodes during parsing.
+By default, comments are skipped for performance.
+
+```go
+import "go.yaml.in/yaml/v4/plugin/comment/v3"
+
+// V3-compatible comment handling via plugin
+loader := yaml.NewLoader(data, yaml.WithPlugin(v3.New()))
+
+// Or use the convenience function
+loader := yaml.NewLoader(data, yaml.WithV3LegacyComments())
+```
+
+The `WithV3LegacyComments()` convenience function enables V3-style comment
+attachment without requiring the plugin import.
+This is automatically included in `WithV3Defaults()`.
+
+## Using Plugins
+
+### Basic Usage
+
+Register plugins with `WithPlugin()`:
+
+```go
+import (
+    "go.yaml.in/yaml/v4"
+    "go.yaml.in/yaml/v4/plugin/limits"
+)
+
+loader := yaml.NewLoader(data, yaml.WithPlugin(limits.New(limits.AliasNone())))
+var result interface{}
+loader.Load(&result)
+```
+
+### Resetting to Defaults
+
+Use `WithoutPlugin()` to reset a plugin kind to library defaults:
+
+```go
+// Reset limits to defaults (overrides any previous WithPlugin)
+loader := yaml.NewLoader(data, yaml.WithoutPlugin("limits"))
+
+// Disable comment processing for performance
+loader := yaml.NewLoader(data, yaml.WithoutPlugin("comment"))
+```
+
+## Default Behavior
+
+Both bare `NewLoader(data)` and version presets (`WithV4Defaults()`, etc.)
+include default limits equivalent to `limits.New()`.
+
+Comment handling varies by version preset:
+- `WithV3Defaults()` includes `WithV3LegacyComments()` (backward compat)
+- `WithV2Defaults()` and `WithV4Defaults()` skip comments (performance)
+- Bare `NewLoader(data)` skips comments by default
+
+## YAML Configuration
+
+Plugins can be configured from YAML strings using `OptsYAML`:
+
+```go
+opts, err := yaml.OptsYAML(`
+  plugin:
+    limits:
+      depth: 50
+      alias: 1000
+    comment: true
+`)
+```
+
+Each plugin key maps to a configuration object.
+For the limits plugin:
+- `depth` (int) — max nesting depth; `null` disables depth checking
+- `alias` (int) — max alias count; `null` disables alias checking
+- Omitted keys keep defaults
+- Bare `limits:` (null value) uses all defaults
+
+For the comment plugin:
+- `true` or `null` — enable V3 legacy comments
+- `false` — disable comments
+
+```yaml
+# Disable depth checking, enable comments
+plugin:
+  limits:
+    depth:
+  comment: true
+```
+
+## Third-Party Plugins
+
+Implement plugin interfaces directly for full control:
+
+```go
+// Custom LimitsPlugin
+type StrictLimits struct{}
+
+func (s *StrictLimits) CheckDepth(depth int, ctx *yaml.DepthContext) error {
+    if depth > 100 {
+        return fmt.Errorf("depth %d exceeds policy limit of 100", depth)
+    }
+    return nil
+}
+
+func (s *StrictLimits) CheckAlias(aliasCount, constructCount int) error {
+    if aliasCount > 1000 {
+        return fmt.Errorf("alias count %d exceeds policy limit", aliasCount)
+    }
+    return nil
+}
+
+yaml.NewLoader(data, yaml.WithPlugin(&StrictLimits{}))
+```
+
+Custom CommentPlugin implementations should embed `yaml.DefaultCommentBehavior`
+and override only the hooks they need:
+
+```go
+type MyComments struct {
+    yaml.DefaultCommentBehavior
+}
+
+func (m *MyComments) ProcessComment(node *yaml.Node, ctx *yaml.CommentContext) (bool, error) {
+    // Custom comment attachment logic
+    node.HeadComment = string(ctx.HeadComment)
+    return true, nil
+}
+
+yaml.NewLoader(data, yaml.WithPlugin(&MyComments{}))
+```

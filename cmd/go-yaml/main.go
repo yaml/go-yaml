@@ -294,8 +294,8 @@ Examples:
 func buildOptions(configFile string, optionFlags []string) ([]yaml.Option, error) {
 	var opts []yaml.Option
 
-	// Default to V4 preset
-	opts = append(opts, yaml.WithV4Defaults())
+	// Default to V4 preset with comments enabled (CLI inspects nodes)
+	opts = append(opts, yaml.WithV4Defaults(), yaml.WithV3LegacyComments())
 
 	// Load config file if specified
 	if configFile != "" {
