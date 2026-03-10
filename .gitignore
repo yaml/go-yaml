@@ -3,8 +3,8 @@
 
 /.cache/
 /.claude/
-/CLAUDE.md
 /yts/testdata/
 /go-yaml
 /note/
+/*.md
 /*.yaml
