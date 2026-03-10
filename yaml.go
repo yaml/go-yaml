@@ -24,6 +24,7 @@ import (
 	"io"
 
 	"go.yaml.in/yaml/v4/internal/libyaml"
+	v4comment "go.yaml.in/yaml/v4/plugin/comment/v4"
 	"go.yaml.in/yaml/v4/plugin/limits"
 )
 
@@ -362,6 +363,27 @@ func WithV3LegacyComments(enable ...bool) Option {
 	}
 }
 
+// WithV4Comments enables V4-style round-trip comment handling.
+//
+// This creates a v4 comment plugin with the given options and registers
+// it. The v4 plugin preserves comment whitespace, blank lines, and
+// avoids lossy comment migration.
+//
+// Example:
+//
+//	loader := yaml.NewLoader(data, yaml.WithV4Comments(v4.RC("rc1")))
+func WithV4Comments(opts ...v4comment.Option) Option {
+	return func(o *libyaml.Options) error {
+		p, err := v4comment.New(opts...)
+		if err != nil {
+			return err
+		}
+		o.CommentPlugin = libyaml.CommentPlugin(p)
+		o.SkipComments = false
+		return nil
+	}
+}
+
 // v3LegacyPlugin implements the V3-style comment plugin inline to avoid
 // circular dependency with the plugin package.
 type v3LegacyPlugin struct {
@@ -537,6 +559,21 @@ func OptsYAML(yamlStr string) (Option, error) {
 				default:
 					return nil, fmt.Errorf("yaml: plugin %q value must be true, false, or null", name)
 				}
+			case "comment/v4":
+				var cfgMap map[string]any
+				switch v := val.(type) {
+				case nil:
+					cfgMap = map[string]any{}
+				case map[string]any:
+					cfgMap = v
+				default:
+					return nil, fmt.Errorf("yaml: plugin %q value must be a mapping or null", name)
+				}
+				p, err := v4comment.NewFromYAML(cfgMap)
+				if err != nil {
+					return nil, err
+				}
+				optList = append(optList, WithPlugin(p))
 			default:
 				return nil, fmt.Errorf("yaml: unknown plugin %q", name)
 			}
