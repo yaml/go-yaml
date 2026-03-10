@@ -23,6 +23,8 @@ type Options struct {
 	StreamNodes    bool // Enable stream node emission
 	AllDocuments   bool // Load/Dump all documents in multi-document streams
 
+	AliasingRestrictionFunction AliasingRestrictionFunction // Set a custom aliasing restriction limit
+
 	// Dumping options
 	Indent                int        // Indentation spaces (2-9)
 	CompactSeqIndent      bool       // Whether '- ' counts as indentation
@@ -41,6 +43,44 @@ type Options struct {
 
 // Option allows configuring YAML loading and dumping operations.
 type Option func(*Options) error
+
+// AliasingRestrictionFunction is the function signature for setting aliasing
+// restrictions.
+type AliasingRestrictionFunction = func(aliasCount int, constructCount int) bool
+
+// NoAliasingRestrictions simply returns false when set as the aliasing
+// restriction function, thus disabling the check.
+func NoAliasingRestrictions(aliasCount int, constructCount int) bool {
+	return false
+}
+
+// DefaultAliasingRestrictions implements the default aliasing restrictions.
+// When no value is set on a decoder, this value is what is applied.
+func DefaultAliasingRestrictions(aliasCount int, constructCount int) bool {
+	var allowedAliasRatio float64
+	switch {
+	case constructCount <= alias_ratio_range_low:
+		// allow 99% to come from alias expansion for small-to-medium
+		// documents
+		allowedAliasRatio = 0.99
+	case constructCount >= alias_ratio_range_high:
+		// allow 10% to come from alias expansion for very large
+		// documents
+		allowedAliasRatio = 0.10
+	default:
+		// scale smoothly from 99% down to 10% over the range.
+		// this maps to 396,000 - 400,000 allowed alias-driven decodes
+		// over the range.
+		// 400,000 decode operations is ~100MB of allocations in
+		// worst-case scenarios (single-item maps).
+		allowedAliasRatio = 0.99 - 0.89*(float64(constructCount-alias_ratio_range_low)/alias_ratio_range_high)
+	}
+
+	if aliasCount > 100 && constructCount > 1000 && float64(aliasCount)/float64(constructCount) > allowedAliasRatio {
+		return true
+	}
+	return false
+}
 
 // WithIndent sets the number of spaces to use for indentation when
 // dumping YAML content.
@@ -344,6 +384,15 @@ func WithQuotePreference(style QuoteStyle) Option {
 		default:
 			return fmt.Errorf("invalid QuoteStyle value: %d", style)
 		}
+	}
+}
+
+// WithAliasingRestrictionFunction sets the function used to determine
+// excessive aliasing restrictions.
+func WithAliasingRestrictionFunction(value func(aliasCount int, constructCount int) bool) Option {
+	return func(o *Options) error {
+		o.AliasingRestrictionFunction = value
+		return nil
 	}
 }
 

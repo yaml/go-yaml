@@ -361,6 +361,12 @@
   from: 99
   like: "invalid QuoteStyle value"
 
+# WithAliasingRestrictionFunction tests
+- name: WithAliasingRestrictionFunction with aliasing-restrictions-func
+  type: with-aliasing-restrictions-func
+  want:
+    aliasing_restriction_function: true
+
 # ApplyOptions tests
 - name: ApplyOptions with no options (v4 defaults)
   type: apply-options
