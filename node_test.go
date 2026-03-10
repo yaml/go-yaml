@@ -282,7 +282,7 @@ func TestNodeZeroEncodeDecode(t *testing.T) {
 	_, err = yaml.Marshal(&n)
 	assert.ErrorMatches(t, "yaml: cannot represent node with unknown kind 0", err)
 	err = n.Load(&v)
-	assert.ErrorMatches(t, `go-yaml load error: cannot construct node with unknown kind 0\n  in constructor at L1`, err)
+	assert.ErrorMatches(t, `go-yaml load error: cannot construct node with unknown kind: '0'\n  in constructor at L1`, err)
 }
 
 func TestNodeOmitEmpty(t *testing.T) {

@@ -141,6 +141,17 @@
         in constructor at L1
     also: unwrap
 
+- load-error:
+    name: Constructor stage error at unknown position
+    from:
+      stage: constructor
+      message: cannot construct value
+      err: cannot construct value
+    want: |-
+      go-yaml load error: cannot construct value
+        in constructor at <unknown position>
+    also: unwrap
+
 # EmitterError tests (dump stack)
 
 - emitter-error:
@@ -182,6 +193,16 @@
       yaml: construct errors:
         line 5: field 'foo' not found in type struct
         line 8: field 'bar' not found in type struct
+
+- load-errors:
+    name: Error at unknown position
+    from:
+      errors:
+      - line: 0
+        message: unknown field
+    want: |-
+      yaml: construct errors:
+        <unknown position>: unknown field
 
 # LoadErrors.As tests
 
