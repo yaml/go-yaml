@@ -16,7 +16,6 @@
 #   load-error       - Tests LoadError formatting with different stages
 #   emitter-error    - Tests EmitterError formatting (dump stack)
 #   writer-error     - Tests WriterError formatting and Unwrap (dump stack)
-#   construct-error  - Tests ConstructError formatting (backward compat)
 #   load-errors      - Tests LoadErrors formatting
 #   load-errors-as   - Tests LoadErrors.As method
 #   load-errors-is   - Tests LoadErrors.Is method
@@ -159,24 +158,6 @@
     want: 'yaml: write error'
     also: unwrap
 
-# ConstructError tests (backward compatibility)
-
-- construct-error:
-    name: Basic construct error
-    from:
-      line: 5
-      message: type mismatch
-    want: 'line 5: type mismatch'
-    also: unwrap
-
-- construct-error:
-    name: Construct error line 0
-    from:
-      line: 0
-      message: unknown error
-    want: 'line 0: unknown error'
-    also: unwrap
-
 # LoadErrors tests
 
 - load-errors:
@@ -203,17 +184,6 @@
         line 8: field 'bar' not found in type struct
 
 # LoadErrors.As tests
-
-- load-errors-as:
-    name: As ConstructError
-    from:
-      errors:
-      - line: 10
-        message: conversion failed
-    as: ConstructError
-    want_as: true
-    want_line: 10
-    want_message: conversion failed
 
 - load-errors-as:
     name: As TypeError
