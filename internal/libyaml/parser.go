@@ -238,6 +238,8 @@ type Parser struct {
 	simple_key          SimpleKey   // The current simple key.
 	simple_key_stack    []SimpleKey // The stack of simple keys.
 
+	depthCheck func(int, *DepthContext) error // Depth limit check function
+
 	// Parser stuff
 
 	state          ParserState    // The current parser state.
@@ -256,6 +258,7 @@ func NewParser() Parser {
 		raw_buffer: make([]byte, 0, input_raw_buffer_size),
 		buffer:     make([]byte, 0, input_buffer_size),
 		mark:       Mark{Line: 1, Column: 1},
+		depthCheck: DefaultDepthCheck,
 	}
 }
 

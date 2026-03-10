@@ -20,9 +20,11 @@ package yaml
 
 import (
 	"errors"
+	"fmt"
 	"io"
 
 	"go.yaml.in/yaml/v4/internal/libyaml"
+	"go.yaml.in/yaml/v4/plugin/limit"
 )
 
 //-----------------------------------------------------------------------------
@@ -42,6 +44,7 @@ func WithV2Defaults() Option {
 		WithUnicode(true),
 		WithUniqueKeys(true),
 		WithQuotePreference(QuoteLegacy),
+		WithPlugin(limit.New()),
 	)
 }
 
@@ -54,6 +57,7 @@ func WithV3Defaults() Option {
 		WithUnicode(true),
 		WithUniqueKeys(true),
 		WithQuotePreference(QuoteLegacy),
+		WithPlugin(limit.New()),
 	)
 }
 
@@ -66,6 +70,7 @@ func WithV4Defaults() Option {
 		WithUnicode(true),
 		WithUniqueKeys(true),
 		WithQuotePreference(QuoteSingle),
+		WithPlugin(limit.New()),
 	)
 }
 
@@ -254,6 +259,49 @@ func Options(opts ...Option) Option {
 	return libyaml.CombineOptions(opts...)
 }
 
+// DepthKind represents the type of nesting (flow or block).
+type DepthKind = libyaml.DepthKind
+
+// DepthKind constants for nesting depth checks.
+const (
+	DepthKindFlow  = libyaml.DepthKindFlow
+	DepthKindBlock = libyaml.DepthKindBlock
+)
+
+// DepthContext holds context about a nesting depth check.
+type DepthContext = libyaml.DepthContext
+
+// WithPlugin registers one or more plugins for YAML processing.
+//
+// Plugins extend the YAML library with custom processing logic.
+// Each plugin implements one or more plugin interfaces.
+// Currently supported plugin types:
+//   - LimitPlugin: Controls depth and alias expansion limits
+//
+// Example:
+//
+//	import "go.yaml.in/yaml/v4/plugin/limit"
+//	loader := yaml.NewLoader(data, yaml.WithPlugin(limit.New(limit.AliasNone())))
+//
+// Plugins use public types and can be implemented by external packages.
+func WithPlugin(plugins ...any) Option {
+	return func(o *libyaml.Options) error {
+		for _, p := range plugins {
+			registered := false
+			if lp, ok := p.(LimitPlugin); ok {
+				o.DepthCheck = lp.CheckDepth
+				o.AliasCheck = lp.CheckAlias
+				registered = true
+			}
+			// Future plugin types add cases here (non-exclusive if)
+			if !registered {
+				return fmt.Errorf("yaml: unsupported plugin type: %T", p)
+			}
+		}
+		return nil
+	}
+}
+
 // OptsYAML parses a YAML string containing option settings and returns
 // an Option that can be combined with other options using Options().
 //
@@ -270,6 +318,12 @@ func Options(opts ...Option) Option {
 // - known-fields (bool)
 // - single-document (bool)
 // - unique-keys (bool)
+// - plugin (map of plugin name to config)
+//
+// The plugin field configures plugins by name. Each key is a plugin
+// name and the value is its configuration map (or null for defaults).
+// Currently supported: "limit" with keys "depth" and "alias" (int
+// or null to disable).
 //
 // Only fields specified in the YAML will override other options when
 // combined. Unspecified fields won't affect other options.
@@ -279,22 +333,26 @@ func Options(opts ...Option) Option {
 //	opts, err := yaml.OptsYAML(`
 //	  indent: 3
 //	  known-fields: true
+//	  plugin:
+//	    limit:
+//	      depth: 50
 //	`)
 //	yaml.Dump(&data, yaml.Options(V4, opts))
 func OptsYAML(yamlStr string) (Option, error) {
 	var cfg struct {
-		Indent                *int    `yaml:"indent"`
-		CompactSeqIndent      *bool   `yaml:"compact-seq-indent"`
-		LineWidth             *int    `yaml:"line-width"`
-		Unicode               *bool   `yaml:"unicode"`
-		Canonical             *bool   `yaml:"canonical"`
-		LineBreak             *string `yaml:"line-break"`
-		ExplicitStart         *bool   `yaml:"explicit-start"`
-		ExplicitEnd           *bool   `yaml:"explicit-end"`
-		FlowSimpleCollections *bool   `yaml:"flow-simple-coll"`
-		KnownFields           *bool   `yaml:"known-fields"`
-		SingleDocument        *bool   `yaml:"single-document"`
-		UniqueKeys            *bool   `yaml:"unique-keys"`
+		Indent                *int           `yaml:"indent"`
+		CompactSeqIndent      *bool          `yaml:"compact-seq-indent"`
+		LineWidth             *int           `yaml:"line-width"`
+		Unicode               *bool          `yaml:"unicode"`
+		Canonical             *bool          `yaml:"canonical"`
+		LineBreak             *string        `yaml:"line-break"`
+		ExplicitStart         *bool          `yaml:"explicit-start"`
+		ExplicitEnd           *bool          `yaml:"explicit-end"`
+		FlowSimpleCollections *bool          `yaml:"flow-simple-coll"`
+		KnownFields           *bool          `yaml:"known-fields"`
+		SingleDocument        *bool          `yaml:"single-document"`
+		UniqueKeys            *bool          `yaml:"unique-keys"`
+		Plugin                map[string]any `yaml:"plugin"`
 	}
 	if err := Load([]byte(yamlStr), &cfg, WithKnownFields()); err != nil {
 		return nil, err
@@ -345,6 +403,28 @@ func OptsYAML(yamlStr string) (Option, error) {
 			optList = append(optList, WithLineBreak(LineBreakCRLN))
 		default:
 			return nil, errors.New("yaml: invalid line-break value (use ln, cr, or crln)")
+		}
+	}
+
+	for name, val := range cfg.Plugin {
+		switch name {
+		case "limit":
+			var cfgMap map[string]any
+			switch v := val.(type) {
+			case nil:
+				cfgMap = map[string]any{}
+			case map[string]any:
+				cfgMap = v
+			default:
+				return nil, fmt.Errorf("yaml: plugin %q value must be a mapping or null", name)
+			}
+			p, err := limit.NewFromYAML(cfgMap)
+			if err != nil {
+				return nil, err
+			}
+			optList = append(optList, WithPlugin(p))
+		default:
+			return nil, fmt.Errorf("yaml: unknown plugin %q", name)
 		}
 	}
 
