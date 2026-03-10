@@ -8,7 +8,6 @@ package libyaml
 
 import (
 	"errors"
-	"strings"
 	"testing"
 
 	"go.yaml.in/yaml/v4/internal/testutil/assert"
@@ -109,11 +108,7 @@ func runLoadErrorsTest(t *testing.T, tc TestCase) {
 	want, ok := tc.Want.(string)
 	assert.Truef(t, ok, "want should be string, got %T", tc.Want)
 
-	// Normalize line endings for comparison
-	gotNorm := strings.TrimSpace(got)
-	wantNorm := strings.TrimSpace(want)
-
-	assert.Equalf(t, wantNorm, gotNorm, "error message mismatch")
+	assert.Equalf(t, want, got, "error message mismatch")
 }
 
 func runLoadErrorsAsTest(t *testing.T, tc TestCase) {
@@ -179,11 +174,7 @@ func runTypeYAMLErrorTest(t *testing.T, tc TestCase) {
 	want, ok := tc.Want.(string)
 	assert.Truef(t, ok, "want should be string, got %T", tc.Want)
 
-	// Normalize line endings for comparison
-	gotNorm := strings.TrimSpace(got)
-	wantNorm := strings.TrimSpace(want)
-
-	assert.Equalf(t, wantNorm, gotNorm, "error message mismatch")
+	assert.Equalf(t, want, got, "error message mismatch")
 }
 
 // Helper functions

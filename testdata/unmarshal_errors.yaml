@@ -26,87 +26,65 @@
 - unmarshal-error:
     name: Invalid float value
     yaml: 'v: !!float ''error'''
-    want: |-
-      go-yaml load error: cannot construct !!str `error` as a !!float
-        in resolver at <unknown position>
+    want: 'go-yaml load error: cannot construct !!str `error` as a !!float; in resolver at <unknown position>'
 
 - unmarshal-error:
     name: Incomplete flow sequence
     yaml: 'v: [A,'
-    want: |-
-      go-yaml load error: did not find expected node content
-        in parser (while parsing a flow node) at L1
+    want: 'go-yaml load error: did not find expected node content; in parser (while parsing a flow node) at L1'
 
 - unmarshal-error:
     name: Incomplete flow sequence in list
     yaml: |
       v:
       - [A,
-    want: |-
-      go-yaml load error: did not find expected node content
-        in parser (while parsing a flow node) at L2
+    want: 'go-yaml load error: did not find expected node content; in parser (while parsing a flow node) at L2'
 
 - unmarshal-error:
     name: Invalid alias syntax
     yaml: |
       a:
       - b: *,
-    want: |-
-      go-yaml load error: did not find expected alphabetic or numeric character
-        in scanner (while scanning an alias) at L2,C6-C7
+    want: 'go-yaml load error: did not find expected alphabetic or numeric character; in scanner (while scanning an alias) at L2,C6-C7'
 
 - unmarshal-error:
     name: Unknown anchor referenced
     yaml: "a: *b\n"
-    want: |-
-      go-yaml load error: unknown anchor 'b' referenced
-        in composer at L1,C5
+    want: "go-yaml load error: unknown anchor 'b' referenced; in composer at L1,C5"
 
 - unmarshal-error:
     name: Anchor contains itself
     yaml: |
       a: &a
         b: *a
-    want: |-
-      go-yaml load error: anchor 'a' value contains itself
-        in composer at L2,C7
+    want: "go-yaml load error: anchor 'a' value contains itself; in composer at L2,C7"
 
 - unmarshal-error:
     name: Block sequence in invalid context
     yaml: 'value: -'
-    want: |-
-      go-yaml load error: block sequence entries are not allowed in this context
-        in scanner at L1,C8
+    want: 'go-yaml load error: block sequence entries are not allowed in this context; in scanner at L1,C8'
 
 - unmarshal-error:
     name: Invalid base64 in binary
     yaml: 'a: !!binary =='
-    want: |-
-      go-yaml load error: !!binary value contains invalid base64 data
-        in constructor at L1,C5
+    want: 'go-yaml load error: !!binary value contains invalid base64 data; in constructor at L1,C5'
 
 - unmarshal-error:
     name: Slice as map key
     yaml: '{[.]}'
-    want: |-
-      go-yaml load error: cannot use '[]interface {}{"."}' as a map key; try decoding into yaml.Node
-        in constructor at L1,C3
+    want: "go-yaml load error: cannot use '[]interface {}{\".\"}' as a map key; try decoding into yaml.Node; in constructor at L1,C3"
 
 - unmarshal-error:
     name: Map as map key
     yaml: '{{.}}'
-    want: |-
-      go-yaml load error: cannot use 'map[string]interface {}{".":interface {}(nil)}' as a map key; try decoding into yaml.Node
-        in constructor at L1,C3
+    want: "go-yaml load error: cannot use 'map[string]interface {}{\".\":interface {}(nil)}' as a map key; try decoding into yaml.Node; in constructor at L1,C3"
 
 - unmarshal-error:
     name: Forward reference to anchor
     yaml: |
       b: *a
       a: &a {c: 1}
-    want: |-
-      go-yaml load error: unknown anchor 'a' referenced
-        in composer at L1,C5
+    want: "go-yaml load error: unknown anchor 'a' referenced; in composer at L1,C5"
 
 - unmarshal-error:
     name: Invalid TAG directive
@@ -114,9 +92,7 @@
       %TAG !%79! tag:yaml.org,2002:
       ---
       v: !%79!int '1'
-    want: |-
-      go-yaml load error: did not find expected whitespace
-        in scanner (while scanning a %TAG directive) at L1-L1,C7
+    want: 'go-yaml load error: did not find expected whitespace; in scanner (while scanning a %TAG directive) at L1-L1,C7'
 
 - unmarshal-error:
     name: Missing colon in mapping (multiline)
@@ -125,9 +101,7 @@
         1:
       b
         2:
-    want: |-
-      go-yaml load error: mapping values are not allowed in this context
-        in scanner at L4,C4
+    want: 'go-yaml load error: mapping values are not allowed in this context; in scanner at L4,C4'
 
 - unmarshal-error:
     name: Missing colon in mapping (inline)
@@ -136,9 +110,7 @@
       b: 2
       c 2
       d: 3
-    want: |-
-      go-yaml load error: could not find expected ':'
-        in scanner (while scanning a simple key) at L3-L4
+    want: "go-yaml load error: could not find expected ':'; in scanner (while scanning a simple key) at L3-L4"
 
 - unmarshal-error:
     name: Missing colon after comment and list (Issue 665)
@@ -146,25 +118,19 @@
       #
       -
       {
-    want: |-
-      go-yaml load error: did not find expected node content
-        in parser (while parsing a flow node) at L3
+    want: 'go-yaml load error: did not find expected node content; in parser (while parsing a flow node) at L3'
 
 - unmarshal-error:
     name: Incomplete UTF-8 sequence (Issue 666)
     yaml: "0: [:!00 \xEF"
-    want: |-
-      go-yaml load error: did not find expected ',' or ']'
-        in parser (while parsing a flow sequence) at L1,C4-L1
+    want: "go-yaml load error: did not find expected ',' or ']'; in parser (while parsing a flow sequence) at L1,C4-L1"
 
 - unmarshal-error:
     name: Anchor with colon (Issue 109)
     yaml: |
       foo: &bar: bar
       *bar: : quz
-    want: |-
-      go-yaml load error: mapping values are not allowed in this context
-        in scanner at L1,C10
+    want: 'go-yaml load error: mapping values are not allowed in this context; in scanner at L1,C10'
 
 - unmarshal-error:
     name: Excessive aliasing
@@ -178,9 +144,7 @@
       g: &g [*f,*f,*f,*f,*f,*f,*f,*f,*f]
       h: &h [*g,*g,*g,*g,*g,*g,*g,*g,*g]
       i: &i [*h,*h,*h,*h,*h,*h,*h,*h,*h]
-    want: |-
-      go-yaml load error: document contains excessive aliasing
-        in constructor at L2,C18
+    want: 'go-yaml load error: document contains excessive aliasing; in constructor at L2,C18'
 
 # TextUnmarshaler validation errors
 
@@ -188,46 +152,34 @@
     name: Mapping into TextUnmarshaler (value field)
     type: testStructA_TextUnmarshaler
     yaml: 'a: {foo: bar}'
-    want: |-
-      yaml: construct errors:
-        line 1: cannot construct !!map into yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
+    want: 'yaml: construct errors: line 1: cannot construct !!map into yaml_test.simpleTextUnmarshaler (TextUnmarshaler)'
 
 - unmarshal-error:
     name: Sequence into TextUnmarshaler (value field)
     type: testStructA_TextUnmarshaler
     yaml: 'a: [foo, bar]'
-    want: |-
-      yaml: construct errors:
-        line 1: cannot construct !!seq into yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
+    want: 'yaml: construct errors: line 1: cannot construct !!seq into yaml_test.simpleTextUnmarshaler (TextUnmarshaler)'
 
 - unmarshal-error:
     name: Mapping into TextUnmarshaler (pointer field)
     type: testStructA_TextUnmarshalerPtr
     yaml: 'a: {foo: bar}'
-    want: |-
-      yaml: construct errors:
-        line 1: cannot construct !!map into yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
+    want: 'yaml: construct errors: line 1: cannot construct !!map into yaml_test.simpleTextUnmarshaler (TextUnmarshaler)'
 
 - unmarshal-error:
     name: Sequence into TextUnmarshaler (pointer field)
     type: testStructA_TextUnmarshalerPtr
     yaml: 'a: [foo, bar]'
-    want: |-
-      yaml: construct errors:
-        line 1: cannot construct !!seq into yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
+    want: 'yaml: construct errors: line 1: cannot construct !!seq into yaml_test.simpleTextUnmarshaler (TextUnmarshaler)'
 
 - unmarshal-error:
     name: Mapping into TextUnmarshaler (pointer-pointer field)
     type: testStructA_TextUnmarshalerPtrPtr
     yaml: 'a: {foo: bar}'
-    want: |-
-      yaml: construct errors:
-        line 1: cannot construct !!map into yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
+    want: 'yaml: construct errors: line 1: cannot construct !!map into yaml_test.simpleTextUnmarshaler (TextUnmarshaler)'
 
 - unmarshal-error:
     name: Sequence into TextUnmarshaler (pointer-pointer field)
     type: testStructA_TextUnmarshalerPtrPtr
     yaml: 'a: [foo, bar]'
-    want: |-
-      yaml: construct errors:
-        line 1: cannot construct !!seq into yaml_test.simpleTextUnmarshaler (TextUnmarshaler)
+    want: 'yaml: construct errors: line 1: cannot construct !!seq into yaml_test.simpleTextUnmarshaler (TextUnmarshaler)'
