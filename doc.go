@@ -1,7 +1,5 @@
-//
-// Copyright (c) 2025 The go-yaml Project Contributors
+// Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
-//
 
 // Package yaml implements YAML 1.1/1.2 encoding and decoding for Go programs.
 //

@@ -787,12 +787,6 @@ func (parser *Parser) Scan(token *Token) error {
 // formatScannerError creates a ScannerError with the given problem message
 // and mark position.
 
-// max_flow_level is the maximum nesting depth for flow collections.
-const max_flow_level = 10000
-
-// max_indents is the maximum nesting depth for indentation levels.
-const max_indents = 10000
-
 // max_number_length is the maximum length of a number suffix in a scalar tag.
 const max_number_length = 2
 
@@ -3144,7 +3138,6 @@ func (parser *Parser) removeSimpleKey() error {
 	return nil
 }
 
-// max_flow_level limits the flow_level
 func (parser *Parser) isFlowSequence() bool {
 	if len(parser.tokens) == 0 {
 		return false
@@ -3158,10 +3151,10 @@ func (parser *Parser) isFlowSequence() bool {
 func (parser *Parser) increaseFlowLevel() error {
 	// Increase the flow level.
 	parser.flow_level++
-	if parser.flow_level > max_flow_level {
+	if err := parser.depthCheck(parser.flow_level, &DepthContext{Kind: DepthKindFlow}); err != nil {
 		return formatScannerErrorContext(
 			"while increasing flow level", parser.simple_key.mark,
-			fmt.Sprintf("exceeded max depth of %d", max_flow_level), parser.mark)
+			err.Error(), parser.mark)
 	}
 
 	// If a simple key was possible, push it to the stack before resetting the key.
@@ -3194,7 +3187,6 @@ func (parser *Parser) decreaseFlowLevel() error {
 	return nil
 }
 
-// max_indents limits the indents stack size
 func (parser *Parser) rollIndent(column, number int, typ TokenType, mark Mark) error {
 	// In the flow context, do nothing.
 	if parser.flow_level > 0 {
@@ -3206,10 +3198,10 @@ func (parser *Parser) rollIndent(column, number int, typ TokenType, mark Mark) e
 		// indentation level.
 		parser.indents = append(parser.indents, parser.indent)
 		parser.indent = column
-		if len(parser.indents) > max_indents {
+		if err := parser.depthCheck(len(parser.indents), &DepthContext{Kind: DepthKindBlock}); err != nil {
 			return formatScannerErrorContext(
 				"while increasing indent level", parser.simple_key.mark,
-				fmt.Sprintf("exceeded max depth of %d", max_indents), parser.mark)
+				err.Error(), parser.mark)
 		}
 
 		// Create a token and insert it into the queue.
