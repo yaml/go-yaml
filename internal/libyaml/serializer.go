@@ -23,6 +23,7 @@ type Serializer struct {
 	flowSimpleCollections bool
 	quotePreference       QuoteStyle
 	doneInit              bool
+	dumpCommentPlugin     DumpCommentPlugin
 }
 
 // NewSerializer creates a new Serializer with the given options.
@@ -46,14 +47,19 @@ func NewSerializer(w io.Writer, opts *Options) *Serializer {
 		emitter.SetOutputWriter(w)
 	}
 
-	return &Serializer{
+	s := &Serializer{
 		Emitter:               emitter,
 		lineWidth:             opts.LineWidth,
 		explicitStart:         opts.ExplicitStart,
 		explicitEnd:           opts.ExplicitEnd,
 		flowSimpleCollections: opts.FlowSimpleCollections,
 		quotePreference:       opts.QuotePreference,
+		dumpCommentPlugin:     opts.DumpCommentPlugin,
 	}
+	if opts.DumpCommentPlugin != nil {
+		emitter.dumpCommentPlugin = opts.DumpCommentPlugin
+	}
+	return s
 }
 
 // Serialize walks a Node tree and emits events to produce YAML output.
@@ -91,7 +97,7 @@ func (s *Serializer) Finish() {
 func (s *Serializer) node(node *Node, tail string) {
 	// Zero nodes behave as nil.
 	if node.Kind == 0 && node.IsZero() {
-		s.emitScalar("null", "", "", PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
+		s.emitScalar("null", "", "", PLAIN_SCALAR_STYLE, nil, nil, nil, nil, nil)
 		return
 	}
 
@@ -113,12 +119,18 @@ func (s *Serializer) node(node *Node, tail string) {
 	case DocumentNode:
 		event := NewDocumentStartEvent(noVersionDirective, noTagDirective, !s.explicitStart)
 		event.HeadComment = []byte(node.HeadComment)
+		if s.dumpCommentPlugin != nil {
+			s.dumpCommentPlugin.SerializeComments(node, &event)
+		}
 		s.emit(event)
 		for _, node := range node.Content {
 			s.node(node, "")
 		}
 		event = NewDocumentEndEvent(!s.explicitEnd)
 		event.FootComment = []byte(node.FootComment)
+		if s.dumpCommentPlugin != nil {
+			s.dumpCommentPlugin.SerializeComments(node, &event)
+		}
 		s.emit(event)
 
 	case SequenceNode:
@@ -131,6 +143,9 @@ func (s *Serializer) node(node *Node, tail string) {
 		}
 		event := NewSequenceStartEvent([]byte(node.Anchor), []byte(longTag(tag)), tag == "", style)
 		event.HeadComment = []byte(node.HeadComment)
+		if s.dumpCommentPlugin != nil {
+			s.dumpCommentPlugin.SerializeComments(node, &event)
+		}
 		s.emit(event)
 		for _, node := range node.Content {
 			s.node(node, "")
@@ -138,6 +153,9 @@ func (s *Serializer) node(node *Node, tail string) {
 		event = NewSequenceEndEvent()
 		event.LineComment = []byte(node.LineComment)
 		event.FootComment = []byte(node.FootComment)
+		if s.dumpCommentPlugin != nil {
+			s.dumpCommentPlugin.SerializeComments(node, &event)
+		}
 		s.emit(event)
 
 	case MappingNode:
@@ -151,6 +169,9 @@ func (s *Serializer) node(node *Node, tail string) {
 		event := NewMappingStartEvent([]byte(node.Anchor), []byte(longTag(tag)), tag == "", style)
 		event.TailComment = []byte(tail)
 		event.HeadComment = []byte(node.HeadComment)
+		if s.dumpCommentPlugin != nil {
+			s.dumpCommentPlugin.SerializeComments(node, &event)
+		}
 		s.emit(event)
 
 		// The tail logic below moves the foot comment of prior keys to
@@ -178,6 +199,9 @@ func (s *Serializer) node(node *Node, tail string) {
 		event.TailComment = []byte(tail)
 		event.LineComment = []byte(node.LineComment)
 		event.FootComment = []byte(node.FootComment)
+		if s.dumpCommentPlugin != nil {
+			s.dumpCommentPlugin.SerializeComments(node, &event)
+		}
 		s.emit(event)
 
 	case AliasNode:
@@ -185,6 +209,9 @@ func (s *Serializer) node(node *Node, tail string) {
 		event.HeadComment = []byte(node.HeadComment)
 		event.LineComment = []byte(node.LineComment)
 		event.FootComment = []byte(node.FootComment)
+		if s.dumpCommentPlugin != nil {
+			s.dumpCommentPlugin.SerializeComments(node, &event)
+		}
 		s.emit(event)
 
 	case ScalarNode:
@@ -219,7 +246,7 @@ func (s *Serializer) node(node *Node, tail string) {
 			style = s.quotePreference.ScalarStyle()
 		}
 
-		s.emitScalar(value, node.Anchor, tag, style, []byte(node.HeadComment), []byte(node.LineComment), []byte(node.FootComment), []byte(tail))
+		s.emitScalar(value, node.Anchor, tag, style, []byte(node.HeadComment), []byte(node.LineComment), []byte(node.FootComment), []byte(tail), node)
 	default:
 		failf("cannot represent node with unknown kind %d", node.Kind)
 	}
@@ -245,6 +272,7 @@ func (s *Serializer) must(err error) {
 // and associated comments.
 func (s *Serializer) emitScalar(
 	value, anchor, tag string, style ScalarStyle, head, line, foot, tail []byte,
+	node ...*Node,
 ) {
 	implicit := tag == ""
 	if !implicit {
@@ -255,6 +283,9 @@ func (s *Serializer) emitScalar(
 	event.LineComment = line
 	event.FootComment = foot
 	event.TailComment = tail
+	if s.dumpCommentPlugin != nil && len(node) > 0 && node[0] != nil {
+		s.dumpCommentPlugin.SerializeComments(node[0], &event)
+	}
 	s.emit(event)
 }
 

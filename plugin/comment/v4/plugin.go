@@ -207,3 +207,18 @@ func (p *Plugin) ProcessEndComments(node *libyaml.Node, ctx *libyaml.CommentCont
 	node.FootComment = string(ctx.FootComment)
 	return true, nil
 }
+
+// SerializeComments is called during dump to convert Node comments
+// to Event comments. The v4 plugin preserves comment text as-is.
+func (p *Plugin) SerializeComments(node *libyaml.Node, event *libyaml.Event) bool {
+	// Default behavior: let the serializer handle it.
+	// The plugin can modify event comments here in the future
+	// to restore whitespace or inject blank-line markers.
+	return false
+}
+
+// EmitComment is called during dump before writing a comment.
+// The v4 plugin passes comments through unchanged.
+func (p *Plugin) EmitComment(comment []byte, kind libyaml.CommentKind) []byte {
+	return comment
+}

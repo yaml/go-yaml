@@ -39,6 +39,8 @@ func NewComposer(b []byte, opts *Options) *Composer {
 	p.Parser.SetInputString(b)
 	if opts != nil {
 		p.Parser.depthCheck = opts.DepthCheck
+		p.Parser.skip_comments = opts.SkipComments
+		p.Parser.opts = opts
 	}
 	return &p
 }
@@ -52,6 +54,8 @@ func NewComposerFromReader(r io.Reader, opts *Options) *Composer {
 	p.Parser.SetInputReader(r)
 	if opts != nil {
 		p.Parser.depthCheck = opts.DepthCheck
+		p.Parser.skip_comments = opts.SkipComments
+		p.Parser.opts = opts
 	}
 	return &p
 }
@@ -127,9 +131,28 @@ func (c *Composer) node(kind Kind, tag, value string) *Node {
 	if !c.Textless {
 		n.Line = c.event.StartMark.Line + 1
 		n.Column = c.event.StartMark.Column + 1
-		n.HeadComment = string(c.event.HeadComment)
-		n.LineComment = string(c.event.LineComment)
-		n.FootComment = string(c.event.FootComment)
+
+		// Handle comments via plugin or directly
+		if c.opts != nil && c.opts.CommentPlugin != nil {
+			ctx := &CommentContext{
+				HeadComment: c.event.HeadComment,
+				LineComment: c.event.LineComment,
+				FootComment: c.event.FootComment,
+			}
+			handled, err := c.opts.CommentPlugin.ProcessComment(n, ctx)
+			if err != nil {
+				c.fail(err)
+			}
+			if !handled {
+				n.HeadComment = string(c.event.HeadComment)
+				n.LineComment = string(c.event.LineComment)
+				n.FootComment = string(c.event.FootComment)
+			}
+		} else if c.opts == nil || !c.opts.SkipComments {
+			n.HeadComment = string(c.event.HeadComment)
+			n.LineComment = string(c.event.LineComment)
+			n.FootComment = string(c.event.FootComment)
+		}
 	}
 	return n
 }
@@ -142,7 +165,20 @@ func (c *Composer) document() *Node {
 	c.expect(DOCUMENT_START_EVENT)
 	c.parseChild(n)
 	if c.peek() == DOCUMENT_END_EVENT {
-		n.FootComment = string(c.event.FootComment)
+		if c.opts != nil && c.opts.CommentPlugin != nil {
+			ctx := &CommentContext{
+				FootComment: c.event.FootComment,
+			}
+			handled, err := c.opts.CommentPlugin.ProcessEndComments(n, ctx)
+			if err != nil {
+				c.fail(err)
+			}
+			if !handled {
+				n.FootComment = string(c.event.FootComment)
+			}
+		} else {
+			n.FootComment = string(c.event.FootComment)
+		}
 	}
 	c.expect(DOCUMENT_END_EVENT)
 
@@ -220,8 +256,23 @@ func (c *Composer) sequence() *Node {
 	for c.peek() != SEQUENCE_END_EVENT {
 		c.parseChild(n)
 	}
-	n.LineComment = string(c.event.LineComment)
-	n.FootComment = string(c.event.FootComment)
+	if c.opts != nil && c.opts.CommentPlugin != nil {
+		ctx := &CommentContext{
+			LineComment: c.event.LineComment,
+			FootComment: c.event.FootComment,
+		}
+		handled, err := c.opts.CommentPlugin.ProcessEndComments(n, ctx)
+		if err != nil {
+			c.fail(err)
+		}
+		if !handled {
+			n.LineComment = string(c.event.LineComment)
+			n.FootComment = string(c.event.FootComment)
+		}
+	} else {
+		n.LineComment = string(c.event.LineComment)
+		n.FootComment = string(c.event.FootComment)
+	}
 	c.expect(SEQUENCE_END_EVENT)
 	return n
 }
@@ -239,31 +290,87 @@ func (c *Composer) mapping() *Node {
 	c.expect(MAPPING_START_EVENT)
 	for c.peek() != MAPPING_END_EVENT {
 		k := c.parseChild(n)
-		if block && k.FootComment != "" {
-			// Must be a foot comment for the prior value when being dedented.
-			if len(n.Content) > 2 {
-				n.Content[len(n.Content)-3].FootComment = k.FootComment
-				k.FootComment = ""
-			}
-		}
 		v := c.parseChild(n)
-		if k.FootComment == "" && v.FootComment != "" {
-			k.FootComment = v.FootComment
-			v.FootComment = ""
-		}
+
+		// Handle tail comment event
+		var tailComment []byte
 		if c.peek() == TAIL_COMMENT_EVENT {
-			if k.FootComment == "" {
-				k.FootComment = string(c.event.FootComment)
-			}
+			tailComment = c.event.FootComment
 			c.expect(TAIL_COMMENT_EVENT)
 		}
+
+		// Call plugin hook for mapping pair
+		if c.opts != nil && c.opts.CommentPlugin != nil {
+			ctx := &MappingPairContext{
+				Mapping:     n,
+				Key:         k,
+				Value:       v,
+				Block:       block,
+				TailComment: tailComment,
+			}
+			handled, err := c.opts.CommentPlugin.ProcessMappingPair(ctx)
+			if err != nil {
+				c.fail(err)
+			}
+			if !handled {
+				if block && k.FootComment != "" {
+					if len(n.Content) > 2 {
+						n.Content[len(n.Content)-3].FootComment = k.FootComment
+						k.FootComment = ""
+					}
+				}
+				if k.FootComment == "" && v.FootComment != "" {
+					k.FootComment = v.FootComment
+					v.FootComment = ""
+				}
+				if tailComment != nil && k.FootComment == "" {
+					k.FootComment = string(tailComment)
+				}
+			}
+		} else {
+			if block && k.FootComment != "" {
+				if len(n.Content) > 2 {
+					n.Content[len(n.Content)-3].FootComment = k.FootComment
+					k.FootComment = ""
+				}
+			}
+			if k.FootComment == "" && v.FootComment != "" {
+				k.FootComment = v.FootComment
+				v.FootComment = ""
+			}
+			if tailComment != nil && k.FootComment == "" {
+				k.FootComment = string(tailComment)
+			}
+		}
 	}
-	n.LineComment = string(c.event.LineComment)
-	n.FootComment = string(c.event.FootComment)
-	if n.Style&FlowStyle == 0 && n.FootComment != "" && len(n.Content) > 1 {
-		n.Content[len(n.Content)-2].FootComment = n.FootComment
-		n.FootComment = ""
+
+	// Call plugin hook for end comments
+	if c.opts != nil && c.opts.CommentPlugin != nil {
+		ctx := &CommentContext{
+			LineComment: c.event.LineComment,
+			FootComment: c.event.FootComment,
+		}
+		handled, err := c.opts.CommentPlugin.ProcessEndComments(n, ctx)
+		if err != nil {
+			c.fail(err)
+		}
+		if !handled {
+			n.LineComment = string(c.event.LineComment)
+			n.FootComment = string(c.event.FootComment)
+			if n.Style&FlowStyle == 0 && n.FootComment != "" && len(n.Content) > 1 {
+				n.Content[len(n.Content)-2].FootComment = n.FootComment
+				n.FootComment = ""
+			}
+		}
+	} else {
+		n.LineComment = string(c.event.LineComment)
+		n.FootComment = string(c.event.FootComment)
+		if n.Style&FlowStyle == 0 && n.FootComment != "" && len(n.Content) > 1 {
+			n.Content[len(n.Content)-2].FootComment = n.FootComment
+			n.FootComment = ""
+		}
 	}
+
 	c.expect(MAPPING_END_EVENT)
 	return n
 }

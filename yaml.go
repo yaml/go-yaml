@@ -299,6 +299,10 @@ func WithPlugin(plugins ...any) Option {
 				o.SkipComments = false
 				registered = true
 			}
+			if dp, ok := p.(DumpCommentPlugin); ok {
+				o.DumpCommentPlugin = dp
+				registered = true
+			}
 			if !registered {
 				return errors.New("yaml: unsupported plugin type")
 			}
@@ -326,6 +330,7 @@ func WithoutPlugin(kinds ...string) Option {
 			case "comment":
 				o.CommentPlugin = nil
 				o.SkipComments = true
+				o.DumpCommentPlugin = nil
 			default:
 				return errors.New("yaml: invalid plugin kind: " + kind)
 			}

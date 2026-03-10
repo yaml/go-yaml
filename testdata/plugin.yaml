@@ -105,3 +105,39 @@
       - text: 'x'
       - loop: [']', 10001]
     want: 'yaml: while increasing flow level at line 1, column 10001: exceeded max depth of 10000'
+
+- plugin-pass:
+    name: comment true enables comments
+    plugin:
+      comment: true
+    data:
+      join:
+      - text: "# head\nkey: value\n"
+
+- plugin-pass:
+    name: comment null enables comments
+    plugin:
+      comment:
+    data:
+      join:
+      - text: "# head\nkey: value\n"
+
+- plugin-pass:
+    name: comment false disables comments
+    plugin:
+      comment: false
+    data:
+      join:
+      - text: "# head\nkey: value\n"
+
+- plugin-pass:
+    name: limits and comment together
+    plugin:
+      limits:
+        depth: 50
+      comment: true
+    data:
+      join:
+      - loop: ['[', 20]
+      - text: 'x'
+      - loop: [']', 20]
