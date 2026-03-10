@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"go.yaml.in/yaml/v4"
+	"go.yaml.in/yaml/v4/plugin/comment/v3"
 	"go.yaml.in/yaml/v4/plugin/limits"
 )
 
@@ -103,5 +104,155 @@ func TestDefaultBehavior_HasLimits(t *testing.T) {
 	err = loader.Load(&result)
 	if err == nil {
 		t.Fatal("Expected error from default depth limits, got nil")
+	}
+}
+
+// --- Comment plugin tests ---
+
+var commentTestData = []byte(`
+# Head comment
+key: value # Line comment
+# Foot comment
+`)
+
+func TestWithPlugin_Comment(t *testing.T) {
+	loader, err := yaml.NewLoader(
+		bytes.NewReader(commentTestData),
+		yaml.WithPlugin(v3.New()),
+	)
+	if err != nil {
+		t.Fatalf("NewLoader failed: %v", err)
+	}
+
+	var node yaml.Node
+	if err := loader.Load(&node); err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	if node.Kind != yaml.DocumentNode || len(node.Content) == 0 {
+		t.Fatal("Expected non-empty DocumentNode")
+	}
+	mapping := node.Content[0]
+	if mapping.Kind != yaml.MappingNode || len(mapping.Content) < 2 {
+		t.Fatal("Expected MappingNode with at least one pair")
+	}
+	key := mapping.Content[0]
+	if key.HeadComment == "" {
+		t.Error("Expected plugin to attach head comment, got none")
+	}
+}
+
+func TestWithV3LegacyComments(t *testing.T) {
+	loader, err := yaml.NewLoader(
+		bytes.NewReader(commentTestData),
+		yaml.WithV3LegacyComments(),
+	)
+	if err != nil {
+		t.Fatalf("NewLoader failed: %v", err)
+	}
+
+	var node yaml.Node
+	if err := loader.Load(&node); err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	if node.Kind != yaml.DocumentNode || len(node.Content) == 0 {
+		t.Fatal("Expected non-empty DocumentNode")
+	}
+	key := node.Content[0].Content[0]
+	if key.HeadComment == "" {
+		t.Error("Expected head comment on key, got none")
+	}
+}
+
+func TestWithPlugin_BothPluginTypes(t *testing.T) {
+	// A single WithPlugin call with both limits and comment plugins
+	data := []byte("# comment\nkey: value\n")
+	loader, err := yaml.NewLoader(
+		bytes.NewReader(data),
+		yaml.WithPlugin(limits.New(limits.DepthValue(50))),
+		yaml.WithPlugin(v3.New()),
+	)
+	if err != nil {
+		t.Fatalf("NewLoader failed: %v", err)
+	}
+
+	var node yaml.Node
+	if err := loader.Load(&node); err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	key := node.Content[0].Content[0]
+	if key.HeadComment == "" {
+		t.Error("Expected head comment with both plugins registered")
+	}
+}
+
+func TestWithoutPlugin_Comment(t *testing.T) {
+	loader, err := yaml.NewLoader(
+		bytes.NewReader(commentTestData),
+		yaml.WithV3LegacyComments(),
+		yaml.WithoutPlugin("comment"),
+	)
+	if err != nil {
+		t.Fatalf("NewLoader failed: %v", err)
+	}
+
+	var node yaml.Node
+	if err := loader.Load(&node); err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	key := node.Content[0].Content[0]
+	if key.HeadComment != "" {
+		t.Error("Expected no comments after WithoutPlugin, got comments")
+	}
+}
+
+func TestDefaultBehavior_NoComments(t *testing.T) {
+	// Default behavior (no version preset) should skip comments
+	loader, err := yaml.NewLoader(bytes.NewReader(commentTestData))
+	if err != nil {
+		t.Fatalf("NewLoader failed: %v", err)
+	}
+
+	var node yaml.Node
+	if err := loader.Load(&node); err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	key := node.Content[0].Content[0]
+	if key.HeadComment != "" {
+		t.Error("Expected no comments by default, got comments")
+	}
+}
+
+func TestUnmarshal_PreservesV3Behavior(t *testing.T) {
+	var node yaml.Node
+	err := yaml.Unmarshal(commentTestData, &node)
+	if err != nil {
+		t.Fatalf("Unmarshal failed: %v", err)
+	}
+
+	// Unmarshal uses WithV3Defaults which includes WithV3LegacyComments.
+	// UnmarshalYAML unwraps DocumentNode, so we get MappingNode directly.
+	if node.Kind == yaml.DocumentNode && len(node.Content) > 0 {
+		// If we got a DocumentNode, look inside
+		mapping := node.Content[0]
+		if mapping.Kind != yaml.MappingNode || len(mapping.Content) < 2 {
+			t.Fatal("Expected MappingNode inside DocumentNode")
+		}
+		if mapping.Content[0].HeadComment == "" {
+			t.Error("Expected Unmarshal to preserve V3 comment behavior")
+		}
+	} else if node.Kind == yaml.MappingNode {
+		if len(node.Content) < 2 {
+			t.Fatal("Expected MappingNode with content")
+		}
+		if node.Content[0].HeadComment == "" {
+			t.Error("Expected Unmarshal to preserve V3 comment behavior")
+		}
+	} else {
+		t.Fatalf("Expected DocumentNode or MappingNode, got %v", node.Kind)
 	}
 }

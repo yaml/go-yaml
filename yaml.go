@@ -58,6 +58,7 @@ func WithV3Defaults() Option {
 		WithUniqueKeys(true),
 		WithQuotePreference(QuoteLegacy),
 		WithPlugin(limits.New()),
+		WithV3LegacyComments(),
 	)
 }
 
@@ -262,12 +263,20 @@ func Options(opts ...Option) Option {
 // DepthContext holds context about a nesting depth check.
 type DepthContext = libyaml.DepthContext
 
+// CommentContext contains raw comment data from the parser.
+type CommentContext = libyaml.CommentContext
+
 // WithPlugin registers one or more plugins for YAML processing.
 //
 // Plugins extend the YAML library with custom processing logic.
 // Each plugin implements one or more plugin interfaces.
 // Currently supported plugin types:
 //   - LimitsPlugin: Controls depth and alias expansion limits
+//   - CommentPlugin: Controls comment attachment during parsing
+//
+// A single plugin value may implement multiple interfaces. Detection is
+// non-exclusive so one struct can act as both a LimitsPlugin and a
+// CommentPlugin.
 //
 // Example:
 //
@@ -284,7 +293,11 @@ func WithPlugin(plugins ...any) Option {
 				o.AliasCheck = lp.CheckAlias
 				registered = true
 			}
-			// Future plugin types add cases here (non-exclusive if)
+			if cp, ok := p.(CommentPlugin); ok {
+				o.CommentPlugin = libyaml.CommentPlugin(cp)
+				o.SkipComments = false
+				registered = true
+			}
 			if !registered {
 				return errors.New("yaml: unsupported plugin type")
 			}
@@ -296,7 +309,7 @@ func WithPlugin(plugins ...any) Option {
 // WithoutPlugin resets plugins of the specified kinds to their defaults.
 //
 // This can be used to override plugin settings from previous options.
-// Valid kinds: "limits"
+// Valid kinds: "limits", "comment"
 //
 // Example:
 //
@@ -309,12 +322,88 @@ func WithoutPlugin(kinds ...string) Option {
 			case "limits":
 				o.DepthCheck = libyaml.DefaultDepthCheck
 				o.AliasCheck = libyaml.DefaultAliasCheck
+			case "comment":
+				o.CommentPlugin = nil
+				o.SkipComments = true
 			default:
 				return errors.New("yaml: invalid plugin kind: " + kind)
 			}
 		}
 		return nil
 	}
+}
+
+// WithV3LegacyComments enables V3-style comment handling.
+//
+// When enabled, comments are automatically attached to nodes during parsing
+// using the plugin/comment/v3 plugin. This provides backward compatibility
+// with v3 comment behavior.
+// When called without arguments, defaults to true.
+//
+// For more flexibility, consider implementing a custom CommentPlugin instead.
+func WithV3LegacyComments(enable ...bool) Option {
+	if len(enable) > 1 {
+		return func(o *libyaml.Options) error {
+			return errors.New("yaml: WithV3LegacyComments accepts at most one argument")
+		}
+	}
+	val := len(enable) == 0 || enable[0]
+	if !val {
+		return func(o *libyaml.Options) error {
+			o.CommentPlugin = nil
+			o.SkipComments = true
+			return nil
+		}
+	}
+	return func(o *libyaml.Options) error {
+		o.CommentPlugin = &v3LegacyPlugin{}
+		o.SkipComments = false
+		return nil
+	}
+}
+
+// v3LegacyPlugin implements the V3-style comment plugin inline to avoid
+// circular dependency with the plugin package.
+type v3LegacyPlugin struct {
+	libyaml.DefaultCommentBehavior
+}
+
+func (p *v3LegacyPlugin) ProcessComment(node *libyaml.Node, ctx *libyaml.CommentContext) (bool, error) {
+	node.HeadComment = string(ctx.HeadComment)
+	node.LineComment = string(ctx.LineComment)
+	node.FootComment = string(ctx.FootComment)
+	return true, nil
+}
+
+func (p *v3LegacyPlugin) ProcessMappingPair(ctx *libyaml.MappingPairContext) (bool, error) {
+	k, v, n := ctx.Key, ctx.Value, ctx.Mapping
+	if ctx.Block && k.FootComment != "" {
+		if len(n.Content) > 2 {
+			n.Content[len(n.Content)-3].FootComment = k.FootComment
+			k.FootComment = ""
+		}
+	}
+	if k.FootComment == "" && v.FootComment != "" {
+		k.FootComment = v.FootComment
+		v.FootComment = ""
+	}
+	if ctx.TailComment != nil && k.FootComment == "" {
+		k.FootComment = string(ctx.TailComment)
+	}
+	return true, nil
+}
+
+func (p *v3LegacyPlugin) ProcessEndComments(node *libyaml.Node, ctx *libyaml.CommentContext) (bool, error) {
+	node.LineComment = string(ctx.LineComment)
+	node.FootComment = string(ctx.FootComment)
+	if node.Kind == libyaml.MappingNode &&
+		node.Style&libyaml.FlowStyle == 0 &&
+		node.FootComment != "" &&
+		len(node.Content) > 1 {
+		node.Content[len(node.Content)-2].FootComment = node.FootComment
+		node.FootComment = ""
+	}
+	return true, nil
 }
 
 // OptsYAML parses a YAML string containing option settings and returns
@@ -439,6 +528,15 @@ func OptsYAML(yamlStr string) (Option, error) {
 					return nil, err
 				}
 				optList = append(optList, WithPlugin(p))
+			case "comment":
+				switch val {
+				case nil, true:
+					optList = append(optList, WithV3LegacyComments())
+				case false:
+					optList = append(optList, WithV3LegacyComments(false))
+				default:
+					return nil, fmt.Errorf("yaml: plugin %q value must be true, false, or null", name)
+				}
 			default:
 				return nil, fmt.Errorf("yaml: unknown plugin %q", name)
 			}

@@ -12,6 +12,10 @@
 // Limits plugin (plugin/limits):
 //   - Configurable depth and alias expansion limits
 //
+// Comment plugins (plugin/comment):
+//   - v3: V3-compatible comment handling
+//   - v4: V4 round-trip comment handling
+//
 // # Usage
 //
 // Import the plugin you need and register it with WithPlugin:
@@ -26,6 +30,6 @@
 //
 // Plugin interfaces use public types and can be implemented by external
 // packages.
-// Implement the relevant plugin interface (e.g., LimitsPlugin) and register
-// with WithPlugin.
+// Implement the relevant plugin interface (e.g., LimitsPlugin,
+// CommentPlugin) and register with WithPlugin.
 package plugin

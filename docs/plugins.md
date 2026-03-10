@@ -42,6 +42,26 @@ loader := yaml.NewLoader(data, yaml.WithPlugin(limits.New(limits.DepthValue(50))
 | `AliasNone()` | Disable alias ratio checking |
 | `AliasFunc(fn)` | Custom `func(aliasCount, constructCount int) error` |
 
+### Comment Plugin
+
+The comment plugin controls how comments from YAML source are attached to
+nodes during parsing.
+By default, comments are skipped for performance.
+
+```go
+import "go.yaml.in/yaml/v4/plugin/comment/v3"
+
+// V3-compatible comment handling via plugin
+loader := yaml.NewLoader(data, yaml.WithPlugin(v3.New()))
+
+// Or use the convenience function
+loader := yaml.NewLoader(data, yaml.WithV3LegacyComments())
+```
+
+The `WithV3LegacyComments()` convenience function enables V3-style comment
+attachment without requiring the plugin import.
+This is automatically included in `WithV3Defaults()`.
+
 ## Using Plugins
 
 ### Basic Usage
@@ -66,12 +86,20 @@ Use `WithoutPlugin()` to reset a plugin kind to library defaults:
 ```go
 // Reset limits to defaults (overrides any previous WithPlugin)
 loader := yaml.NewLoader(data, yaml.WithoutPlugin("limits"))
+
+// Disable comment processing for performance
+loader := yaml.NewLoader(data, yaml.WithoutPlugin("comment"))
 ```
 
 ## Default Behavior
 
 Both bare `NewLoader(data)` and version presets (`WithV4Defaults()`, etc.)
 include default limits equivalent to `limits.New()`.
+
+Comment handling varies by version preset:
+- `WithV3Defaults()` includes `WithV3LegacyComments()` (backward compat)
+- `WithV2Defaults()` and `WithV4Defaults()` skip comments (performance)
+- Bare `NewLoader(data)` skips comments by default
 
 ## YAML Configuration
 
@@ -83,27 +111,35 @@ opts, err := yaml.OptsYAML(`
     limits:
       depth: 50
       alias: 1000
+    comment: true
 `)
 ```
 
-Each plugin key maps to a configuration object. For the limits plugin:
+Each plugin key maps to a configuration object.
+For the limits plugin:
 - `depth` (int) — max nesting depth; `null` disables depth checking
 - `alias` (int) — max alias count; `null` disables alias checking
 - Omitted keys keep defaults
 - Bare `limits:` (null value) uses all defaults
 
+For the comment plugin:
+- `true` or `null` — enable V3 legacy comments
+- `false` — disable comments
+
 ```yaml
-# Disable depth checking, keep default alias limits
+# Disable depth checking, enable comments
 plugin:
   limits:
     depth:
+  comment: true
 ```
 
 ## Third-Party Plugins
 
-Implement [yaml.LimitsPlugin] directly for full control:
+Implement plugin interfaces directly for full control:
 
 ```go
+// Custom LimitsPlugin
 type StrictLimits struct{}
 
 func (s *StrictLimits) CheckDepth(depth int, ctx *yaml.DepthContext) error {
@@ -121,4 +157,21 @@ func (s *StrictLimits) CheckAlias(aliasCount, constructCount int) error {
 }
 
 yaml.NewLoader(data, yaml.WithPlugin(&StrictLimits{}))
+```
+
+Custom CommentPlugin implementations should embed `yaml.DefaultCommentBehavior`
+and override only the hooks they need:
+
+```go
+type MyComments struct {
+    yaml.DefaultCommentBehavior
+}
+
+func (m *MyComments) ProcessComment(node *yaml.Node, ctx *yaml.CommentContext) (bool, error) {
+    // Custom comment attachment logic
+    node.HeadComment = string(ctx.HeadComment)
+    return true, nil
+}
+
+yaml.NewLoader(data, yaml.WithPlugin(&MyComments{}))
 ```
