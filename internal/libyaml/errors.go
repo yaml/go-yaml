@@ -113,26 +113,6 @@ func (e WriterError) Unwrap() error {
 	return e.Err
 }
 
-// ConstructError represents a single, non-fatal error that occurred during
-// the constructing of a YAML document into a Go value.
-//
-// Deprecated: Use LoadError instead.
-type ConstructError struct {
-	Err    error
-	Line   int
-	Column int
-}
-
-// Error returns the error message with line number.
-func (e *ConstructError) Error() string {
-	return fmt.Sprintf("line %d: %s", e.Line, e.Err.Error())
-}
-
-// Unwrap returns the underlying error.
-func (e *ConstructError) Unwrap() error {
-	return e.Err
-}
-
 // LoadErrors is returned when one or more fields cannot be properly decoded.
 type LoadErrors struct {
 	Errors []*LoadError
@@ -151,7 +131,7 @@ func (e *LoadErrors) Error() string {
 
 // As implements [errors.As] for Go versions prior to 1.20 that don't support
 // the Unwrap() []error interface. It allows [LoadErrors] to match against
-// *LoadError, *ConstructError, or *TypeError targets.
+// *LoadError or *TypeError targets.
 func (e *LoadErrors) As(target any) bool {
 	switch t := target.(type) {
 	case **LoadError:
@@ -159,19 +139,6 @@ func (e *LoadErrors) As(target any) bool {
 			return false
 		}
 		*t = e.Errors[0]
-		return true
-	case **ConstructError:
-		// Backwards compatibility: convert LoadError to ConstructError.
-		// This case remains live; internal tests use errors.As against *ConstructError.
-		if len(e.Errors) == 0 {
-			return false
-		}
-		first := e.Errors[0]
-		*t = &ConstructError{
-			Err:    first.err,
-			Line:   first.Mark.Line,
-			Column: first.Mark.Column,
-		}
 		return true
 	case **TypeError:
 		var msgs []string

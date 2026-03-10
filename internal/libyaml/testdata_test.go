@@ -119,8 +119,6 @@ type TestCase struct {
 	Is           string `yaml:"is"`            // Error message for errors.Is tests
 	WantAs       bool   `yaml:"want_as"`       // Expected result for errors.As
 	WantIs       bool   `yaml:"want_is"`       // Expected result for errors.Is
-	WantLine     int    `yaml:"want_line"`     // Expected line for ConstructError
-	WantMessage  string `yaml:"want_message"`  // Expected message for ConstructError
 	WantMessages []any  `yaml:"want_messages"` // Expected messages for TypeError
 }
 

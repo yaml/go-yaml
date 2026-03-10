@@ -16,14 +16,13 @@ import (
 
 func TestErrors(t *testing.T) {
 	RunTestCases(t, "errors.yaml", map[string]TestHandler{
-		"load-error":      runLoadErrorTest,
-		"emitter-error":   runEmitterYAMLErrorTest,
-		"writer-error":    runWriterYAMLErrorTest,
-		"construct-error": runConstructYAMLErrorTest,
-		"load-errors":     runLoadErrorsTest,
-		"load-errors-as":  runLoadErrorsAsTest,
-		"load-errors-is":  runLoadErrorsIsTest,
-		"type-error":      runTypeYAMLErrorTest,
+		"load-error":     runLoadErrorTest,
+		"emitter-error":  runEmitterYAMLErrorTest,
+		"writer-error":   runWriterYAMLErrorTest,
+		"load-errors":    runLoadErrorsTest,
+		"load-errors-as": runLoadErrorsAsTest,
+		"load-errors-is": runLoadErrorsIsTest,
+		"type-error":     runTypeYAMLErrorTest,
 	})
 }
 
@@ -97,40 +96,13 @@ func runWriterYAMLErrorTest(t *testing.T, tc TestCase) {
 	}
 }
 
-func runConstructYAMLErrorTest(t *testing.T, tc TestCase) {
-	t.Helper()
-
-	errorSpec, ok := tc.From.(map[string]any)
-	assert.Truef(t, ok, "from should be map[string]any, got %T", tc.From)
-
-	line := getInt(t, errorSpec, "line")
-	message := getString(t, errorSpec, "message")
-
-	err := &ConstructError{
-		Line: line,
-		Err:  errors.New(message),
-	}
-
-	got := err.Error()
-	want, ok := tc.Want.(string)
-	assert.Truef(t, ok, "want should be string, got %T", tc.Want)
-	assert.Equalf(t, want, got, "error message mismatch")
-
-	// Test Unwrap if specified
-	if tc.Also == "unwrap" {
-		unwrapped := err.Unwrap()
-		assert.NotNilf(t, unwrapped, "Unwrap() should return non-nil")
-		assert.Equalf(t, message, unwrapped.Error(), "Unwrap() error message mismatch")
-	}
-}
-
 func runLoadErrorsTest(t *testing.T, tc TestCase) {
 	t.Helper()
 
 	errorSpec, ok := tc.From.(map[string]any)
 	assert.Truef(t, ok, "from should be map[string]any, got %T", tc.From)
 
-	errList := buildConstructErrorList(t, errorSpec)
+	errList := buildLoadErrorList(t, errorSpec)
 	err := &LoadErrors{Errors: errList}
 
 	got := err.Error()
@@ -150,20 +122,10 @@ func runLoadErrorsAsTest(t *testing.T, tc TestCase) {
 	errorSpec, ok := tc.From.(map[string]any)
 	assert.Truef(t, ok, "from should be map[string]any, got %T", tc.From)
 
-	errList := buildConstructErrorList(t, errorSpec)
+	errList := buildLoadErrorList(t, errorSpec)
 	err := &LoadErrors{Errors: errList}
 
 	switch tc.As {
-	case "ConstructError":
-		var target *ConstructError
-		gotAs := errors.As(err, &target)
-		assert.Equalf(t, tc.WantAs, gotAs, "errors.As result mismatch")
-
-		if tc.WantAs && target != nil {
-			assert.Equalf(t, tc.WantLine, target.Line, "ConstructError.Line mismatch")
-			assert.Equalf(t, tc.WantMessage, target.Err.Error(), "ConstructError.Err message mismatch")
-		}
-
 	case "TypeError":
 		var target *TypeError
 		gotAs := errors.As(err, &target)
@@ -189,7 +151,7 @@ func runLoadErrorsIsTest(t *testing.T, tc TestCase) {
 	errorSpec, ok := tc.From.(map[string]any)
 	assert.Truef(t, ok, "from should be map[string]any, got %T", tc.From)
 
-	errList := buildConstructErrorList(t, errorSpec)
+	errList := buildLoadErrorList(t, errorSpec)
 	err := &LoadErrors{Errors: errList}
 
 	// Check if any of the wrapped errors contains the target message
@@ -264,7 +226,7 @@ func buildMark(t *testing.T, spec map[string]any, key string) Mark {
 	}
 }
 
-func buildConstructErrorList(t *testing.T, spec map[string]any) []*LoadError {
+func buildLoadErrorList(t *testing.T, spec map[string]any) []*LoadError {
 	t.Helper()
 
 	errorsSpec, ok := spec["errors"].([]any)
