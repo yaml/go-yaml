@@ -126,7 +126,7 @@ func (m Mark) String() string {
 // shortString returns a compact position string.
 // Returns "<unknown position>" when Line is 0 (position not known).
 // Returns "L{line}" when Column is 0, or "L{line},C{col}" otherwise.
-// Line and column values are stored 1-based and displayed as-is.
+// Line is stored 1-based and displayed as-is. Column is stored 0-based and displayed with +1.
 func (m Mark) shortString() string {
 	if m.Line == 0 {
 		return "<unknown position>"

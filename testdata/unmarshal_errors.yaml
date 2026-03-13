@@ -50,14 +50,14 @@
 - unmarshal-error:
     name: Unknown anchor referenced
     yaml: "a: *b\n"
-    want: "go-yaml load error in composer at L1,C5: unknown anchor 'b' referenced"
+    want: "go-yaml load error in composer at L1,C4: unknown anchor 'b' referenced"
 
 - unmarshal-error:
     name: Anchor contains itself
     yaml: |
       a: &a
         b: *a
-    want: "go-yaml load error in composer at L2,C7: anchor 'a' value contains itself"
+    want: "go-yaml load error in composer at L2,C6: anchor 'a' value contains itself"
 
 - unmarshal-error:
     name: Block sequence in invalid context
@@ -67,24 +67,24 @@
 - unmarshal-error:
     name: Invalid base64 in binary
     yaml: 'a: !!binary =='
-    want: 'go-yaml load error in constructor at L1,C5: !!binary value contains invalid base64 data'
+    want: 'go-yaml load error in constructor at L1,C4: !!binary value contains invalid base64 data'
 
 - unmarshal-error:
     name: Slice as map key
     yaml: '{[.]}'
-    want: "go-yaml load error in constructor at L1,C3: cannot use '[]interface {}{\".\"}' as a map key; try decoding into yaml.Node"
+    want: "go-yaml load error in constructor at L1,C2: cannot use '[]interface {}{\".\"}' as a map key; try decoding into yaml.Node"
 
 - unmarshal-error:
     name: Map as map key
     yaml: '{{.}}'
-    want: "go-yaml load error in constructor at L1,C3: cannot use 'map[string]interface {}{\".\":interface {}(nil)}' as a map key; try decoding into yaml.Node"
+    want: "go-yaml load error in constructor at L1,C2: cannot use 'map[string]interface {}{\".\":interface {}(nil)}' as a map key; try decoding into yaml.Node"
 
 - unmarshal-error:
     name: Forward reference to anchor
     yaml: |
       b: *a
       a: &a {c: 1}
-    want: "go-yaml load error in composer at L1,C5: unknown anchor 'a' referenced"
+    want: "go-yaml load error in composer at L1,C4: unknown anchor 'a' referenced"
 
 - unmarshal-error:
     name: Invalid TAG directive
@@ -144,7 +144,7 @@
       g: &g [*f,*f,*f,*f,*f,*f,*f,*f,*f]
       h: &h [*g,*g,*g,*g,*g,*g,*g,*g,*g]
       i: &i [*h,*h,*h,*h,*h,*h,*h,*h,*h]
-    want: 'go-yaml load error in constructor at L2,C18: document contains excessive aliasing'
+    want: 'go-yaml load error in constructor at L2,C17: document contains excessive aliasing'
 
 # TextUnmarshaler validation errors
 
