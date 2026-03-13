@@ -42,15 +42,15 @@ type LoadError struct {
 }
 
 // Error returns the error message with stage and position information.
-// Format: "go-yaml load error: <message>; in <stage> at L:C"
-// Or with context: "go-yaml load error: <message>; in <stage> (while <ctx>) at L:C-L:C"
+// Format: "go-yaml load error in <stage> at L:C: <message>"
+// Or with context: "go-yaml load error in <stage> (<ctx>) at L:C-L:C: <message>"
 func (e *LoadError) Error() string {
 	if len(e.ContextMsg) > 0 {
-		return fmt.Sprintf("go-yaml load error: %s; in %s (%s) at %s",
-			e.Message, e.Stage, e.ContextMsg, e.ContextMark.rangeString(e.Mark))
+		return fmt.Sprintf("go-yaml load error in %s (%s) at %s: %s",
+			e.Stage, e.ContextMsg, e.ContextMark.rangeString(e.Mark), e.Message)
 	}
-	return fmt.Sprintf("go-yaml load error: %s; in %s at %s",
-		e.Message, e.Stage, e.Mark.shortString())
+	return fmt.Sprintf("go-yaml load error in %s at %s: %s",
+		e.Stage, e.Mark.shortString(), e.Message)
 }
 
 // simpleError returns the error message without the "yaml: Load error (in stage)" prefix.

@@ -743,7 +743,7 @@ func (errReader) Read([]byte) (int, error) {
 
 func TestDecoderReadError(t *testing.T) {
 	err := yaml.NewDecoder(errReader{}).Decode(&struct{}{})
-	assert.ErrorMatches(t, `go-yaml load error: input error: some read error; in reader at <unknown position>`, err)
+	assert.ErrorMatches(t, `go-yaml load error in reader at <unknown position>: input error: some read error`, err)
 }
 
 func TestUnmarshalNaN(t *testing.T) {
