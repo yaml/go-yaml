@@ -33,7 +33,7 @@
         index: 2
       message: 'invalid UTF-8 octet (value: 255)'
       err: invalid UTF-8 octet
-    want: 'go-yaml load error: invalid UTF-8 octet (value: 255); in reader at L1,C3'
+    want: 'go-yaml load error in reader at L1,C3: invalid UTF-8 octet (value: 255)'
     also: unwrap
 
 - load-error:
@@ -45,7 +45,7 @@
         column: 5
         index: 42
       message: unexpected token
-    want: 'go-yaml load error: unexpected token; in scanner at L2,C6'
+    want: 'go-yaml load error in scanner at L2,C6: unexpected token'
 
 - load-error:
     name: Scanner stage error with context
@@ -61,7 +61,7 @@
         column: 8
         index: 60
       message: found unexpected end of stream
-    want: 'go-yaml load error: found unexpected end of stream; in scanner (while scanning a block scalar) at L2-L4,C9'
+    want: 'go-yaml load error in scanner (while scanning a block scalar) at L2-L4,C9: found unexpected end of stream'
 
 - load-error:
     name: Parser stage error
@@ -72,7 +72,7 @@
         column: 10
         index: 50
       message: did not find expected key
-    want: 'go-yaml load error: did not find expected key; in parser at L3,C11'
+    want: 'go-yaml load error in parser at L3,C11: did not find expected key'
 
 - load-error:
     name: Parser stage error with context
@@ -88,7 +88,7 @@
         column: 5
         index: 80
       message: did not find expected key
-    want: 'go-yaml load error: did not find expected key; in parser (while parsing a block mapping) at L1-L4,C6'
+    want: 'go-yaml load error in parser (while parsing a block mapping) at L1-L4,C6: did not find expected key'
 
 - load-error:
     name: Composer stage error
@@ -99,7 +99,7 @@
         column: 4
         index: 4
       message: unknown anchor 'foo' referenced
-    want: "go-yaml load error: unknown anchor 'foo' referenced; in composer at L1,C5"
+    want: "go-yaml load error in composer at L1,C5: unknown anchor 'foo' referenced"
 
 - load-error:
     name: Resolver stage error
@@ -110,7 +110,7 @@
         column: 0
         index: 0
       message: cannot construct !!str `error` as a !!float
-    want: 'go-yaml load error: cannot construct !!str `error` as a !!float; in resolver at L1'
+    want: 'go-yaml load error in resolver at L1: cannot construct !!str `error` as a !!float'
 
 - load-error:
     name: Constructor stage error
@@ -122,7 +122,7 @@
         index: 0
       message: cannot construct !!map into string
       err: cannot construct !!map into string
-    want: 'go-yaml load error: cannot construct !!map into string; in constructor at L1'
+    want: 'go-yaml load error in constructor at L1: cannot construct !!map into string'
     also: unwrap
 
 - load-error:
@@ -131,7 +131,7 @@
       stage: constructor
       message: cannot construct value
       err: cannot construct value
-    want: 'go-yaml load error: cannot construct value; in constructor at <unknown position>'
+    want: 'go-yaml load error in constructor at <unknown position>: cannot construct value'
     also: unwrap
 
 # EmitterError tests (dump stack)
