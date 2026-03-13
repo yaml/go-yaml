@@ -169,7 +169,7 @@ func (c *Composer) alias() *Node {
 		msg := fmt.Sprintf("unknown anchor '%s' referenced", n.Value)
 		Fail(formatComposerError(msg, Mark{
 			Line:   n.Line,
-			Column: n.Column,
+			Column: nodeMarkCol(n.Column),
 		}))
 	}
 	c.expect(ALIAS_EVENT)

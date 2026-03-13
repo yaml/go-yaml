@@ -84,7 +84,7 @@ func (c *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
 	if c.aliasCount > 100 && c.constructCount > 1000 && float64(c.aliasCount)/float64(c.constructCount) > allowedAliasRatio(c.constructCount) {
 		Fail(formatConstructorError(
 			fmt.Errorf("document contains excessive aliasing"),
-			Mark{Line: n.Line, Column: n.Column},
+			Mark{Line: n.Line, Column: nodeMarkCol(n.Column)},
 		))
 	}
 	if out.Type() == nodeType {
@@ -113,7 +113,7 @@ func (c *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
 	// encoding/json/v2.
 	if n.Kind != ScalarNode && isTextUnmarshaler(out) {
 		err := fmt.Errorf("cannot construct %s into %s (TextUnmarshaler)", shortTag(n.Tag), out.Type())
-		c.TypeErrors = append(c.TypeErrors, formatConstructorError(err, Mark{Line: n.Line, Column: n.Column}))
+		c.TypeErrors = append(c.TypeErrors, formatConstructorError(err, Mark{Line: n.Line, Column: nodeMarkCol(n.Column)}))
 		return false
 	}
 
@@ -132,7 +132,7 @@ func (c *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
 	default:
 		Fail(formatConstructorError(
 			fmt.Errorf("cannot construct node with unknown kind: '%d'", n.Kind),
-			Mark{Line: n.Line, Column: n.Column},
+			Mark{Line: n.Line, Column: nodeMarkCol(n.Column)},
 		))
 	}
 	return good
@@ -488,7 +488,7 @@ func (c *Constructor) alias(n *Node, out reflect.Value) (good bool) {
 		// TODO this could actually be allowed in some circumstances.
 		Fail(formatComposerError(
 			fmt.Sprintf("anchor '%s' value contains itself", n.Value),
-			Mark{Line: n.Line, Column: n.Column},
+			Mark{Line: n.Line, Column: nodeMarkCol(n.Column)},
 		))
 	}
 	c.aliases[n] = true
@@ -516,7 +516,7 @@ func (c *Constructor) scalar(n *Node, out reflect.Value) bool {
 			if err != nil {
 				Fail(formatConstructorError(
 					fmt.Errorf("!!binary value contains invalid base64 data"),
-					Mark{Line: n.Line, Column: n.Column},
+					Mark{Line: n.Line, Column: nodeMarkCol(n.Column)},
 				))
 			}
 			resolved = string(data)
@@ -546,7 +546,7 @@ func (c *Constructor) scalar(n *Node, out reflect.Value) bool {
 			}
 			err := u.UnmarshalText(text)
 			if err != nil {
-				c.TypeErrors = append(c.TypeErrors, formatConstructorError(err, Mark{Line: n.Line, Column: n.Column}))
+				c.TypeErrors = append(c.TypeErrors, formatConstructorError(err, Mark{Line: n.Line, Column: nodeMarkCol(n.Column)}))
 				return false
 			}
 			return true
@@ -589,7 +589,7 @@ func (c *Constructor) sequence(n *Node, out reflect.Value) (good bool) {
 		if l != out.Len() {
 			Fail(formatConstructorError(
 				fmt.Errorf("invalid array: want %d elements but got %d", out.Len(), l),
-				Mark{Line: n.Line, Column: n.Column},
+				Mark{Line: n.Line, Column: nodeMarkCol(n.Column)},
 			))
 		}
 	case reflect.Interface:
@@ -633,7 +633,7 @@ func (c *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 				if ni.Kind == nj.Kind && ni.Value == nj.Value {
 					c.TypeErrors = append(c.TypeErrors, formatConstructorError(
 						fmt.Errorf("mapping key %#v already defined at line %d", nj.Value, ni.Line),
-						Mark{Line: nj.Line, Column: nj.Column},
+						Mark{Line: nj.Line, Column: nodeMarkCol(nj.Column)},
 					))
 				}
 			}
@@ -705,7 +705,7 @@ func (c *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 			if kkind == reflect.Map || kkind == reflect.Slice {
 				Fail(formatConstructorError(
 					fmt.Errorf("cannot use '%#v' as a map key; try decoding into yaml.Node", k.Interface()),
-					Mark{Line: n.Content[i].Line, Column: n.Content[i].Column},
+					Mark{Line: n.Content[i].Line, Column: nodeMarkCol(n.Content[i].Column)},
 				))
 			}
 			e := reflect.New(et).Elem()
@@ -779,7 +779,7 @@ func (c *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
 				if doneFields[info.Id] {
 					c.TypeErrors = append(c.TypeErrors, formatConstructorError(
 						fmt.Errorf("field %s already set in type %s", name.String(), out.Type()),
-						Mark{Line: ni.Line, Column: ni.Column},
+						Mark{Line: ni.Line, Column: nodeMarkCol(ni.Column)},
 					))
 					continue
 				}
@@ -802,7 +802,7 @@ func (c *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
 		} else if c.KnownFields {
 			c.TypeErrors = append(c.TypeErrors, formatConstructorError(
 				fmt.Errorf("field %s not found in type %s", name.String(), out.Type()),
-				Mark{Line: ni.Line, Column: ni.Column},
+				Mark{Line: ni.Line, Column: nodeMarkCol(ni.Column)},
 			))
 		}
 	}
@@ -883,7 +883,7 @@ func isMerge(n *Node) bool {
 func failWantMap(n *Node) {
 	Fail(formatConstructorError(
 		fmt.Errorf("map merge requires map or sequence of maps as the value"),
-		Mark{Line: n.Line, Column: n.Column},
+		Mark{Line: n.Line, Column: nodeMarkCol(n.Column)},
 	))
 }
 
@@ -1012,7 +1012,7 @@ func (c *Constructor) tryCallYAMLConstructor(n *Node, out reflect.Value) (called
 	default:
 		c.TypeErrors = append(c.TypeErrors, formatConstructorError(
 			err.(error),
-			Mark{Line: n.Line, Column: n.Column},
+			Mark{Line: n.Line, Column: nodeMarkCol(n.Column)},
 		))
 		return true, false
 	}
@@ -1031,7 +1031,7 @@ func (c *Constructor) callConstructor(n *Node, u constructor) (good bool) {
 	default:
 		c.TypeErrors = append(c.TypeErrors, formatConstructorError(
 			err,
-			Mark{Line: n.Line, Column: n.Column},
+			Mark{Line: n.Line, Column: nodeMarkCol(n.Column)},
 		))
 		return false
 	}
@@ -1060,7 +1060,7 @@ func (c *Constructor) callLegacyConstructor(n *Node, u legacyConstructor) (good 
 	default:
 		c.TypeErrors = append(c.TypeErrors, formatConstructorError(
 			err,
-			Mark{Line: n.Line, Column: n.Column},
+			Mark{Line: n.Line, Column: nodeMarkCol(n.Column)},
 		))
 		return false
 	}
@@ -1082,7 +1082,7 @@ func (c *Constructor) tagError(n *Node, tag string, out reflect.Value) {
 	}
 	c.TypeErrors = append(c.TypeErrors, formatConstructorError(
 		fmt.Errorf("cannot construct %s%s into %s", shortTag(tag), value, out.Type()),
-		Mark{Line: n.Line, Column: n.Column},
+		Mark{Line: n.Line, Column: nodeMarkCol(n.Column)},
 	))
 }
 
@@ -1134,7 +1134,7 @@ func (c *Constructor) setPossiblyUnhashableKey(m map[any]bool, key any, value bo
 		if err := recover(); err != nil {
 			Fail(formatConstructorError(
 				fmt.Errorf("%v", err),
-				Mark{Line: n.Line, Column: n.Column},
+				Mark{Line: n.Line, Column: nodeMarkCol(n.Column)},
 			))
 		}
 	}()
@@ -1148,11 +1148,21 @@ func (c *Constructor) getPossiblyUnhashableKey(m map[any]bool, key any, n *Node)
 		if err := recover(); err != nil {
 			Fail(formatConstructorError(
 				fmt.Errorf("%v", err),
-				Mark{Line: n.Line, Column: n.Column},
+				Mark{Line: n.Line, Column: nodeMarkCol(n.Column)},
 			))
 		}
 	}()
 	return m[key]
+}
+
+// nodeMarkCol converts a Node's 1-based Column to a 0-based Mark column.
+// Nodes store column 1-based (composer sets n.Column = event.Column + 1).
+// Returns 0 (no column info sentinel) when col is 0 (unset node).
+func nodeMarkCol(col int) int {
+	if col > 0 {
+		return col - 1
+	}
+	return 0
 }
 
 // formatConstructorError creates a LoadError for constructor-stage errors.

@@ -1230,7 +1230,7 @@ func TestUnmarshalerError(t *testing.T) {
 	err := yaml.Unmarshal([]byte(data), &dst)
 	expectedErr := &yaml.LoadErrors{
 		Errors: []*yaml.LoadError{
-			yaml.NewLoadError(yaml.ConstructorStage, errFailing.Error(), yaml.Mark{Line: 1, Column: 17}, errFailing),
+			yaml.NewLoadError(yaml.ConstructorStage, errFailing.Error(), yaml.Mark{Line: 1, Column: 16}, errFailing),
 		},
 	}
 	assert.DeepEqual(t, expectedErr, err)
@@ -1256,7 +1256,7 @@ func TestLegacyUnmarshalerError(t *testing.T) {
 	err := yaml.Unmarshal([]byte(data), &dst)
 	expectedErr := &yaml.LoadErrors{
 		Errors: []*yaml.LoadError{
-			yaml.NewLoadError(yaml.ConstructorStage, errFailing.Error(), yaml.Mark{Line: 1, Column: 17}, errFailing),
+			yaml.NewLoadError(yaml.ConstructorStage, errFailing.Error(), yaml.Mark{Line: 1, Column: 16}, errFailing),
 		},
 	}
 	assert.DeepEqual(t, expectedErr, err)
@@ -1284,7 +1284,7 @@ func TestTextUnmarshalerError(t *testing.T) {
 	err := yaml.Unmarshal([]byte(data), &dst)
 	expectedErr := &yaml.LoadErrors{
 		Errors: []*yaml.LoadError{
-			yaml.NewLoadError(yaml.ConstructorStage, errFailing.Error(), yaml.Mark{Line: 1, Column: 17}, errFailing),
+			yaml.NewLoadError(yaml.ConstructorStage, errFailing.Error(), yaml.Mark{Line: 1, Column: 16}, errFailing),
 		},
 	}
 	assert.DeepEqual(t, expectedErr, err)
@@ -1851,9 +1851,9 @@ func TestParserErrorUnknownAnchorPosition(t *testing.T) {
 		line   int
 		column int
 	}{
-		{"*x", 1, 1},
-		{"a: *x", 1, 4},
-		{"a:\n  b: *x", 2, 6},
+		{"*x", 1, 0},
+		{"a: *x", 1, 3},
+		{"a:\n  b: *x", 2, 5},
 	}
 
 	for _, test := range tests {
