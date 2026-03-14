@@ -24,6 +24,7 @@ import (
 	"io"
 
 	"go.yaml.in/yaml/v4/internal/libyaml"
+	"go.yaml.in/yaml/v4/plugin/errfmt"
 	"go.yaml.in/yaml/v4/plugin/limit"
 )
 
@@ -277,6 +278,7 @@ type DepthContext = libyaml.DepthContext
 // Each plugin implements one or more plugin interfaces.
 // Currently supported plugin types:
 //   - LimitPlugin: Controls depth and alias expansion limits
+//   - ErrorPlugin: Customizes load error message formatting
 //
 // Example:
 //
@@ -293,7 +295,10 @@ func WithPlugin(plugins ...any) Option {
 				o.AliasCheck = lp.CheckAlias
 				registered = true
 			}
-			// Future plugin types add cases here (non-exclusive if)
+			if ep, ok := p.(ErrorPlugin); ok {
+				o.FormatLoadError = ep.FormatLoadError
+				registered = true
+			}
 			if !registered {
 				return fmt.Errorf("yaml: unsupported plugin type: %T", p)
 			}
@@ -419,6 +424,21 @@ func OptsYAML(yamlStr string) (Option, error) {
 				return nil, fmt.Errorf("yaml: plugin %q value must be a mapping or null", name)
 			}
 			p, err := limit.NewFromYAML(cfgMap)
+			if err != nil {
+				return nil, err
+			}
+			optList = append(optList, WithPlugin(p))
+		case "errfmt":
+			var cfgMap map[string]any
+			switch v := val.(type) {
+			case nil:
+				cfgMap = map[string]any{}
+			case map[string]any:
+				cfgMap = v
+			default:
+				return nil, fmt.Errorf("yaml: plugin %q value must be a mapping or null", name)
+			}
+			p, err := errfmt.NewFromYAML(cfgMap)
 			if err != nil {
 				return nil, err
 			}

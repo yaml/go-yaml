@@ -42,6 +42,42 @@ loader := yaml.NewLoader(data, yaml.WithPlugin(limit.New(limit.DepthValue(50))))
 | `AliasNone()` | Disable alias ratio checking |
 | `AliasFunc(fn)` | Custom `func(aliasCount, constructCount int) error` |
 
+### Errfmt Plugin
+
+The errfmt plugin controls how YAML load errors are formatted.
+By default, go-yaml produces verbose structured messages.
+The errfmt plugin lets you choose a different format, such as the
+classic `yaml: line N: msg` style from go-yaml v2/v3.
+
+```go
+import "go.yaml.in/yaml/v4/plugin/errfmt"
+
+// Default format: "go-yaml load error in scanner at L1.C8: msg"
+loader := yaml.NewLoader(data, yaml.WithPlugin(errfmt.New()))
+
+// Legacy format (v2/v3 compatible): "yaml: line 1: msg"
+loader := yaml.NewLoader(data, yaml.WithPlugin(errfmt.New(errfmt.FormatLegacy)))
+
+// Compact format: "scanner:1:8: msg"
+loader := yaml.NewLoader(data, yaml.WithPlugin(errfmt.New(errfmt.FormatCompact)))
+```
+
+#### Errfmt Formats
+
+| Format | Example |
+|---|---|
+| `FormatDefault` | `go-yaml load error in scanner at L1.C8: msg` |
+| `FormatLegacy` | `yaml: line 1: msg` |
+| `FormatCompact` | `scanner:1:8: msg` |
+
+#### YAML Configuration
+
+```yaml
+plugin:
+  errfmt:
+    format: legacy   # default, legacy, or compact
+```
+
 ## Using Plugins
 
 ### Basic Usage

@@ -105,3 +105,37 @@
       - text: 'x'
       - loop: [']', 10001]
     want: 'go-yaml load error in scanner (while increasing flow level) at L1.C10001: exceeded max depth of 10000'
+
+- plugin-error:
+    name: errfmt legacy format on scanner error
+    plugin:
+      errfmt:
+        format: legacy
+      limit:
+        depth: 5
+    data:
+      join:
+      - loop: ['[', 6]
+      - text: 'x'
+      - loop: [']', 6]
+    want: 'yaml: line 1: exceeded max depth of 5'
+
+- plugin-error:
+    name: errfmt compact format on scanner error
+    plugin:
+      errfmt:
+        format: compact
+      limit:
+        depth: 5
+    data:
+      join:
+      - loop: ['[', 6]
+      - text: 'x'
+      - loop: [']', 6]
+    want: 'scanner:1:6: exceeded max depth of 5'
+
+- plugin-pass:
+    name: errfmt default format (no-op)
+    plugin:
+      errfmt:
+    data: 'key: value'

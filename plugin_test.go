@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"go.yaml.in/yaml/v4"
+	"go.yaml.in/yaml/v4/plugin/errfmt"
 	"go.yaml.in/yaml/v4/plugin/limit"
 )
 
@@ -93,5 +94,50 @@ func TestDefaultBehavior_HasLimit(t *testing.T) {
 	err = loader.Load(&result)
 	if err == nil {
 		t.Fatal("Expected error from default depth limits, got nil")
+	}
+}
+
+// errfmtBadYAML triggers a scanner error (block sequence not allowed here).
+var errfmtBadYAML = []byte("value: -\n")
+
+func TestWithPlugin_Errfmt_Default(t *testing.T) {
+	var result any
+	err := yaml.Load(errfmtBadYAML, &result, yaml.WithPlugin(errfmt.New()))
+	if err == nil {
+		t.Fatal("Expected error, got nil")
+	}
+	got := err.Error()
+	want := "go-yaml load error in "
+	if !strings.HasPrefix(got, want) {
+		t.Errorf("Default format: got %q, want prefix %q", got, want)
+	}
+}
+
+func TestWithPlugin_Errfmt_Legacy(t *testing.T) {
+	var result any
+	err := yaml.Load(errfmtBadYAML, &result, yaml.WithPlugin(errfmt.New(errfmt.FormatLegacy)))
+	if err == nil {
+		t.Fatal("Expected error, got nil")
+	}
+	got := err.Error()
+	want := "yaml: line "
+	if !strings.HasPrefix(got, want) {
+		t.Errorf("Legacy format: got %q, want prefix %q", got, want)
+	}
+}
+
+func TestWithPlugin_Errfmt_Compact(t *testing.T) {
+	var result any
+	err := yaml.Load(errfmtBadYAML, &result, yaml.WithPlugin(errfmt.New(errfmt.FormatCompact)))
+	if err == nil {
+		t.Fatal("Expected error, got nil")
+	}
+	got := err.Error()
+	// Compact format: "stage:line:col: msg"
+	if strings.HasPrefix(got, "go-yaml") || strings.HasPrefix(got, "yaml:") {
+		t.Errorf("Compact format should not start with verbose prefix, got %q", got)
+	}
+	if !strings.Contains(got, ":") {
+		t.Errorf("Compact format should contain ':', got %q", got)
 	}
 }

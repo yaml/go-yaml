@@ -47,12 +47,20 @@ type LoadError struct {
 
 	// Error chaining
 	err error // Underlying error (for Unwrap support)
+
+	// formatter is an optional function that controls the error string
+	// representation. Set by the errfmt plugin via Options.FormatLoadError.
+	formatter func(*LoadError) string
 }
 
 // Error returns the error message with stage and position information.
-// Format: "go-yaml load error in <stage> at L:C: <message>"
+// If a formatter is set (via the errfmt plugin), it is called instead.
+// Default format: "go-yaml load error in <stage> at L:C: <message>"
 // Or with context: "go-yaml load error in <stage> (<ctx>) at L:C-L:C: <message>"
 func (e *LoadError) Error() string {
+	if e.formatter != nil {
+		return e.formatter(e)
+	}
 	if len(e.ContextMsg) > 0 {
 		return fmt.Sprintf("go-yaml load error in %s (%s) at %s: %s",
 			e.Stage, e.ContextMsg, e.ContextMark.rangeString(e.Mark), e.Message)
@@ -61,9 +69,10 @@ func (e *LoadError) Error() string {
 		e.Stage, e.Mark.shortString(), e.Message)
 }
 
-// simpleError returns the error message without the "yaml: Load error (in stage)" prefix.
-// Used for formatting errors within LoadErrors collections.
-// Format: "line L: <message>" (backwards compatible - no column info)
+// simpleError returns a compact error message for use within LoadErrors
+// collections.
+// Default format: "line L: <message>" (backwards compatible - no column info)
+// Note: simpleError does not invoke the formatter — that is only used by Error().
 func (e *LoadError) simpleError() string {
 	var builder strings.Builder
 	if len(e.ContextMsg) > 0 {

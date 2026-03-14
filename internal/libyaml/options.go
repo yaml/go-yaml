@@ -33,6 +33,9 @@ type Options struct {
 	FlowSimpleCollections bool       // Use flow style for simple collections
 	QuotePreference       QuoteStyle // Preferred quote style when quoting is required
 
+	// Error formatting (set by WithPlugin(errfmt.New(...)))
+	FormatLoadError func(*LoadError) string
+
 	// Safety limit checks (set by ApplyOptions or WithPlugin(limit.New(...)))
 	DepthCheck func(depth int, ctx *DepthContext) error
 	AliasCheck func(aliasCount, constructCount int) error
