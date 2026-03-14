@@ -407,10 +407,10 @@ func convertLibyamlEvent(ev *libyaml.Event, profuse bool) *Event {
 	}
 
 	event := &Event{
-		StartLine:   ev.StartMark.Line + 1, // libyaml uses 0-based lines
-		StartColumn: ev.StartMark.Column,
-		EndLine:     ev.EndMark.Line + 1,
-		EndColumn:   ev.EndMark.Column,
+		StartLine:   ev.StartMark.Line,
+		StartColumn: ev.StartMark.Column - 1,
+		EndLine:     ev.EndMark.Line,
+		EndColumn:   ev.EndMark.Column - 1,
 		HeadComment: string(ev.HeadComment),
 		LineComment: string(ev.LineComment),
 		FootComment: string(ev.FootComment),

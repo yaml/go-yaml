@@ -72,7 +72,7 @@
     name: 1000kb of deeply nested indents
     data:
       loop: ['- ', 1024000]  # 1000*1024
-    want: 'go-yaml load error in scanner \(while increasing indent level\) at L1-L1,C20001: exceeded max depth of 10000'
+    want: 'go-yaml load error in scanner \(while increasing indent level\) at <unknown position>-L1,C20001: exceeded max depth of 10000'
 
 - limit-pass:
     name: 1000kb of 1000-indent lines

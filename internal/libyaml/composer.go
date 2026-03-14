@@ -119,8 +119,8 @@ func (c *Composer) node(kind Kind, tag, value string) *Node {
 		Style: style,
 	}
 	if !c.Textless {
-		n.Line = c.event.StartMark.Line + 1
-		n.Column = c.event.StartMark.Column + 1
+		n.Line = c.event.StartMark.Line
+		n.Column = c.event.StartMark.Column
 		n.HeadComment = string(c.event.HeadComment)
 		n.LineComment = string(c.event.LineComment)
 		n.FootComment = string(c.event.FootComment)
@@ -155,8 +155,8 @@ func (c *Composer) createStreamNode() *Node {
 		Stream: &Stream{Encoding: c.encoding},
 	}
 	if !c.Textless && c.event.Type != NO_EVENT {
-		n.Line = c.event.StartMark.Line + 1
-		n.Column = c.event.StartMark.Column + 1
+		n.Line = c.event.StartMark.Line
+		n.Column = c.event.StartMark.Column
 	}
 	return n
 }
@@ -169,7 +169,7 @@ func (c *Composer) alias() *Node {
 		msg := fmt.Sprintf("unknown anchor '%s' referenced", n.Value)
 		Fail(formatComposerError(msg, Mark{
 			Line:   n.Line,
-			Column: nodeMarkCol(n.Column),
+			Column: n.Column,
 		}))
 	}
 	c.expect(ALIAS_EVENT)

@@ -104,8 +104,8 @@ const (
 // Mark holds the pointer position.
 type Mark struct {
 	Index  int // The position index.
-	Line   int // The position line (1-indexed).
-	Column int // The position column (0-indexed internally, displayed as 1-indexed).
+	Line   int // The position line (1-indexed; 0 means unknown).
+	Column int // The position column (1-indexed; 0 means unknown).
 }
 
 // String returns a human-readable string representation of the position mark.
@@ -116,8 +116,8 @@ func (m Mark) String() string {
 	}
 
 	fmt.Fprintf(&builder, "line %d", m.Line)
-	if m.Column != 0 {
-		fmt.Fprintf(&builder, ", column %d", m.Column+1)
+	if m.Column > 0 {
+		fmt.Fprintf(&builder, ", column %d", m.Column)
 	}
 
 	return builder.String()
@@ -125,14 +125,14 @@ func (m Mark) String() string {
 
 // shortString returns a compact position string.
 // Returns "<unknown position>" when Line is 0 (position not known).
-// Column is stored 0-based; when Column is 0 (first column), it is omitted
-// from output ("L{line}"); otherwise it is displayed as Column+1 ("L{line},C{col}").
+// When Column is 0 (unknown), it is omitted from output ("L{line}");
+// otherwise it is displayed as "L{line},C{col}".
 func (m Mark) shortString() string {
 	if m.Line == 0 {
 		return "<unknown position>"
 	}
-	if m.Column != 0 {
-		return fmt.Sprintf("L%d,C%d", m.Line, m.Column+1)
+	if m.Column > 0 {
+		return fmt.Sprintf("L%d,C%d", m.Line, m.Column)
 	}
 	return fmt.Sprintf("L%d", m.Line)
 }
@@ -140,8 +140,8 @@ func (m Mark) shortString() string {
 // rangeString formats a position range from start mark m to end mark.
 // Both marks use shortString for their individual display.
 // When marks are on the same line:
-//   - Both Column==0: just "L2" (no range shown, positions are equal)
-//   - Both Column!=0: "L2,C6-C7" (compact column range)
+//   - Both Column==0: just "L2" (unknown columns, no range shown)
+//   - Both Column>0: "L2,C6-C7" (compact column range)
 //   - Mixed columns: "L1,C4-L1" (full start with line-only end)
 //
 // When marks are on different lines: "L1,C8-L2,C3"
@@ -149,12 +149,12 @@ func (m Mark) rangeString(end Mark) string {
 	start := m.shortString()
 	if m.Line == end.Line {
 		if m.Column == 0 && end.Column == 0 {
-			// Same line, no columns: just "L2"
+			// Same line, unknown columns: just "L2"
 			return start
 		}
-		if m.Column != 0 && end.Column != 0 {
+		if m.Column > 0 && end.Column > 0 {
 			// Same line with columns: "L2,C6-C7"
-			return fmt.Sprintf("%s-C%d", start, end.Column+1)
+			return fmt.Sprintf("%s-C%d", start, end.Column)
 		}
 	}
 	return fmt.Sprintf("%s-%s", start, end.shortString())
