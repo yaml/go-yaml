@@ -950,15 +950,16 @@ func (c *Constructor) tryCallYAMLConstructor(n *Node, out reflect.Value) (called
 		return false, false
 	}
 
-	// Check if it's the same underlying type as our Node
-	// Both yaml.Node and libyaml.Node have the same structure
-	if elemType.Name() != "Node" {
+	// Only accept *Node from allowlisted yaml packages whose Node type is
+	// known to have the same memory layout as libyaml.Node.
+	// The unsafe pointer cast below is only safe for these packages.
+	if elemType.Name() != "Node" || !isYAMLNodePkg(elemType.PkgPath()) {
 		return false, false
 	}
 
-	// Call the method with a converted node
-	// Since yaml.Node and libyaml.Node have the same structure,
-	// we can convert using unsafe pointer cast
+	// Call the method with a converted node.
+	// Safe only because the allowlisted packages all use libyaml.Node
+	// (or a type alias for it) as their Node type.
 	nodeValue := reflect.NewAt(elemType, reflect.ValueOf(n).UnsafePointer())
 
 	results := method.Call([]reflect.Value{nodeValue})
