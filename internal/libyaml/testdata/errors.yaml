@@ -33,7 +33,7 @@
         index: 2
       message: 'invalid UTF-8 octet (value: 255)'
       err: invalid UTF-8 octet
-    want: 'go-yaml load error in reader at L1,C3: invalid UTF-8 octet (value: 255)'
+    want: 'go-yaml load error in reader at L1.C3: invalid UTF-8 octet (value: 255)'
     also: unwrap
 
 - load-error:
@@ -45,7 +45,7 @@
         column: 6
         index: 42
       message: unexpected token
-    want: 'go-yaml load error in scanner at L2,C6: unexpected token'
+    want: 'go-yaml load error in scanner at L2.C6: unexpected token'
 
 - load-error:
     name: Scanner stage error with context
@@ -61,7 +61,7 @@
         column: 9
         index: 60
       message: found unexpected end of stream
-    want: 'go-yaml load error in scanner (while scanning a block scalar) at L2-L4,C9: found unexpected end of stream'
+    want: 'go-yaml load error in scanner (while scanning a block scalar) at L2-L4.C9: found unexpected end of stream'
 
 - load-error:
     name: Parser stage error
@@ -72,7 +72,7 @@
         column: 11
         index: 50
       message: did not find expected key
-    want: 'go-yaml load error in parser at L3,C11: did not find expected key'
+    want: 'go-yaml load error in parser at L3.C11: did not find expected key'
 
 - load-error:
     name: Parser stage error with context
@@ -88,7 +88,7 @@
         column: 6
         index: 80
       message: did not find expected key
-    want: 'go-yaml load error in parser (while parsing a block mapping) at L1-L4,C6: did not find expected key'
+    want: 'go-yaml load error in parser (while parsing a block mapping) at L1-L4.C6: did not find expected key'
 
 - load-error:
     name: Composer stage error
@@ -99,7 +99,7 @@
         column: 5
         index: 4
       message: unknown anchor 'foo' referenced
-    want: "go-yaml load error in composer at L1,C5: unknown anchor 'foo' referenced"
+    want: "go-yaml load error in composer at L1.C5: unknown anchor 'foo' referenced"
 
 - load-error:
     name: Resolver stage error
