@@ -55,9 +55,9 @@ func (p *Parser) Next() (*Token, error) {
 
 	token := &Token{
 		StartLine:   yamlToken.StartMark.Line,
-		StartColumn: yamlToken.StartMark.Column - 1,
+		StartColumn: yamlToken.StartMark.Column,
 		EndLine:     yamlToken.EndMark.Line,
-		EndColumn:   yamlToken.EndMark.Column - 1,
+		EndColumn:   yamlToken.EndMark.Column,
 	}
 
 	switch yamlToken.Type {

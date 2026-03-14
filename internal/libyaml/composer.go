@@ -304,13 +304,13 @@ func (c *Composer) expect(e EventType) {
 	if c.event.Type == STREAM_END_EVENT {
 		Fail(formatComposerError(
 			"attempted to go past the end of stream; corrupted value?",
-			Mark{Line: c.event.StartMark.Line + 1, Column: c.event.StartMark.Column},
+			Mark{Line: c.event.StartMark.Line, Column: c.event.StartMark.Column},
 		))
 	}
 	if c.event.Type != e {
 		Fail(formatComposerError(
 			fmt.Sprintf("expected %s event but got %s", e, c.event.Type),
-			Mark{Line: c.event.StartMark.Line + 1, Column: c.event.StartMark.Column},
+			Mark{Line: c.event.StartMark.Line, Column: c.event.StartMark.Column},
 		))
 	}
 	c.event.Delete()

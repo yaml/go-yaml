@@ -113,7 +113,8 @@ func (c *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
 	// encoding/json/v2.
 	if n.Kind != ScalarNode && isTextUnmarshaler(out) {
 		err := fmt.Errorf("cannot construct %s into %s (TextUnmarshaler)", shortTag(n.Tag), out.Type())
-		c.TypeErrors = append(c.TypeErrors, formatConstructorError(err, Mark{Line: n.Line, Column: n.Column}))
+		c.TypeErrors = append(c.TypeErrors,
+			formatConstructorError(err, Mark{Line: n.Line, Column: n.Column}))
 		return false
 	}
 
