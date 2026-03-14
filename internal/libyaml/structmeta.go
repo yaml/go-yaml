@@ -100,7 +100,7 @@ func hasConstructYAMLMethod(t reflect.Type) bool {
 	}
 
 	elemType := paramType.Elem()
-	if elemType.Kind() != reflect.Struct || elemType.Name() != "Node" {
+	if elemType.Kind() != reflect.Struct || elemType.Name() != "Node" || !isYAMLNodePkg(elemType.PkgPath()) {
 		return false
 	}
 
@@ -111,6 +111,21 @@ func hasConstructYAMLMethod(t reflect.Type) bool {
 	}
 
 	return true
+}
+
+var yamlNodePkgs = []string{
+	"gopkg.in/yaml.v3",
+	"go.yaml.in/yaml/v3",
+	"go.yaml.in/yaml/v4",
+}
+
+func isYAMLNodePkg(pkg string) bool {
+	for _, p := range yamlNodePkgs {
+		if pkg == p {
+			return true
+		}
+	}
+	return false
 }
 
 // getStructInfo returns cached information about a struct type's fields.
