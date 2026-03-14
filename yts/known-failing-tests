@@ -90,9 +90,6 @@ TestYAMLSuite/CVW2/LoadTest
 TestYAMLSuite/DBG4/JSONComparisonTest
 TestYAMLSuite/DFF7/MarshalTest
 TestYAMLSuite/DHP8/JSONComparisonTest
-TestYAMLSuite/DK3J/EventComparisonTest
-TestYAMLSuite/DK3J/JSONComparisonTest
-TestYAMLSuite/DK3J/MarshalTest
 TestYAMLSuite/DK95-00/EventComparisonTest
 TestYAMLSuite/DK95-00/LoadTest
 TestYAMLSuite/DK95-01/EventComparisonTest
@@ -109,9 +106,6 @@ TestYAMLSuite/DK95-07/LoadTest
 TestYAMLSuite/EB22/LoadTest
 TestYAMLSuite/EHF6/EventComparisonTest
 TestYAMLSuite/F2C7/JSONComparisonTest
-TestYAMLSuite/FP8R/EventComparisonTest
-TestYAMLSuite/FP8R/JSONComparisonTest
-TestYAMLSuite/FP8R/MarshalTest
 TestYAMLSuite/FRK4/EventComparisonTest
 TestYAMLSuite/FRK4/LoadTest
 TestYAMLSuite/G4RS/EventComparisonTest

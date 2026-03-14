@@ -883,7 +883,7 @@ func (parser *Parser) fetchNextToken() (err error) {
 	}
 
 	// Is it a directive?
-	if parser.mark.Column == 0 && parser.buffer[parser.buffer_pos] == '%' {
+	if parser.mark.Column == 1 && parser.buffer[parser.buffer_pos] == '%' {
 		return parser.fetchDirective()
 	}
 
@@ -891,12 +891,12 @@ func (parser *Parser) fetchNextToken() (err error) {
 	pos := parser.buffer_pos
 
 	// Is it the document start indicator?
-	if parser.mark.Column == 0 && buf[pos] == '-' && buf[pos+1] == '-' && buf[pos+2] == '-' && isBlankOrZero(buf, pos+3) {
+	if parser.mark.Column == 1 && buf[pos] == '-' && buf[pos+1] == '-' && buf[pos+2] == '-' && isBlankOrZero(buf, pos+3) {
 		return parser.fetchDocumentIndicator(DOCUMENT_START_TOKEN)
 	}
 
 	// Is it the document end indicator?
-	if parser.mark.Column == 0 && buf[pos] == '.' && buf[pos+1] == '.' && buf[pos+2] == '.' && isBlankOrZero(buf, pos+3) {
+	if parser.mark.Column == 1 && buf[pos] == '.' && buf[pos+1] == '.' && buf[pos+2] == '.' && isBlankOrZero(buf, pos+3) {
 		return parser.fetchDocumentIndicator(DOCUMENT_END_TOKEN)
 	}
 
@@ -1345,8 +1345,8 @@ func (parser *Parser) fetchPlainScalar() error {
 // Eat whitespaces and comments until the next token is found.
 func (parser *Parser) fetchStreamEnd() error {
 	// Force new line.
-	if parser.mark.Column != 0 {
-		parser.mark.Column = 0
+	if parser.mark.Column != 1 {
+		parser.mark.Column = 1
 		parser.mark.Line++
 	}
 
@@ -1659,7 +1659,9 @@ func (parser *Parser) scanBlockScalar(token *Token, literal bool) error {
 		if parser.indent >= 0 {
 			indent = parser.indent + increment
 		} else {
-			indent = increment
+			// With 1-based columns, the line start is column 1, so an
+			// explicit indent indicator of n means column n+1.
+			indent = increment + 1
 		}
 	}
 
@@ -1893,7 +1895,7 @@ func (parser *Parser) scanComments(scan_mark Mark) error {
 			}
 			first_empty = false
 			recent_empty = true
-			column = 0
+			column = 1
 			line++
 			continue
 		}
@@ -1951,7 +1953,7 @@ func (parser *Parser) scanComments(scan_mark Mark) error {
 		}
 
 		peek = 0
-		column = 0
+		column = 1
 		line = parser.mark.Line
 		next_indent = parser.indent
 		if next_indent < 0 {
@@ -2138,7 +2140,7 @@ func (parser *Parser) scanFlowScalar(token *Token, single bool) error {
 			}
 		}
 
-		if parser.mark.Column == 0 &&
+		if parser.mark.Column == 1 &&
 			((parser.buffer[parser.buffer_pos+0] == '-' &&
 				parser.buffer[parser.buffer_pos+1] == '-' &&
 				parser.buffer[parser.buffer_pos+2] == '-') ||
@@ -2464,7 +2466,7 @@ func (parser *Parser) scanPlainScalar(token *Token) error {
 				return err
 			}
 		}
-		if parser.mark.Column == 0 &&
+		if parser.mark.Column == 1 &&
 			((parser.buffer[parser.buffer_pos+0] == '-' &&
 				parser.buffer[parser.buffer_pos+1] == '-' &&
 				parser.buffer[parser.buffer_pos+2] == '-') ||
@@ -2883,7 +2885,7 @@ func (parser *Parser) scanToNextToken() error {
 				return err
 			}
 		}
-		if parser.mark.Column == 0 && isBOM(parser.buffer, parser.buffer_pos) {
+		if parser.mark.Column == 1 && isBOM(parser.buffer, parser.buffer_pos) {
 			parser.skip()
 		}
 
@@ -3318,14 +3320,14 @@ func (parser *Parser) skip() {
 func (parser *Parser) skipLine() {
 	if isCRLF(parser.buffer, parser.buffer_pos) {
 		parser.mark.Index += 2
-		parser.mark.Column = 0
+		parser.mark.Column = 1
 		parser.mark.Line++
 		parser.unread -= 2
 		parser.buffer_pos += 2
 		parser.newlines++
 	} else if isLineBreak(parser.buffer, parser.buffer_pos) {
 		parser.mark.Index++
-		parser.mark.Column = 0
+		parser.mark.Column = 1
 		parser.mark.Line++
 		parser.unread--
 		parser.buffer_pos += width(parser.buffer[parser.buffer_pos])
@@ -3386,7 +3388,7 @@ func (parser *Parser) readLine(s []byte) []byte {
 		return s
 	}
 	parser.mark.Index++
-	parser.mark.Column = 0
+	parser.mark.Column = 1
 	parser.mark.Line++
 	parser.unread--
 	parser.newlines++
@@ -3395,8 +3397,6 @@ func (parser *Parser) readLine(s []byte) []byte {
 
 // formatScannerError creates a LoadError for scanner-stage errors.
 func formatScannerError(problem string, problemMark Mark) *LoadError {
-	problemMark.Line += 1
-
 	return &LoadError{
 		Stage:   ScannerStage,
 		Mark:    problemMark,
@@ -3407,9 +3407,6 @@ func formatScannerError(problem string, problemMark Mark) *LoadError {
 // formatScannerErrorContext creates a LoadError with both context and
 // problem information, each with their own mark positions.
 func formatScannerErrorContext(context string, contextMark Mark, problem string, problemMark Mark) *LoadError {
-	contextMark.Line += 1
-	problemMark.Line += 1
-
 	return &LoadError{
 		Stage:       ScannerStage,
 		ContextMark: contextMark,

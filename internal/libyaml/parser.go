@@ -255,6 +255,7 @@ func NewParser() Parser {
 	return Parser{
 		raw_buffer: make([]byte, 0, input_raw_buffer_size),
 		buffer:     make([]byte, 0, input_buffer_size),
+		mark:       Mark{Line: 1, Column: 1},
 	}
 }
 
@@ -965,7 +966,7 @@ func (parser *Parser) parseBlockSequenceEntry(event *Event, first bool) error {
 		if err := parser.peekToken(&token); err != nil {
 			return err
 		}
-		parser.marks = append(parser.marks, Mark{Line: token.StartMark.Line + 1, Column: token.StartMark.Column})
+		parser.marks = append(parser.marks, token.StartMark)
 		parser.skipToken()
 	}
 
@@ -1102,7 +1103,7 @@ func (parser *Parser) parseBlockMappingKey(event *Event, first bool) error {
 		if err := parser.peekToken(&token); err != nil {
 			return err
 		}
-		parser.marks = append(parser.marks, Mark{Line: token.StartMark.Line + 1, Column: token.StartMark.Column})
+		parser.marks = append(parser.marks, token.StartMark)
 		parser.skipToken()
 	}
 
@@ -1214,7 +1215,7 @@ func (parser *Parser) parseFlowSequenceEntry(event *Event, first bool) error {
 		if err := parser.peekToken(&token); err != nil {
 			return err
 		}
-		parser.marks = append(parser.marks, Mark{Line: token.StartMark.Line + 1, Column: token.StartMark.Column})
+		parser.marks = append(parser.marks, token.StartMark)
 		parser.skipToken()
 	}
 	var token *Token
@@ -1351,7 +1352,7 @@ func (parser *Parser) parseFlowMappingKey(event *Event, first bool) error {
 		if err := parser.peekToken(&token); err != nil {
 			return err
 		}
-		parser.marks = append(parser.marks, Mark{Line: token.StartMark.Line + 1, Column: token.StartMark.Column})
+		parser.marks = append(parser.marks, token.StartMark)
 		parser.skipToken()
 	}
 

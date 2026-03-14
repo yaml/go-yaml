@@ -31,14 +31,14 @@
 - unmarshal-error:
     name: Incomplete flow sequence
     yaml: 'v: [A,'
-    want: 'go-yaml load error in parser (while parsing a flow node) at L1: did not find expected node content'
+    want: 'go-yaml load error in parser (while parsing a flow node) at L2,C1-C1: did not find expected node content'
 
 - unmarshal-error:
     name: Incomplete flow sequence in list
     yaml: |
       v:
       - [A,
-    want: 'go-yaml load error in parser (while parsing a flow node) at L2: did not find expected node content'
+    want: 'go-yaml load error in parser (while parsing a flow node) at L3,C1-C1: did not find expected node content'
 
 - unmarshal-error:
     name: Invalid alias syntax
@@ -92,7 +92,7 @@
       %TAG !%79! tag:yaml.org,2002:
       ---
       v: !%79!int '1'
-    want: 'go-yaml load error in scanner (while scanning a %TAG directive) at L1-L1,C7: did not find expected whitespace'
+    want: 'go-yaml load error in scanner (while scanning a %TAG directive) at L1,C1-C7: did not find expected whitespace'
 
 - unmarshal-error:
     name: Missing colon in mapping (multiline)
@@ -110,7 +110,7 @@
       b: 2
       c 2
       d: 3
-    want: "go-yaml load error in scanner (while scanning a simple key) at L3-L4: could not find expected ':'"
+    want: "go-yaml load error in scanner (while scanning a simple key) at L3,C1-L4,C1: could not find expected ':'"
 
 - unmarshal-error:
     name: Missing colon after comment and list (Issue 665)
@@ -118,12 +118,12 @@
       #
       -
       {
-    want: 'go-yaml load error in parser (while parsing a flow node) at L3: did not find expected node content'
+    want: 'go-yaml load error in parser (while parsing a flow node) at L4,C1-C1: did not find expected node content'
 
 - unmarshal-error:
     name: Incomplete UTF-8 sequence (Issue 666)
     yaml: "0: [:!00 \xEF"
-    want: "go-yaml load error in parser (while parsing a flow sequence) at L1,C4-L1: did not find expected ',' or ']'"
+    want: "go-yaml load error in parser (while parsing a flow sequence) at L1,C4-L2,C1: did not find expected ',' or ']'"
 
 - unmarshal-error:
     name: Anchor with colon (Issue 109)

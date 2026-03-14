@@ -54,10 +54,10 @@ func (p *Parser) Next() (*Token, error) {
 	}
 
 	token := &Token{
-		StartLine:   yamlToken.StartMark.Line + 1,
-		StartColumn: yamlToken.StartMark.Column,
-		EndLine:     yamlToken.EndMark.Line + 1,
-		EndColumn:   yamlToken.EndMark.Column,
+		StartLine:   yamlToken.StartMark.Line,
+		StartColumn: yamlToken.StartMark.Column - 1,
+		EndLine:     yamlToken.EndMark.Line,
+		EndColumn:   yamlToken.EndMark.Column - 1,
 	}
 
 	switch yamlToken.Type {
@@ -159,10 +159,10 @@ func (p *Parser) appendCommentTokenIfNotEmpty(value []byte, commentType string, 
 			Type:        "COMMENT",
 			Value:       string(value),
 			CommentType: commentType,
-			StartLine:   comment.StartMark.Line + 1,
-			StartColumn: comment.StartMark.Column + 1,
-			EndLine:     comment.EndMark.Line + 1,
-			EndColumn:   comment.EndMark.Column + 1,
+			StartLine:   comment.StartMark.Line,
+			StartColumn: comment.StartMark.Column,
+			EndLine:     comment.EndMark.Line,
+			EndColumn:   comment.EndMark.Column,
 		}
 		p.pendingTokens = append(p.pendingTokens, commentToken)
 	}
