@@ -952,7 +952,7 @@ func (c *Constructor) tryCallYAMLConstructor(n *Node, out reflect.Value) (called
 
 	// Check if it's the same underlying type as our Node
 	// Both yaml.Node and libyaml.Node have the same structure
-	if elemType.Name() != "Node" {
+	if elemType.Name() != "Node" || !isYAMLNodePkg(elemType.PkgPath()) {
 		return false, false
 	}
 
