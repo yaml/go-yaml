@@ -153,6 +153,10 @@ func (m Mark) rangeString(end Mark) string {
 			return start
 		}
 		if m.Column > 0 && end.Column > 0 {
+			if m.Column == end.Column {
+				// Same position: just "L2,C6"
+				return start
+			}
 			// Same line with columns: "L2,C6-C7"
 			return fmt.Sprintf("%s-C%d", start, end.Column)
 		}

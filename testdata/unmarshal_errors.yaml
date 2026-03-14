@@ -31,14 +31,14 @@
 - unmarshal-error:
     name: Incomplete flow sequence
     yaml: 'v: [A,'
-    want: 'go-yaml load error in parser (while parsing a flow node) at L2,C1-C1: did not find expected node content'
+    want: 'go-yaml load error in parser (while parsing a flow node) at L2,C1: did not find expected node content'
 
 - unmarshal-error:
     name: Incomplete flow sequence in list
     yaml: |
       v:
       - [A,
-    want: 'go-yaml load error in parser (while parsing a flow node) at L3,C1-C1: did not find expected node content'
+    want: 'go-yaml load error in parser (while parsing a flow node) at L3,C1: did not find expected node content'
 
 - unmarshal-error:
     name: Invalid alias syntax
@@ -118,7 +118,7 @@
       #
       -
       {
-    want: 'go-yaml load error in parser (while parsing a flow node) at L4,C1-C1: did not find expected node content'
+    want: 'go-yaml load error in parser (while parsing a flow node) at L4,C1: did not find expected node content'
 
 - unmarshal-error:
     name: Incomplete UTF-8 sequence (Issue 666)
