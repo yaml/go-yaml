@@ -408,9 +408,9 @@ func convertLibyamlEvent(ev *libyaml.Event, profuse bool) *Event {
 
 	event := &Event{
 		StartLine:   ev.StartMark.Line,
-		StartColumn: ev.StartMark.Column - 1,
+		StartColumn: ev.StartMark.Column,
 		EndLine:     ev.EndMark.Line,
-		EndColumn:   ev.EndMark.Column - 1,
+		EndColumn:   ev.EndMark.Column,
 		HeadComment: string(ev.HeadComment),
 		LineComment: string(ev.LineComment),
 		FootComment: string(ev.FootComment),

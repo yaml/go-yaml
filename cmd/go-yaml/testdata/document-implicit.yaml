@@ -11,12 +11,12 @@
     - {event: MAPPING-END}
     - {event: DOCUMENT-END}
   EVENT: |
-    - {event: DOCUMENT-START, implicit: true, pos: '1:0'}
-    - {event: MAPPING-START, pos: '1:0'}
-    - {event: SCALAR, value: key, style: Plain, pos: '1:0-3'}
-    - {event: SCALAR, value: value, style: Plain, pos: '1:5-10'}
-    - {event: MAPPING-END, pos: '2:0'}
-    - {event: DOCUMENT-END, implicit: true, pos: '2:0'}
+    - {event: DOCUMENT-START, implicit: true, pos: '1:1'}
+    - {event: MAPPING-START, pos: '1:1'}
+    - {event: SCALAR, value: key, style: Plain, pos: '1:1-4'}
+    - {event: SCALAR, value: value, style: Plain, pos: '1:6-11'}
+    - {event: MAPPING-END, pos: '2:1'}
+    - {event: DOCUMENT-END, implicit: true, pos: '2:1'}
 
 - name: Single explicit document
   text: |
@@ -30,12 +30,12 @@
     - {event: MAPPING-END}
     - {event: DOCUMENT-END}
   EVENT: |
-    - {event: DOCUMENT-START, pos: '1:0-3'}
-    - {event: MAPPING-START, pos: '2:0'}
-    - {event: SCALAR, value: key, style: Plain, pos: '2:0-3'}
-    - {event: SCALAR, value: value, style: Plain, pos: '2:5-10'}
-    - {event: MAPPING-END, pos: '3:0'}
-    - {event: DOCUMENT-END, implicit: true, pos: '3:0'}
+    - {event: DOCUMENT-START, pos: '1:1-4'}
+    - {event: MAPPING-START, pos: '2:1'}
+    - {event: SCALAR, value: key, style: Plain, pos: '2:1-4'}
+    - {event: SCALAR, value: value, style: Plain, pos: '2:6-11'}
+    - {event: MAPPING-END, pos: '3:1'}
+    - {event: DOCUMENT-END, implicit: true, pos: '3:1'}
 
 - name: Implicit then explicit document
   text: |
@@ -50,12 +50,12 @@
     - {event: SCALAR, value: second}
     - {event: DOCUMENT-END}
   EVENT: |
-    - {event: DOCUMENT-START, implicit: true, pos: '1:0-5'}
-    - {event: SCALAR, value: first, style: Plain, pos: '1:0-5'}
-    - {event: DOCUMENT-END, implicit: true, pos: '2:0'}
-    - {event: DOCUMENT-START, pos: '2:0-3'}
-    - {event: SCALAR, value: second, style: Plain, pos: '3:0-6'}
-    - {event: DOCUMENT-END, implicit: true, pos: '4:0'}
+    - {event: DOCUMENT-START, implicit: true, pos: '1:1-6'}
+    - {event: SCALAR, value: first, style: Plain, pos: '1:1-6'}
+    - {event: DOCUMENT-END, implicit: true, pos: '2:1'}
+    - {event: DOCUMENT-START, pos: '2:1-4'}
+    - {event: SCALAR, value: second, style: Plain, pos: '3:1-7'}
+    - {event: DOCUMENT-END, implicit: true, pos: '4:1'}
 
 - name: Two explicit documents
   text: |
@@ -71,12 +71,12 @@
     - {event: SCALAR, value: second}
     - {event: DOCUMENT-END}
   EVENT: |
-    - {event: DOCUMENT-START, pos: '1:0-3'}
-    - {event: SCALAR, value: first, style: Plain, pos: '2:0-5'}
-    - {event: DOCUMENT-END, implicit: true, pos: '3:0'}
-    - {event: DOCUMENT-START, pos: '3:0-3'}
-    - {event: SCALAR, value: second, style: Plain, pos: '4:0-6'}
-    - {event: DOCUMENT-END, implicit: true, pos: '5:0'}
+    - {event: DOCUMENT-START, pos: '1:1-4'}
+    - {event: SCALAR, value: first, style: Plain, pos: '2:1-6'}
+    - {event: DOCUMENT-END, implicit: true, pos: '3:1'}
+    - {event: DOCUMENT-START, pos: '3:1-4'}
+    - {event: SCALAR, value: second, style: Plain, pos: '4:1-7'}
+    - {event: DOCUMENT-END, implicit: true, pos: '5:1'}
 
 - name: Document with explicit end marker
   text: |
@@ -91,12 +91,12 @@
     - {event: MAPPING-END}
     - {event: DOCUMENT-END, explicit: true}
   EVENT: |
-    - {event: DOCUMENT-START, pos: '1:0-3'}
-    - {event: MAPPING-START, pos: '2:0'}
-    - {event: SCALAR, value: key, style: Plain, pos: '2:0-3'}
-    - {event: SCALAR, value: value, style: Plain, pos: '2:5-10'}
-    - {event: MAPPING-END, pos: '3:0'}
-    - {event: DOCUMENT-END, pos: '3:0-3'}
+    - {event: DOCUMENT-START, pos: '1:1-4'}
+    - {event: MAPPING-START, pos: '2:1'}
+    - {event: SCALAR, value: key, style: Plain, pos: '2:1-4'}
+    - {event: SCALAR, value: value, style: Plain, pos: '2:6-11'}
+    - {event: MAPPING-END, pos: '3:1'}
+    - {event: DOCUMENT-END, pos: '3:1-4'}
 
 - name: Implicit doc with explicit end then explicit doc
   text: |
@@ -112,12 +112,12 @@
     - {event: SCALAR, value: second}
     - {event: DOCUMENT-END}
   EVENT: |
-    - {event: DOCUMENT-START, implicit: true, pos: '1:0-5'}
-    - {event: SCALAR, value: first, style: Plain, pos: '1:0-5'}
-    - {event: DOCUMENT-END, pos: '2:0-3'}
-    - {event: DOCUMENT-START, pos: '3:0-3'}
-    - {event: SCALAR, value: second, style: Plain, pos: '4:0-6'}
-    - {event: DOCUMENT-END, implicit: true, pos: '5:0'}
+    - {event: DOCUMENT-START, implicit: true, pos: '1:1-6'}
+    - {event: SCALAR, value: first, style: Plain, pos: '1:1-6'}
+    - {event: DOCUMENT-END, pos: '2:1-4'}
+    - {event: DOCUMENT-START, pos: '3:1-4'}
+    - {event: SCALAR, value: second, style: Plain, pos: '4:1-7'}
+    - {event: DOCUMENT-END, implicit: true, pos: '5:1'}
 
 - name: Three documents with mixed markers
   text: |
@@ -137,15 +137,15 @@
     - {event: SCALAR, value: third}
     - {event: DOCUMENT-END}
   EVENT: |
-    - {event: DOCUMENT-START, implicit: true, pos: '1:0-5'}
-    - {event: SCALAR, value: first, style: Plain, pos: '1:0-5'}
-    - {event: DOCUMENT-END, implicit: true, pos: '2:0'}
-    - {event: DOCUMENT-START, pos: '2:0-3'}
-    - {event: SCALAR, value: second, style: Plain, pos: '3:0-6'}
-    - {event: DOCUMENT-END, implicit: true, pos: '4:0'}
-    - {event: DOCUMENT-START, pos: '4:0-3'}
-    - {event: SCALAR, value: third, style: Plain, pos: '5:0-5'}
-    - {event: DOCUMENT-END, implicit: true, pos: '6:0'}
+    - {event: DOCUMENT-START, implicit: true, pos: '1:1-6'}
+    - {event: SCALAR, value: first, style: Plain, pos: '1:1-6'}
+    - {event: DOCUMENT-END, implicit: true, pos: '2:1'}
+    - {event: DOCUMENT-START, pos: '2:1-4'}
+    - {event: SCALAR, value: second, style: Plain, pos: '3:1-7'}
+    - {event: DOCUMENT-END, implicit: true, pos: '4:1'}
+    - {event: DOCUMENT-START, pos: '4:1-4'}
+    - {event: SCALAR, value: third, style: Plain, pos: '5:1-6'}
+    - {event: DOCUMENT-END, implicit: true, pos: '6:1'}
 
 - name: Explicit document with mapping
   text: |
@@ -163,14 +163,14 @@
     - {event: MAPPING-END}
     - {event: DOCUMENT-END, explicit: true}
   EVENT: |
-    - {event: DOCUMENT-START, pos: '1:0-3'}
-    - {event: MAPPING-START, pos: '2:0'}
-    - {event: SCALAR, value: doc1, style: Plain, pos: '2:0-4'}
-    - {event: SCALAR, value: value1, style: Plain, pos: '2:6-12'}
-    - {event: SCALAR, value: doc2, style: Plain, pos: '3:0-4'}
-    - {event: SCALAR, value: value2, style: Plain, pos: '3:6-12'}
-    - {event: MAPPING-END, pos: '4:0'}
-    - {event: DOCUMENT-END, pos: '4:0-3'}
+    - {event: DOCUMENT-START, pos: '1:1-4'}
+    - {event: MAPPING-START, pos: '2:1'}
+    - {event: SCALAR, value: doc1, style: Plain, pos: '2:1-5'}
+    - {event: SCALAR, value: value1, style: Plain, pos: '2:7-13'}
+    - {event: SCALAR, value: doc2, style: Plain, pos: '3:1-5'}
+    - {event: SCALAR, value: value2, style: Plain, pos: '3:7-13'}
+    - {event: MAPPING-END, pos: '4:1'}
+    - {event: DOCUMENT-END, pos: '4:1-4'}
 
 - name: Empty explicit documents
   text: |
@@ -184,12 +184,12 @@
     - {event: SCALAR}
     - {event: DOCUMENT-END}
   EVENT: |
-    - {event: DOCUMENT-START, pos: '1:0-3'}
-    - {event: SCALAR, style: Plain, pos: '2:0'}
-    - {event: DOCUMENT-END, implicit: true, pos: '2:0'}
-    - {event: DOCUMENT-START, pos: '2:0-3'}
-    - {event: SCALAR, style: Plain, pos: '3:0'}
-    - {event: DOCUMENT-END, implicit: true, pos: '3:0'}
+    - {event: DOCUMENT-START, pos: '1:1-4'}
+    - {event: SCALAR, style: Plain, pos: '2:1'}
+    - {event: DOCUMENT-END, implicit: true, pos: '2:1'}
+    - {event: DOCUMENT-START, pos: '2:1-4'}
+    - {event: SCALAR, style: Plain, pos: '3:1'}
+    - {event: DOCUMENT-END, implicit: true, pos: '3:1'}
 
 - name: Implicit sequence document
   text: |
@@ -203,12 +203,12 @@
     - {event: SEQUENCE-END}
     - {event: DOCUMENT-END}
   EVENT: |
-    - {event: DOCUMENT-START, implicit: true, pos: '1:0'}
-    - {event: SEQUENCE-START, pos: '1:0'}
-    - {event: SCALAR, value: item1, style: Plain, pos: '1:2-7'}
-    - {event: SCALAR, value: item2, style: Plain, pos: '2:2-7'}
-    - {event: SEQUENCE-END, pos: '3:0'}
-    - {event: DOCUMENT-END, implicit: true, pos: '3:0'}
+    - {event: DOCUMENT-START, implicit: true, pos: '1:1'}
+    - {event: SEQUENCE-START, pos: '1:1'}
+    - {event: SCALAR, value: item1, style: Plain, pos: '1:3-8'}
+    - {event: SCALAR, value: item2, style: Plain, pos: '2:3-8'}
+    - {event: SEQUENCE-END, pos: '3:1'}
+    - {event: DOCUMENT-END, implicit: true, pos: '3:1'}
 
 - name: Explicit sequence document
   text: |
@@ -223,12 +223,12 @@
     - {event: SEQUENCE-END}
     - {event: DOCUMENT-END}
   EVENT: |
-    - {event: DOCUMENT-START, pos: '1:0-3'}
-    - {event: SEQUENCE-START, pos: '2:0'}
-    - {event: SCALAR, value: item1, style: Plain, pos: '2:2-7'}
-    - {event: SCALAR, value: item2, style: Plain, pos: '3:2-7'}
-    - {event: SEQUENCE-END, pos: '4:0'}
-    - {event: DOCUMENT-END, implicit: true, pos: '4:0'}
+    - {event: DOCUMENT-START, pos: '1:1-4'}
+    - {event: SEQUENCE-START, pos: '2:1'}
+    - {event: SCALAR, value: item1, style: Plain, pos: '2:3-8'}
+    - {event: SCALAR, value: item2, style: Plain, pos: '3:3-8'}
+    - {event: SEQUENCE-END, pos: '4:1'}
+    - {event: DOCUMENT-END, implicit: true, pos: '4:1'}
 
 - name: All explicit markers
   text: |
@@ -246,9 +246,9 @@
     - {event: SCALAR, value: second}
     - {event: DOCUMENT-END, explicit: true}
   EVENT: |
-    - {event: DOCUMENT-START, pos: '1:0-3'}
-    - {event: SCALAR, value: first, style: Plain, pos: '2:0-5'}
-    - {event: DOCUMENT-END, pos: '3:0-3'}
-    - {event: DOCUMENT-START, pos: '4:0-3'}
-    - {event: SCALAR, value: second, style: Plain, pos: '5:0-6'}
-    - {event: DOCUMENT-END, pos: '6:0-3'}
+    - {event: DOCUMENT-START, pos: '1:1-4'}
+    - {event: SCALAR, value: first, style: Plain, pos: '2:1-6'}
+    - {event: DOCUMENT-END, pos: '3:1-4'}
+    - {event: DOCUMENT-START, pos: '4:1-4'}
+    - {event: SCALAR, value: second, style: Plain, pos: '5:1-7'}
+    - {event: DOCUMENT-END, pos: '6:1-4'}
