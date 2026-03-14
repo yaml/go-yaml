@@ -13,6 +13,7 @@ The current implementations are:
 | `yaml-parser` | `go-yaml` | core | yes |
 | `yaml-parser` | `reference` | `plugin/yamlparser/reference` | no |
 | `json-comments` | `sanitizer` | `plugin/jsoncomments` | yes |
+| `errfmt` | `errfmt` | `plugin/errfmt/v3` and `plugin/errfmt/v4` | yes |
 | `loader-limits` | `loader-limits` | `plugin/loaderlimits` | yes |
 | `tab-indent` | `tab-indent` | `plugin/tabindent` | yes |
 
@@ -43,6 +44,11 @@ err := yaml.Load(input, &value,
 The public plugin interfaces are:
 
 ```go
+type ErrorFmtPlugin interface {
+    FormatLoadError(err *LoadError) string
+    FormatDumpError(err *DumpError) string
+}
+
 type ParserPlugin interface {
     Parse(input []byte) ([]PluginEvent, error)
 }
@@ -75,6 +81,51 @@ an external parser.
 
 Input is buffered when a YAML-parser or JSON-comments plugin is active.
 Plugin implementations must support independent concurrent calls.
+
+## Error formatting
+
+See [Errfmt v3](plugin/errfmt-v3.md) and
+[Errfmt v4](plugin/errfmt-v4.md) for the formatter guides.
+
+## Default Behavior
+
+Bare `yaml.Load`, `yaml.Dump`, `yaml.NewLoader`, and `yaml.NewDumper` use
+v4 defaults:
+
+- default safety limits equivalent to `loaderlimits.New()`
+- v4 error formatting equivalent to `errfmtv4.Must()`
+
+Version presets select error formatting as follows:
+
+| Preset | Error Formatter |
+|---|---|
+| `yaml.WithV2Defaults()` | v4 formatter |
+| `yaml.WithV3Defaults()` | v3 formatter |
+| `yaml.WithV4Defaults()` | v4 formatter |
+
+## YAML Configuration
+
+Plugins can be configured from YAML strings using `yaml.OptsYAML`:
+
+```yaml
+plugin:
+  loader-limits:
+    depth: 50
+    alias: 1000
+  errfmt:
+    v4:
+      position: long
+```
+
+```go
+opts, err := yaml.OptsYAML(configYAML)
+if err != nil {
+    return err
+}
+err = yaml.Load(data, &out, opts)
+```
+
+See the plugin-specific guides for supported configuration keys.
 
 ## Loader-limits plugin
 

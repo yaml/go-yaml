@@ -42,6 +42,10 @@ type Options struct {
 	// IndentConfig enables tab-aware structural indentation.
 	IndentConfig *IndentConfig
 
+	// Error formatting (set by WithPlugin(errfmtv3.New() or errfmtv4.New(...)))
+	FormatLoadError func(*LoadError) string
+	FormatDumpError func(*DumpError) string
+
 	// Loader limit checks (set by ApplyOptions or a loader-limits plugin).
 	DepthCheck func(depth int, ctx *DepthContext) error
 	AliasCheck func(aliasCount, constructCount int) error

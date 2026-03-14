@@ -147,3 +147,20 @@ func TestSerializer(t *testing.T) {
 		},
 	})
 }
+
+func TestSerializer_EmitterErrorUsesDumpFormatter(t *testing.T) {
+	opts := *DefaultOptions
+	opts.FormatDumpError = func(err *DumpError) string {
+		return "formatted " + string(err.Stage) + ": " + err.Message
+	}
+
+	var got error
+	func() {
+		defer handleErr(&got)
+		var buf bytes.Buffer
+		s := NewSerializer(&buf, &opts)
+		s.must(EmitterError{Message: "expected STREAM-START"})
+	}()
+
+	assert.ErrorMatches(t, "formatted emitter: expected STREAM-START", got)
+}

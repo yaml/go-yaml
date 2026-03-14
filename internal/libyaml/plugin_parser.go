@@ -183,6 +183,7 @@ func (e *EventReader) initialize() {
 		e.reader = nil
 		if e.opts != nil {
 			e.parser.depthCheck = e.opts.DepthCheck
+			e.parser.formatError = e.opts.FormatLoadError
 			e.parser.indentConfig = e.opts.IndentConfig
 		}
 		return
@@ -191,13 +192,13 @@ func (e *EventReader) initialize() {
 	input, err := io.ReadAll(e.reader)
 	e.reader = nil
 	if err != nil {
-		e.err = NewLoadError(ReaderStage, err.Error(), Mark{}, err)
+		e.err = formatLoadError(NewLoadError(ReaderStage, err.Error(), Mark{}, err), e.opts.FormatLoadError)
 		return
 	}
 	if e.opts.JSONComments != nil {
 		input, err = e.opts.JSONComments.Sanitize(input)
 		if err != nil {
-			e.err = NewLoadError(ReaderStage, err.Error(), Mark{}, err)
+			e.err = formatLoadError(NewLoadError(ReaderStage, err.Error(), Mark{}, err), e.opts.FormatLoadError)
 			return
 		}
 	}
@@ -208,13 +209,14 @@ func (e *EventReader) initialize() {
 			err = validatePluginEvents(e.events, e.opts.DepthCheck)
 		}
 		if err != nil {
-			e.err = NewLoadError(ParserStage, err.Error(), Mark{}, err)
+			e.err = formatLoadError(NewLoadError(ParserStage, err.Error(), Mark{}, err), e.opts.FormatLoadError)
 		}
 		return
 	}
 	e.parser = NewParser()
 	e.parser.SetInputString(input)
 	e.parser.depthCheck = e.opts.DepthCheck
+	e.parser.formatError = e.opts.FormatLoadError
 	e.parser.indentConfig = e.opts.IndentConfig
 }
 
