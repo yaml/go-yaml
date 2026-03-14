@@ -90,7 +90,7 @@ func (d *Desolver) desolveScalar(n *Node) {
 	}
 
 	// What tag would this value resolve to?
-	rtag, _ := resolve("", n.Value)
+	rtag, _ := resolve("", n.Value, nil)
 
 	// If resolved tag matches current tag, we can elide the tag
 	if rtag == stag {

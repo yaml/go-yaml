@@ -54,6 +54,7 @@ type Constructor struct {
 	aliasCount     int
 	aliasDepth     int
 	aliasCheck     func(aliasCount, constructCount int) error
+	formatError    func(*LoadError) string
 
 	mergedFields map[any]bool
 }
@@ -68,6 +69,7 @@ func NewConstructor(opts *Options) *Constructor {
 		UniqueKeys:     opts.UniqueKeys,
 		aliases:        make(map[*Node]bool),
 		aliasCheck:     opts.AliasCheck,
+		formatError:    opts.FormatLoadError,
 	}
 }
 
@@ -85,7 +87,7 @@ func (c *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
 	}
 	if c.aliasCheck != nil {
 		if err := c.aliasCheck(c.aliasCount, c.constructCount); err != nil {
-			Fail(formatConstructorError(err, Mark{Line: n.Line, Column: n.Column}))
+			Fail(c.formatConstructorError(err, Mark{Line: n.Line, Column: n.Column}))
 		}
 	}
 	if out.Type() == nodeType {
@@ -114,8 +116,7 @@ func (c *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
 	// encoding/json/v2.
 	if n.Kind != ScalarNode && isTextUnmarshaler(out) {
 		err := fmt.Errorf("cannot construct %s into %s (TextUnmarshaler)", shortTag(n.Tag), out.Type())
-		c.TypeErrors = append(c.TypeErrors,
-			formatConstructorError(err, Mark{Line: n.Line, Column: n.Column}))
+		c.TypeErrors = append(c.TypeErrors, c.formatConstructorError(err, Mark{Line: n.Line, Column: n.Column}))
 		return false
 	}
 
@@ -132,7 +133,7 @@ func (c *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
 		}
 		fallthrough
 	default:
-		Fail(formatConstructorError(
+		Fail(c.formatConstructorError(
 			fmt.Errorf("cannot construct node with unknown kind: '%d'", n.Kind),
 			Mark{Line: n.Line, Column: n.Column},
 		))
@@ -452,10 +453,12 @@ func (c *Constructor) document(n *Node, out reflect.Value) (good bool) {
 func (c *Constructor) alias(n *Node, out reflect.Value) (good bool) {
 	if c.aliases[n] {
 		// TODO this could actually be allowed in some circumstances.
-		Fail(formatComposerError(
-			fmt.Sprintf("anchor '%s' value contains itself", n.Value),
-			Mark{Line: n.Line, Column: n.Column},
-		))
+		Fail(&LoadError{
+			Stage:     ComposerStage,
+			Mark:      Mark{Line: n.Line, Column: n.Column},
+			Message:   fmt.Sprintf("anchor '%s' value contains itself", n.Value),
+			formatter: c.formatError,
+		})
 	}
 	c.aliases[n] = true
 	c.aliasDepth++
@@ -476,11 +479,11 @@ func (c *Constructor) scalar(n *Node, out reflect.Value) bool {
 		tag = strTag
 		resolved = n.Value
 	} else {
-		tag, resolved = resolve(n.Tag, n.Value)
+		tag, resolved = resolve(n.Tag, n.Value, c.formatError)
 		if tag == binaryTag {
 			data, err := base64.StdEncoding.DecodeString(resolved.(string))
 			if err != nil {
-				Fail(formatConstructorError(
+				Fail(c.formatConstructorError(
 					fmt.Errorf("!!binary value contains invalid base64 data"),
 					Mark{Line: n.Line, Column: n.Column},
 				))
@@ -512,7 +515,7 @@ func (c *Constructor) scalar(n *Node, out reflect.Value) bool {
 			}
 			err := u.UnmarshalText(text)
 			if err != nil {
-				c.TypeErrors = append(c.TypeErrors, formatConstructorError(err, Mark{Line: n.Line, Column: n.Column}))
+				c.TypeErrors = append(c.TypeErrors, c.formatConstructorError(err, Mark{Line: n.Line, Column: n.Column}))
 				return false
 			}
 			return true
@@ -553,7 +556,7 @@ func (c *Constructor) sequence(n *Node, out reflect.Value) (good bool) {
 		out.Set(reflect.MakeSlice(out.Type(), l, l))
 	case reflect.Array:
 		if l != out.Len() {
-			Fail(formatConstructorError(
+			Fail(c.formatConstructorError(
 				fmt.Errorf("invalid array: want %d elements but got %d", out.Len(), l),
 				Mark{Line: n.Line, Column: n.Column},
 			))
@@ -597,7 +600,7 @@ func (c *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 			for j := i + 2; j < l; j += 2 {
 				nj := n.Content[j]
 				if ni.Kind == nj.Kind && ni.Value == nj.Value {
-					c.TypeErrors = append(c.TypeErrors, formatConstructorError(
+					c.TypeErrors = append(c.TypeErrors, c.formatConstructorError(
 						fmt.Errorf("mapping key %#v already defined at line %d", nj.Value, ni.Line),
 						Mark{Line: nj.Line, Column: nj.Column},
 					))
@@ -669,7 +672,7 @@ func (c *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 				kkind = k.Elem().Kind()
 			}
 			if kkind == reflect.Map || kkind == reflect.Slice {
-				Fail(formatConstructorError(
+				Fail(c.formatConstructorError(
 					fmt.Errorf("cannot use '%#v' as a map key; try decoding into yaml.Node", k.Interface()),
 					Mark{Line: n.Content[i].Line, Column: n.Content[i].Column},
 				))
@@ -743,7 +746,7 @@ func (c *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
 		if info, ok := sinfo.FieldsMap[sname]; ok {
 			if c.UniqueKeys {
 				if doneFields[info.Id] {
-					c.TypeErrors = append(c.TypeErrors, formatConstructorError(
+					c.TypeErrors = append(c.TypeErrors, c.formatConstructorError(
 						fmt.Errorf("field %s already set in type %s", name.String(), out.Type()),
 						Mark{Line: ni.Line, Column: ni.Column},
 					))
@@ -766,7 +769,7 @@ func (c *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
 			c.Construct(n.Content[i+1], value)
 			inlineMap.SetMapIndex(name, value)
 		} else if c.KnownFields {
-			c.TypeErrors = append(c.TypeErrors, formatConstructorError(
+			c.TypeErrors = append(c.TypeErrors, c.formatConstructorError(
 				fmt.Errorf("field %s not found in type %s", name.String(), out.Type()),
 				Mark{Line: ni.Line, Column: ni.Column},
 			))
@@ -847,10 +850,7 @@ func isMerge(n *Node) bool {
 
 // failWantMap panics with an error message for invalid merge key values.
 func failWantMap(n *Node) {
-	Fail(formatConstructorError(
-		fmt.Errorf("map merge requires map or sequence of maps as the value"),
-		Mark{Line: n.Line, Column: n.Column},
-	))
+	failf("line %d: map merge requires map or sequence of maps as the value", n.Line)
 }
 
 // --------------------------------------------------------------------------
@@ -983,7 +983,7 @@ func (c *Constructor) tryCallYAMLConstructor(n *Node, out reflect.Value) (called
 		c.TypeErrors = append(c.TypeErrors, e.Errors...)
 		return true, false
 	default:
-		c.TypeErrors = append(c.TypeErrors, formatConstructorError(
+		c.TypeErrors = append(c.TypeErrors, c.formatConstructorError(
 			err.(error),
 			Mark{Line: n.Line, Column: n.Column},
 		))
@@ -1002,7 +1002,7 @@ func (c *Constructor) callConstructor(n *Node, u constructor) (good bool) {
 		c.TypeErrors = append(c.TypeErrors, e.Errors...)
 		return false
 	default:
-		c.TypeErrors = append(c.TypeErrors, formatConstructorError(
+		c.TypeErrors = append(c.TypeErrors, c.formatConstructorError(
 			err,
 			Mark{Line: n.Line, Column: n.Column},
 		))
@@ -1031,7 +1031,7 @@ func (c *Constructor) callLegacyConstructor(n *Node, u legacyConstructor) (good 
 		c.TypeErrors = append(c.TypeErrors, e.Errors...)
 		return false
 	default:
-		c.TypeErrors = append(c.TypeErrors, formatConstructorError(
+		c.TypeErrors = append(c.TypeErrors, c.formatConstructorError(
 			err,
 			Mark{Line: n.Line, Column: n.Column},
 		))
@@ -1053,7 +1053,7 @@ func (c *Constructor) tagError(n *Node, tag string, out reflect.Value) {
 			value = " `" + value + "`"
 		}
 	}
-	c.TypeErrors = append(c.TypeErrors, formatConstructorError(
+	c.TypeErrors = append(c.TypeErrors, c.formatConstructorError(
 		fmt.Errorf("cannot construct %s%s into %s", shortTag(tag), value, out.Type()),
 		Mark{Line: n.Line, Column: n.Column},
 	))
@@ -1105,7 +1105,7 @@ func settableValueOf(i any) reflect.Value {
 func (c *Constructor) setPossiblyUnhashableKey(m map[any]bool, key any, value bool, n *Node) {
 	defer func() {
 		if err := recover(); err != nil {
-			Fail(formatConstructorError(
+			Fail(c.formatConstructorError(
 				fmt.Errorf("%v", err),
 				Mark{Line: n.Line, Column: n.Column},
 			))
@@ -1119,7 +1119,7 @@ func (c *Constructor) setPossiblyUnhashableKey(m map[any]bool, key any, value bo
 func (c *Constructor) getPossiblyUnhashableKey(m map[any]bool, key any, n *Node) bool {
 	defer func() {
 		if err := recover(); err != nil {
-			Fail(formatConstructorError(
+			Fail(c.formatConstructorError(
 				fmt.Errorf("%v", err),
 				Mark{Line: n.Line, Column: n.Column},
 			))
@@ -1129,18 +1129,19 @@ func (c *Constructor) getPossiblyUnhashableKey(m map[any]bool, key any, n *Node)
 }
 
 // formatConstructorError creates a LoadError for constructor-stage errors.
-func formatConstructorError(err error, mark Mark) *LoadError {
+func (c *Constructor) formatConstructorError(err error, mark Mark) *LoadError {
 	return &LoadError{
-		Stage:   ConstructorStage,
-		Mark:    mark,
-		Message: err.Error(),
-		err:     err,
+		Stage:     ConstructorStage,
+		Mark:      mark,
+		Message:   err.Error(),
+		err:       err,
+		formatter: c.formatError,
 	}
 }
 
 // formatConstructorErrorContext creates a LoadError with both context and
 // problem information for constructor-stage errors.
-func formatConstructorErrorContext(context string, contextMark Mark, err error, mark Mark) *LoadError {
+func (c *Constructor) formatConstructorErrorContext(context string, contextMark Mark, err error, mark Mark) *LoadError {
 	return &LoadError{
 		Stage:       ConstructorStage,
 		ContextMark: contextMark,
@@ -1148,5 +1149,6 @@ func formatConstructorErrorContext(context string, contextMark Mark, err error, 
 		Mark:        mark,
 		Message:     err.Error(),
 		err:         err,
+		formatter:   c.formatError,
 	}
 }

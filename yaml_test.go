@@ -36,6 +36,34 @@ var negativeZero = math.Copysign(0.0, -1.0)
 
 var unmarshalIntTest = 123
 
+func assertLoadErrorEqual(t *testing.T, want, got *libyaml.LoadError) {
+	t.Helper()
+	assert.Equal(t, want.Stage, got.Stage)
+	assert.Equal(t, want.Message, got.Message)
+	assert.DeepEqual(t, want.Mark, got.Mark)
+	assert.DeepEqual(t, want.ContextMark, got.ContextMark)
+	assert.Equal(t, want.ContextMsg, got.ContextMsg)
+	if want.Unwrap() == nil {
+		if got.Unwrap() != nil {
+			t.Fatalf("got unwrap %v; want nil", got.Unwrap())
+		}
+		return
+	}
+	assert.ErrorIs(t, got, want.Unwrap())
+}
+
+func assertLoadErrorsEqual(t *testing.T, want *yaml.LoadErrors, gotErr error) {
+	t.Helper()
+	got, ok := gotErr.(*yaml.LoadErrors)
+	if !ok {
+		t.Fatalf("got %T; want *yaml.LoadErrors", gotErr)
+	}
+	assert.Equal(t, len(want.Errors), len(got.Errors))
+	for i := range want.Errors {
+		assertLoadErrorEqual(t, want.Errors[i], got.Errors[i])
+	}
+}
+
 // archSafeInt returns v as int if it fits in the architecture's int type,
 // otherwise returns int64.
 func archSafeInt(v int64) any {
@@ -957,7 +985,7 @@ func TestParserErrorUnmarshal(t *testing.T) {
 		},
 		Message: "could not find expected ':'",
 	}
-	assert.DeepEqual(t, expectedErr, asErr)
+	assertLoadErrorEqual(t, expectedErr, asErr)
 }
 
 func TestParserErrorDecoder(t *testing.T) {
@@ -975,7 +1003,7 @@ func TestParserErrorDecoder(t *testing.T) {
 		},
 		Message: "block sequence entries are not allowed in this context",
 	}
-	assert.DeepEqual(t, expectedErr, asErr)
+	assertLoadErrorEqual(t, expectedErr, asErr)
 }
 
 var unmarshalerTests = []struct {
@@ -1341,7 +1369,7 @@ func TestUnmarshalerError(t *testing.T) {
 			yaml.NewLoadError(yaml.ConstructorStage, errFailing.Error(), yaml.Mark{Line: 1, Column: 17}, errFailing),
 		},
 	}
-	assert.DeepEqual(t, expectedErr, err)
+	assertLoadErrorsEqual(t, expectedErr, err)
 	// whatever could be unmarshaled must be unmarshaled
 	assert.Equal(t, 123, dst.Foo)
 	assert.DeepEqual(t, &failingUnmarshaler{}, dst.Bar)
@@ -1367,7 +1395,7 @@ func TestLegacyUnmarshalerError(t *testing.T) {
 			yaml.NewLoadError(yaml.ConstructorStage, errFailing.Error(), yaml.Mark{Line: 1, Column: 17}, errFailing),
 		},
 	}
-	assert.DeepEqual(t, expectedErr, err)
+	assertLoadErrorsEqual(t, expectedErr, err)
 	// whatever could be unmarshaled must be unmarshaled
 	assert.Equal(t, 123, dst.Foo)
 	assert.DeepEqual(t, &legacyFailingUnmarshaler{}, dst.Bar)
@@ -1395,7 +1423,7 @@ func TestTextUnmarshalerError(t *testing.T) {
 			yaml.NewLoadError(yaml.ConstructorStage, errFailing.Error(), yaml.Mark{Line: 1, Column: 17}, errFailing),
 		},
 	}
-	assert.DeepEqual(t, expectedErr, err)
+	assertLoadErrorsEqual(t, expectedErr, err)
 	// whatever could be unmarshaled must be unmarshaled
 	assert.Equal(t, 123, dst.Foo)
 	assert.DeepEqual(t, &failingTextUnmarshaler{}, dst.Bar)
@@ -1977,7 +2005,7 @@ func TestParserErrorUnknownAnchorPosition(t *testing.T) {
 				Column: test.column,
 			},
 		}
-		assert.DeepEqual(t, expected, asErr)
+		assertLoadErrorEqual(t, expected, asErr)
 	}
 }
 
@@ -2501,7 +2529,7 @@ func TestEncoderMultipleDocuments(t *testing.T) {
 func TestEncoderWriteError(t *testing.T) {
 	enc := yaml.NewEncoder(errorWriter{})
 	err := enc.Encode(map[string]string{"a": "b"})
-	assert.ErrorMatches(t, `go-yaml dump error in writer: some write error`, err)
+	assert.ErrorMatches(t, `yaml: some write error`, err)
 	var dumpErr *yaml.DumpError
 	assert.True(t, errors.As(err, &dumpErr))
 	assert.Equal(t, yaml.WriterStage, dumpErr.Stage)
@@ -2523,14 +2551,14 @@ var marshalErrorTests = []struct {
 		inlineB `yaml:",inline"`
 	}{1, inlineB{2, inlineC{3}}},
 	//nolint:dupword // struct is duplicated here as the first one is the struct and the second is the name of the inline struct
-	error: `go-yaml dump error in representer: duplicated key 'b' in struct struct \{ B int; .*`,
+	error: `yaml: duplicated key 'b' in struct struct \{ B int; .*`,
 	stage: yaml.RepresenterStage,
 }, {
 	value: &struct {
 		A int
 		B map[string]int `yaml:",inline"`
 	}{1, map[string]int{"a": 2}},
-	error: `go-yaml dump error in representer: cannot have key "a" in inlined map: conflicts with struct field`,
+	error: `yaml: cannot have key "a" in inlined map: conflicts with struct field`,
 	stage: yaml.RepresenterStage,
 }}
 
