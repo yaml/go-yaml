@@ -24,6 +24,8 @@ import (
 	"io"
 
 	"go.yaml.in/yaml/v4/internal/libyaml"
+	errfmtv3 "go.yaml.in/yaml/v4/plugin/errfmt/v3"
+	errfmtv4 "go.yaml.in/yaml/v4/plugin/errfmt/v4"
 	"go.yaml.in/yaml/v4/plugin/limit"
 )
 
@@ -44,7 +46,7 @@ func WithV2Defaults() Option {
 		WithUnicode(true),
 		WithUniqueKeys(true),
 		WithQuotePreference(QuoteLegacy),
-		WithPlugin(limit.New()),
+		WithPlugin(limit.New(), errfmtv4.Must()),
 	)
 }
 
@@ -57,7 +59,7 @@ func WithV3Defaults() Option {
 		WithUnicode(true),
 		WithUniqueKeys(true),
 		WithQuotePreference(QuoteLegacy),
-		WithPlugin(limit.New()),
+		WithPlugin(limit.New(), errfmtv3.New()),
 	)
 }
 
@@ -70,7 +72,7 @@ func WithV4Defaults() Option {
 		WithUnicode(true),
 		WithUniqueKeys(true),
 		WithQuotePreference(QuoteSingle),
-		WithPlugin(limit.New()),
+		WithPlugin(limit.New(), errfmtv4.Must()),
 	)
 }
 
@@ -277,6 +279,7 @@ type DepthContext = libyaml.DepthContext
 // Each plugin implements one or more plugin interfaces.
 // Currently supported plugin types:
 //   - LimitPlugin: Controls depth and alias expansion limits
+//   - ErrorFmtPlugin: Customizes load and dump error message formatting
 //
 // Example:
 //
@@ -293,7 +296,11 @@ func WithPlugin(plugins ...any) Option {
 				o.AliasCheck = lp.CheckAlias
 				registered = true
 			}
-			// Future plugin types add cases here (non-exclusive if)
+			if ep, ok := p.(ErrorFmtPlugin); ok {
+				o.FormatLoadError = ep.FormatLoadError
+				o.FormatDumpError = ep.FormatDumpError
+				registered = true
+			}
 			if !registered {
 				return fmt.Errorf("yaml: unsupported plugin type: %T", p)
 			}
@@ -322,8 +329,9 @@ func WithPlugin(plugins ...any) Option {
 //
 // The plugin field configures plugins by name. Each key is a plugin
 // name and the value is its configuration map (or null for defaults).
-// Currently supported: "limit" with keys "depth" and "alias" (int
-// or null to disable).
+// Currently supported:
+// - "limit" with keys "depth" and "alias" (int or null to disable)
+// - "errfmt" with a "v3" or "v4" formatter config
 //
 // Only fields specified in the YAML will override other options when
 // combined. Unspecified fields won't affect other options.
@@ -336,6 +344,9 @@ func WithPlugin(plugins ...any) Option {
 //	  plugin:
 //	    limit:
 //	      depth: 50
+//	    errfmt:
+//	      v4:
+//	        position: long
 //	`)
 //	yaml.Dump(&data, yaml.Options(V4, opts))
 func OptsYAML(yamlStr string) (Option, error) {
@@ -423,12 +434,62 @@ func OptsYAML(yamlStr string) (Option, error) {
 				return nil, err
 			}
 			optList = append(optList, WithPlugin(p))
+		case "errfmt":
+			var cfgMap map[string]any
+			switch v := val.(type) {
+			case nil:
+				cfgMap = map[string]any{}
+			case map[string]any:
+				cfgMap = v
+			default:
+				return nil, fmt.Errorf("yaml: plugin %q value must be a mapping or null", name)
+			}
+			p, err := newErrfmtPluginFromYAML(cfgMap)
+			if err != nil {
+				return nil, err
+			}
+			optList = append(optList, WithPlugin(p))
 		default:
 			return nil, fmt.Errorf("yaml: unknown plugin %q", name)
 		}
 	}
 
 	return Options(optList...), nil
+}
+
+func newErrfmtPluginFromYAML(cfg map[string]any) (any, error) {
+	if len(cfg) == 0 {
+		return errfmtv4.New()
+	}
+	var selected string
+	var selectedConfig map[string]any
+	for key, val := range cfg {
+		switch key {
+		case "v3", "v4":
+			if selected != "" {
+				return nil, errors.New("yaml: plugin \"errfmt\" must select only one of v3 or v4")
+			}
+			selected = key
+			switch v := val.(type) {
+			case nil:
+				selectedConfig = map[string]any{}
+			case map[string]any:
+				selectedConfig = v
+			default:
+				return nil, fmt.Errorf("yaml: plugin \"errfmt.%s\" value must be a mapping or null", key)
+			}
+		default:
+			return nil, fmt.Errorf("yaml: plugin \"errfmt\" unknown formatter %q", key)
+		}
+	}
+	switch selected {
+	case "v3":
+		return errfmtv3.NewFromYAML(selectedConfig)
+	case "v4":
+		return errfmtv4.NewFromYAML(selectedConfig)
+	default:
+		return errfmtv4.New()
+	}
 }
 
 //-----------------------------------------------------------------------------
