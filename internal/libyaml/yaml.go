@@ -126,13 +126,13 @@ func (m Mark) String() string {
 // shortString returns a compact position string.
 // Returns "<unknown position>" when Line is 0 (position not known).
 // When Column is 0 (unknown), it is omitted from output ("L{line}");
-// otherwise it is displayed as "L{line},C{col}".
+// otherwise it is displayed as "L{line}.C{col}".
 func (m Mark) shortString() string {
 	if m.Line == 0 {
 		return "<unknown position>"
 	}
 	if m.Column > 0 {
-		return fmt.Sprintf("L%d,C%d", m.Line, m.Column)
+		return fmt.Sprintf("L%d.C%d", m.Line, m.Column)
 	}
 	return fmt.Sprintf("L%d", m.Line)
 }
@@ -141,10 +141,10 @@ func (m Mark) shortString() string {
 // Both marks use shortString for their individual display.
 // When marks are on the same line:
 //   - Both Column==0: just "L2" (unknown columns, no range shown)
-//   - Both Column>0: "L2,C6-C7" (compact column range)
-//   - Mixed columns: "L1,C4-L1" (full start with line-only end)
+//   - Both Column>0: "L2.C6-C7" (compact column range)
+//   - Mixed columns: "L1.C4-L1" (full start with line-only end)
 //
-// When marks are on different lines: "L1,C8-L2,C3"
+// When marks are on different lines: "L1.C8-L2.C3"
 func (m Mark) rangeString(end Mark) string {
 	start := m.shortString()
 	if m.Line == end.Line {
@@ -154,10 +154,10 @@ func (m Mark) rangeString(end Mark) string {
 		}
 		if m.Column > 0 && end.Column > 0 {
 			if m.Column == end.Column {
-				// Same position: just "L2,C6"
+				// Same position: just "L2.C6"
 				return start
 			}
-			// Same line with columns: "L2,C6-C7"
+			// Same line with columns: "L2.C6-C7"
 			return fmt.Sprintf("%s-C%d", start, end.Column)
 		}
 	}
