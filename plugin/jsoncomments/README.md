@@ -46,7 +46,7 @@ Use `json-comments@v0.1.9` or
 For local development, use the checkout under
 `repos/yamlstar-plugin-json-comments` by setting `JSON-COMMENTS-LOCAL=1`.
 
-See the [plugin documentation](../../docs/plugins.md) for configuration and
+See the [plugin documentation](../../docs/plugin.md) for configuration and
 CLI build details.
 See the upstream [syntax rules] for recognized comment forms.
 

@@ -71,4 +71,4 @@
       &foo 42
       ---
       *foo
-    want: "go-yaml load error in composer at L4.C1: unknown anchor 'foo' referenced"
+    want: "yaml: line 4: unknown anchor 'foo' referenced"

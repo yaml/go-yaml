@@ -29,5 +29,5 @@ For local development, use the checkout under
 `repos/yamlstar-plugin-parser-reference` by setting
 `REFERENCE-PARSER-LOCAL=1`.
 
-See the [plugin documentation](../../../docs/plugins.md) for configuration and
+See the [plugin documentation](../../../docs/plugin.md) for configuration and
 CLI build details.
