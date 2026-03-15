@@ -234,24 +234,25 @@ func (s *Serializer) emit(event Event) {
 // must panics if the given error is non-nil, routing to the appropriate stage.
 func (s *Serializer) must(err error) {
 	if err != nil {
-		switch e := err.(type) {
-		case EmitterError:
-			failDumpf(EmitterStage, "%s", e.Message)
-		case WriterError:
+		var ee EmitterError
+		if errors.As(err, &ee) {
+			failDumpf(EmitterStage, "%s", ee.Message)
+		}
+		var we WriterError
+		if errors.As(err, &we) {
 			// Unwrap to get the original I/O error, stripping the
 			// "write error: " prefix that WriterError adds internally.
-			cause := e.Err
-			if unwrapped := errors.Unwrap(e.Err); unwrapped != nil {
+			cause := we.Err
+			if unwrapped := errors.Unwrap(we.Err); unwrapped != nil {
 				cause = unwrapped
 			}
 			failDump(WriterStage, cause)
-		default:
-			msg := err.Error()
-			if msg == "" {
-				msg = "unknown problem generating YAML content"
-			}
-			failDumpf(SerializerStage, "%s", msg)
 		}
+		msg := err.Error()
+		if msg == "" {
+			msg = "unknown problem generating YAML content"
+		}
+		failDumpf(SerializerStage, "%s", msg)
 	}
 }
 
