@@ -126,7 +126,13 @@ func NewDumpError(stage Stage, message string, cause error) *DumpError {
 }
 
 // failDump panics with a YAMLError wrapping a DumpError for the given stage.
+// If err is already a *DumpError it is passed through unchanged to avoid
+// double-wrapping (e.g. a user MarshalYAML that returns yaml.NewDumpError).
 func failDump(stage Stage, err error) {
+	var de *DumpError
+	if errors.As(err, &de) {
+		panic(&YAMLError{de})
+	}
 	panic(&YAMLError{&DumpError{Stage: stage, Message: err.Error(), err: err}})
 }
 

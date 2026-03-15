@@ -66,6 +66,7 @@ func runDumpErrorTest(t *testing.T, tc TestCase) {
 	assert.Truef(t, ok, "from should be map[string]any, got %T", tc.From)
 
 	err := buildDumpError(t, errorSpec)
+	assert.NotNilf(t, err, "buildDumpError should not return nil")
 	got := err.Error()
 	want, ok := tc.Want.(string)
 	assert.Truef(t, ok, "want should be string, got %T", tc.Want)
