@@ -113,19 +113,10 @@ func hasConstructYAMLMethod(t reflect.Type) bool {
 	return true
 }
 
-var yamlNodePkgs = []string{
-	"gopkg.in/yaml.v3",
-	"go.yaml.in/yaml/v3",
-	// v4 exposes yaml.Node as a type alias for libyaml.Node, so reflect
-	// reports the underlying package path, not the top-level module path.
-	"go.yaml.in/yaml/v4/internal/libyaml",
-}
-
 func isYAMLNodePkg(pkg string) bool {
-	for _, p := range yamlNodePkgs {
-		if pkg == p {
-			return true
-		}
+	switch pkg {
+	case "gopkg.in/yaml.v3", "go.yaml.in/yaml/v3":
+		return true
 	}
 	return false
 }
