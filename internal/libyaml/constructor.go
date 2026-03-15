@@ -950,16 +950,22 @@ func (c *Constructor) tryCallYAMLConstructor(n *Node, out reflect.Value) (called
 		return false, false
 	}
 
-	// Only accept *Node from allowlisted yaml packages whose Node type is
-	// known to have the same memory layout as libyaml.Node.
+	// Only accept *Node from allowlisted v3 yaml packages whose Node type
+	// is assumed to have a compatible memory layout with libyaml.Node.
 	// The unsafe pointer cast below is only safe for these packages.
 	if elemType.Name() != "Node" || !isYAMLNodePkg(elemType.PkgPath()) {
 		return false, false
 	}
 
+	// Return type must be error
+	retType := mtype.Out(0)
+	if retType.Kind() != reflect.Interface || retType.Name() != "error" {
+		return false, false
+	}
+
 	// Call the method with a converted node.
-	// Safe only because the allowlisted packages all use libyaml.Node
-	// (or a type alias for it) as their Node type.
+	// The allowlisted v3 packages define their own Node type that is
+	// assumed to have a compatible memory layout with libyaml.Node.
 	nodeValue := reflect.NewAt(elemType, reflect.ValueOf(n).UnsafePointer())
 
 	results := method.Call([]reflect.Value{nodeValue})
