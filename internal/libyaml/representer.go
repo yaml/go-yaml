@@ -9,7 +9,6 @@ package libyaml
 
 import (
 	"encoding"
-	"fmt"
 	"reflect"
 	"regexp"
 	"sort"
@@ -99,7 +98,7 @@ func (r *Representer) represent(tag string, in reflect.Value) *Node {
 	case Marshaler:
 		v, err := value.MarshalYAML()
 		if err != nil {
-			Fail(err)
+			failDump(RepresenterStage, err)
 		}
 		if v == nil {
 			return r.nilv()
@@ -108,7 +107,7 @@ func (r *Representer) represent(tag string, in reflect.Value) *Node {
 	case encoding.TextMarshaler:
 		text, err := value.MarshalText()
 		if err != nil {
-			Fail(err)
+			failDump(RepresenterStage, err)
 		}
 		in = reflect.ValueOf(string(text))
 	case nil:
@@ -136,7 +135,8 @@ func (r *Representer) represent(tag string, in reflect.Value) *Node {
 	case reflect.Bool:
 		return r.boolv(tag, in)
 	default:
-		panic("cannot represent type: " + in.Type().String())
+		failDumpf(RepresenterStage, "cannot represent type: %s", in.Type().String())
+		return nil // unreachable; failDumpf always panics
 	}
 }
 
@@ -172,7 +172,7 @@ func (r *Representer) mapv(tag string, in reflect.Value) *Node {
 func (r *Representer) structv(tag string, in reflect.Value) *Node {
 	sinfo, err := getStructInfo(in.Type())
 	if err != nil {
-		panic(err)
+		failDump(RepresenterStage, err)
 	}
 
 	if tag == "" {
@@ -210,7 +210,7 @@ func (r *Representer) structv(tag string, in reflect.Value) *Node {
 			sort.Sort(keys)
 			for _, k := range keys {
 				if _, found := sinfo.FieldsMap[k.String()]; found {
-					panic(fmt.Sprintf("cannot have key %q in inlined map: conflicts with struct field", k.String()))
+					failDumpf(RepresenterStage, "cannot have key %q in inlined map: conflicts with struct field", k.String())
 				}
 				content = append(content, r.represent("", k))
 				r.flow = false
@@ -262,10 +262,10 @@ func (r *Representer) stringv(tag string, in reflect.Value) *Node {
 	switch {
 	case !utf8.ValidString(s):
 		if tag == binaryTag {
-			failf("explicitly tagged !!binary data must be base64-encoded")
+			failDumpf(RepresenterStage, "explicitly tagged !!binary data must be base64-encoded")
 		}
 		if tag != "" {
-			failf("cannot represent invalid UTF-8 data as %s", shortTag(tag))
+			failDumpf(RepresenterStage, "cannot represent invalid UTF-8 data as %s", shortTag(tag))
 		}
 		// It can't be represented directly as YAML so use a binary tag
 		// and represent it as base64.

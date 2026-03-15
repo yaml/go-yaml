@@ -8,6 +8,7 @@
 package libyaml
 
 import (
+	"errors"
 	"io"
 	"strings"
 	"unicode/utf8"
@@ -192,10 +193,10 @@ func (s *Serializer) node(node *Node, tail string) {
 		if !utf8.ValidString(value) {
 			stag := shortTag(tag)
 			if stag == binaryTag {
-				failf("explicitly tagged !!binary data must be base64-encoded")
+				failDumpf(SerializerStage, "explicitly tagged !!binary data must be base64-encoded")
 			}
 			if stag != "" {
-				failf("cannot marshal invalid UTF-8 data as %s", stag)
+				failDumpf(SerializerStage, "cannot marshal invalid UTF-8 data as %s", stag)
 			}
 			// It can't be represented directly as YAML so use a binary tag
 			// and represent it as base64.
@@ -221,7 +222,7 @@ func (s *Serializer) node(node *Node, tail string) {
 
 		s.emitScalar(value, node.Anchor, tag, style, []byte(node.HeadComment), []byte(node.LineComment), []byte(node.FootComment), []byte(tail))
 	default:
-		failf("cannot represent node with unknown kind %d", node.Kind)
+		failDumpf(SerializerStage, "cannot represent node with unknown kind %d", node.Kind)
 	}
 }
 
@@ -230,14 +231,27 @@ func (s *Serializer) emit(event Event) {
 	s.must(s.Emitter.Emit(&event))
 }
 
-// must panics if the given error is non-nil.
+// must panics if the given error is non-nil, routing to the appropriate stage.
 func (s *Serializer) must(err error) {
 	if err != nil {
-		msg := err.Error()
-		if msg == "" {
-			msg = "unknown problem generating YAML content"
+		switch e := err.(type) {
+		case EmitterError:
+			failDumpf(EmitterStage, "%s", e.Message)
+		case WriterError:
+			// Unwrap to get the original I/O error, stripping the
+			// "write error: " prefix that WriterError adds internally.
+			cause := e.Err
+			if unwrapped := errors.Unwrap(e.Err); unwrapped != nil {
+				cause = unwrapped
+			}
+			failDump(WriterStage, cause)
+		default:
+			msg := err.Error()
+			if msg == "" {
+				msg = "unknown problem generating YAML content"
+			}
+			failDumpf(SerializerStage, "%s", msg)
 		}
-		failf("%s", msg)
 	}
 }
 

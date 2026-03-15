@@ -462,17 +462,25 @@ const (
 	EncodingUTF16BE = libyaml.UTF16BE_ENCODING
 )
 
-// Stage identifies the processing stage where an error occurred during YAML loading.
+// Stage identifies the processing stage where an error occurred during YAML
+// loading or dumping.
 type Stage = libyaml.Stage
 
 // Stage constants for YAML processing pipeline.
 const (
+	// Load stages
 	ReaderStage      = libyaml.ReaderStage      // Input reading and encoding
 	ScannerStage     = libyaml.ScannerStage     // Tokenization
 	ParserStage      = libyaml.ParserStage      // Event stream parsing
 	ComposerStage    = libyaml.ComposerStage    // Node tree construction
 	ResolverStage    = libyaml.ResolverStage    // Tag resolution
 	ConstructorStage = libyaml.ConstructorStage // Go value construction
+
+	// Dump stages
+	RepresenterStage = libyaml.RepresenterStage // Go value to Node tree
+	SerializerStage  = libyaml.SerializerStage  // Node tree to events
+	EmitterStage     = libyaml.EmitterStage     // Events to YAML bytes
+	WriterStage      = libyaml.WriterStage      // Output writing
 )
 
 // Mark represents a position in the YAML document.
@@ -491,6 +499,12 @@ type (
 	// It contains multiple *[LoadError] instances with details about each error.
 	LoadErrors = libyaml.LoadErrors
 
+	// DumpError represents an error that occurred while dumping a YAML document.
+	//
+	// It identifies the processing stage where the error occurred and provides
+	// an optional underlying cause via Unwrap.
+	DumpError = libyaml.DumpError
+
 	// TypeError is a legacy error type retained for compatibility.
 	//
 	// Deprecated: Use [LoadErrors] instead.
@@ -502,6 +516,10 @@ type (
 // NewLoadError creates a LoadError with an underlying cause error.
 // The cause is accessible via Unwrap for use with [errors.Is] and [errors.As].
 var NewLoadError = libyaml.NewLoadError
+
+// NewDumpError creates a DumpError with an underlying cause error.
+// The cause is accessible via Unwrap for use with [errors.Is] and [errors.As].
+var NewDumpError = libyaml.NewDumpError
 
 // LineBreak represents the line ending style for YAML output.
 type LineBreak = libyaml.LineBreak

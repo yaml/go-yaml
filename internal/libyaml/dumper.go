@@ -11,7 +11,6 @@ package libyaml
 
 import (
 	"bytes"
-	"errors"
 	"io"
 	"reflect"
 )
@@ -78,12 +77,10 @@ func Dump(in any, opts ...Option) (out []byte, err error) {
 		// Multi-document mode: in must be a slice
 		inVal := reflect.ValueOf(in)
 		if inVal.Kind() != reflect.Slice {
-			msg := "yaml: WithAllDocuments requires a slice input"
-			return nil, &LoadErrors{Errors: []*LoadError{{
-				Stage:   ConstructorStage,
-				Message: msg,
-				err:     errors.New(msg),
-			}}}
+			return nil, &DumpError{
+				Stage:   RepresenterStage,
+				Message: "WithAllDocuments requires a slice input",
+			}
 		}
 
 		// Dump each element as a separate document
@@ -139,7 +136,7 @@ func (d *Dumper) Close() (err error) {
 // This is used by the legacy Encoder.SetIndent() method.
 func (d *Dumper) SetIndent(spaces int) {
 	if spaces < 0 {
-		panic("yaml: cannot indent to a negative number of spaces")
+		failDumpf(SerializerStage, "cannot indent to a negative number of spaces")
 	}
 	// Set on serializer's emitter
 	d.serializer.Emitter.BestIndent = spaces

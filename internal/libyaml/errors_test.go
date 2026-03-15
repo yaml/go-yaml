@@ -16,6 +16,7 @@ import (
 func TestErrors(t *testing.T) {
 	RunTestCases(t, "errors.yaml", map[string]TestHandler{
 		"load-error":     runLoadErrorTest,
+		"dump-error":     runDumpErrorTest,
 		"emitter-error":  runEmitterYAMLErrorTest,
 		"writer-error":   runWriterYAMLErrorTest,
 		"load-errors":    runLoadErrorsTest,
@@ -56,6 +57,54 @@ func runLoadErrorTest(t *testing.T, tc TestCase) {
 			}
 		}
 	}
+}
+
+func runDumpErrorTest(t *testing.T, tc TestCase) {
+	t.Helper()
+
+	errorSpec, ok := tc.From.(map[string]any)
+	assert.Truef(t, ok, "from should be map[string]any, got %T", tc.From)
+
+	err := buildDumpError(t, errorSpec)
+	got := err.Error()
+	want, ok := tc.Want.(string)
+	assert.Truef(t, ok, "want should be string, got %T", tc.Want)
+
+	assert.Equalf(t, want, got, "error message mismatch")
+
+	// Verify Stage field if specified
+	if stageStr, ok := errorSpec["stage"].(string); ok {
+		assert.Equalf(t, Stage(stageStr), err.Stage, "Stage mismatch")
+	}
+
+	// Test Unwrap if specified
+	if tc.Also == "unwrap" {
+		unwrapped := err.Unwrap()
+		if err.err != nil {
+			assert.NotNilf(t, unwrapped, "Unwrap() should return non-nil when err is set")
+			assert.Equalf(t, err.err.Error(), unwrapped.Error(), "Unwrap() error message mismatch")
+		} else {
+			if unwrapped != nil {
+				t.Fatalf("Unwrap() should return nil when err is not set, got %v", unwrapped)
+			}
+		}
+	}
+}
+
+func buildDumpError(t *testing.T, spec map[string]any) *DumpError {
+	t.Helper()
+
+	err := &DumpError{
+		Stage:   Stage(getString(t, spec, "stage")),
+		Message: getString(t, spec, "message"),
+	}
+
+	// Add underlying error if specified
+	if errMsg, ok := spec["err"].(string); ok {
+		err.err = errors.New(errMsg)
+	}
+
+	return err
 }
 
 func runEmitterYAMLErrorTest(t *testing.T, tc TestCase) {

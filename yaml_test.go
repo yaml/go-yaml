@@ -2446,7 +2446,10 @@ func TestEncoderMultipleDocuments(t *testing.T) {
 func TestEncoderWriteError(t *testing.T) {
 	enc := yaml.NewEncoder(errorWriter{})
 	err := enc.Encode(map[string]string{"a": "b"})
-	assert.ErrorMatches(t, `yaml: write error: some write error`, err) // Data not flushed yet
+	assert.ErrorMatches(t, `go-yaml dump error in writer: some write error`, err)
+	var dumpErr *yaml.DumpError
+	assert.True(t, errors.As(err, &dumpErr))
+	assert.Equal(t, yaml.WriterStage, dumpErr.Stage)
 }
 
 type errorWriter struct{}
@@ -2458,31 +2461,32 @@ func (errorWriter) Write([]byte) (int, error) {
 var marshalErrorTests = []struct {
 	value any
 	error string
-	panic string
+	stage yaml.Stage
 }{{
 	value: &struct {
 		B       int
 		inlineB `yaml:",inline"`
 	}{1, inlineB{2, inlineC{3}}},
 	//nolint:dupword // struct is duplicated here as the first one is the struct and the second is the name of the inline struct
-	panic: `duplicated key 'b' in struct struct \{ B int; .*`,
+	error: `go-yaml dump error in representer: duplicated key 'b' in struct struct \{ B int; .*`,
+	stage: yaml.RepresenterStage,
 }, {
 	value: &struct {
 		A int
 		B map[string]int `yaml:",inline"`
 	}{1, map[string]int{"a": 2}},
-	panic: `cannot have key "a" in inlined map: conflicts with struct field`,
+	error: `go-yaml dump error in representer: cannot have key "a" in inlined map: conflicts with struct field`,
+	stage: yaml.RepresenterStage,
 }}
 
 func TestMarshalErrors(t *testing.T) {
 	for _, item := range marshalErrorTests {
-		t.Run(item.panic, func(t *testing.T) {
-			if item.panic != "" {
-				assert.PanicMatches(t, item.panic, func() { yaml.Marshal(item.value) })
-			} else {
-				_, err := yaml.Marshal(item.value)
-				assert.ErrorMatches(t, item.error, err)
-			}
+		t.Run(item.error, func(t *testing.T) {
+			_, err := yaml.Marshal(item.value)
+			assert.ErrorMatches(t, item.error, err)
+			var dumpErr *yaml.DumpError
+			assert.True(t, errors.As(err, &dumpErr))
+			assert.Equal(t, item.stage, dumpErr.Stage)
 		})
 	}
 }
@@ -2558,7 +2562,7 @@ func (ft *failingMarshaler) MarshalYAML() (any, error) {
 
 func TestMarshalerError(t *testing.T) {
 	_, err := yaml.Marshal(&failingMarshaler{})
-	assert.ErrorIs(t, errFailing, err)
+	assert.ErrorIs(t, err, errFailing)
 }
 
 func TestSetIndent(t *testing.T) {
