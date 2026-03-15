@@ -134,6 +134,47 @@
     want: 'go-yaml load error in constructor at <unknown position>: cannot construct value'
     also: unwrap
 
+# DumpError tests - dump stages
+
+- dump-error:
+    name: Representer stage error
+    from:
+      stage: representer
+      message: cannot represent type chan int
+    want: 'go-yaml dump error in representer: cannot represent type chan int'
+
+- dump-error:
+    name: Representer stage error with cause
+    from:
+      stage: representer
+      message: 'MarshalYAML failed: some error'
+      err: 'some error'
+    want: "go-yaml dump error in representer: MarshalYAML failed: some error"
+    also: unwrap
+
+- dump-error:
+    name: Serializer stage error
+    from:
+      stage: serializer
+      message: cannot represent node with unknown kind 99
+    want: 'go-yaml dump error in serializer: cannot represent node with unknown kind 99'
+
+- dump-error:
+    name: Emitter stage error
+    from:
+      stage: emitter
+      message: expected STREAM-START
+    want: 'go-yaml dump error in emitter: expected STREAM-START'
+
+- dump-error:
+    name: Writer stage error with cause
+    from:
+      stage: writer
+      message: write error
+      err: write error
+    want: 'go-yaml dump error in writer: write error'
+    also: unwrap
+
 # EmitterError tests (dump stack)
 
 - emitter-error:

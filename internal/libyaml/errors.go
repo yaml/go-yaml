@@ -12,16 +12,24 @@ import (
 	"strings"
 )
 
-// Stage identifies the processing stage where an error occurred during YAML loading.
+// Stage identifies the processing stage where an error occurred during YAML
+// loading or dumping.
 type Stage string
 
 const (
+	// Load stages
 	ReaderStage      Stage = "reader"      // Input reading and encoding
 	ScannerStage     Stage = "scanner"     // Tokenization
 	ParserStage      Stage = "parser"      // Event stream parsing
 	ComposerStage    Stage = "composer"    // Node tree construction
 	ResolverStage    Stage = "resolver"    // Tag resolution
 	ConstructorStage Stage = "constructor" // Go value construction
+
+	// Dump stages
+	RepresenterStage Stage = "representer" // Go value to Node tree
+	SerializerStage  Stage = "serializer"  // Node tree to events
+	EmitterStage     Stage = "emitter"     // Events to YAML bytes
+	WriterStage      Stage = "writer"      // Output writing
 )
 
 // LoadError represents an error that occurred while loading a YAML document.
@@ -86,6 +94,45 @@ func NewLoadError(stage Stage, message string, mark Mark, cause error) *LoadErro
 		Mark:    mark,
 		err:     cause,
 	}
+}
+
+// DumpError represents an error that occurred while dumping a YAML document.
+//
+// It identifies the processing stage where the error occurred and provides
+// an optional underlying cause via Unwrap.
+type DumpError struct {
+	Stage   Stage  // Processing stage where error occurred
+	Message string // Error description
+
+	// Error chaining
+	err error // Underlying error (for Unwrap support)
+}
+
+// Error returns the error message with stage information.
+// Format: "go-yaml dump error in <stage>: <message>"
+func (e *DumpError) Error() string {
+	return fmt.Sprintf("go-yaml dump error in %s: %s", e.Stage, e.Message)
+}
+
+// Unwrap returns the underlying error.
+func (e *DumpError) Unwrap() error {
+	return e.err
+}
+
+// NewDumpError creates a DumpError with an underlying cause.
+// The cause is accessible via Unwrap for use with [errors.Is] and [errors.As].
+func NewDumpError(stage Stage, message string, cause error) *DumpError {
+	return &DumpError{Stage: stage, Message: message, err: cause}
+}
+
+// failDump panics with a YAMLError wrapping a DumpError for the given stage.
+func failDump(stage Stage, err error) {
+	panic(&YAMLError{&DumpError{Stage: stage, Message: err.Error(), err: err}})
+}
+
+// failDumpf panics with a YAMLError wrapping a formatted DumpError.
+func failDumpf(stage Stage, format string, args ...any) {
+	panic(&YAMLError{&DumpError{Stage: stage, Message: fmt.Sprintf(format, args...)}})
 }
 
 // EmitterError represents an error that occurred during emitting.
