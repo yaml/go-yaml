@@ -918,9 +918,9 @@ func (c *Constructor) fieldByIndex(n *Node, v reflect.Value, index []int) (field
 }
 
 // tryCallYAMLConstructor checks if the value has an UnmarshalYAML method that
-// takes a *yaml.Node (from the root package) and calls it if found.
-// This handles the case where user types implement yaml.Unmarshaler instead of
-// libyaml.constructor.
+// takes a *Node from an allowlisted v3 yaml package and calls it if found.
+// This handles backward compatibility with types that implement the v3
+// yaml.Unmarshaler interface instead of the native libyaml.constructor.
 func (c *Constructor) tryCallYAMLConstructor(n *Node, out reflect.Value) (called bool, good bool) {
 	if !out.CanAddr() {
 		return false, false

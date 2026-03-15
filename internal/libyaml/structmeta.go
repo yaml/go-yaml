@@ -77,9 +77,9 @@ func init() {
 }
 
 // hasConstructYAMLMethod checks if a type has an UnmarshalYAML method
-// that looks like it implements yaml.Unmarshaler (from root package).
-// This is needed because we can't directly check for the interface type
-// since it's in a different package that we can't import.
+// that takes a *Node from an allowlisted v3 yaml package. This detects
+// v3 backward-compatible Unmarshaler implementations whose Node type
+// can't be checked via interface assertion from this package.
 func hasConstructYAMLMethod(t reflect.Type) bool {
 	method, found := t.MethodByName("UnmarshalYAML")
 	if !found {
