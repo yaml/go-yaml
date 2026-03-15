@@ -41,9 +41,7 @@ type foreignNodeReceiver struct {
 	Value string
 }
 
-func (f *foreignNodeReceiver) UnmarshalYAML(
-	n *foreignNode,
-) error {
+func (f *foreignNodeReceiver) UnmarshalYAML(n *foreignNode) error {
 	f.Value = "should not be called"
 	return nil
 }
