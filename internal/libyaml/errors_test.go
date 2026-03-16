@@ -66,16 +66,22 @@ func runDumpErrorTest(t *testing.T, tc TestCase) {
 	assert.Truef(t, ok, "from should be map[string]any, got %T", tc.From)
 
 	err := buildDumpError(t, errorSpec)
-	assert.NotNilf(t, err, "buildDumpError should not return nil")
+	if err == nil {
+		t.Fatal("buildDumpError returned nil")
+	}
 	got := err.Error()
 	want, ok := tc.Want.(string)
 	assert.Truef(t, ok, "want should be string, got %T", tc.Want)
 
 	assert.Equalf(t, want, got, "error message mismatch")
 
-	// Verify Stage field if specified
-	if stageStr, ok := errorSpec["stage"].(string); ok {
-		assert.Equalf(t, Stage(stageStr), err.Stage, "Stage mismatch")
+	// Verify Stage field if specified; fail if defined but not a string
+	if stageVal, hasStage := errorSpec["stage"]; hasStage {
+		stageStr, ok := stageVal.(string)
+		assert.Truef(t, ok, "stage should be string, got %T", stageVal)
+		if ok {
+			assert.Equalf(t, Stage(stageStr), err.Stage, "Stage mismatch")
+		}
 	}
 
 	// Test Unwrap if specified
