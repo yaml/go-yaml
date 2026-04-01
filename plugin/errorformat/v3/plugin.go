@@ -25,14 +25,14 @@ func New() *Plugin {
 func (p *Plugin) FormatLoadError(err *libyaml.LoadError) string {
 	line := err.Mark.Line
 	if line == 0 {
-		return fmt.Sprintf("yaml: %s", err.Message)
+		return "yaml: " + err.Message
 	}
 	return fmt.Sprintf("yaml: line %d: %s", line, err.Message)
 }
 
 // FormatDumpError implements [yaml.ErrorFormatPlugin].
 func (p *Plugin) FormatDumpError(err *libyaml.DumpError) string {
-	return fmt.Sprintf("yaml: %s", err.Message)
+	return "yaml: " + err.Message
 }
 
 // NewFromYAML creates a v3 error formatting plugin from YAML config.

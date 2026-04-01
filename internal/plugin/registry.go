@@ -5,6 +5,7 @@
 package plugin
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"sort"
@@ -52,8 +53,7 @@ func NewRegistry(registrations ...Registration) *Registry {
 func (r *Registry) Register(registration Registration) error {
 	if registration.API == "" || registration.Name == "" ||
 		registration.Factory == nil {
-		return fmt.Errorf(
-			"yaml: plugin registration requires an API, name, and factory")
+		return errors.New("yaml: plugin registration requires an API, name, and factory")
 	}
 	registration.API = CanonicalAPI(registration.API)
 	registration.Name = CanonicalName(registration.API, registration.Name)

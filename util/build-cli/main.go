@@ -6,6 +6,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -117,8 +118,7 @@ func inspectConfig(data []byte) (buildConfig, error) {
 	if value, present := config["plugin"]; present {
 		plugins, ok := value.(map[string]any)
 		if !ok {
-			return selection, fmt.Errorf(
-				"plugin configuration must be a mapping")
+			return selection, errors.New("plugin configuration must be a mapping")
 		}
 		if err := pluginreg.NormalizeConfig(plugins); err != nil {
 			return selection, err
@@ -228,7 +228,7 @@ func mergePluginDSL(data []byte, specs string) ([]byte, error) {
 		var ok bool
 		plugins, ok = value.(map[string]any)
 		if !ok {
-			return nil, fmt.Errorf("plugin configuration must be a mapping")
+			return nil, errors.New("plugin configuration must be a mapping")
 		}
 		if err := pluginreg.NormalizeConfig(plugins); err != nil {
 			return nil, err
@@ -272,7 +272,7 @@ func buildCLIWithPlugins(
 			return fmt.Errorf("read CONFIG: %w", err)
 		}
 	} else if pluginSpecs == "" {
-		return fmt.Errorf("CONFIG or PLUGIN must be set")
+		return errors.New("CONFIG or PLUGIN must be set")
 	}
 	data, err = mergePluginDSL(data, pluginSpecs)
 	if err != nil {

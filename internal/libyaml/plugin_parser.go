@@ -4,6 +4,7 @@
 package libyaml
 
 import (
+	"errors"
 	"fmt"
 	"io"
 )
@@ -61,8 +62,7 @@ func (c IndentConfig) Normalize() (IndentConfig, error) {
 		c.Mode = IndentModeAuto
 	case IndentModeAuto, IndentModeTabs:
 	default:
-		return c, fmt.Errorf(
-			"yaml: tab-indent mode must be auto or tabs")
+		return c, errors.New("yaml: tab-indent mode must be auto or tabs")
 	}
 	if c.LoadStyle == "" {
 		if c.Mode == IndentModeTabs {
@@ -80,20 +80,17 @@ func (c IndentConfig) Normalize() (IndentConfig, error) {
 	switch c.LoadStyle {
 	case IndentStyleAuto, IndentStyleSpaces, IndentStyleTabs:
 	default:
-		return c, fmt.Errorf(
-			"yaml: tab-indent load must be auto, spaces, or tabs")
+		return c, errors.New("yaml: tab-indent load must be auto, spaces, or tabs")
 	}
 	switch c.DumpStyle {
 	case IndentStyleSpaces, IndentStyleTabs:
 	default:
-		return c, fmt.Errorf(
-			"yaml: tab-indent dump must be spaces or tabs")
+		return c, errors.New("yaml: tab-indent dump must be spaces or tabs")
 	}
 	switch c.Scope {
 	case IndentScopeDocument, IndentScopeStream:
 	default:
-		return c, fmt.Errorf(
-			"yaml: tab-indent auto must be document or stream")
+		return c, errors.New("yaml: tab-indent auto must be document or stream")
 	}
 	return c, nil
 }
@@ -304,7 +301,7 @@ func validatePluginEvents(events []PluginEvent, depthCheck func(int, *DepthConte
 		}
 	}
 	if !ended {
-		return fmt.Errorf("parser stream is missing stream_end")
+		return errors.New("parser stream is missing stream_end")
 	}
 	return nil
 }

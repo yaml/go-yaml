@@ -90,10 +90,10 @@ func initOptionRegistry() {
 		"indent": {typ: "int", handler: func(value string) ([]yaml.Option, error) {
 			var val int
 			if _, err := fmt.Sscanf(value, "%d", &val); err != nil {
-				return nil, fmt.Errorf("indent requires integer value (2-9)")
+				return nil, errors.New("indent requires integer value (2-9)")
 			}
 			if val < 2 || val > 9 {
-				return nil, fmt.Errorf("indent must be between 2 and 9")
+				return nil, errors.New("indent must be between 2 and 9")
 			}
 			return []yaml.Option{yaml.WithIndent(val)}, nil
 		}},
@@ -108,14 +108,14 @@ func initOptionRegistry() {
 		"line-width": {typ: "int", handler: func(value string) ([]yaml.Option, error) {
 			var val int
 			if _, err := fmt.Sscanf(value, "%d", &val); err != nil {
-				return nil, fmt.Errorf("line-width requires integer value")
+				return nil, errors.New("line-width requires integer value")
 			}
 			return []yaml.Option{yaml.WithLineWidth(val)}, nil
 		}},
 		"width": {typ: "int", handler: func(value string) ([]yaml.Option, error) {
 			var val int
 			if _, err := fmt.Sscanf(value, "%d", &val); err != nil {
-				return nil, fmt.Errorf("width requires integer value")
+				return nil, errors.New("width requires integer value")
 			}
 			return []yaml.Option{yaml.WithLineWidth(val)}, nil
 		}},
@@ -145,7 +145,7 @@ func initOptionRegistry() {
 			case "crln":
 				lb = yaml.LineBreakCRLN
 			default:
-				return nil, fmt.Errorf("line-break must be ln, cr, or crln")
+				return nil, errors.New("line-break must be ln, cr, or crln")
 			}
 			return []yaml.Option{yaml.WithLineBreak(lb)}, nil
 		}},
@@ -337,7 +337,7 @@ func buildOptions(configFile string, optionFlags []string, pluginSpecs ...string
 			var ok bool
 			plugins, ok = value.(map[string]any)
 			if !ok {
-				return nil, fmt.Errorf("plugin configuration must be a mapping")
+				return nil, errors.New("plugin configuration must be a mapping")
 			}
 			if err := pluginreg.NormalizeConfig(plugins); err != nil {
 				return nil, err
