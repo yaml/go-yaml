@@ -198,7 +198,7 @@ var negativeZero = math.Copysign(0.0, -1.0)
 
 // yamlStyleFloat matches floating-point numbers in YAML style (including
 // scientific notation and numbers starting with a dot).
-var yamlStyleFloat = regexp.MustCompile(`^[-+]?(\.[0-9]+|[0-9]+(\.[0-9]*)?)([eE][-+]?[0-9]+)?$`)
+var yamlStyleFloat = regexp.MustCompile(`^[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?$`)
 
 // allowedTimestampFormats lists the timestamp formats supported by the
 // resolver.
