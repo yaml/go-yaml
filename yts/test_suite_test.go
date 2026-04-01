@@ -62,7 +62,7 @@ func TestYAMLSuite(t *testing.T) {
 	testDir := "./testdata/data-2022-01-17"
 	if _, err := os.Stat(testDir + "/229Q"); os.IsNotExist(err) {
 		t.Fatalf(`YTS tests require data files to be present at '%s'.
-Run 'make test-data' to download them first,
+Run 'make get-test-data' to download them first,
 or just run the tests with 'make test'.`, testDir)
 	}
 	runTestsInDir(t, testDir, "")
