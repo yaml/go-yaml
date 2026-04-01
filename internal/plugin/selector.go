@@ -4,6 +4,7 @@
 package plugin
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -72,7 +73,7 @@ func ParseSelectors(text string) ([]Selection, error) {
 func parseSelector(text string) (Selection, error) {
 	spec := strings.TrimSpace(text)
 	if spec == "" {
-		return Selection{}, fmt.Errorf("plugin selector must not be empty")
+		return Selection{}, errors.New("plugin selector must not be empty")
 	}
 	if strings.Count(spec, "=") > 1 || strings.Count(spec, "@") > 1 {
 		return Selection{}, fmt.Errorf("invalid plugin selector %q", spec)

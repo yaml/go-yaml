@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strconv"
 
 	"go.yaml.in/yaml/v4"
 	"go.yaml.in/yaml/v4/internal/libyaml"
@@ -136,12 +137,12 @@ func processEventsDecode(reader io.Reader, profuse, compact bool, opts ...yaml.O
 			if info.Implicit != nil {
 				compactNode.Content = append(compactNode.Content,
 					&yaml.Node{Kind: yaml.ScalarNode, Value: "implicit"},
-					&yaml.Node{Kind: yaml.ScalarNode, Value: fmt.Sprintf("%t", *info.Implicit)})
+					&yaml.Node{Kind: yaml.ScalarNode, Value: strconv.FormatBool(*info.Implicit)})
 			}
 			if info.QuotedImplicit != nil {
 				compactNode.Content = append(compactNode.Content,
 					&yaml.Node{Kind: yaml.ScalarNode, Value: "quoted-implicit"},
-					&yaml.Node{Kind: yaml.ScalarNode, Value: fmt.Sprintf("%t", *info.QuotedImplicit)})
+					&yaml.Node{Kind: yaml.ScalarNode, Value: strconv.FormatBool(*info.QuotedImplicit)})
 			}
 			if info.Head != "" {
 				compactNode.Content = append(compactNode.Content,
@@ -262,12 +263,12 @@ func processEventsUnmarshal(reader io.Reader, profuse, compact bool) error {
 			if info.Implicit != nil {
 				compactNode.Content = append(compactNode.Content,
 					&yaml.Node{Kind: yaml.ScalarNode, Value: "implicit"},
-					&yaml.Node{Kind: yaml.ScalarNode, Value: fmt.Sprintf("%t", *info.Implicit)})
+					&yaml.Node{Kind: yaml.ScalarNode, Value: strconv.FormatBool(*info.Implicit)})
 			}
 			if info.QuotedImplicit != nil {
 				compactNode.Content = append(compactNode.Content,
 					&yaml.Node{Kind: yaml.ScalarNode, Value: "quoted-implicit"},
-					&yaml.Node{Kind: yaml.ScalarNode, Value: fmt.Sprintf("%t", *info.QuotedImplicit)})
+					&yaml.Node{Kind: yaml.ScalarNode, Value: strconv.FormatBool(*info.QuotedImplicit)})
 			}
 			if info.Head != "" {
 				compactNode.Content = append(compactNode.Content,
