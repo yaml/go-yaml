@@ -202,6 +202,11 @@ type Node struct {
 
 	// Stream holds stream metadata (non-nil only when Kind == StreamNode).
 	Stream *Stream
+
+	// options is set by propagateLoadOptions when a Loader produces this node.
+	// It carries the loader options so that Decode can inherit them inside
+	// custom UnmarshalYAML implementations. Nil for user-constructed nodes.
+	options *Options
 }
 
 // IsZero returns whether the node has all of its fields unset.
@@ -295,7 +300,11 @@ func (n *Node) SetString(s string) {
 //
 // [yaml.Unmarshal]: https://pkg.go.dev/go.yaml.in/yaml/v4#Unmarshal
 func (n *Node) Decode(v any) (err error) {
-	d := NewConstructor(DefaultOptions)
+	opts := DefaultOptions
+	if n.options != nil {
+		opts = n.options
+	}
+	d := NewConstructor(opts)
 	defer handleErr(&err)
 	out := reflect.ValueOf(v)
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
