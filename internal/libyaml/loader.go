@@ -295,6 +295,7 @@ func loadSingle(in []byte, out any, opts *Options) error {
 // Do not use in libyaml, use [WithKnownFields] instead.
 func (l *Loader) SetLegacyLoaderKnownFields(enable bool) {
 	l.constructor.KnownFields = enable
+	l.options.KnownFields = enable
 }
 
 // LoadAny parses YAML data into generic Go structures (map[string]any, []any).
