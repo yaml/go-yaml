@@ -784,3 +784,72 @@ func TestNodeDumpInvalidOptions(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.ErrorMatches(t, ".*indent must be.*", err)
 }
+
+type nodeDecodeTarget struct {
+	Name string `yaml:"name"`
+}
+
+func (t *nodeDecodeTarget) UnmarshalYAML(node *yaml.Node) error {
+	type plain nodeDecodeTarget
+	return node.Decode((*plain)(t))
+}
+
+type nodeDecodeChildInner struct {
+	Name string `yaml:"name"`
+}
+
+type nodeDecodeChildOuter struct {
+	Inner nodeDecodeChildInner
+}
+
+func (o *nodeDecodeChildOuter) UnmarshalYAML(node *yaml.Node) error {
+	for i := 0; i+1 < len(node.Content); i += 2 {
+		if node.Content[i].Value == "inner" {
+			return node.Content[i+1].Decode(&o.Inner)
+		}
+	}
+	return nil
+}
+
+func TestNodeDecodeInheritsKnownFields(t *testing.T) {
+	t.Run("known fields rejected", func(t *testing.T) {
+		input := "name: Alice\nunknown_field: oops\n"
+		var v nodeDecodeTarget
+		err := yaml.Load([]byte(input), &v, yaml.WithKnownFields())
+		assert.NotNil(t, err)
+		assert.ErrorMatches(t, ".*unknown_field.*", err)
+	})
+
+	t.Run("unknown fields ignored without option", func(t *testing.T) {
+		input := "name: Alice\nunknown_field: oops\n"
+		var v nodeDecodeTarget
+		err := yaml.Unmarshal([]byte(input), &v)
+		assert.NoError(t, err)
+		assert.Equal(t, "Alice", v.Name)
+	})
+
+	t.Run("user-constructed node uses default options", func(t *testing.T) {
+		node := &yaml.Node{
+			Kind: yaml.MappingNode,
+			Tag:  "!!map",
+			Content: []*yaml.Node{
+				{Kind: yaml.ScalarNode, Tag: "!!str", Value: "name"},
+				{Kind: yaml.ScalarNode, Tag: "!!str", Value: "Bob"},
+				{Kind: yaml.ScalarNode, Tag: "!!str", Value: "extra"},
+				{Kind: yaml.ScalarNode, Tag: "!!str", Value: "ignored"},
+			},
+		}
+		var v nodeDecodeChildInner
+		err := node.Decode(&v)
+		assert.NoError(t, err)
+		assert.Equal(t, "Bob", v.Name)
+	})
+
+	t.Run("child node inherits known fields", func(t *testing.T) {
+		input := "inner:\n  name: Carol\n  unknown_field: oops\n"
+		var v nodeDecodeChildOuter
+		err := yaml.Load([]byte(input), &v, yaml.WithKnownFields())
+		assert.NotNil(t, err)
+		assert.ErrorMatches(t, ".*unknown_field.*", err)
+	})
+}
