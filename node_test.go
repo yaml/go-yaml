@@ -852,4 +852,14 @@ func TestNodeDecodeInheritsKnownFields(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.ErrorMatches(t, ".*unknown_field.*", err)
 	})
+
+	t.Run("known fields via decoder api", func(t *testing.T) {
+		input := "name: Alice\nunknown_field: oops\n"
+		var v nodeDecodeTarget
+		dec := yaml.NewDecoder(bytes.NewReader([]byte(input)))
+		dec.KnownFields(true)
+		err := dec.Decode(&v)
+		assert.NotNil(t, err)
+		assert.ErrorMatches(t, ".*unknown_field.*", err)
+	})
 }

@@ -291,6 +291,7 @@ func loadSingle(in []byte, out any, opts *Options) error {
 // This is used by the legacy Decoder.KnownFields() method.
 func (l *Loader) SetKnownFields(enable bool) {
 	l.constructor.KnownFields = enable
+	l.options.KnownFields = enable
 }
 
 // ComposeAndResolve composes and resolves the next document from the input
