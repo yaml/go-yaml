@@ -579,7 +579,7 @@ func NewDecoder(r io.Reader) *Decoder {
 // KnownFields ensures that the keys in decoded mappings to
 // exist as fields in the struct being decoded into.
 func (dec *Decoder) KnownFields(enable bool) {
-	dec.loader.SetKnownFields(enable)
+	libyaml.SetLegacyLoaderKnownFields(dec.loader, enable)
 }
 
 // Decode reads the next YAML-encoded value from its input
@@ -618,17 +618,17 @@ func (e *Encoder) Encode(v any) error {
 
 // SetIndent changes the used indentation used when encoding.
 func (e *Encoder) SetIndent(spaces int) {
-	e.dumper.SetIndent(spaces)
+	libyaml.SetLegacyEncoderIndent(e.dumper, spaces)
 }
 
 // CompactSeqIndent makes it so that '- ' is considered part of the indentation.
 func (e *Encoder) CompactSeqIndent() {
-	e.dumper.SetCompactSeqIndent(true)
+	libyaml.SetLegacyEncoderCompactSeqIndent(e.dumper, true)
 }
 
 // DefaultSeqIndent makes it so that '- ' is not considered part of the indentation.
 func (e *Encoder) DefaultSeqIndent() {
-	e.dumper.SetCompactSeqIndent(false)
+	libyaml.SetLegacyEncoderCompactSeqIndent(e.dumper, false)
 }
 
 // Close closes the encoder by writing any remaining data.

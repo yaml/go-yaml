@@ -135,9 +135,10 @@ func (d *Dumper) Close() (err error) {
 	return nil
 }
 
-// SetIndent changes the indentation used when encoding.
-// This is used by the legacy Encoder.SetIndent() method.
-func (d *Dumper) SetIndent(spaces int) {
+// SetLegacyEncoderIndent allows changing the indentation for the legacy Encoder API.
+//
+// Note: This is not a method on Dumper to avoid exposing it; callers should use [WithIndent] instead.
+func SetLegacyEncoderIndent(d *Dumper, spaces int) {
 	if spaces < 0 {
 		panic("yaml: cannot indent to a negative number of spaces")
 	}
@@ -145,8 +146,9 @@ func (d *Dumper) SetIndent(spaces int) {
 	d.serializer.Emitter.BestIndent = spaces
 }
 
-// SetCompactSeqIndent controls whether '- ' is considered part of the indentation.
-// This is used by the legacy Encoder methods.
-func (d *Dumper) SetCompactSeqIndent(compact bool) {
+// SetLegacyEncoderCompactSeqIndent allows changing the compact sequence indentation for the legacy Encoder API.
+//
+// Note: This is not a method on Dumper to avoid exposing it; callers should use [WithCompactSeqIndent] instead.
+func SetLegacyEncoderCompactSeqIndent(d *Dumper, compact bool) {
 	d.serializer.Emitter.CompactSequenceIndent = compact
 }
