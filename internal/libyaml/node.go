@@ -196,7 +196,9 @@ type Node struct {
 	options *Options
 }
 
-// IsZero returns whether the node has all of its fields unset.
+// IsZero returns whether the node has all of its user-visible fields unset.
+// The unexported options field is intentionally excluded: it is set by loader
+// infrastructure and does not represent user-visible content.
 func (n *Node) IsZero() bool {
 	return n.Kind == 0 && n.Style == 0 && n.Tag == "" && n.Value == "" && n.Anchor == "" && n.Alias == nil && n.Content == nil &&
 		n.HeadComment == "" && n.LineComment == "" && n.FootComment == "" && n.Line == 0 && n.Column == 0 &&
