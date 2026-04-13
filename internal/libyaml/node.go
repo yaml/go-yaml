@@ -190,9 +190,9 @@ type Node struct {
 	// Stream holds stream metadata (non-nil only when Kind == StreamNode).
 	Stream *Stream
 
-	// options is set by propagateLoadOptions when a Loader produces this node.
-	// It carries the loader options so that Decode can inherit them inside
-	// custom UnmarshalYAML implementations. Nil for user-constructed nodes.
+	// options is set by propagateLoadOptions when a Loader produces this node. It carries
+	// the loader options so that Decode can inherit them in custom UnmarshalYAML functions.
+	// Is typically nil for user-constructed nodes.
 	options *Options
 }
 

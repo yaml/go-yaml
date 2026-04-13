@@ -141,7 +141,7 @@ func (l *Loader) Load(v any) (err error) {
 
 	// Propagate loader options onto every node so that Node.Decode called inside
 	// custom UnmarshalYAML implementations inherits settings like KnownFields.
-	propagateLoadOptions(node, filterLoadOptions(l.options))
+	propagateLoadOptions(node, l.options)
 
 	// Stage 3: Construct - convert node tree to Go values
 	out := reflect.ValueOf(v)
@@ -157,21 +157,9 @@ func (l *Loader) Load(v any) (err error) {
 	return nil
 }
 
-// filterLoadOptions returns opts when it contains settings that NewConstructor
-// reads and that would change behaviour relative to DefaultOptions.
-// Returns nil for default options so propagateLoadOptions can skip the walk entirely.
-// Update this function whenever a new option is added that affects construction.
-func filterLoadOptions(opts *Options) *Options {
-	if opts.KnownFields || !opts.UniqueKeys || opts.AliasCheck != nil {
-		return opts
-	}
-	return nil
-}
-
 // propagateLoadOptions stamps n and every node reachable through Content with opts.
 // Alias pointers are not followed: in valid YAML, anchors are defined before
-// their aliases, so the anchor node is always reachable through Content
-// traversal before any AliasNode that references it is encountered.
+// their aliases, so the anchor node is always reachable through n.Content traversal.
 func propagateLoadOptions(n *Node, opts *Options) {
 	if n == nil || opts == nil {
 		return
