@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"fmt"
 	"reflect"
+	"sync"
 	"testing"
 
 	"go.yaml.in/yaml/v4"
@@ -862,4 +863,81 @@ func TestNodeDecodeInheritsKnownFields(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.ErrorMatches(t, ".*unknown_field.*", err)
 	})
+
+	t.Run("known fields enforced on all documents", func(t *testing.T) {
+		input := "name: Alice\n---\nname: Bob\nunknown_field: oops\n"
+		dec := yaml.NewDecoder(bytes.NewReader([]byte(input)))
+		dec.KnownFields(true)
+
+		var v1 nodeDecodeTarget
+		err := dec.Decode(&v1)
+		assert.NoError(t, err)
+		assert.Equal(t, "Alice", v1.Name)
+
+		var v2 nodeDecodeTarget
+		err = dec.Decode(&v2)
+		assert.NotNil(t, err)
+		assert.ErrorMatches(t, ".*unknown_field.*", err)
+	})
+
+	t.Run("known fields can be disabled between documents", func(t *testing.T) {
+		input := "name: Alice\n---\nname: Bob\nunknown_field: ok\n"
+		dec := yaml.NewDecoder(bytes.NewReader([]byte(input)))
+		dec.KnownFields(true)
+
+		var v1 nodeDecodeTarget
+		err := dec.Decode(&v1)
+		assert.NoError(t, err)
+		assert.Equal(t, "Alice", v1.Name)
+
+		dec.KnownFields(false)
+
+		var v2 nodeDecodeTarget
+		err = dec.Decode(&v2)
+		assert.NoError(t, err)
+		assert.Equal(t, "Bob", v2.Name)
+	})
+}
+
+type raceDecodeTarget struct {
+	Name     string `yaml:"name"`
+	onDecode func()
+}
+
+func (t *raceDecodeTarget) UnmarshalYAML(node *yaml.Node) error {
+	if t.onDecode != nil {
+		t.onDecode()
+	}
+	type plain struct {
+		Name string `yaml:"name"`
+	}
+	var p plain
+	if err := node.Decode(&p); err != nil {
+		return err
+	}
+	t.Name = p.Name
+	return nil
+}
+
+// TestSetKnownFieldsRaceWithNodeDecode checks for a data race between Decoder.KnownFields()
+// and Node.Decode() inside UnmarshalYAML (run with '-race')
+func TestSetKnownFieldsRaceWithNodeDecode(t *testing.T) {
+	input := "name: Alice\n"
+	dec := yaml.NewDecoder(bytes.NewReader([]byte(input)))
+	dec.KnownFields(true)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	v := &raceDecodeTarget{
+		onDecode: func() {
+			// Concurrently toggle KnownFields while node.Decode reads the same
+			// options pointer below.
+			go func() {
+				defer wg.Done()
+				dec.KnownFields(false)
+			}()
+		},
+	}
+	_ = dec.Decode(v)
+	wg.Wait()
 }
