@@ -325,10 +325,10 @@ func (n *Node) Decode(v any) (err error) {
 // Explicit Alias-Data policies are rejected because composition has already
 // occurred and the policy cannot be applied to this node graph.
 //
-// Each call starts with fresh options, independently of an outer Loader.
-// Pass WithKnownFields() explicitly to check fields inside a custom
-// UnmarshalYAML implementation.
-// Parser settings do not apply to this already composed graph.
+// Unlike Decode, Load does not inherit options from the loader that produced
+// this node; the caller must supply all required options explicitly.
+// This method is useful when you need explicit control over options like
+// WithKnownFields() inside custom UnmarshalYAML implementations.
 //
 // Maps and pointers (to a struct, string, int, etc) are accepted as v
 // values. If an internal pointer within a struct is not initialized,
