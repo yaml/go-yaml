@@ -309,9 +309,9 @@ func TestLoad_MultipleDocuments(t *testing.T) {
 	assert.ErrorMatches(t, ".*expected single document, found multiple.*", err)
 }
 
-// TestComposeAndResolveDoesNotPropagateOptions tests that ComposeAndResolve does not
-// propagate loader options onto the returned node tree.
-func TestComposeAndResolveDoesNotPropagateOptions(t *testing.T) {
+// TestLoadNodePropagatesOptions checks that loading into a node preserves
+// the loader options for subsequent Node.Decode calls.
+func TestLoadNodePropagatesOptions(t *testing.T) {
 	type target struct {
 		Name string `yaml:"name"`
 	}
@@ -320,15 +320,13 @@ func TestComposeAndResolveDoesNotPropagateOptions(t *testing.T) {
 	loader, err := NewLoader(bytes.NewReader(input), WithKnownFields())
 	assert.NoError(t, err)
 
-	node := loader.ComposeAndResolve()
-	assert.NotNil(t, node)
+	var node Node
+	err = loader.Load(&node)
+	assert.NoError(t, err)
+	assert.NotNil(t, node.options)
 
-	// options is nil: ComposeAndResolve does not call propagateLoadOptions
-	assert.IsNil(t, node.options)
-
-	// Node.Decode uses DefaultOptions, so unknown fields are not rejected
 	var v target
 	err = node.Decode(&v)
-	assert.NoError(t, err)
-	assert.Equal(t, "Alice", v.Name)
+	assert.NotNil(t, err)
+	assert.ErrorMatches(t, ".*unknown_field.*", err)
 }
