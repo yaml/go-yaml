@@ -307,8 +307,10 @@ func (n *Node) Decode(v any) (err error) {
 // Load decodes the node and stores its data into the value pointed to by v,
 // applying the given options.
 //
-// This method is useful when you need to preserve options like WithKnownFields()
-// inside custom UnmarshalYAML implementations.
+// Unlike Decode, Load does not inherit options from the loader that produced
+// this node; the caller must supply all required options explicitly.
+// This method is useful when you need explicit control over options like
+// WithKnownFields() inside custom UnmarshalYAML implementations.
 //
 // Maps and pointers (to a struct, string, int, etc) are accepted as v
 // values. If an internal pointer within a struct is not initialized,
