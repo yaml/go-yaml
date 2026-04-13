@@ -930,8 +930,6 @@ func TestSetKnownFieldsRaceWithNodeDecode(t *testing.T) {
 	wg.Add(1)
 	v := &raceDecodeTarget{
 		onDecode: func() {
-			// Concurrently toggle KnownFields while node.Decode reads the same
-			// options pointer below.
 			go func() {
 				defer wg.Done()
 				dec.KnownFields(false)

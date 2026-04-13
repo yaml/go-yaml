@@ -139,8 +139,8 @@ func (l *Loader) Load(v any) (err error) {
 	// Stage 2: Resolve - determine implicit types for untagged scalars
 	l.resolver.Resolve(node)
 
-	// Propagate loader options onto every node so that Node.Decode called inside
-	// custom UnmarshalYAML implementations inherits settings like KnownFields.
+	// Propagate a snapshot of loader options onto every node so that Node.Decode called
+	// inside custom UnmarshalYAML implementations inherits settings like KnownFields
 	propagateLoadOptions(node, l.options)
 
 	// Stage 3: Construct - convert node tree to Go values
@@ -164,9 +164,14 @@ func propagateLoadOptions(n *Node, opts *Options) {
 	if n == nil || opts == nil {
 		return
 	}
+	snapshot := *opts // pass a snapshot to avoid data race
+	propagateLoadOptionsRecursion(n, &snapshot)
+}
+
+func propagateLoadOptionsRecursion(n *Node, opts *Options) {
 	n.options = opts
 	for _, child := range n.Content {
-		propagateLoadOptions(child, opts)
+		propagateLoadOptionsRecursion(child, opts)
 	}
 }
 
@@ -299,6 +304,10 @@ func (l *Loader) ComposeAndResolve() *Node {
 
 	// Stage 2: Resolve - determine implicit types for untagged scalars
 	l.resolver.Resolve(node)
+
+	// Propagate a snapshot of loader options onto every node so that Node.Decode called
+	// inside custom UnmarshalYAML implementations inherits settings like KnownFields
+	propagateLoadOptions(node, l.options)
 
 	return node
 }
