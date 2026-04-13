@@ -300,12 +300,12 @@ func (n *Node) SetString(s string) {
 //
 // [yaml.Unmarshal]: https://pkg.go.dev/go.yaml.in/yaml/v4#Unmarshal
 func (n *Node) Decode(v any) (err error) {
+	defer handleErr(&err)
 	opts := DefaultOptions
 	if n.options != nil {
 		opts = n.options
 	}
 	d := NewConstructor(opts)
-	defer handleErr(&err)
 	out := reflect.ValueOf(v)
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
 		out = out.Elem()
