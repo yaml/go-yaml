@@ -285,12 +285,12 @@ func (n *Node) SetString(s string) {
 // See the documentation for Unmarshal for details about the
 // conversion of YAML into a Go value.
 func (n *Node) Decode(v any) (err error) {
+	defer handleErr(&err)
 	opts := DefaultOptions
 	if n.options != nil {
 		opts = n.options
 	}
 	d := NewConstructor(opts)
-	defer handleErr(&err)
 	out := reflect.ValueOf(v)
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
 		out = out.Elem()
