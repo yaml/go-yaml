@@ -54,7 +54,8 @@ func BenchmarkDecode(b *testing.B) {
 				dec := yaml.NewDecoder(bytes.NewReader(data))
 				dec.KnownFields(known)
 				return dec.Decode(&v)
-			}},
+			},
+		},
 		{
 			name: "custom",
 			decode: func(data []byte, known bool) error {
@@ -62,7 +63,8 @@ func BenchmarkDecode(b *testing.B) {
 				dec := yaml.NewDecoder(bytes.NewReader(data))
 				dec.KnownFields(known)
 				return dec.Decode(&v)
-			}},
+			},
+		},
 	}
 
 	options := []struct {
