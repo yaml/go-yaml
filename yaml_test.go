@@ -418,6 +418,59 @@ var unmarshalTests = []struct {
 		map[string]string{"a": strings.Repeat("\x00", 52)},
 	},
 
+	// Scalar to string conversions.
+	// Float to string (regression test for constructFloat missing reflect.String case).
+	{
+		"a: 55.7351",
+		map[string]string{"a": "55.7351"},
+	},
+	{
+		"a: -3.14159",
+		map[string]string{"a": "-3.14159"},
+	},
+	{
+		"a: 1.23e10",
+		map[string]string{"a": "1.23e10"},
+	},
+	{
+		"a: .inf",
+		map[string]string{"a": ".inf"},
+	},
+	{
+		"a: -.inf",
+		map[string]string{"a": "-.inf"},
+	},
+	{
+		"a: .nan",
+		map[string]string{"a": ".nan"},
+	},
+	// Int to string (verify existing constructInt string case).
+	{
+		"a: 42",
+		map[string]string{"a": "42"},
+	},
+	{
+		"a: -100",
+		map[string]string{"a": "-100"},
+	},
+	{
+		"a: 0x1A",
+		map[string]string{"a": "0x1A"},
+	},
+	{
+		"a: 0o755",
+		map[string]string{"a": "0o755"},
+	},
+	// Bool to string (verify existing constructBool string case).
+	{
+		"a: true",
+		map[string]string{"a": "true"},
+	},
+	{
+		"a: false",
+		map[string]string{"a": "false"},
+	},
+
 	// Issue #39.
 	{
 		"a:\n b:\n  c: d\n",
