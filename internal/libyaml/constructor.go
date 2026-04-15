@@ -374,6 +374,9 @@ func (c *Constructor) constructFloat(n *Node, resolved any, out reflect.Value) b
 				}
 			}
 		}
+	case reflect.String:
+		out.SetString(n.Value)
+		return true
 	case reflect.Interface:
 		out.Set(reflect.ValueOf(resolved))
 		return true
