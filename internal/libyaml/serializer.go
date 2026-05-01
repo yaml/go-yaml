@@ -9,6 +9,7 @@ package libyaml
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"unicode/utf8"
@@ -233,27 +234,28 @@ func (s *Serializer) emit(event Event) {
 
 // must panics if the given error is non-nil, routing to the appropriate stage.
 func (s *Serializer) must(err error) {
-	if err != nil {
-		var ee EmitterError
-		if errors.As(err, &ee) {
-			failDumpf(EmitterStage, "%s", ee.Message)
-		}
-		var we WriterError
-		if errors.As(err, &we) {
-			// Unwrap to get the original I/O error, stripping the
-			// "write error: " prefix that WriterError adds internally.
-			cause := we.Err
-			if unwrapped := errors.Unwrap(we.Err); unwrapped != nil {
-				cause = unwrapped
-			}
-			failDump(WriterStage, cause)
-		}
-		msg := err.Error()
-		if msg == "" {
-			msg = "unknown problem generating YAML content"
-		}
-		failDumpf(SerializerStage, "%s", msg)
+	if err == nil {
+		return
 	}
+	var ee EmitterError
+	if errors.As(err, &ee) {
+		failDumpf(EmitterStage, "%s", ee.Message)
+	}
+	var we WriterError
+	if errors.As(err, &we) {
+		// Unwrap to get the original I/O error, stripping the
+		// "write error: " prefix that WriterError adds internally.
+		cause := we.Err
+		if unwrapped := errors.Unwrap(we.Err); unwrapped != nil {
+			cause = unwrapped
+		}
+		failDump(WriterStage, cause)
+	}
+	msg := err.Error()
+	if msg == "" {
+		msg = fmt.Sprintf("unknown problem generating YAML content with %T", err)
+	}
+	failDumpf(SerializerStage, "%s", msg)
 }
 
 // emitScalar emits a scalar event with the given value, anchor, tag, style,
