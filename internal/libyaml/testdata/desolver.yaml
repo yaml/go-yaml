@@ -68,14 +68,24 @@
       tag: '!tag:something'
       style: Plain
 
-- desolve-preserve:
-    name: Preserve merge tag
+- desolve-inferable:
+    name: Elide implicit merge tag
     node:
       tag: '!!merge'
       value: '<<'
     want:
-      tag: '!!merge'
+      tag: ''
       style: Plain
+
+- desolve-preserve:
+    name: Preserve merge tag with TaggedStyle
+    node:
+      tag: '!!merge'
+      value: '<<'
+      style: Tagged
+    want:
+      tag: '!!merge'
+      style: Tagged
 
 - desolve-preserve:
     name: Preserve binary tag

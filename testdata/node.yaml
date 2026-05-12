@@ -2474,10 +2474,13 @@
           style: Flow
           content: [{kind: Scalar, text: qux}, {kind: Scalar, tag: '!!int', text: '1'}]
 
-# Merge key encoding tests - verifies !!merge tag is preserved in output
+# Merge key encoding tests.
+# An implicit !!merge tag (Tag set but no TaggedStyle) is elided on output
+# so callers that hand-build a node with Value: "<<" get clean `<<:` syntax
+# (yq issue #2677). An explicit !!merge (TaggedStyle set) is preserved.
 - node-test:
     name: merge key with flow mapping value
-    yaml: "!!merge <<: {a: 1}\n"
+    yaml: "<<: {a: 1}\n"
     decode: false
     node:
       kind: Document
@@ -2495,7 +2498,7 @@
 
 - node-test:
     name: merge key in nested mapping
-    yaml: "foo:\n  !!merge <<: {a: 1}\n"
+    yaml: "foo:\n  <<: {a: 1}\n"
     decode: false
     node:
       kind: Document
@@ -2514,3 +2517,39 @@
             content:
             - {kind: Scalar, text: a}
             - {kind: Scalar, tag: '!!int', text: '1'}
+
+- node-test:
+    name: merge key with explicit tag preserved
+    yaml: "!!merge <<: {a: 1}\n"
+    decode: false
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          tag: '!!merge'
+          style: Tagged
+          text: '<<'
+        - kind: Mapping
+          style: Flow
+          content:
+          - {kind: Scalar, text: a}
+          - {kind: Scalar, tag: '!!int', text: '1'}
+
+- node-test:
+    name: bare merge key with untagged scalar
+    yaml: "<<: {a: 1}\n"
+    decode: false
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          text: '<<'
+        - kind: Mapping
+          style: Flow
+          content:
+          - {kind: Scalar, text: a}
+          - {kind: Scalar, tag: '!!int', text: '1'}
