@@ -68,8 +68,16 @@ func (d *Desolver) desolveScalar(n *Node) {
 	switch stag {
 	case nullTag, boolTag, strTag, intTag, floatTag, timestampTag:
 		isStandardTag = true
-	case binaryTag, mergeTag:
-		// Special tags - never remove
+	case binaryTag:
+		// Binary scalars are not implicitly resolvable - never remove.
+		return
+	case mergeTag:
+		// Elide the implicit !!merge tag when the value is the canonical
+		// merge key marker. The TaggedStyle early-return above already
+		// preserves !!merge when it was explicit in the source.
+		if n.Value == "<<" {
+			n.Tag = ""
+		}
 		return
 	default:
 		// Custom tag - preserve it
