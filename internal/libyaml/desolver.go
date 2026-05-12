@@ -98,6 +98,11 @@ func (d *Desolver) desolveScalar(n *Node) {
 		n.Tag = ""
 	} else if stag == strTag {
 		// This is a string type, but would resolve to something else.
+		// Exception: << always implies !!merge — emit plain, don't quote.
+		if rtag == mergeTag {
+			n.Tag = ""
+			return
+		}
 		// Remove the tag and force quoting to preserve string type.
 		n.Tag = ""
 		// If not already quoted, set quote style based on content
