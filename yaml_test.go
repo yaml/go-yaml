@@ -767,6 +767,12 @@ var decoderTests = []struct {
 		"hello",
 		"goodbye",
 	},
+}, {
+	"---\na: &anchor 1\nb: *anchor\n---\na: &anchor 2\nb: *anchor\n...\n",
+	[]any{
+		map[string]any{"a": 1, "b": 1},
+		map[string]any{"a": 2, "b": 2},
+	},
 }}
 
 func TestDecoder(t *testing.T) {
@@ -786,6 +792,20 @@ func TestDecoder(t *testing.T) {
 			assert.DeepEqual(t, item.values, values)
 		})
 	}
+}
+
+func TestDecoderAnchorNotSharedAcrossDocuments(t *testing.T) {
+	data := "---\n&foo 42\n---\n*foo\n"
+	dec := yaml.NewDecoder(strings.NewReader(data))
+
+	var first any
+	err := dec.Decode(&first)
+	assert.NoError(t, err)
+	assert.Equal(t, 42, first)
+
+	var second any
+	err = dec.Decode(&second)
+	assert.ErrorMatches(t, `go-yaml load error in composer at L4\.C1: unknown anchor 'foo' referenced`, err)
 }
 
 type errReader struct{}
