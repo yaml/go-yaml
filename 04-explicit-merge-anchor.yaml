@@ -1,0 +1,3 @@
+defaults: &d {x: 1}
+target:
+  !!merge <<: *d

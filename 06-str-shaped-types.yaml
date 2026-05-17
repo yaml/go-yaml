@@ -1,0 +1,4 @@
+a: !!str true
+b: !!str 42
+c: !!str 3.14
+d: !!str null

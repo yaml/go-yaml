@@ -1,0 +1,4 @@
+defaults: &d {x: 1}
+extras: &e {y: 2}
+target:
+  <<: [*d, *e]
