@@ -18,15 +18,13 @@ import (
 // characters to the output.  The handler should write @a size bytes of the
 // @a buffer to the output.
 //
-// @param[in,out]   data        A pointer to an application data specified by
+//	@param[in,out]   data        A pointer to an application data specified by
+//	                             yamlEmitter.setOutput().
+//	@param[in]       buffer      The buffer with bytes to be written.
+//	@param[in]       size        The size of the buffer.
 //
-//	yamlEmitter.setOutput().
-//
-// @param[in]       buffer      The buffer with bytes to be written.
-// @param[in]       size        The size of the buffer.
-//
-// @returns On success, the handler should return @c 1.  If the handler failed,
-// the returned value should be @c 0.
+//	@returns On success, the handler should return @c 1.  If the handler failed,
+//	the returned value should be @c 0.
 type WriteHandler func(emitter *Emitter, buffer []byte) error
 
 // EmitterState represents the current state of the emitter.
