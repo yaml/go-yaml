@@ -429,9 +429,9 @@ func (parser *Parser) stateMachine(event *Event) error {
 }
 
 // Parse the production:
-// stream   ::= STREAM-START implicit_document? explicit_document* STREAM-END
 //
-//	************
+//	stream   ::= STREAM-START implicit_document? explicit_document* STREAM-END
+//	             ************
 func (parser *Parser) parseStreamStart(event *Event) error {
 	var token *Token
 	if err := parser.peekToken(&token); err != nil {
@@ -452,13 +452,11 @@ func (parser *Parser) parseStreamStart(event *Event) error {
 }
 
 // Parse the productions:
-// implicit_document    ::= block_node DOCUMENT-END*
 //
-//	*
-//
-// explicit_document    ::= DIRECTIVE* DOCUMENT-START block_node? DOCUMENT-END*
-//
-//	*************************
+//	implicit_document    ::= block_node DOCUMENT-END*
+//	                         *
+//	explicit_document    ::= DIRECTIVE* DOCUMENT-START block_node? DOCUMENT-END*
+//	                         *************************
 func (parser *Parser) parseDocumentStart(event *Event, implicit bool) error {
 	var token *Token
 	if err := parser.peekToken(&token); err != nil {
@@ -559,9 +557,9 @@ func (parser *Parser) parseDocumentStart(event *Event, implicit bool) error {
 }
 
 // Parse the productions:
-// explicit_document    ::= DIRECTIVE* DOCUMENT-START block_node? DOCUMENT-END*
 //
-//	***********
+//	explicit_document    ::= DIRECTIVE* DOCUMENT-START block_node? DOCUMENT-END*
+//	                                                   ***********
 func (parser *Parser) parseDocumentContent(event *Event) error {
 	var token *Token
 	if err := parser.peekToken(&token); err != nil {
@@ -582,11 +580,10 @@ func (parser *Parser) parseDocumentContent(event *Event) error {
 }
 
 // Parse the productions:
-// implicit_document    ::= block_node DOCUMENT-END*
 //
-//	*************
-//
-// explicit_document    ::= DIRECTIVE* DOCUMENT-START block_node? DOCUMENT-END*
+//	implicit_document    ::= block_node DOCUMENT-END*
+//	                                    *************
+//	explicit_document    ::= DIRECTIVE* DOCUMENT-START block_node? DOCUMENT-END*
 func (parser *Parser) parseDocumentEnd(event *Event) error {
 	var token *Token
 	if err := parser.peekToken(&token); err != nil {
@@ -701,42 +698,32 @@ func (parser *Parser) appendTagDirective(value TagDirective, allow_duplicates bo
 }
 
 // Parse the productions:
-// block_node_or_indentless_sequence    ::=
 //
-//	ALIAS
-//	*****
-//	| properties (block_content | indentless_block_sequence)?
-//	  **********  *
-//	| block_content | indentless_block_sequence
-//	  *
-//
-// block_node           ::= ALIAS
-//
-//	*****
-//	| properties block_content?
-//	  ********** *
-//	| block_content
-//	  *
-//
-// flow_node            ::= ALIAS
-//
-//	*****
-//	| properties flow_content?
-//	  ********** *
-//	| flow_content
-//	  *
-//
-// properties           ::= TAG ANCHOR? | ANCHOR TAG?
-//
-//	*************************
-//
-// block_content        ::= block_collection | flow_collection | SCALAR
-//
-//	******
-//
-// flow_content         ::= flow_collection | SCALAR
-//
-//	******
+//	block_node_or_indentless_sequence    ::=
+//	                         ALIAS
+//	                         *****
+//	                         | properties (block_content | indentless_block_sequence)?
+//	                           **********  *
+//	                         | block_content | indentless_block_sequence
+//	                           *
+//	block_node           ::= ALIAS
+//	                         *****
+//	                         | properties block_content?
+//	                           ********** *
+//	                         | block_content
+//	                           *
+//	flow_node            ::= ALIAS
+//	                         *****
+//	                         | properties flow_content?
+//	                           ********** *
+//	                         | flow_content
+//	                           *
+//	properties           ::= TAG ANCHOR? | ANCHOR TAG?
+//	                         *************************
+//	block_content        ::= block_collection | flow_collection | SCALAR
+//	                                                              ******
+//	flow_content         ::= flow_collection | SCALAR
+//	                                           ******
 func (parser *Parser) parseNode(event *Event, block, indentless_sequence bool) error {
 	// defer trace("yaml_parser_parse_node", "block:", block, "indentless_sequence:", indentless_sequence)()
 
@@ -960,9 +947,9 @@ func (parser *Parser) parseNode(event *Event, block, indentless_sequence bool) e
 }
 
 // Parse the productions:
-// block_sequence ::= BLOCK-SEQUENCE-START (BLOCK-ENTRY block_node?)* BLOCK-END
 //
-//	********************  *********** *             *********
+//	block_sequence ::= BLOCK-SEQUENCE-START (BLOCK-ENTRY block_node?)* BLOCK-END
+//	                   ********************  *********** *             *********
 func (parser *Parser) parseBlockSequenceEntry(event *Event, first bool) error {
 	if first {
 		var token *Token
@@ -1019,9 +1006,9 @@ func (parser *Parser) parseBlockSequenceEntry(event *Event, first bool) error {
 }
 
 // Parse the productions:
-// indentless_sequence  ::= (BLOCK-ENTRY block_node?)+
 //
-//	*********** *
+//	indentless_sequence  ::= (BLOCK-ENTRY block_node?)+
+//	                          *********** *
 func (parser *Parser) parseIndentlessSequenceEntry(event *Event) error {
 	var token *Token
 	if err := parser.peekToken(&token); err != nil {
@@ -1091,15 +1078,15 @@ func (parser *Parser) splitStemComment(stem_len int) error {
 }
 
 // Parse the productions:
-// block_mapping        ::= BLOCK-MAPPING_START
 //
-//	*******************
-//	((KEY block_node_or_indentless_sequence?)?
-//	  *** *
-//	(VALUE block_node_or_indentless_sequence?)?)*
+//	block_mapping        ::= BLOCK-MAPPING_START
+//	                         *******************
+//	                         ((KEY block_node_or_indentless_sequence?)?
+//	                           *** *
+//	                         (VALUE block_node_or_indentless_sequence?)?)*
 //
-//	BLOCK-END
-//	*********
+//	                         BLOCK-END
+//	                         *********
 func (parser *Parser) parseBlockMappingKey(event *Event, first bool) error {
 	if first {
 		var token *Token
@@ -1167,13 +1154,14 @@ func (parser *Parser) parseBlockMappingKey(event *Event, first bool) error {
 }
 
 // Parse the productions:
-// block_mapping        ::= BLOCK-MAPPING_START
 //
-//	((KEY block_node_or_indentless_sequence?)?
+//	block_mapping        ::= BLOCK-MAPPING_START
 //
-//	(VALUE block_node_or_indentless_sequence?)?)*
-//	 ***** *
-//	BLOCK-END
+//	                          ((KEY block_node_or_indentless_sequence?)?
+//
+//	                          (VALUE block_node_or_indentless_sequence?)?)*
+//	                           ***** *
+//	                          BLOCK-END
 func (parser *Parser) parseBlockMappingValue(event *Event) error {
 	var token *Token
 	if err := parser.peekToken(&token); err != nil {
@@ -1199,19 +1187,17 @@ func (parser *Parser) parseBlockMappingValue(event *Event) error {
 }
 
 // Parse the productions:
-// flow_sequence        ::= FLOW-SEQUENCE-START
 //
-//	*******************
-//	(flow_sequence_entry FLOW-ENTRY)*
-//	 *                   **********
-//	flow_sequence_entry?
-//	*
-//	FLOW-SEQUENCE-END
-//	*****************
-//
-// flow_sequence_entry  ::= flow_node | KEY flow_node? (VALUE flow_node?)?
-//
-//	*
+//	flow_sequence        ::= FLOW-SEQUENCE-START
+//	                         *******************
+//	                         (flow_sequence_entry FLOW-ENTRY)*
+//	                          *                   **********
+//	                         flow_sequence_entry?
+//	                         *
+//	                         FLOW-SEQUENCE-END
+//	                         *****************
+//	flow_sequence_entry  ::= flow_node | KEY flow_node? (VALUE flow_node?)?
+//	                         *
 func (parser *Parser) parseFlowSequenceEntry(event *Event, first bool) error {
 	if first {
 		var token *Token
@@ -1274,9 +1260,9 @@ func (parser *Parser) parseFlowSequenceEntry(event *Event, first bool) error {
 }
 
 // Parse the productions:
-// flow_sequence_entry  ::= flow_node | KEY flow_node? (VALUE flow_node?)?
 //
-//	*** *
+//	flow_sequence_entry  ::= flow_node | KEY flow_node? (VALUE flow_node?)?
+//	                                     *** *
 func (parser *Parser) parseFlowSequenceEntryMappingKey(event *Event) error {
 	var token *Token
 	if err := parser.peekToken(&token); err != nil {
@@ -1295,9 +1281,9 @@ func (parser *Parser) parseFlowSequenceEntryMappingKey(event *Event) error {
 }
 
 // Parse the productions:
-// flow_sequence_entry  ::= flow_node | KEY flow_node? (VALUE flow_node?)?
 //
-//	***** *
+//	flow_sequence_entry  ::= flow_node | KEY flow_node? (VALUE flow_node?)?
+//	                                                     ***** *
 func (parser *Parser) parseFlowSequenceEntryMappingValue(event *Event) error {
 	var token *Token
 	if err := parser.peekToken(&token); err != nil {
@@ -1319,9 +1305,9 @@ func (parser *Parser) parseFlowSequenceEntryMappingValue(event *Event) error {
 }
 
 // Parse the productions:
-// flow_sequence_entry  ::= flow_node | KEY flow_node? (VALUE flow_node?)?
 //
-//	*
+//	flow_sequence_entry  ::= flow_node | KEY flow_node? (VALUE flow_node?)?
+//	                                                                     *
 func (parser *Parser) parseFlowSequenceEntryMappingEnd(event *Event) error {
 	var token *Token
 	if err := parser.peekToken(&token); err != nil {
@@ -1337,18 +1323,17 @@ func (parser *Parser) parseFlowSequenceEntryMappingEnd(event *Event) error {
 }
 
 // Parse the productions:
-// flow_mapping         ::= FLOW-MAPPING-START
 //
-//	******************
-//	(flow_mapping_entry FLOW-ENTRY)*
-//	 *                  **********
-//	flow_mapping_entry?
-//	******************
-//	FLOW-MAPPING-END
-//	****************
-//
-// flow_mapping_entry   ::= flow_node | KEY flow_node? (VALUE flow_node?)?
-//   - *** *
+//	flow_mapping         ::= FLOW-MAPPING-START
+//	                         ******************
+//	                         (flow_mapping_entry FLOW-ENTRY)*
+//	                          *                  **********
+//	                         flow_mapping_entry?
+//	                         ******************
+//	                         FLOW-MAPPING-END
+//	                         ****************
+//	flow_mapping_entry   ::= flow_node | KEY flow_node? (VALUE flow_node?)?
+//	                         *           *** *
 func (parser *Parser) parseFlowMappingKey(event *Event, first bool) error {
 	if first {
 		var token *Token
@@ -1414,8 +1399,9 @@ func (parser *Parser) parseFlowMappingKey(event *Event, first bool) error {
 }
 
 // Parse the productions:
-// flow_mapping_entry   ::= flow_node | KEY flow_node? (VALUE flow_node?)?
-//   - ***** *
+//
+//	flow_mapping_entry   ::= flow_node | KEY flow_node? (VALUE flow_node?)?
+//	                                  *                  ***** *
 func (parser *Parser) parseFlowMappingValue(event *Event, empty bool) error {
 	var token *Token
 	if err := parser.peekToken(&token); err != nil {
