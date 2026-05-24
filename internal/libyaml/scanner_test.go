@@ -197,8 +197,7 @@ func runCharConvertTest(t *testing.T, tc TestCase) {
 	case "asHex":
 		got = asHex(input, index)
 	case "width":
-		// width takes a single byte, not a byte array and index
-		got = width(input[index])
+		got = width(input, index)
 	default:
 		t.Fatalf("unknown function: %s", tc.Function)
 	}

@@ -1259,7 +1259,7 @@ func (emitter *Emitter) analyzeTagDirective(tag_directive *TagDirective) error {
 			Message: "tag handle must end with '!'",
 		}
 	}
-	for i := 1; i < len(handle)-1; i += width(handle[i]) {
+	for i := 1; i < len(handle)-1; i += width(handle, i) {
 		if !isAlpha(handle, i) {
 			return EmitterError{
 				Message: "tag handle must contain alphanumerical characters only",
@@ -1285,7 +1285,7 @@ func (emitter *Emitter) analyzeAnchor(anchor []byte, alias bool) error {
 			Message: problem,
 		}
 	}
-	for i := 0; i < len(anchor); i += width(anchor[i]) {
+	for i := 0; i < len(anchor); i += width(anchor, i) {
 		if !isAnchorChar(anchor, i) {
 			problem := "anchor value must contain valid characters only"
 			if alias {
@@ -1360,7 +1360,7 @@ func (emitter *Emitter) analyzeScalar(value []byte) error {
 
 	preceded_by_whitespace = true
 	for i, w := 0, 0; i < len(value); i += w {
-		w = width(value[i])
+		w = width(value, i)
 		followed_by_whitespace = i+w >= len(value) || isBlank(value, i+w)
 
 		if i == 0 {
@@ -1406,7 +1406,7 @@ func (emitter *Emitter) analyzeScalar(value []byte) error {
 			if i == 0 {
 				leading_space = true
 			}
-			if i+width(value[i]) == len(value) {
+			if i+width(value, i) == len(value) {
 				trailing_space = true
 			}
 			if previous_break {
@@ -1419,7 +1419,7 @@ func (emitter *Emitter) analyzeScalar(value []byte) error {
 			if i == 0 {
 				leading_break = true
 			}
-			if i+width(value[i]) == len(value) {
+			if i+width(value, i) == len(value) {
 				trailing_break = true
 			}
 			if previous_space {
@@ -1701,7 +1701,7 @@ func (emitter *Emitter) writeTagContent(value []byte, need_whitespace bool) erro
 				return err
 			}
 		} else {
-			w := width(value[i])
+			w := width(value, i)
 			for k := 0; k < w; k++ {
 				octet := value[i]
 				i++
@@ -1755,7 +1755,7 @@ func (emitter *Emitter) writePlainScalar(value []byte, allow_breaks bool) error 
 				if err := emitter.writeIndent(); err != nil {
 					return err
 				}
-				i += width(value[i])
+				i += width(value, i)
 			} else {
 				if err := emitter.write(value, &i); err != nil {
 					return err
@@ -1815,7 +1815,7 @@ func (emitter *Emitter) writeSingleQuotedScalar(value []byte, allow_breaks bool)
 				if err := emitter.writeIndent(); err != nil {
 					return err
 				}
-				i += width(value[i])
+				i += width(value, i)
 			} else {
 				if err := emitter.write(value, &i); err != nil {
 					return err
@@ -1964,7 +1964,7 @@ func (emitter *Emitter) writeDoubleQuotedScalar(value []byte, allow_breaks bool)
 						return err
 					}
 				}
-				i += width(value[i])
+				i += width(value, i)
 			} else if err := emitter.write(value, &i); err != nil {
 				return err
 			}
@@ -2090,7 +2090,7 @@ func (emitter *Emitter) writeFoldedScalar(value []byte) error {
 			if !breaks && !leading_spaces && value[i] == '\n' {
 				k := 0
 				for isLineBreak(value, k) {
-					k += width(value[k])
+					k += width(value, k)
 				}
 				if !isBlankOrZero(value, k) {
 					if err := emitter.putLineBreak(); err != nil {
@@ -2115,7 +2115,7 @@ func (emitter *Emitter) writeFoldedScalar(value []byte) error {
 				if err := emitter.writeIndent(); err != nil {
 					return err
 				}
-				i += width(value[i])
+				i += width(value, i)
 			} else {
 				if err := emitter.write(value, &i); err != nil {
 					return err
@@ -2235,22 +2235,15 @@ func (emitter *Emitter) write(s []byte, i *int) error {
 		}
 	}
 	p := emitter.buffer_pos
-	w := width(s[*i])
-	switch w {
-	case 4:
-		emitter.buffer[p+3] = s[*i+3]
-		fallthrough
-	case 3:
-		emitter.buffer[p+2] = s[*i+2]
-		fallthrough
-	case 2:
-		emitter.buffer[p+1] = s[*i+1]
-		fallthrough
-	case 1:
-		emitter.buffer[p+0] = s[*i+0]
-	default:
+	w := width(s, *i)
+	if w == 0 {
 		panic("unknown character width")
 	}
+
+	for k := w - 1; k >= 0; k-- {
+		emitter.buffer[p+k] = s[*i+k]
+	}
+
 	emitter.column++
 	emitter.buffer_pos += w
 	*i += w

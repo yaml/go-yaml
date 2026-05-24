@@ -732,7 +732,7 @@ func isEndOfScalarInFlowContentChar(b []byte, i int) bool {
 }
 
 // Determine the width of the character.
-func width(b byte) int {
+func singleByteWidth(b byte) int {
 	// Don't replace these by a switch without first
 	// confirming that it is being inlined.
 	if b&0x80 == 0x00 {
@@ -748,6 +748,10 @@ func width(b byte) int {
 		return 4
 	}
 	return 0
+}
+
+func width(b []byte, i int) int {
+	return singleByteWidth(b[i])
 }
 
 // Scan advances the buffer pointer and reads the next token.
@@ -2998,7 +3002,7 @@ func (parser *Parser) scanURIEscapes(directive bool, start_mark Mark, s *[]byte)
 		// If it is the leading octet, determine the length of the
 		// UTF-8 sequence.
 		if w == 1024 {
-			w = width(octet)
+			w = singleByteWidth(octet)
 			if w == 0 {
 				return parser.setScannerTagError(directive,
 					start_mark, "found an incorrect leading UTF-8 octet")
@@ -3305,7 +3309,7 @@ func (parser *Parser) skip() {
 	parser.mark.Index++
 	parser.mark.Column++
 	parser.unread--
-	parser.buffer_pos += width(parser.buffer[parser.buffer_pos])
+	parser.buffer_pos += width(parser.buffer, parser.buffer_pos)
 }
 
 // skipLine advances the parser position past the current line break.
@@ -3322,7 +3326,7 @@ func (parser *Parser) skipLine() {
 		parser.mark.Column = 1
 		parser.mark.Line++
 		parser.unread--
-		parser.buffer_pos += width(parser.buffer[parser.buffer_pos])
+		parser.buffer_pos += width(parser.buffer, parser.buffer_pos)
 		parser.newlines++
 	}
 }
@@ -3332,7 +3336,7 @@ func (parser *Parser) read(s []byte) []byte {
 	if !isBlank(parser.buffer, parser.buffer_pos) {
 		parser.newlines = 0
 	}
-	w := width(parser.buffer[parser.buffer_pos])
+	w := width(parser.buffer, parser.buffer_pos)
 	if w == 0 {
 		panic("invalid character sequence")
 	}
