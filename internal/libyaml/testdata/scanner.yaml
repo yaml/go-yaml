@@ -1010,6 +1010,51 @@
     data: [0xF8]
     want: 0
 
+- char-convert:
+    name: width - ASCII - letter A
+    func: width
+    data: [0x41] # 'A'
+    want: 1
+
+- char-convert:
+    name: width - 2-byte char - U+00A9 COPYRIGHT SIGN
+    func: width
+    data: [0xC2, 0xA9]
+    want: 2
+
+- char-convert:
+    name: width - 3-byte char - U+20AC EURO SIGN
+    func: width
+    data: [0xE2, 0x82, 0xAC]
+    want: 3
+
+- char-convert:
+    name: width - emoji 👍
+    func: width
+    data: [0xF0, 0x9F, 0x91, 0x8D]
+    want: 4
+
+- char-convert:
+    name: Width - emoji with skin tone modifier 👍🏽
+    func: width
+    data: [0xF0, 0x9F, 0x91, 0x8D, 0xF0, 0x9F, 0x8F, 0xBD]
+    want: 8
+
+- char-convert:
+    name: Width - emoji 👩🏼‍❤️‍💋‍👨🏾
+    func: width
+    #  👩🏼‍❤️‍💋‍👨🏾 =
+    #     👩 \x{1F469}\x{1F3FC} Woman + Type-3 Skin Tone (white skin tone modifier)
+    #     \x{200D} Zero Width Joiner (ZWJ)
+    #     ❤️ \x{2764}\x{FE0F} Heavy Black Heart + Variation Selector-16
+    #     \x{200D} Zero Width Joiner (ZWJ)
+    #     💋 \x{1F48B} Kiss Mark
+    #     \x{200D} Zero Width Joiner (ZWJ)
+    #     👨🏾 \x{1F468}\x{1F3FE} Man + Type-4 Skin Tone (dark skin tone modifier)
+    data: [0xF0, 0x9F, 0x91, 0xA9, 0xF0, 0x9F, 0x8F, 0xBC, 0xE2, 0x80, 0x8D, 0xE2, 0x80, 0x8D, 0xF0, 0x9F, 0x92, 0x8B, 0xE2, 0x80, 0x8D, 0xF0, 0x9F, 0x91, 0xA8, 0xF0, 0x9F, 0x8F, 0xBE]
+    want:
+        29
+
 # isTagURIChar tests
 - char-predicate:
     name: Is tag URI char - alphanumeric (non-verbatim)

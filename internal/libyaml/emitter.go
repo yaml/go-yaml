@@ -1399,6 +1399,9 @@ func (emitter *Emitter) analyzeScalar(value []byte) error {
 
 		if value[i] == '\t' {
 			tab_characters = true
+		} else if isUnicodeEmoji(value, i) {
+			// only consider emojis as printable characters if Unicode is supported
+			special_characters = !emitter.unicode
 		} else if !isPrintable(value, i) || !isASCII(value, i) && !emitter.unicode {
 			special_characters = true
 		}
@@ -1868,7 +1871,12 @@ func (emitter *Emitter) writeDoubleQuotedScalar(value []byte, allow_breaks bool)
 	}
 
 	for i := 0; i < len(value); {
-		if !isPrintable(value, i) || (!emitter.unicode && !isASCII(value, i)) ||
+		if isUnicodeEmoji(value, i) && emitter.unicode {
+			if err := emitter.write(value, &i); err != nil {
+				return err
+			}
+			spaces = false
+		} else if !isPrintable(value, i) || (!emitter.unicode && !isASCII(value, i)) ||
 			isBOM(value, i) || isLineBreak(value, i) ||
 			value[i] == '"' || value[i] == '\\' {
 

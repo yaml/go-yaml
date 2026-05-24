@@ -466,6 +466,87 @@
     - parent
     - child
 
+- emit-config:
+    name: Emojis with Unicode enabled
+    conf:
+      unicode: true
+    data:
+    - STREAM_START_EVENT:
+        encoding: UTF8_ENCODING
+    - DOCUMENT_START_EVENT:
+        implicit: true
+    - SEQUENCE_START_EVENT
+    - SCALAR_EVENT:
+        value: 👍
+        implicit: true
+        style: PLAIN_SCALAR_STYLE
+    - SCALAR_EVENT:
+        value: 👍🏽
+        implicit: true
+        style: PLAIN_SCALAR_STYLE
+    - SCALAR_EVENT:
+        value: 🇺🇸
+        implicit: true
+        style: PLAIN_SCALAR_STYLE
+    - SCALAR_EVENT:
+        value: 🏳️‍🌈
+        implicit: true
+        style: PLAIN_SCALAR_STYLE
+    - SCALAR_EVENT:
+        value: 👩🏼‍❤️‍💋‍👨🏾
+        implicit: true
+        style: PLAIN_SCALAR_STYLE
+    - SEQUENCE_END_EVENT
+    - DOCUMENT_END_EVENT
+    - STREAM_END_EVENT
+    want: |
+     - 👍
+     - 👍🏽
+     - 🇺🇸
+     - 🏳️‍🌈
+     - 👩🏼‍❤️‍💋‍👨🏾
+
+
+- emit-config:
+    name: Emojis with Unicode disabled
+    conf:
+      unicode: false
+    data:
+    - STREAM_START_EVENT:
+        encoding: UTF8_ENCODING
+    - DOCUMENT_START_EVENT:
+        implicit: true
+    - SEQUENCE_START_EVENT
+    - SCALAR_EVENT:
+        value: 😀
+        implicit: true
+        style: PLAIN_SCALAR_STYLE
+    - SCALAR_EVENT:
+        value: 👍🏽
+        implicit: true
+        style: PLAIN_SCALAR_STYLE
+    - SCALAR_EVENT:
+        value: 🇺🇸
+        implicit: true
+        style: PLAIN_SCALAR_STYLE
+    - SCALAR_EVENT:
+        value: 🏳️‍🌈
+        implicit: true
+        style: PLAIN_SCALAR_STYLE
+    - SCALAR_EVENT:
+        value: 👩🏼‍❤️‍💋‍👨🏾
+        implicit: true
+        style: PLAIN_SCALAR_STYLE
+    - SEQUENCE_END_EVENT
+    - DOCUMENT_END_EVENT
+    - STREAM_END_EVENT
+    want: |
+      - ! "\U0001F600"
+      - ! "\U0001F44D\U0001F3FD"
+      - ! "\U0001F1FA\U0001F1F8"
+      - ! "\U0001F3F3\uFE0F\u200D\U0001F308"
+      - ! "\U0001F469\U0001F3FC\u200D\u2764\uFE0F\u200D\U0001F48B\u200D\U0001F468\U0001F3FE"
+
 # Roundtrip test
 - roundtrip:
     name: Roundtrip

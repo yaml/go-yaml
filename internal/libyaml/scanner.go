@@ -630,6 +630,42 @@ func isPrintable(b []byte, i int) bool {
 			!(b[i+1] == 0xBF && (b[i+2] == 0xBE || b[i+2] == 0xBF))))
 }
 
+func getUnicodeEmojiLength(b []byte, i int) int {
+	var length int
+	runes := bytes.Runes(b[i:])
+	for _, r := range runes {
+		switch {
+		case r >= 0x1F1E6 && r <= 0x1F1FF: // Regional indicator symbols (flags)
+		case r >= 0x1F300 && r <= 0x1F5FF: // Misc symbols and pictographs (includes 👍)
+		case r >= 0x1F600 && r <= 0x1F64F: // Emoticons
+		case r >= 0x1F680 && r <= 0x1F6FF: // Transport and map symbols
+		case r >= 0x1F700 && r <= 0x1F77F: // Alchemical symbols (some emoji presentations)
+		case r >= 0x1F780 && r <= 0x1F7FF: // Geometric shapes extended
+		case r >= 0x1F800 && r <= 0x1F8FF: // Supplemental arrows-C
+		case r >= 0x1F900 && r <= 0x1F9FF: // Supplemental symbols and pictographs
+		case r >= 0x1FA70 && r <= 0x1FAFF: // Symbols and pictographs extended-A
+		case r >= 0x2600 && r <= 0x26FF: // Miscellaneous symbols
+		case r >= 0x2700 && r <= 0x27BF: // Dingbats
+		case r == 0xFE0E || r == 0xFE0F:
+			// U+FE0E character variant selector-15 (VS15) forces the preceding character to be displayed as text
+			// U+FE0F character variant selector-16 (VS16) forces the preceding character to be displayed as an emoji
+			if length == 0 {
+				// VS15 should only be used after an emoji character, but if it is not, we will treat it as non-printable.
+				return 0
+			}
+		case r == 0x200D: // 0x200D ZERO WIDTH JOINER (ZWJ) is used to combine multiple emoji characters into a single emoji sequence (e.g., family emojis).
+		default:
+			return len(string(runes[:length]))
+		}
+		length++
+	}
+	return len(string(runes[:length]))
+}
+
+func isUnicodeEmoji(b []byte, i int) bool {
+	return getUnicodeEmojiLength(b, i) > 0
+}
+
 // Check if the character at the specified position is NUL.
 func isZeroChar(b []byte, i int) bool {
 	return b[i] == 0x00
@@ -751,6 +787,10 @@ func singleByteWidth(b byte) int {
 }
 
 func width(b []byte, i int) int {
+	unicodeEmojiLength := getUnicodeEmojiLength(b, i)
+	if unicodeEmojiLength > 0 {
+		return unicodeEmojiLength
+	}
 	return singleByteWidth(b[i])
 }
 
