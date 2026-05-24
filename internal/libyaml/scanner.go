@@ -3393,7 +3393,7 @@ func (parser *Parser) read(s []byte) []byte {
 	}
 	parser.mark.Index++
 	parser.mark.Column++
-	parser.unread--
+	parser.unread -= w
 	return s
 }
 
