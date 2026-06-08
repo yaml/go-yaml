@@ -137,6 +137,9 @@ func (c *Composer) node(kind Kind, tag, value string) *Node {
 // document composes a document node by parsing its content between
 // DOCUMENT_START and DOCUMENT_END events.
 func (c *Composer) document() *Node {
+	// Anchors are scoped to a single document.
+	c.resetAnchors()
+
 	n := c.node(DocumentNode, "", "")
 	c.doc = n
 	c.expect(DOCUMENT_START_EVENT)
@@ -271,7 +274,7 @@ func (c *Composer) init() {
 	if c.doneInit {
 		return
 	}
-	c.anchors = make(map[string]*Node)
+	c.resetAnchors()
 	// Peek to get the encoding from STREAM_START_EVENT
 	if c.peek() == STREAM_START_EVENT {
 		c.encoding = c.event.GetEncoding()
@@ -283,6 +286,10 @@ func (c *Composer) init() {
 	if c.streamNodes {
 		c.returnStream = true
 	}
+}
+
+func (c *Composer) resetAnchors() {
+	c.anchors = make(map[string]*Node)
 }
 
 // Destroy cleans up the composer by deleting any pending event and the
