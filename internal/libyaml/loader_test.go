@@ -34,6 +34,30 @@ func TestStreamNodeEmptyStream(t *testing.T) {
 	assert.Equal(t, StreamNode, nodes[0].Kind)
 }
 
+// TestStreamNodeCommentOnlyStream tests that comments without documents are
+// preserved on the stream node.
+func TestStreamNodeCommentOnlyStream(t *testing.T) {
+	input := []byte("# comment\n")
+
+	loader, err := NewLoader(bytes.NewReader(input), WithStreamNodes())
+	assert.NoError(t, err)
+
+	var nodes []Node
+	for {
+		var node Node
+		err := loader.Load(&node)
+		if err == io.EOF {
+			break
+		}
+		assert.NoError(t, err)
+		nodes = append(nodes, node)
+	}
+
+	assert.Equal(t, 1, len(nodes))
+	assert.Equal(t, StreamNode, nodes[0].Kind)
+	assert.Equal(t, "# comment", nodes[0].HeadComment)
+}
+
 // TestStreamNodeSingleDocument tests the pattern [Stream, Doc, Stream] for single document
 func TestStreamNodeSingleDocument(t *testing.T) {
 	input := []byte("key: value\n")
@@ -259,6 +283,15 @@ func TestLoad_SingleDocument(t *testing.T) {
 // TestLoad_ZeroDocuments tests that 0 documents returns error
 func TestLoad_ZeroDocuments(t *testing.T) {
 	input := []byte("")
+
+	var config map[string]any
+	err := Load(input, &config)
+	assert.NotNil(t, err)
+	assert.ErrorMatches(t, ".*no documents in stream.*", err)
+}
+
+func TestLoad_CommentOnlyStream(t *testing.T) {
+	input := []byte("# comment\n")
 
 	var config map[string]any
 	err := Load(input, &config)

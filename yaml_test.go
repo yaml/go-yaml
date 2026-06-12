@@ -788,6 +788,61 @@ func TestDecoder(t *testing.T) {
 	}
 }
 
+func TestUnmarshalZeroDocumentStreams(t *testing.T) {
+	inputs := []string{
+		"",
+		"   \n\n",
+		"# comment\n",
+		"# head\n\n# after blank\n",
+	}
+
+	for _, input := range inputs {
+		t.Run(fmt.Sprintf("%q", input), func(t *testing.T) {
+			target := struct {
+				A string `yaml:"a"`
+			}{A: "keep"}
+			err := yaml.Unmarshal([]byte(input), &target)
+			assert.NoError(t, err)
+			assert.Equal(t, "keep", target.A)
+
+			m := map[string]any{"keep": "yes"}
+			err = yaml.Unmarshal([]byte(input), &m)
+			assert.NoError(t, err)
+			assert.DeepEqual(t, map[string]any{"keep": "yes"}, m)
+
+			node := yaml.Node{
+				Kind:  yaml.ScalarNode,
+				Tag:   "!!str",
+				Value: "keep",
+			}
+			err = yaml.Unmarshal([]byte(input), &node)
+			assert.NoError(t, err)
+			assert.Equal(t, yaml.ScalarNode, node.Kind)
+			assert.Equal(t, "!!str", node.Tag)
+			assert.Equal(t, "keep", node.Value)
+			assert.Equal(t, "", node.HeadComment)
+		})
+	}
+}
+
+func TestDecoderZeroDocumentStreams(t *testing.T) {
+	inputs := []string{
+		"",
+		"   \n\n",
+		"# comment\n",
+		"# head\n\n# after blank\n",
+	}
+
+	for _, input := range inputs {
+		t.Run(fmt.Sprintf("%q", input), func(t *testing.T) {
+			value := any("keep")
+			err := yaml.NewDecoder(strings.NewReader(input)).Decode(&value)
+			assert.ErrorIs(t, err, io.EOF)
+			assert.Equal(t, "keep", value)
+		})
+	}
+}
+
 type errReader struct{}
 
 func (errReader) Read([]byte) (int, error) {
