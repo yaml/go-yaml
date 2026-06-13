@@ -9,3 +9,9 @@
 /go-yaml
 /*.md
 /*.yaml
+
+# exclusions for go vendoring
+# see https://github.com/yaml/go-yaml/issues/339
+!/.golangci.yaml
+!/.ls-lint.yaml
+!/.yamllint.yaml
