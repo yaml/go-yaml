@@ -53,8 +53,8 @@ type Constructor struct {
 	constructCount int
 	aliasCount     int
 	aliasDepth     int
-	aliasCheck  func(aliasCount, constructCount int) error
-	formatError func(*LoadError) string
+	aliasCheck     func(aliasCount, constructCount int) error
+	formatError    func(*LoadError) string
 
 	mergedFields map[any]bool
 }
@@ -479,7 +479,7 @@ func (c *Constructor) scalar(n *Node, out reflect.Value) bool {
 		tag = strTag
 		resolved = n.Value
 	} else {
-		tag, resolved = resolve(n.Tag, n.Value)
+		tag, resolved = resolve(n.Tag, n.Value, c.formatError)
 		if tag == binaryTag {
 			data, err := base64.StdEncoding.DecodeString(resolved.(string))
 			if err != nil {

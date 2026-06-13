@@ -12,8 +12,8 @@
 // Limit plugin (plugin/limit):
 //   - Configurable depth and alias expansion limits
 //
-// Errfmt plugin (plugin/errfmt):
-//   - Selectable error message format (default, legacy, compact)
+// Errfmt plugins (plugin/errfmt/v3 and plugin/errfmt/v4):
+//   - Versioned YAML load error message formatting
 //
 // # Usage
 //
@@ -21,13 +21,13 @@
 //
 //	import "go.yaml.in/yaml/v4"
 //	import "go.yaml.in/yaml/v4/plugin/limit"
-//	import "go.yaml.in/yaml/v4/plugin/errfmt"
+//	import errfmtv3 "go.yaml.in/yaml/v4/plugin/errfmt/v3"
 //
 //	// Disable alias checking for documents with many aliases
 //	loader := yaml.NewLoader(data, yaml.WithPlugin(limit.New(limit.AliasNone())))
 //
 //	// Use legacy error format (yaml: line N: msg)
-//	loader := yaml.NewLoader(data, yaml.WithPlugin(errfmt.New(errfmt.FormatLegacy)))
+//	loader := yaml.NewLoader(data, yaml.WithPlugin(errfmtv3.New()))
 //
 // # Third-Party Plugins
 //

@@ -33,7 +33,7 @@ type Options struct {
 	FlowSimpleCollections bool       // Use flow style for simple collections
 	QuotePreference       QuoteStyle // Preferred quote style when quoting is required
 
-	// Error formatting (set by WithPlugin(errfmt.New(...)))
+	// Error formatting (set by WithPlugin(errfmtv3.New() or errfmtv4.New(...)))
 	FormatLoadError func(*LoadError) string
 
 	// Safety limit checks (set by ApplyOptions or WithPlugin(limit.New(...)))

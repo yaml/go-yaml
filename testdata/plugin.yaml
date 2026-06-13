@@ -107,10 +107,10 @@
     want: 'go-yaml load error in scanner (while increasing flow level) at L1.C10001: exceeded max depth of 10000'
 
 - plugin-error:
-    name: errfmt legacy format on scanner error
+    name: errfmt v3 format on scanner error
     plugin:
       errfmt:
-        format: legacy
+        v3:
       limit:
         depth: 5
     data:
@@ -121,10 +121,11 @@
     want: 'yaml: line 1: exceeded max depth of 5'
 
 - plugin-error:
-    name: errfmt compact format on scanner error
+    name: errfmt v4 long position on scanner error
     plugin:
       errfmt:
-        format: compact
+        v4:
+          position: long
       limit:
         depth: 5
     data:
@@ -132,7 +133,22 @@
       - loop: ['[', 6]
       - text: 'x'
       - loop: [']', 6]
-    want: 'scanner:1:6: exceeded max depth of 5'
+    want: 'go-yaml load error in scanner (while increasing flow level) at line 1, column 6: exceeded max depth of 5'
+
+- plugin-error:
+    name: errfmt v4 template on scanner error
+    plugin:
+      errfmt:
+        v4:
+          template: '{{.Stage}} {{pos .Mark}} {{.Message}}'
+      limit:
+        depth: 5
+    data:
+      join:
+      - loop: ['[', 6]
+      - text: 'x'
+      - loop: [']', 6]
+    want: 'scanner L1.C6 exceeded max depth of 5'
 
 - plugin-pass:
     name: errfmt default format (no-op)
