@@ -479,6 +479,48 @@
     - value
     - item1
 
+# Regression tests for https://github.com/yaml/go-yaml/issues/337
+- roundtrip:
+    name: Folded scalar preserves newlines
+    yaml: |
+      key: >
+        Heading:
+
+          * first item
+          * second item
+    want: |
+      key: >
+        Heading:
+
+          * first item
+          * second item
+
+- roundtrip:
+    name: Folded scalar single newline between plain lines
+    yaml: |
+      key: >
+        one
+
+        two
+    want: |
+      key: >
+        one
+
+        two
+
+- roundtrip:
+    name: Folded scalar trailing more-indented block
+    yaml: |
+      key: >
+        intro
+
+          indented tail
+    want: |
+      key: >
+        intro
+
+          indented tail
+
 # Writer test
 - emit-writer:
     name: Writer
