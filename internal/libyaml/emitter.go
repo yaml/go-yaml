@@ -2086,11 +2086,11 @@ func (emitter *Emitter) writeFoldedScalar(value []byte) error {
 	for i := 0; i < len(value); {
 		if isLineBreak(value, i) {
 			if !breaks && !leading_spaces && value[i] == '\n' {
-				k := 0
-				for isLineBreak(value, k) {
+				k := i
+				for k < len(value) && isLineBreak(value, k) {
 					k += width(value[k])
 				}
-				if !isBlankOrZero(value, k) {
+				if k < len(value) && !isBlankOrZero(value, k) {
 					if err := emitter.putLineBreak(); err != nil {
 						return err
 					}
