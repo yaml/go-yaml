@@ -300,6 +300,72 @@ func TestNodeOmitEmpty(t *testing.T) {
 	assert.ErrorMatches(t, "go-yaml dump error in serializer: cannot represent node with unknown kind 0", err)
 }
 
+func nodeRoundTrip(t *testing.T, src []byte, indent int) []byte {
+	t.Helper()
+
+	var n yaml.Node
+	if err := yaml.Unmarshal(src, &n); err != nil {
+		t.Fatalf("Unmarshal into Node: %v", err)
+	}
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(indent)
+	if err := enc.Encode(&n); err != nil {
+		t.Fatalf("Encode Node: %v", err)
+	}
+	if err := enc.Close(); err != nil {
+		t.Fatalf("Close encoder: %v", err)
+	}
+	return buf.Bytes()
+}
+
+func TestNodeFoldedScalarRoundtripStable(t *testing.T) {
+	cases := []struct {
+		name string
+		src  string
+	}{
+		{
+			name: "folded heading then more-indented block",
+			src:  "key: >\n  Heading:\n\n    * first item\n    * second item\n",
+		},
+		{
+			name: "folded single newline between plain lines",
+			src:  "key: >\n  one\n\n  two\n",
+		},
+		{
+			name: "folded single line",
+			src:  "key: >\n  just one line\n",
+		},
+		{
+			name: "literal control",
+			src:  "key: |\n  Heading:\n\n    * first item\n    * second item\n",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			var first map[string]string
+			if err := yaml.Unmarshal([]byte(tc.src), &first); err != nil {
+				t.Fatalf("Unmarshal source: %v", err)
+			}
+			want := first["key"]
+
+			current := []byte(tc.src)
+			for round := 0; round < 4; round++ {
+				var m map[string]string
+				if err := yaml.Unmarshal(current, &m); err != nil {
+					t.Fatalf("round %d: Unmarshal: %v", round, err)
+				}
+				if m["key"] != want {
+					t.Fatalf("round %d: decoded value drifted: want %q, got %q", round, want, m["key"])
+				}
+				current = nodeRoundTrip(t, current, 2)
+			}
+		})
+	}
+}
+
 // NodeInfo represents the information about a YAML node in a test-friendly format
 type NodeInfo struct {
 	Kind    string      `yaml:"kind"`
