@@ -1,15 +1,16 @@
 // Copyright 2026 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-// Package errfmtv4 provides the go-yaml v4 load error formatter.
+// Package errfmtv4 provides the go-yaml v4 error formatter.
 //
 // With no options, the v4 formatter renders the current structured go-yaml
 // error style:
 //
 //	go-yaml load error in scanner at L2.C6: message
+//	go-yaml dump error in representer: message
 //
-// It can also be configured with alternate position styles or a custom
-// text/template template.
+// It can also be configured with alternate load-error position styles or
+// custom text/template templates.
 package errfmtv4
 
 import (
@@ -20,7 +21,9 @@ import (
 	"go.yaml.in/yaml/v4/internal/libyaml"
 )
 
-const defaultTemplate = `{{if .HasContext}}go-yaml load error in {{.Stage}} ({{.ContextMsg}}) at {{rangePos .ContextMark .Mark}}: {{.Message}}{{else}}go-yaml load error in {{.Stage}} at {{pos .Mark}}: {{.Message}}{{end}}`
+const defaultLoadTemplate = `{{if .HasContext}}go-yaml load error in {{.Stage}} ({{.ContextMsg}}) at {{rangePos .ContextMark .Mark}}: {{.Message}}{{else}}go-yaml load error in {{.Stage}} at {{pos .Mark}}: {{.Message}}{{end}}`
+
+const defaultDumpTemplate = `go-yaml dump error in {{.Stage}}: {{.Message}}`
 
 // PositionStyle controls how marks are rendered by the pos and rangePos
 // template functions.
@@ -37,11 +40,13 @@ const (
 	PositionLine
 )
 
-// Plugin implements the v4 YAML load error formatter.
+// Plugin implements the v4 YAML error formatter.
 type Plugin struct {
-	positionStyle PositionStyle
-	templateText  string
-	template      *template.Template
+	positionStyle    PositionStyle
+	loadTemplateText string
+	dumpTemplateText string
+	loadTemplate     *template.Template
+	dumpTemplate     *template.Template
 }
 
 // Option configures a [Plugin].
@@ -50,8 +55,9 @@ type Option func(*Plugin) error
 // New creates a v4 error formatting plugin.
 func New(opts ...Option) (*Plugin, error) {
 	p := &Plugin{
-		positionStyle: PositionShort,
-		templateText:  defaultTemplate,
+		positionStyle:    PositionShort,
+		loadTemplateText: defaultLoadTemplate,
+		dumpTemplateText: defaultDumpTemplate,
 	}
 	for _, opt := range opts {
 		if err := opt(p); err != nil {
@@ -74,9 +80,24 @@ func Must(opts ...Option) *Plugin {
 }
 
 // WithTemplate sets a text/template template for rendering load errors.
+//
+// Deprecated: use WithLoadTemplate.
 func WithTemplate(text string) Option {
+	return WithLoadTemplate(text)
+}
+
+// WithLoadTemplate sets a text/template template for rendering load errors.
+func WithLoadTemplate(text string) Option {
 	return func(p *Plugin) error {
-		p.templateText = text
+		p.loadTemplateText = text
+		return nil
+	}
+}
+
+// WithDumpTemplate sets a text/template template for rendering dump errors.
+func WithDumpTemplate(text string) Option {
+	return func(p *Plugin) error {
+		p.dumpTemplateText = text
 		return nil
 	}
 }
@@ -97,9 +118,18 @@ func WithPositionStyle(style PositionStyle) Option {
 // FormatLoadError implements [yaml.ErrorPlugin].
 func (p *Plugin) FormatLoadError(err *libyaml.LoadError) string {
 	var out bytes.Buffer
-	if execErr := p.template.Execute(&out, newTemplateData(err)); execErr != nil {
+	if execErr := p.loadTemplate.Execute(&out, newLoadTemplateData(err)); execErr != nil {
 		return fmt.Sprintf("go-yaml load error in %s at %s: %s",
 			err.Stage, p.pos(err.Mark), err.Message)
+	}
+	return out.String()
+}
+
+// FormatDumpError implements [yaml.ErrorPlugin].
+func (p *Plugin) FormatDumpError(err *libyaml.DumpError) string {
+	var out bytes.Buffer
+	if execErr := p.dumpTemplate.Execute(&out, newDumpTemplateData(err)); execErr != nil {
+		return fmt.Sprintf("go-yaml dump error in %s: %s", err.Stage, err.Message)
 	}
 	return out.String()
 }
@@ -119,12 +149,18 @@ func NewFromYAML(cfg map[string]any) (*Plugin, error) {
 				return nil, err
 			}
 			opts = append(opts, WithPositionStyle(style))
-		case "template":
+		case "template", "load-template":
 			s, ok := val.(string)
 			if !ok {
-				return nil, fmt.Errorf("errfmt v4: template must be a string, got %T", val)
+				return nil, fmt.Errorf("errfmt v4: %s must be a string, got %T", key, val)
 			}
-			opts = append(opts, WithTemplate(s))
+			opts = append(opts, WithLoadTemplate(s))
+		case "dump-template":
+			s, ok := val.(string)
+			if !ok {
+				return nil, fmt.Errorf("errfmt v4: dump-template must be a string, got %T", val)
+			}
+			opts = append(opts, WithDumpTemplate(s))
 		default:
 			return nil, fmt.Errorf("errfmt v4: unknown key %q", key)
 		}
@@ -133,16 +169,23 @@ func NewFromYAML(cfg map[string]any) (*Plugin, error) {
 }
 
 func (p *Plugin) compileTemplate() error {
-	t, err := template.New("errfmtv4").Funcs(template.FuncMap{
+	funcs := template.FuncMap{
 		"pos":      p.pos,
 		"rangePos": p.rangePos,
 		"line":     line,
 		"lineCol":  lineCol,
-	}).Parse(p.templateText)
-	if err != nil {
-		return fmt.Errorf("errfmt v4: invalid template: %w", err)
 	}
-	p.template = t
+	t, err := template.New("errfmtv4-load").Funcs(funcs).Parse(p.loadTemplateText)
+	if err != nil {
+		return fmt.Errorf("errfmt v4: invalid load template: %w", err)
+	}
+	p.loadTemplate = t
+
+	t, err = template.New("errfmtv4-dump").Funcs(funcs).Parse(p.dumpTemplateText)
+	if err != nil {
+		return fmt.Errorf("errfmt v4: invalid dump template: %w", err)
+	}
+	p.dumpTemplate = t
 	return nil
 }
 
@@ -159,7 +202,7 @@ func parsePositionStyle(s string) (PositionStyle, error) {
 	}
 }
 
-type templateData struct {
+type loadTemplateData struct {
 	Stage       libyaml.Stage
 	Message     string
 	Mark        libyaml.Mark
@@ -168,14 +211,26 @@ type templateData struct {
 	HasContext  bool
 }
 
-func newTemplateData(err *libyaml.LoadError) templateData {
-	return templateData{
+func newLoadTemplateData(err *libyaml.LoadError) loadTemplateData {
+	return loadTemplateData{
 		Stage:       err.Stage,
 		Message:     err.Message,
 		Mark:        err.Mark,
 		ContextMark: err.ContextMark,
 		ContextMsg:  err.ContextMsg,
 		HasContext:  len(err.ContextMsg) > 0,
+	}
+}
+
+type dumpTemplateData struct {
+	Stage   libyaml.Stage
+	Message string
+}
+
+func newDumpTemplateData(err *libyaml.DumpError) dumpTemplateData {
+	return dumpTemplateData{
+		Stage:   err.Stage,
+		Message: err.Message,
 	}
 }
 

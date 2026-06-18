@@ -1,16 +1,17 @@
 # Errfmt v4 Plugin
 
-The v4 error formatting plugin renders YAML load errors in the current go-yaml
-v4 style:
+The v4 error formatting plugin renders YAML load and dump errors in the
+current go-yaml v4 style:
 
 ```text
 go-yaml load error in scanner at L2.C6: message
+go-yaml dump error in representer: message
 ```
 
 It is installed by default for bare `yaml.Load`, `yaml.NewLoader`,
 `yaml.WithV2Defaults()`, and `yaml.WithV4Defaults()`.
 Use this plugin explicitly when you want v4 formatting after another preset, or
-when you need custom position text or a custom template.
+when you need custom position text or custom templates.
 
 ## Basic Usage
 
@@ -22,6 +23,12 @@ import (
 
 var out any
 err := yaml.Load(data, &out, yaml.WithPlugin(errfmtv4.Must()))
+```
+
+The same plugin applies to dumper errors:
+
+```go
+_, err := yaml.Dump(make(chan int), yaml.WithPlugin(errfmtv4.Must()))
 ```
 
 Use `New` when options may return an error:
@@ -70,14 +77,14 @@ errfmtv4.Must(errfmtv4.WithPositionStyle(errfmtv4.PositionLine))
 go-yaml load error in scanner at line 1: message
 ```
 
-## Templates
+## Load Templates
 
-Use `WithTemplate` for full control over the rendered error string.
+Use `WithLoadTemplate` for full control over rendered load errors.
 Templates use Go's `text/template` package.
 
 ```go
 formatter, err := errfmtv4.New(
-    errfmtv4.WithTemplate("{{.Stage}} at {{pos .Mark}}: {{.Message}}"),
+    errfmtv4.WithLoadTemplate("{{.Stage}} at {{pos .Mark}}: {{.Message}}"),
 )
 if err != nil {
     return err
@@ -115,6 +122,29 @@ Template parse errors are returned by `errfmtv4.New`.
 `errfmtv4.Must` panics on invalid templates and is intended for known-good
 static configuration.
 
+`WithTemplate` is kept as an alias for `WithLoadTemplate`.
+
+## Dump Templates
+
+Use `WithDumpTemplate` for full control over rendered dump errors:
+
+```go
+formatter, err := errfmtv4.New(
+    errfmtv4.WithDumpTemplate("{{.Stage}}: {{.Message}}"),
+)
+if err != nil {
+    return err
+}
+_, err = yaml.Dump(make(chan int), yaml.WithPlugin(formatter))
+```
+
+Dump templates receive:
+
+| Field | Description |
+|---|---|
+| `Stage` | Dump stage, such as `representer`, `serializer`, `emitter`, or `writer`. |
+| `Message` | Error message without stage prefix. |
+
 ## Context Errors
 
 Some parser and scanner errors include context:
@@ -141,16 +171,18 @@ plugin:
       position: long
 ```
 
-Use a template:
+Use load and dump templates:
 
 ```yaml
 plugin:
   errfmt:
     v4:
-      template: '{{.Stage}} at {{pos .Mark}}: {{.Message}}'
+      load-template: '{{.Stage}} at {{pos .Mark}}: {{.Message}}'
+      dump-template: '{{.Stage}}: {{.Message}}'
 ```
 
 `position` accepts `short`, `long`, or `line`.
+`template` is also accepted as an alias for `load-template`.
 When `plugin.errfmt` is `null`, v4 defaults are used:
 
 ```yaml
@@ -167,6 +199,10 @@ not enough:
 type MessageOnlyErrors struct{}
 
 func (m MessageOnlyErrors) FormatLoadError(err *yaml.LoadError) string {
+    return err.Message
+}
+
+func (m MessageOnlyErrors) FormatDumpError(err *yaml.DumpError) string {
     return err.Message
 }
 

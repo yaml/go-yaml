@@ -6,7 +6,7 @@ Plugins are registered with `yaml.WithPlugin(...)`.
 
 ## Plugin-Based Defaults
 
-Much of go-yaml's configurable loading behavior is implemented as plugins, and
+Much of go-yaml's configurable processing behavior is implemented as plugins, and
 more internal policy may move behind plugin interfaces over time.
 The default behavior is not a separate special mode: it is the result of using
 the shipped plugins with their default configurations.
@@ -17,7 +17,7 @@ Version presets work the same way: they install a set of default options and
 default plugins that match the requested compatibility profile.
 
 This keeps the built-in behavior easy to override without changing the rest of
-the loading pipeline.
+the load or dump pipeline.
 Applications can replace one policy, such as error formatting or alias limits,
 while keeping all other defaults intact.
 
@@ -26,8 +26,8 @@ while keeping all other defaults intact.
 | Plugin | Guide | Use When |
 |---|---|---|
 | Limit | [plugin/limit.md](plugin/limit.md) | You need to relax, tighten, or replace YAML depth and alias safety checks. |
-| Errfmt v3 | [plugin/errfmt-v3.md](plugin/errfmt-v3.md) | You need v3-compatible load error strings like `yaml: line 2: message`. |
-| Errfmt v4 | [plugin/errfmt-v4.md](plugin/errfmt-v4.md) | You need v4 load error formatting, long positions, line-only positions, or templates. |
+| Errfmt v3 | [plugin/errfmt-v3.md](plugin/errfmt-v3.md) | You need v3-compatible error strings like `yaml: line 2: message`. |
+| Errfmt v4 | [plugin/errfmt-v4.md](plugin/errfmt-v4.md) | You need v4 error formatting, long positions, line-only positions, or templates. |
 
 See [plugin/](plugin/) for the plugin guide index.
 
@@ -69,7 +69,8 @@ one wins.
 
 ## Default Behavior
 
-Bare `yaml.Load` and `yaml.NewLoader` use v4 defaults:
+Bare `yaml.Load`, `yaml.Dump`, `yaml.NewLoader`, and `yaml.NewDumper` use
+v4 defaults:
 
 - default safety limits equivalent to `limit.New()`
 - v4 error formatting equivalent to `errfmtv4.Must()`
@@ -125,6 +126,7 @@ Error formatting plugins implement `yaml.ErrorPlugin`:
 ```go
 type ErrorPlugin interface {
     FormatLoadError(err *yaml.LoadError) string
+    FormatDumpError(err *yaml.DumpError) string
 }
 ```
 

@@ -1,7 +1,8 @@
 // Copyright 2026 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-// Package errfmt contains versioned YAML load error formatting plugins.
+// Package errfmt contains versioned YAML load and dump error formatting
+// plugins.
 //
 // Import a concrete version package to select a shipped formatter:
 //

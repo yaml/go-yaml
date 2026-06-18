@@ -13,7 +13,7 @@
 //   - Configurable depth and alias expansion limits
 //
 // Errfmt plugins (plugin/errfmt/v3 and plugin/errfmt/v4):
-//   - Versioned YAML load error message formatting
+//   - Versioned YAML load and dump error message formatting
 //
 // # Usage
 //

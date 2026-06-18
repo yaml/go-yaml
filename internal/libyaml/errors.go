@@ -115,11 +115,18 @@ type DumpError struct {
 
 	// Error chaining
 	err error // Underlying error (for Unwrap support)
+
+	// formatter is an optional function that controls the error string
+	// representation. Set by the errfmt plugin via Options.FormatDumpError.
+	formatter func(*DumpError) string
 }
 
 // Error returns the error message with stage information.
 // Format: "go-yaml dump error in <stage>: <message>"
 func (e *DumpError) Error() string {
+	if e.formatter != nil {
+		return e.formatter(e)
+	}
 	return fmt.Sprintf("go-yaml dump error in %s: %s", e.Stage, e.Message)
 }
 
@@ -134,21 +141,49 @@ func NewDumpError(stage Stage, message string, cause error) *DumpError {
 	return &DumpError{Stage: stage, Message: message, err: cause}
 }
 
+func newDumpError(
+	stage Stage,
+	message string,
+	cause error,
+	formatter func(*DumpError) string,
+) *DumpError {
+	return &DumpError{
+		Stage:     stage,
+		Message:   message,
+		err:       cause,
+		formatter: formatter,
+	}
+}
+
+func formatDumpError(err *DumpError, formatter func(*DumpError) string) *DumpError {
+	if formatter == nil || err.formatter != nil {
+		return err
+	}
+	dup := *err
+	dup.formatter = formatter
+	return &dup
+}
+
 // failDump panics with a YAMLError wrapping a DumpError for the given stage.
 // If err is exactly a *DumpError it is passed through unchanged to avoid
 // double-wrapping (e.g. a user MarshalYAML that returns yaml.NewDumpError).
 // Errors that merely wrap a *DumpError are treated as ordinary errors so that
 // the outer wrapper's message and context are preserved.
-func failDump(stage Stage, err error) {
+func failDump(stage Stage, err error, formatter func(*DumpError) string) {
 	if de, ok := err.(*DumpError); ok {
-		panic(&YAMLError{de})
+		panic(&YAMLError{formatDumpError(de, formatter)})
 	}
-	panic(&YAMLError{&DumpError{Stage: stage, Message: err.Error(), err: err}})
+	panic(&YAMLError{newDumpError(stage, err.Error(), err, formatter)})
 }
 
 // failDumpf panics with a YAMLError wrapping a formatted DumpError.
-func failDumpf(stage Stage, format string, args ...any) {
-	panic(&YAMLError{&DumpError{Stage: stage, Message: fmt.Sprintf(format, args...)}})
+func failDumpf(
+	stage Stage,
+	formatter func(*DumpError) string,
+	format string,
+	args ...any,
+) {
+	panic(&YAMLError{newDumpError(stage, fmt.Sprintf(format, args...), nil, formatter)})
 }
 
 // EmitterError represents an error that occurred during emitting.

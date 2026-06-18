@@ -279,7 +279,7 @@ type DepthContext = libyaml.DepthContext
 // Each plugin implements one or more plugin interfaces.
 // Currently supported plugin types:
 //   - LimitPlugin: Controls depth and alias expansion limits
-//   - ErrorPlugin: Customizes load error message formatting
+//   - ErrorPlugin: Customizes load and dump error message formatting
 //
 // Example:
 //
@@ -298,6 +298,7 @@ func WithPlugin(plugins ...any) Option {
 			}
 			if ep, ok := p.(ErrorPlugin); ok {
 				o.FormatLoadError = ep.FormatLoadError
+				o.FormatDumpError = ep.FormatDumpError
 				registered = true
 			}
 			if !registered {

@@ -2529,7 +2529,7 @@ func TestEncoderMultipleDocuments(t *testing.T) {
 func TestEncoderWriteError(t *testing.T) {
 	enc := yaml.NewEncoder(errorWriter{})
 	err := enc.Encode(map[string]string{"a": "b"})
-	assert.ErrorMatches(t, `go-yaml dump error in writer: some write error`, err)
+	assert.ErrorMatches(t, `yaml: some write error`, err)
 	var dumpErr *yaml.DumpError
 	assert.True(t, errors.As(err, &dumpErr))
 	assert.Equal(t, yaml.WriterStage, dumpErr.Stage)
@@ -2551,14 +2551,14 @@ var marshalErrorTests = []struct {
 		inlineB `yaml:",inline"`
 	}{1, inlineB{2, inlineC{3}}},
 	//nolint:dupword // struct is duplicated here as the first one is the struct and the second is the name of the inline struct
-	error: `go-yaml dump error in representer: duplicated key 'b' in struct struct \{ B int; .*`,
+	error: `yaml: duplicated key 'b' in struct struct \{ B int; .*`,
 	stage: yaml.RepresenterStage,
 }, {
 	value: &struct {
 		A int
 		B map[string]int `yaml:",inline"`
 	}{1, map[string]int{"a": 2}},
-	error: `go-yaml dump error in representer: cannot have key "a" in inlined map: conflicts with struct field`,
+	error: `yaml: cannot have key "a" in inlined map: conflicts with struct field`,
 	stage: yaml.RepresenterStage,
 }}
 

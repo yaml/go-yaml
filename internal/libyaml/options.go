@@ -35,6 +35,7 @@ type Options struct {
 
 	// Error formatting (set by WithPlugin(errfmtv3.New() or errfmtv4.New(...)))
 	FormatLoadError func(*LoadError) string
+	FormatDumpError func(*DumpError) string
 
 	// Safety limit checks (set by ApplyOptions or WithPlugin(limit.New(...)))
 	DepthCheck func(depth int, ctx *DepthContext) error

@@ -1,10 +1,10 @@
 // Copyright 2026 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-// Package errfmtv3 provides the go-yaml v3-compatible load error formatter.
+// Package errfmtv3 provides the go-yaml v3-compatible error formatter.
 //
-// The v3 formatter renders errors as "yaml: line N: message", matching the
-// legacy go-yaml error style.
+// The v3 formatter renders load errors as "yaml: line N: message" and dump
+// errors as "yaml: message", matching the legacy go-yaml error style.
 package errfmtv3
 
 import (
@@ -13,7 +13,7 @@ import (
 	"go.yaml.in/yaml/v4/internal/libyaml"
 )
 
-// Plugin implements the v3-compatible YAML load error formatter.
+// Plugin implements the v3-compatible YAML error formatter.
 type Plugin struct{}
 
 // New creates a v3-compatible error formatting plugin.
@@ -28,6 +28,11 @@ func (p *Plugin) FormatLoadError(err *libyaml.LoadError) string {
 		return fmt.Sprintf("yaml: %s", err.Message)
 	}
 	return fmt.Sprintf("yaml: line %d: %s", line, err.Message)
+}
+
+// FormatDumpError implements [yaml.ErrorPlugin].
+func (p *Plugin) FormatDumpError(err *libyaml.DumpError) string {
+	return fmt.Sprintf("yaml: %s", err.Message)
 }
 
 // NewFromYAML creates a v3 error formatting plugin from YAML config.

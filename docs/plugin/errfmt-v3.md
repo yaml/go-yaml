@@ -1,10 +1,11 @@
 # Errfmt v3 Plugin
 
-The v3 error formatting plugin renders YAML load errors in the go-yaml v3
-style:
+The v3 error formatting plugin renders YAML load and dump errors in the
+go-yaml v3 style:
 
 ```text
 yaml: line 2: did not find expected node content
+yaml: cannot represent type: chan int
 ```
 
 Use it when migrating from go-yaml v3 or when application tests and logs depend
@@ -13,7 +14,8 @@ on the older error string shape.
 ## Defaults
 
 `yaml.WithV3Defaults()` installs the v3 error formatter automatically.
-The legacy APIs `yaml.Unmarshal` and `yaml.NewDecoder` use v3 defaults.
+The legacy APIs `yaml.Unmarshal`, `yaml.Marshal`, `yaml.NewDecoder`, and
+`yaml.NewEncoder` use v3 defaults.
 
 Bare `yaml.Load`, `yaml.NewLoader`, `yaml.WithV2Defaults()`, and
 `yaml.WithV4Defaults()` use the v4 formatter unless you explicitly register
@@ -29,6 +31,12 @@ import (
 
 var out any
 err := yaml.Load(data, &out, yaml.WithPlugin(errfmtv3.New()))
+```
+
+The same plugin applies to dumper errors:
+
+```go
+_, err := yaml.Dump(make(chan int), yaml.WithPlugin(errfmtv3.New()))
 ```
 
 With v3 defaults:
@@ -92,6 +100,7 @@ V3 format:
 
 ```text
 yaml: line 1: block sequence entries are not allowed in this context
+yaml: cannot represent type: chan int
 ```
 
 Register `errfmtv3.New()` for code paths that need the v3 string while keeping

@@ -280,7 +280,7 @@ func TestNodeZeroEncodeDecode(t *testing.T) {
 	// Kind zero is still unknown, though.
 	n.Line = 1
 	_, err = yaml.Marshal(&n)
-	assert.ErrorMatches(t, "go-yaml dump error in serializer: cannot represent node with unknown kind 0", err)
+	assert.ErrorMatches(t, "yaml: cannot represent node with unknown kind 0", err)
 	err = n.Load(&v)
 	assert.ErrorMatches(t, `go-yaml load error in constructor at L1: cannot construct node with unknown kind: '0'`, err)
 }
@@ -297,7 +297,7 @@ func TestNodeOmitEmpty(t *testing.T) {
 
 	v.B.Line = 1
 	_, err = yaml.Marshal(&v)
-	assert.ErrorMatches(t, "go-yaml dump error in serializer: cannot represent node with unknown kind 0", err)
+	assert.ErrorMatches(t, "yaml: cannot represent node with unknown kind 0", err)
 }
 
 // NodeInfo represents the information about a YAML node in a test-friendly format

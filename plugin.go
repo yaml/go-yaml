@@ -3,10 +3,11 @@
 
 package yaml
 
-// ErrorPlugin customizes how YAML load errors are rendered.
+// ErrorPlugin customizes how YAML load and dump errors are rendered.
 //
-// When registered, FormatLoadError is called to produce the error message
-// string for each [LoadError], allowing the format to be customized.
+// When registered, FormatLoadError and FormatDumpError are called to produce
+// the error message string for each [LoadError] and [DumpError], allowing the
+// format to be customized.
 //
 // Example usage:
 //
@@ -16,6 +17,10 @@ type ErrorPlugin interface {
 	// FormatLoadError returns the string representation of a LoadError.
 	// The returned string is used as the error message.
 	FormatLoadError(err *LoadError) string
+
+	// FormatDumpError returns the string representation of a DumpError.
+	// The returned string is used as the error message.
+	FormatDumpError(err *DumpError) string
 }
 
 // LimitPlugin configures safety limits for YAML parsing.
