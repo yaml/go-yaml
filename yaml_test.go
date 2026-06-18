@@ -1320,6 +1320,74 @@ func TestLegacyUnmarshalerLoadErrorsProxying(t *testing.T) {
 	assert.ErrorMatches(t, expectedError, err)
 }
 
+type legacyWrappingUnmarshaler struct {
+	Value string `yaml:"value"`
+}
+
+func (w *legacyWrappingUnmarshaler) UnmarshalYAML(unmarshal func(any) error) error {
+	type plain legacyWrappingUnmarshaler
+	var p plain
+	if err := unmarshal(&p); err != nil {
+		return fmt.Errorf("wrapper failed: %w", err)
+	}
+	*w = legacyWrappingUnmarshaler(p)
+	return nil
+}
+
+func errorChainFinite(err error, limit int) bool {
+	count := 0
+	var walk func(error) bool
+	walk = func(e error) bool {
+		for e != nil {
+			count++
+			if count > limit {
+				return false
+			}
+			if le, ok := e.(*yaml.LoadErrors); ok {
+				for _, child := range le.Errors {
+					if !walk(child) {
+						return false
+					}
+				}
+				return true
+			}
+			switch x := e.(type) {
+			case interface{ Unwrap() []error }:
+				for _, child := range x.Unwrap() {
+					if !walk(child) {
+						return false
+					}
+				}
+				return true
+			case interface{ Unwrap() error }:
+				e = x.Unwrap()
+			default:
+				return true
+			}
+		}
+		return true
+	}
+	return walk(err)
+}
+
+func TestLegacyUnmarshalerWrappedErrorNoCycle(t *testing.T) {
+	type Root struct {
+		Items []legacyWrappingUnmarshaler `yaml:"items"`
+	}
+	var r Root
+	err := yaml.Unmarshal([]byte("items:\n  - not-an-object\n"), &r)
+	assert.NotNil(t, err)
+
+	assert.Truef(t, errorChainFinite(err, 1000),
+		"error chain is cyclic (issue #345 regression): %v", err)
+
+	assert.False(t, errors.Is(err, errFailing))
+
+	var loadErr *yaml.LoadError
+	assert.Truef(t, errors.As(err, &loadErr),
+		"expected to extract *yaml.LoadError from %v", err)
+}
+
 var errFailing = errors.New("failingErr")
 
 type failingUnmarshaler struct{}

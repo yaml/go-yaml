@@ -1018,7 +1018,7 @@ func (c *Constructor) callLegacyConstructor(n *Node, u legacyConstructor) (good 
 		defer handleErr(&err)
 		c.Construct(n, reflect.ValueOf(v))
 		if len(c.TypeErrors) > terrlen {
-			issues := c.TypeErrors[terrlen:]
+			issues := append([]*LoadError{}, c.TypeErrors[terrlen:]...)
 			c.TypeErrors = c.TypeErrors[:terrlen]
 			return &LoadErrors{issues}
 		}
