@@ -8,6 +8,7 @@
 package datatest
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -126,7 +127,7 @@ func UnmarshalStruct(target any, data map[string]any) error {
 // setField sets a [reflect.Value] from an interface{} value
 func setField(field reflect.Value, value any) error {
 	if !field.CanSet() {
-		return fmt.Errorf("field cannot be set")
+		return errors.New("field cannot be set")
 	}
 
 	if value == nil {
@@ -173,7 +174,7 @@ func setField(field reflect.Value, value any) error {
 		}
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		if !field.CanInt() {
-			return fmt.Errorf("field cannot store int values")
+			return errors.New("field cannot store int values")
 		}
 		if !valueRefl.CanInt() {
 			return fmt.Errorf("field type %v expects an integer value, but got %T", fieldType, value)
@@ -186,7 +187,7 @@ func setField(field reflect.Value, value any) error {
 		return nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		if !field.CanUint() {
-			return fmt.Errorf("field cannot store uint values")
+			return errors.New("field cannot store uint values")
 		}
 		// Check for negative integers first (most specific error case)
 		if valueRefl.CanInt() && valueRefl.Int() < 0 {
@@ -215,7 +216,7 @@ func setField(field reflect.Value, value any) error {
 		return nil
 	case reflect.Float32, reflect.Float64:
 		if !field.CanFloat() {
-			return fmt.Errorf("field cannot store float values")
+			return errors.New("field cannot store float values")
 		}
 		if !valueRefl.CanFloat() {
 			return fmt.Errorf("field type %v expects a floating-point value, but got %T", fieldType, value)
@@ -234,7 +235,7 @@ func setField(field reflect.Value, value any) error {
 		// Recursively unmarshal nested structs
 		if m, ok := value.(map[string]any); ok {
 			if !field.CanAddr() {
-				return fmt.Errorf("cannot take address of field for nested struct unmarshaling")
+				return errors.New("cannot take address of field for nested struct unmarshaling")
 			}
 			return UnmarshalStruct(field.Addr().Interface(), m)
 		}
@@ -384,7 +385,7 @@ func setMapField(field reflect.Value, value any) error {
 
 	mapType := field.Type()
 	if mapType.Key().Kind() != reflect.String {
-		return fmt.Errorf("only string keys supported for maps")
+		return errors.New("only string keys supported for maps")
 	}
 
 	newMap := reflect.MakeMap(mapType)

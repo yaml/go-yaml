@@ -10,6 +10,7 @@ package libyaml
 import (
 	"encoding"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"math"
 	"reflect"
@@ -481,7 +482,7 @@ func (c *Constructor) scalar(n *Node, out reflect.Value) bool {
 			data, err := base64.StdEncoding.DecodeString(resolved.(string))
 			if err != nil {
 				Fail(formatConstructorError(
-					fmt.Errorf("!!binary value contains invalid base64 data"),
+					errors.New("!!binary value contains invalid base64 data"),
 					Mark{Line: n.Line, Column: n.Column},
 				))
 			}
@@ -848,7 +849,7 @@ func isMerge(n *Node) bool {
 // failWantMap panics with an error message for invalid merge key values.
 func failWantMap(n *Node) {
 	Fail(formatConstructorError(
-		fmt.Errorf("map merge requires map or sequence of maps as the value"),
+		errors.New("map merge requires map or sequence of maps as the value"),
 		Mark{Line: n.Line, Column: n.Column},
 	))
 }

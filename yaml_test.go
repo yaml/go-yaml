@@ -1607,7 +1607,7 @@ func TestMerge(t *testing.T) {
 
 	wantStringMap := make(map[string]any)
 	for k, v := range want {
-		wantStringMap[fmt.Sprintf("%v", k)] = v
+		wantStringMap[k] = v
 	}
 
 	var m map[any]any
@@ -2510,7 +2510,7 @@ func TestEncoderWriteError(t *testing.T) {
 type errorWriter struct{}
 
 func (errorWriter) Write([]byte) (int, error) {
-	return 0, fmt.Errorf("some write error")
+	return 0, errors.New("some write error")
 }
 
 var marshalErrorTests = []struct {
