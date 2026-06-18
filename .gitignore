@@ -9,3 +9,8 @@
 /go-yaml
 /*.md
 /*.yaml
+
+# exclusions for existing .yaml files
+!/.golangci.yaml
+!/.ls-lint.yaml
+!/.yamllint.yaml
