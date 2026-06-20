@@ -26,6 +26,15 @@ import "go.yaml.in/yaml/v4"
 
 Update all import statements throughout your codebase.
 
+## Compatibility with go-yaml
+
+When migrating from [go-yaml](https://github.com/go-yaml/yaml/) ensure that
+YAML module imports are updated in all dependent projects transitively, because
+unmarshaller interface types `gopkg.in/yaml.v{version}.Unmarshaler` and
+`go.yaml.in/yaml/v{version}.Unmarshaler` are different types and thus are
+incompatible. Custom unmarshallers would not be called if executed with the
+parser from the different library.
+
 ## API Changes
 
 ### Recommended: Use New API
