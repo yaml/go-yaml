@@ -11,13 +11,16 @@ on:
   schedule:
   - cron: 17 13 * * 3
 
-permissions: read-all
+permissions:
+  contents: read
 
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     permissions:
+      contents: read
+      actions: read
       # required for all workflows
       security-events: write
 
