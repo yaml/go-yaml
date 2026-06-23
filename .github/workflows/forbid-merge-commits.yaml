@@ -7,7 +7,8 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
-permissions: read-all
+permissions:
+  contents: read
 
 jobs:
   forbid-merge-commits:
