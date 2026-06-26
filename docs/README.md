@@ -6,6 +6,8 @@
 |----------|-------------|
 | [v3 to v4 Migration](v3-to-v4-migration.md) | Complete guide for upgrading from v3 |
 | [Options Reference](options.md) | All configuration options explained |
+| [Plugin System](plugin.md) | Overview of go-yaml plugins |
+| [Plugin Guides](plugin/) | Detailed guides for shipped plugins |
 
 ## Developer Documentation
 
