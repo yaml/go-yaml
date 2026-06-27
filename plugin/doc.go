@@ -37,11 +37,17 @@
 //	import errfmtv3 "go.yaml.in/yaml/v4/plugin/errfmt/v3"
 //
 //	// Disable alias checking for documents with many aliases
-//	loader := yaml.NewLoader(data,
+//	loader, err := yaml.NewLoader(data,
 //	    yaml.WithPlugin(loaderlimits.New(loaderlimits.AliasNone())))
+//	if err != nil {
+//	    return err
+//	}
 //
 //	// Use legacy error format (yaml: line N: msg)
-//	loader := yaml.NewLoader(data, yaml.WithPlugin(errfmtv3.New()))
+//	loader, err = yaml.NewLoader(data, yaml.WithPlugin(errfmtv3.New()))
+//	if err != nil {
+//	    return err
+//	}
 //
 // # Third-Party Plugins
 //
