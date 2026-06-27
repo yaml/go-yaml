@@ -874,8 +874,8 @@ type Encoder struct {
 // The Encoder should be closed after use to flush all data
 // to w.
 func NewEncoder(w io.Writer) *Encoder {
-	// NewDumper won't return an error when using WithV3Defaults()
-	dumper, _ := libyaml.NewDumper(w, WithV3Defaults())
+	// NewDumper won't return an error with these defaults.
+	dumper, _ := libyaml.NewDumper(w, WithV3Defaults(), WithPlugin(errfmtv4.Must()))
 	return &Encoder{dumper: dumper}
 }
 
