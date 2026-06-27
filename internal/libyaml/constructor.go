@@ -804,7 +804,7 @@ func (c *Constructor) merge(parent *Node, merge *Node, out reflect.Value) {
 		c.Construct(merge, out)
 	case AliasNode:
 		if merge.Alias != nil && merge.Alias.Kind != MappingNode {
-			failWantMap(merge.Alias)
+			c.failWantMap(merge.Alias)
 		}
 		c.Construct(merge, out)
 	case SequenceNode:
@@ -812,15 +812,15 @@ func (c *Constructor) merge(parent *Node, merge *Node, out reflect.Value) {
 			ni := merge.Content[i]
 			if ni.Kind == AliasNode {
 				if ni.Alias != nil && ni.Alias.Kind != MappingNode {
-					failWantMap(ni.Alias)
+					c.failWantMap(ni.Alias)
 				}
 			} else if ni.Kind != MappingNode {
-				failWantMap(ni)
+				c.failWantMap(ni)
 			}
 			c.Construct(ni, out)
 		}
 	default:
-		failWantMap(merge)
+		c.failWantMap(merge)
 	}
 
 	c.mergedFields = mergedFields
@@ -848,9 +848,10 @@ func isMerge(n *Node) bool {
 	return n.Kind == ScalarNode && shortTag(n.Tag) == mergeTag
 }
 
-// failWantMap panics with an error message for invalid merge key values.
-func failWantMap(n *Node) {
-	failf("line %d: map merge requires map or sequence of maps as the value", n.Line)
+// failWantMap panics with a constructor error for invalid merge key values.
+func (c *Constructor) failWantMap(n *Node) {
+	err := fmt.Errorf("map merge requires map or sequence of maps as the value")
+	Fail(c.formatConstructorError(err, Mark{Line: n.Line, Column: n.Column}))
 }
 
 // --------------------------------------------------------------------------

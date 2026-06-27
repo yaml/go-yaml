@@ -1981,6 +1981,20 @@ a:
 	}
 }
 
+func TestInvalidMergeValueError(t *testing.T) {
+	data := []byte("a:\n  <<: 1\n")
+
+	x := map[string]any{}
+	err := yaml.Unmarshal(data, &x)
+	if err == nil {
+		t.Fatal("expected error, got none")
+	}
+	var loadErr *yaml.LoadError
+	assert.ErrorAs(t, err, &loadErr)
+	assert.Equal(t, yaml.ConstructorStage, loadErr.Stage)
+	assert.Equal(t, "map merge requires map or sequence of maps as the value", loadErr.Message)
+}
+
 func TestParserErrorUnknownAnchorPosition(t *testing.T) {
 	tests := []struct {
 		data   string
