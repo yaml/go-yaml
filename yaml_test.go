@@ -43,13 +43,7 @@ func assertLoadErrorEqual(t *testing.T, want, got *libyaml.LoadError) {
 	assert.DeepEqual(t, want.Mark, got.Mark)
 	assert.DeepEqual(t, want.ContextMark, got.ContextMark)
 	assert.Equal(t, want.ContextMsg, got.ContextMsg)
-	if want.Unwrap() == nil {
-		if got.Unwrap() != nil {
-			t.Fatalf("got unwrap %v; want nil", got.Unwrap())
-		}
-		return
-	}
-	assert.ErrorIs(t, got, want.Unwrap())
+	assert.ErrorIs(t, got.Unwrap(), want.Unwrap())
 }
 
 func assertLoadErrorsEqual(t *testing.T, want *yaml.LoadErrors, gotErr error) {
