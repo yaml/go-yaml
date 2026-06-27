@@ -467,7 +467,7 @@ func newErrfmtPluginFromYAML(cfg map[string]any) (any, error) {
 		switch key {
 		case "v3", "v4":
 			if selected != "" {
-				return nil, errors.New("yaml: plugin \"errfmt\" must select only one of v3 or v4")
+				return nil, errors.New(`yaml: plugin "errfmt" must select only one of v3 or v4`)
 			}
 			selected = key
 			switch v := val.(type) {
@@ -476,10 +476,10 @@ func newErrfmtPluginFromYAML(cfg map[string]any) (any, error) {
 			case map[string]any:
 				selectedConfig = v
 			default:
-				return nil, fmt.Errorf("yaml: plugin \"errfmt.%s\" value must be a mapping or null", key)
+				return nil, fmt.Errorf(`yaml: plugin "errfmt.%s" value must be a mapping or null`, key)
 			}
 		default:
-			return nil, fmt.Errorf("yaml: plugin \"errfmt\" unknown formatter %q", key)
+			return nil, fmt.Errorf(`yaml: plugin "errfmt" unknown formatter %q`, key)
 		}
 	}
 	switch selected {
