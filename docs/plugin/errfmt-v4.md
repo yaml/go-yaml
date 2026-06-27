@@ -9,7 +9,7 @@ go-yaml dump error in representer: message
 ```
 
 It is installed by default for bare `yaml.Load`, `yaml.NewLoader`,
-`yaml.WithV2Defaults()`, and `yaml.WithV4Defaults()`.
+`yaml.NewEncoder`, `yaml.WithV2Defaults()`, and `yaml.WithV4Defaults()`.
 Use this plugin explicitly when you want v4 formatting after another preset, or
 when you need custom position text or custom templates.
 

@@ -2537,7 +2537,7 @@ func TestEncoderMultipleDocuments(t *testing.T) {
 func TestEncoderWriteError(t *testing.T) {
 	enc := yaml.NewEncoder(errorWriter{})
 	err := enc.Encode(map[string]string{"a": "b"})
-	assert.ErrorMatches(t, `yaml: some write error`, err)
+	assert.ErrorMatches(t, `go-yaml dump error in writer: some write error`, err)
 	var dumpErr *yaml.DumpError
 	assert.True(t, errors.As(err, &dumpErr))
 	assert.Equal(t, yaml.WriterStage, dumpErr.Stage)

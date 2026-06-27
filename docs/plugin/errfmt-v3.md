@@ -14,8 +14,9 @@ on the older error string shape.
 ## Defaults
 
 `yaml.WithV3Defaults()` installs the v3 error formatter automatically.
-The legacy APIs `yaml.Unmarshal`, `yaml.Marshal`, `yaml.NewDecoder`, and
-`yaml.NewEncoder` use v3 defaults.
+The legacy APIs `yaml.Unmarshal`, `yaml.Marshal`, and `yaml.NewDecoder` use
+v3 defaults. `yaml.NewEncoder` keeps v3-compatible dump options, but uses the
+v4 error formatter.
 
 Bare `yaml.Load`, `yaml.NewLoader`, `yaml.WithV2Defaults()`, and
 `yaml.WithV4Defaults()` use the v4 formatter unless you explicitly register
