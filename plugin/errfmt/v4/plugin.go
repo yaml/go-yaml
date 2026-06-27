@@ -79,13 +79,6 @@ func Must(opts ...Option) *Plugin {
 	return p
 }
 
-// WithTemplate sets a text/template template for rendering load errors.
-//
-// Deprecated: use WithLoadTemplate.
-func WithTemplate(text string) Option {
-	return WithLoadTemplate(text)
-}
-
 // WithLoadTemplate sets a text/template template for rendering load errors.
 func WithLoadTemplate(text string) Option {
 	return func(p *Plugin) error {
@@ -149,7 +142,7 @@ func NewFromYAML(cfg map[string]any) (*Plugin, error) {
 				return nil, err
 			}
 			opts = append(opts, WithPositionStyle(style))
-		case "template", "load-template":
+		case "load-template":
 			s, ok := val.(string)
 			if !ok {
 				return nil, fmt.Errorf("errfmt v4: %s must be a string, got %T", key, val)
