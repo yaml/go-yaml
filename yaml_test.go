@@ -3365,9 +3365,9 @@ func runLimitTest(t *testing.T, tc map[string]any) {
 		}
 	}
 
-	// Run unmarshal
+	// Run load with v4 defaults.
 	var v any
-	err = yaml.Unmarshal(data, &v)
+	err = yaml.Load(data, &v)
 	if expectedError != "" {
 		if err == nil {
 			t.Fatalf("expected error %q, got nil", expectedError)
