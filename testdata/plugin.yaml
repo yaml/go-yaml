@@ -140,7 +140,7 @@
     plugin:
       errfmt:
         v4:
-          template: '{{.Stage}} {{pos .Mark}} {{.Message}}'
+          load-template: '{{.Stage}} {{pos .Mark}} {{.Message}}'
       limit:
         depth: 5
     data:

@@ -122,8 +122,6 @@ Template parse errors are returned by `errfmtv4.New`.
 `errfmtv4.Must` panics on invalid templates and is intended for known-good
 static configuration.
 
-`WithTemplate` is kept as an alias for `WithLoadTemplate`.
-
 ## Dump Templates
 
 Use `WithDumpTemplate` for full control over rendered dump errors:
@@ -182,7 +180,6 @@ plugin:
 ```
 
 `position` accepts `short`, `long`, or `line`.
-`template` is also accepted as an alias for `load-template`.
 When `plugin.errfmt` is `null`, v4 defaults are used:
 
 ```yaml
