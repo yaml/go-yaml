@@ -452,7 +452,7 @@ func TestWithDefaults_ErrorFormatting(t *testing.T) {
 			want: "go-yaml load error in ",
 		},
 		{
-			name: "v2 defaults use v4",
+			name: "v2 defaults use current v4 formatter",
 			opts: []yaml.Option{yaml.WithV2Defaults()},
 			want: "go-yaml load error in ",
 		},
@@ -497,7 +497,7 @@ func TestWithDefaults_DumpErrorFormatting(t *testing.T) {
 			want: "go-yaml dump error in representer: ",
 		},
 		{
-			name: "v2 defaults use v4",
+			name: "v2 defaults use current v4 formatter",
 			opts: []yaml.Option{yaml.WithV2Defaults()},
 			want: "go-yaml dump error in representer: ",
 		},
