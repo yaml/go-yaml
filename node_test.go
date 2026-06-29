@@ -784,3 +784,21 @@ func TestNodeDumpInvalidOptions(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.ErrorMatches(t, ".*indent must be.*", err)
 }
+
+func TestMarshalDoesNotMutateNode(t *testing.T) {
+	const data = "type: array\nlimit: 5\n"
+
+	var node yaml.Node
+	assert.NoError(t, yaml.Unmarshal([]byte(data), &node))
+
+	// An independent decode of the same input is the read-only baseline.
+	var want yaml.Node
+	assert.NoError(t, yaml.Unmarshal([]byte(data), &want))
+
+	_, err := yaml.Marshal(&node)
+	assert.NoError(t, err)
+
+	// Marshal must treat its input as read-only: the resolved tags
+	// (!!map, !!str, !!int) decoded into node must survive unchanged.
+	assert.DeepEqual(t, &want, &node)
+}
