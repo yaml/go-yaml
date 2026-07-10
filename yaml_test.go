@@ -556,6 +556,46 @@ var unmarshalTests = []struct {
 		"a: 2015-01-01",
 		map[string]any{"a": time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC)},
 	},
+	{
+		// implicit timestamp tag into string.
+		"a: 2015-01-01",
+		map[string]string{"a": "2015-01-01"},
+	},
+	{
+		// implicit timestamp tag on quoted string into string.
+		"a: \"2015-01-01\"",
+		map[string]string{"a": "2015-01-01"},
+	},
+	{
+		// implicit timestamp tag with time and fraction into string.
+		"a: 2015-02-24T18:19:39.12Z",
+		map[string]string{"a": "2015-02-24T18:19:39.12Z"},
+	},
+	{
+		// implicit timestamp tag with time and fraction on quoted string into string.
+		"a: \"2015-02-24T18:19:39.12Z\"",
+		map[string]string{"a": "2015-02-24T18:19:39.12Z"},
+	},
+	{
+		// explicit timestamp tag on unquoted string into string.
+		"a: !!timestamp 2015-01-01",
+		map[string]string{"a": "2015-01-01"},
+	},
+	{
+		// explicit timestamp tag into string.
+		"a: !!timestamp \"2015-01-01\"",
+		map[string]string{"a": "2015-01-01"},
+	},
+	{
+		// explicit timestamp tag with time and fraction on unquoted string into string.
+		"a: !!timestamp 2015-02-24T18:19:39.12Z",
+		map[string]string{"a": "2015-02-24T18:19:39.12Z"},
+	},
+	{
+		// explicit timestamp tag with time and fraction into string.
+		"a: !!timestamp \"2015-02-24T18:19:39.12Z\"",
+		map[string]string{"a": "2015-02-24T18:19:39.12Z"},
+	},
 
 	// UTF-16-LE
 	{
