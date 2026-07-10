@@ -394,6 +394,10 @@ func (c *Constructor) constructTimestamp(n *Node, resolved any, out reflect.Valu
 			out.Set(resolvedv)
 			return true
 		}
+	case reflect.String:
+		// Allow timestamp values to be constructed as string.
+		out.SetString(n.Value)
+		return true
 	case reflect.Interface:
 		out.Set(reflect.ValueOf(resolved))
 		return true
