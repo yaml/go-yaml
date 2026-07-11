@@ -4,7 +4,7 @@
 # Auto-install https://github.com/makeplus/makes at specific commit:
 MAKES := .cache/makes
 MAKES-LOCAL := .cache/local
-MAKES-COMMIT ?= 4e48a743c3652b88adc4a257398d895a801e6d11
+MAKES-COMMIT ?= cdeecb8d967af29f13edce819315d9b2a80d5425
 $(shell [ -d $(MAKES) ] || ( \
   git clone -q https://github.com/makeplus/makes $(MAKES) && \
   git -C $(MAKES) reset -q --hard $(MAKES-COMMIT)))
@@ -21,7 +21,7 @@ include $(MAKES)/shellcheck.mk
 ifdef GO_YAML_PATH
 override export PATH := $(GO_YAML_PATH):$(PATH)
 else
-GO-VERSION ?= 1.25.5
+GO-VERSION ?= 1.26.5
 endif
 GO-VERSION-NEEDED := $(GO-VERSION)
 
