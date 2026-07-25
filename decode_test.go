@@ -1275,11 +1275,14 @@ func TestObsoleteUnmarshalerTypeError(t *testing.T) {
 		"  foo\n" +
 		"  bar\n" +
 		"  line 1: cannot unmarshal !!str `B` into int"
+	if err == nil {
+		t.Fatalf("Unmarshal() expected error, got none.")
+	}
 	matched, mre := regexp.MatchString(expectedError, err.Error())
 	if mre != nil {
 		t.Fatalf("regexp.MatchString() returned error: %v", mre)
 	}
-	if err == nil || !matched {
+	if !matched {
 		t.Fatalf("Unmarshal() returned error %q, want match for %q", err, expectedError)
 	}
 
@@ -1340,11 +1343,14 @@ func TestUnmarshalerTypeErrorProxying(t *testing.T) {
 		"  line 1: cannot unmarshal !!str `a` into int32\n" +
 		"  line 1: cannot unmarshal !!str `b` into int64\n" +
 		"  line 1: cannot unmarshal !!str `B` into int"
+	if err == nil {
+		t.Fatalf("Unmarshal() expected error, got none.")
+	}
 	matched, mre := regexp.MatchString(expectedError, err.Error())
 	if mre != nil {
 		t.Fatalf("regexp.MatchString() returned error: %v", mre)
 	}
-	if err == nil || !matched {
+	if !matched {
 		t.Fatalf("Unmarshal() returned error %q, want match for %q", err, expectedError)
 	}
 }
@@ -1385,11 +1391,14 @@ func TestObsoleteUnmarshalerTypeErrorProxying(t *testing.T) {
 		"  line 1: cannot unmarshal !!str `a` into int32\n" +
 		"  line 1: cannot unmarshal !!str `b` into int64\n" +
 		"  line 1: cannot unmarshal !!str `B` into int"
+	if err == nil {
+		t.Fatalf("Unmarshal() expected error, got none.")
+	}
 	matched, mre := regexp.MatchString(expectedError, err.Error())
 	if mre != nil {
 		t.Fatalf("regexp.MatchString() returned error: %v", mre)
 	}
-	if err == nil || !matched {
+	if !matched {
 		t.Fatalf("Unmarshal() returned error %q, want match for %q", err, expectedError)
 	}
 }
@@ -1911,11 +1920,14 @@ func TestUnmarshalKnownFields(t *testing.T) {
 		dec := yaml.NewDecoder(bytes.NewBuffer([]byte(item.data)))
 		dec.KnownFields(item.known)
 		err := dec.Decode(value.Interface())
+		if err == nil {
+			t.Fatalf("Unmarshal() expected error, got none.")
+		}
 		matched, mre := regexp.MatchString(item.error, err.Error())
 		if mre != nil {
 			t.Fatalf("regexp.MatchString() returned error: %v", mre)
 		}
-		if err == nil || !matched {
+		if !matched {
 			t.Fatalf("Decode() returned error %q, want match for %q", err, item.error)
 		}
 	}
