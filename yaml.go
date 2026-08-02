@@ -419,6 +419,14 @@ type Node struct {
 	// These fields are not respected when encoding the node.
 	Line   int
 	Column int
+
+	// EndLine and EndColumn hold the position just past the end of the node in
+	// the decoded YAML text. For a mapping or sequence this spans the whole
+	// block (so a caller can extract the entire collection), not just its first
+	// line. Like Line and Column, these are 1-based and are not respected when
+	// encoding the node.
+	EndLine   int
+	EndColumn int
 }
 
 // IsZero returns whether the node has all of its fields unset.

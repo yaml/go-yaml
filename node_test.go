@@ -2555,6 +2555,19 @@ var nodeTests = []struct {
 	},
 }
 
+// clearEndPos recursively zeroes EndLine/EndColumn across a decoded node tree.
+// Used by TestNodeRoundtrip, whose expected literals predate those fields.
+func clearEndPos(n *yaml.Node) {
+	if n == nil {
+		return
+	}
+	n.EndLine = 0
+	n.EndColumn = 0
+	for _, c := range n.Content {
+		clearEndPos(c)
+	}
+}
+
 func TestNodeRoundtrip(t *testing.T) {
 	defer os.Setenv("TZ", os.Getenv("TZ"))
 	os.Setenv("TZ", "UTC")
@@ -2591,6 +2604,11 @@ func TestNodeRoundtrip(t *testing.T) {
 				fprintComments(&buf, &node, "    ")
 				t.Logf("  obtained comments:\n%s", buf.Bytes())
 			}
+			// The expected node literals predate EndLine/EndColumn and do not
+			// set them. End positions are covered by TestNodeEndPosition;
+			// clearing them here keeps this roundtrip check verifying
+			// structure, content, start position and comments.
+			clearEndPos(&node)
 			if !reflect.DeepEqual(&node, &item.node) {
 				t.Fatalf("Nodes are not deep equal.\nGot: %+v\nWant: %+v", &node, &item.node)
 			}
