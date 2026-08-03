@@ -11,6 +11,7 @@ package libyaml
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"reflect"
@@ -88,6 +89,22 @@ func NewLoader(r io.Reader, opts ...Option) (*Loader, error) {
 //
 // See the documentation of Dump for the format of tags and a list of
 // supported tag options.
+// LoadWithContext loads like [Load], handing ctx to any value implementing
+// [UnmarshalerWithContext].
+func LoadWithContext(ctx context.Context, in []byte, out any, opts ...Option) error {
+	l, err := NewLoader(bytes.NewReader(in), opts...)
+	if err != nil {
+		return err
+	}
+	if err := l.LoadWithContext(ctx, out); err != nil {
+		if err == io.EOF {
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
 func Load(in []byte, out any, opts ...Option) error {
 	o, err := ApplyOptions(opts...)
 	if err != nil {
@@ -123,6 +140,18 @@ func Load(in []byte, out any, opts ...Option) error {
 //
 // See the documentation of the package-level Load function for more details
 // about YAML to Go conversion and tag options.
+// LoadWithContext loads like [Loader.Load], handing ctx to any value
+// implementing [UnmarshalerWithContext].
+//
+// The context is set on the constructor for the length of the call rather than
+// carried in Options, so it stays a per-call argument.
+func (l *Loader) LoadWithContext(ctx context.Context, v any) error {
+	prev := l.constructor.Ctx
+	l.constructor.Ctx = ctx
+	defer func() { l.constructor.Ctx = prev }()
+	return l.Load(v)
+}
+
 func (l *Loader) Load(v any) (err error) {
 	defer handleErr(&err)
 	if l.options.SingleDocument && l.docCount > 0 {

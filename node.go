@@ -49,6 +49,10 @@ type (
 	// a YAML description of themselves.
 	Unmarshaler = libyaml.Unmarshaler
 
+	// UnmarshalerWithContext is [Unmarshaler] with a context, for a type that
+	// needs state belonging to the decode rather than to its own node.
+	UnmarshalerWithContext = libyaml.UnmarshalerWithContext
+
 	// IsZeroer is used to check whether an object is zero to determine whether
 	// it should be omitted when marshaling with the ,omitempty flag.
 	// One notable implementation is [time.Time].

@@ -8,6 +8,7 @@
 package libyaml
 
 import (
+	"context"
 	"encoding"
 	"encoding/base64"
 	"fmt"
@@ -18,6 +19,13 @@ import (
 
 // --------------------------------------------------------------------------
 // Types and Interfaces
+
+// UnmarshalerWithContext is the Unmarshaler interface with a context, letting
+// a type reach state belonging to the decode rather than to its own node. A
+// type implementing both is given this one.
+type UnmarshalerWithContext interface {
+	UnmarshalYAML(ctx context.Context, n *Node) error
+}
 
 // legacyConstructor is the old-style unmarshaler interface.
 // It's kept for backwards compatibility.
@@ -56,6 +64,12 @@ type Constructor struct {
 	aliasCheck     func(aliasCount, constructCount int) error
 
 	mergedFields map[any]bool
+
+	// Ctx is handed to types implementing the context-aware constructor
+	// interface. UnmarshalYAML is given a node and nothing else, so a type
+	// needing per-decode state (the document's name, a limit, a logger) has
+	// no other way to reach it. Never nil: NewConstructor defaults it.
+	Ctx context.Context
 }
 
 // NewConstructor creates a new Constructor initialized with the provided
@@ -888,6 +902,12 @@ func (c *Constructor) prepare(n *Node, out reflect.Value) (newout reflect.Value,
 			}
 
 			outi := out.Addr().Interface()
+			// Check for the context-aware form first, so a type implementing
+			// both gets the richer one.
+			if u, ok := outi.(UnmarshalerWithContext); ok {
+				good = c.callUnmarshalerWithContext(n, u)
+				return out, true, good
+			}
 			// Check for libyaml.constructor
 			if u, ok := outi.(constructor); ok {
 				good = c.callConstructor(n, u)
@@ -1012,6 +1032,34 @@ func (c *Constructor) callConstructor(n *Node, u constructor) (good bool) {
 		))
 		return false
 	}
+}
+
+// callUnmarshalerWithContext invokes the context-aware UnmarshalYAML method,
+// handling errors exactly as callConstructor does.
+func (c *Constructor) callUnmarshalerWithContext(n *Node, u UnmarshalerWithContext) (good bool) {
+	err := u.UnmarshalYAML(c.context(), n)
+	switch e := err.(type) {
+	case nil:
+		return true
+	case *LoadErrors:
+		c.TypeErrors = append(c.TypeErrors, e.Errors...)
+		return false
+	default:
+		c.TypeErrors = append(c.TypeErrors, formatConstructorError(
+			err,
+			Mark{Line: n.Line, Column: n.Column},
+		))
+		return false
+	}
+}
+
+// context returns Ctx, or a background context when the Constructor was built
+// without one.
+func (c *Constructor) context() context.Context {
+	if c.Ctx == nil {
+		return context.Background()
+	}
+	return c.Ctx
 }
 
 // callLegacyConstructor invokes the UnmarshalYAML method on a value

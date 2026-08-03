@@ -19,6 +19,7 @@
 package yaml
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -609,6 +610,12 @@ func (dec *Decoder) Decode(v any) error {
 	return dec.loader.Load(v)
 }
 
+// DecodeWithContext decodes like [Decoder.Decode], handing ctx to any value
+// implementing [UnmarshalerWithContext].
+func (dec *Decoder) DecodeWithContext(ctx context.Context, v any) error {
+	return dec.loader.LoadWithContext(ctx, v)
+}
+
 // An Encoder writes YAML values to an output stream.
 type Encoder struct {
 	dumper *Dumper
@@ -690,6 +697,12 @@ func (e *Encoder) Close() error {
 // supported tag options.
 func Unmarshal(in []byte, out any) (err error) {
 	return Load(in, out, WithV3Defaults(), withFromLegacy())
+}
+
+// UnmarshalWithContext unmarshals like [Unmarshal], handing ctx to any value
+// implementing [UnmarshalerWithContext].
+func UnmarshalWithContext(ctx context.Context, in []byte, out any) (err error) {
+	return libyaml.LoadWithContext(ctx, in, out, WithV3Defaults(), withFromLegacy())
 }
 
 // withFromLegacy is a private option that indicates this call is from

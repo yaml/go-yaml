@@ -8,6 +8,7 @@
 package libyaml
 
 import (
+	"context"
 	"reflect"
 	"strings"
 	"unicode"
@@ -281,6 +282,23 @@ func (n *Node) SetString(s string) {
 // conversion of YAML into a Go value.
 func (n *Node) Decode(v any) (err error) {
 	d := NewConstructor(DefaultOptions)
+	defer handleErr(&err)
+	out := reflect.ValueOf(v)
+	if out.Kind() == reflect.Pointer && !out.IsNil() {
+		out = out.Elem()
+	}
+	d.Construct(n, out)
+	if len(d.TypeErrors) > 0 {
+		return &LoadErrors{Errors: d.TypeErrors}
+	}
+	return nil
+}
+
+// DecodeWithContext decodes the node like [Node.Decode], handing ctx to any
+// value implementing [UnmarshalerWithContext].
+func (n *Node) DecodeWithContext(ctx context.Context, v any) (err error) {
+	d := NewConstructor(DefaultOptions)
+	d.Ctx = ctx
 	defer handleErr(&err)
 	out := reflect.ValueOf(v)
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
