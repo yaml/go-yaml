@@ -2984,28 +2984,38 @@ func TestScalarStyleWithTabs(t *testing.T) {
 		},
 		{
 			"\tThis starts with tab\nand is long enough\nfor literal style",
-			"|-\n    \tThis starts with tab\n    and is long enough\n    for literal style\n",
+			"\"\\tThis starts with tab\\nand is long enough\\nfor literal style\"\n",
 			"Multiline starting with tab",
 		},
 		{
 			"\tB\n\tC\n",
-			"|\n    \tB\n    \tC\n",
+			"\"\\tB\\n\\tC\\n\"\n",
 			"Tab B newline tab C newline",
 		},
 		{
 			"\ta\n",
-			"|\n    \ta\n",
+			"\"\\ta\\n\"\n",
 			"Tab + char + newline",
 		},
 		{
 			"\thello\n",
-			"|\n    \thello\n",
+			"\"\\thello\\n\"\n",
 			"Tab + text + newline",
 		},
 		{
 			"\t\nhello",
-			"|-\n    \t\n    hello\n",
+			"\"\\t\\nhello\"\n",
 			"Tab + newline + text",
+		},
+		{
+			"\n\tthis\nnext",
+			"\"\\n\\tthis\\nnext\"\n",
+			"Tab after initial newline",
+		},
+		{
+			"first\n\tsecond",
+			"|-\n    first\n    \tsecond\n",
+			"Tab after content line",
 		},
 	}
 
@@ -3015,6 +3025,53 @@ func TestScalarStyleWithTabs(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, testCase.expected, string(data))
 		})
+	}
+}
+
+func TestLeadingTabScalarRoundTrip(t *testing.T) {
+	testCases := []struct {
+		value      string
+		mapYAML    string
+		scalarYAML string
+	}{
+		{
+			"\tthis\nis\nmultiline",
+			"text: \"\\tthis\\nis\\nmultiline\"\n",
+			"\"\\tthis\\nis\\nmultiline\"\n",
+		},
+		{
+			"\n\tthis\nnext",
+			"text: \"\\n\\tthis\\nnext\"\n",
+			"\"\\n\\tthis\\nnext\"\n",
+		},
+		{
+			"first\n\tsecond",
+			"text: |-\n    first\n    \tsecond\n",
+			"|-\n    first\n    \tsecond\n",
+		},
+	}
+
+	for _, testCase := range testCases {
+		wantMap := map[string]string{"text": testCase.value}
+		data, err := yaml.Marshal(wantMap)
+		assert.NoError(t, err)
+		assert.Equal(t, testCase.mapYAML, string(data))
+
+		var gotMap map[string]string
+		err = yaml.Unmarshal(data, &gotMap)
+		assert.NoError(t, err)
+		assert.DeepEqual(t, wantMap, gotMap)
+
+		var node yaml.Node
+		node.SetString(testCase.value)
+		data, err = yaml.Marshal(&node)
+		assert.NoError(t, err)
+		assert.Equal(t, testCase.scalarYAML, string(data))
+
+		var gotScalar string
+		err = yaml.Unmarshal(data, &gotScalar)
+		assert.NoError(t, err)
+		assert.Equal(t, testCase.value, gotScalar)
 	}
 }
 
