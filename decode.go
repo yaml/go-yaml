@@ -16,6 +16,7 @@
 package yaml
 
 import (
+	"context"
 	"encoding"
 	"encoding/base64"
 	"fmt"
@@ -325,6 +326,12 @@ type decoder struct {
 	aliasDepth  int
 
 	mergedFields map[interface{}]bool
+
+	// ctx is handed to types implementing UnmarshalerWithContext.
+	// UnmarshalYAML is given a node and nothing else, so a type needing state
+	// belonging to the decode rather than to its own node has no other way to
+	// reach it. Nil means no context was supplied.
+	ctx context.Context
 }
 
 var (
@@ -364,6 +371,24 @@ func (d *decoder) terror(n *Node, tag string, out reflect.Value) {
 
 func (d *decoder) callUnmarshaler(n *Node, u Unmarshaler) (good bool) {
 	err := u.UnmarshalYAML(n)
+	if e, ok := err.(*TypeError); ok {
+		d.terrors = append(d.terrors, e.Errors...)
+		return false
+	}
+	if err != nil {
+		fail(err)
+	}
+	return true
+}
+
+// callUnmarshalerWithContext invokes the context-aware UnmarshalYAML method,
+// handling errors exactly as callUnmarshaler does.
+func (d *decoder) callUnmarshalerWithContext(n *Node, u UnmarshalerWithContext) (good bool) {
+	ctx := d.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	err := u.UnmarshalYAML(ctx, n)
 	if e, ok := err.(*TypeError); ok {
 		d.terrors = append(d.terrors, e.Errors...)
 		return false
@@ -419,6 +444,12 @@ func (d *decoder) prepare(n *Node, out reflect.Value) (newout reflect.Value, unm
 		}
 		if out.CanAddr() {
 			outi := out.Addr().Interface()
+			// The context-aware form wins, so a type implementing both is
+			// given the richer one.
+			if u, ok := outi.(UnmarshalerWithContext); ok {
+				good = d.callUnmarshalerWithContext(n, u)
+				return out, true, good
+			}
 			if u, ok := outi.(Unmarshaler); ok {
 				good = d.callUnmarshaler(n, u)
 				return out, true, good

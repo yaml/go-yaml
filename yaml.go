@@ -21,6 +21,7 @@
 package yaml
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -34,6 +35,13 @@ import (
 // behavior when being unmarshaled from a YAML document.
 type Unmarshaler interface {
 	UnmarshalYAML(value *Node) error
+}
+
+// UnmarshalerWithContext is Unmarshaler with a context, for a type that needs
+// state belonging to the decode rather than to its own node. A type
+// implementing both is given this one.
+type UnmarshalerWithContext interface {
+	UnmarshalYAML(ctx context.Context, value *Node) error
 }
 
 type obsoleteUnmarshaler interface {
@@ -87,10 +95,28 @@ func Unmarshal(in []byte, out interface{}) (err error) {
 	return unmarshal(in, out, false)
 }
 
+// UnmarshalWithContext unmarshals like Unmarshal, handing ctx to any value
+// implementing UnmarshalerWithContext.
+func UnmarshalWithContext(ctx context.Context, in []byte, out interface{}) (err error) {
+	return unmarshalContext(ctx, in, out, false)
+}
+
 // A Decoder reads and decodes YAML values from an input stream.
 type Decoder struct {
 	parser      *parser
 	knownFields bool
+	// ctx is set only by DecodeWithContext, for the decoder to hand to values
+	// implementing UnmarshalerWithContext.
+	ctx context.Context
+}
+
+// DecodeWithContext decodes like Decode, handing ctx to any value
+// implementing UnmarshalerWithContext.
+func (dec *Decoder) DecodeWithContext(ctx context.Context, v interface{}) error {
+	prev := dec.ctx
+	dec.ctx = ctx
+	defer func() { dec.ctx = prev }()
+	return dec.Decode(v)
 }
 
 // NewDecoder returns a new decoder that reads from r.
@@ -117,6 +143,7 @@ func (dec *Decoder) KnownFields(enable bool) {
 func (dec *Decoder) Decode(v interface{}) (err error) {
 	d := newDecoder()
 	d.knownFields = dec.knownFields
+	d.ctx = dec.ctx
 	defer handleErr(&err)
 	node := dec.parser.parse()
 	if node == nil {
@@ -145,6 +172,45 @@ func (n *Node) Decode(v interface{}) (err error) {
 		out = out.Elem()
 	}
 	d.unmarshal(n, out)
+	if len(d.terrors) > 0 {
+		return &TypeError{d.terrors}
+	}
+	return nil
+}
+
+// DecodeWithContext decodes like Decode, handing ctx to any value
+// implementing UnmarshalerWithContext.
+func (n *Node) DecodeWithContext(ctx context.Context, v interface{}) (err error) {
+	d := newDecoder()
+	d.ctx = ctx
+	defer handleErr(&err)
+	out := reflect.ValueOf(v)
+	if out.Kind() == reflect.Ptr && !out.IsNil() {
+		out = out.Elem()
+	}
+	d.unmarshal(n, out)
+	if len(d.terrors) > 0 {
+		return &TypeError{d.terrors}
+	}
+	return nil
+}
+
+// unmarshalContext is unmarshal with a context for the decoder to hand to
+// values implementing UnmarshalerWithContext.
+func unmarshalContext(ctx context.Context, in []byte, out interface{}, strict bool) (err error) {
+	defer handleErr(&err)
+	d := newDecoder()
+	d.ctx = ctx
+	p := newParser(in)
+	defer p.destroy()
+	node := p.parse()
+	if node != nil {
+		v := reflect.ValueOf(out)
+		if v.Kind() == reflect.Ptr && !v.IsNil() {
+			v = v.Elem()
+		}
+		d.unmarshal(node, v)
+	}
 	if len(d.terrors) > 0 {
 		return &TypeError{d.terrors}
 	}
