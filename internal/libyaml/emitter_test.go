@@ -28,28 +28,6 @@ func TestEmitter(t *testing.T) {
 	})
 }
 
-func emitFoldedScalar(t *testing.T, value string) string {
-	t.Helper()
-
-	events := []Event{
-		NewStreamStartEvent(UTF8_ENCODING),
-		NewDocumentStartEvent(nil, nil, true),
-		NewScalarEvent(nil, nil, []byte(value), true, true, FOLDED_SCALAR_STYLE),
-		NewDocumentEndEvent(true),
-		NewStreamEndEvent(),
-	}
-
-	emitter := NewEmitter()
-	emitter.SetIndent(2)
-	var output []byte
-	emitter.SetOutputString(&output)
-	for i := range events {
-		err := emitter.Emit(&events[i])
-		assert.NoErrorf(t, err, "Emit() error: %v", err)
-	}
-	return string(output)
-}
-
 func TestEmitFoldedScalarNoExtraNewline(t *testing.T) {
 	cases := []struct {
 		name  string
@@ -76,8 +54,23 @@ func TestEmitFoldedScalarNoExtraNewline(t *testing.T) {
 	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			got := emitFoldedScalar(t, tc.value)
-			assert.Equal(t, tc.want, got)
+			events := []Event{
+				NewStreamStartEvent(UTF8_ENCODING),
+				NewDocumentStartEvent(nil, nil, true),
+				NewScalarEvent(nil, nil, []byte(tc.value), true, true, FOLDED_SCALAR_STYLE),
+				NewDocumentEndEvent(true),
+				NewStreamEndEvent(),
+			}
+
+			emitter := NewEmitter()
+			emitter.SetIndent(2)
+			var output []byte
+			emitter.SetOutputString(&output)
+			for i := range events {
+				err := emitter.Emit(&events[i])
+				assert.NoErrorf(t, err, "Emit() error: %v", err)
+			}
+			assert.Equal(t, tc.want, string(output))
 		})
 	}
 }

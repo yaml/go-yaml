@@ -313,9 +313,7 @@ func nodeRoundTrip(t *testing.T, src []byte, indent int) []byte {
 	if err := enc.Encode(&n); err != nil {
 		t.Fatalf("Encode Node: %v", err)
 	}
-	if err := enc.Close(); err != nil {
-		t.Fatalf("Close encoder: %v", err)
-	}
+	assert.NoError(t, enc.Close())
 	return buf.Bytes()
 }
 
@@ -357,9 +355,7 @@ func TestNodeFoldedScalarRoundtripStable(t *testing.T) {
 				if err := yaml.Unmarshal(current, &m); err != nil {
 					t.Fatalf("round %d: Unmarshal: %v", round, err)
 				}
-				if m["key"] != want {
-					t.Fatalf("round %d: decoded value drifted: want %q, got %q", round, want, m["key"])
-				}
+				assert.Equal(t, want, m["key"])
 				current = nodeRoundTrip(t, current, 2)
 			}
 		})
