@@ -20,6 +20,7 @@
 package libyaml
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -55,13 +56,15 @@ type fieldInfo struct {
 	Inline []int
 }
 
-// structMap caches struct reflection information.
-// fieldMapMutex protects access to structMap.
-// constructorType holds the [reflect.Type] for the constructor interface.
 var (
-	structMap       = make(map[reflect.Type]*structInfo)
-	fieldMapMutex   sync.RWMutex
+	// structMap caches struct reflection information.
+	structMap = make(map[reflect.Type]*structInfo)
+	// fieldMapMutex protects access to structMap.
+	fieldMapMutex sync.RWMutex
+	// constructorType holds the [reflect.Type] for the [constructor] interface.
 	constructorType reflect.Type
+	// constructorContextType holds the [reflect.Type] for the [constructorContext] interface.
+	constructorContextType reflect.Type
 )
 
 // constructor interface is defined here to detect types that implement
@@ -70,10 +73,18 @@ type constructor interface {
 	UnmarshalYAML(value *Node) error
 }
 
+// constructorContext interface is defined here to detect types that implement
+// UnmarshalYAML with context during struct reflection.
+type constructorContext interface {
+	UnmarshalYAML(ctx context.Context, value *Node) error
+}
+
 // init initializes the constructorType variable with the [reflect.Type] of constructor interface.
 func init() {
 	var v constructor
 	constructorType = reflect.ValueOf(&v).Elem().Type()
+	var vc constructorContext
+	constructorContextType = reflect.ValueOf(&vc).Elem().Type()
 }
 
 // hasConstructYAMLMethod checks if a type has an UnmarshalYAML method
@@ -189,7 +200,7 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 					return nil, errors.New("option ,inline may only be used on a struct or map field")
 				}
 				// Check for both libyaml.constructor and yaml.Unmarshaler (by method name)
-				if reflect.PointerTo(ftype).Implements(constructorType) || hasConstructYAMLMethod(reflect.PointerTo(ftype)) {
+				if reflect.PointerTo(ftype).Implements(constructorType) || reflect.PointerTo(ftype).Implements(constructorContextType) || hasConstructYAMLMethod(reflect.PointerTo(ftype)) {
 					inlineConstructors = append(inlineConstructors, []int{i})
 				} else {
 					sinfo, err := getStructInfo(ftype)

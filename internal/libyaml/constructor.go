@@ -8,6 +8,7 @@
 package libyaml
 
 import (
+	"context"
 	"encoding"
 	"encoding/base64"
 	"fmt"
@@ -78,7 +79,13 @@ func NewConstructor(opts *Options) *Constructor {
 // It dispatches to the appropriate handler based on the node kind and
 // handles alias expansion, custom unmarshalers, and type resolution.
 // Returns true if the construction was successful.
-func (c *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
+func (c *Constructor) Construct(ctx context.Context, n *Node, out reflect.Value) (good bool) {
+	if ctx == nil {
+		// defensive measure to ensure that people who don't use context properly
+		// won't get a panic when using our library, and would report it as a bug.
+		ctx = context.Background()
+	}
+
 	c.constructCount++
 	if c.aliasDepth > 0 {
 		c.aliasCount++
@@ -95,12 +102,12 @@ func (c *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
 
 	switch n.Kind {
 	case DocumentNode:
-		return c.document(n, out)
+		return c.document(ctx, n, out)
 	case AliasNode:
-		return c.alias(n, out)
+		return c.alias(ctx, n, out)
 	}
 
-	out, constructed, good := c.prepare(n, out)
+	out, constructed, good := c.prepare(ctx, n, out)
 	if constructed {
 		return good
 	}
@@ -123,9 +130,9 @@ func (c *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
 	case ScalarNode:
 		good = c.scalar(n, out)
 	case MappingNode:
-		good = c.mapping(n, out)
+		good = c.mapping(ctx, n, out)
 	case SequenceNode:
-		good = c.sequence(n, out)
+		good = c.sequence(ctx, n, out)
 	case 0:
 		if n.IsZero() {
 			return c.null(out)
@@ -442,10 +449,10 @@ func (c *Constructor) constructMerge(n *Node, resolved any, out reflect.Value) b
 // Node Kind Handlers
 
 // document constructs a DocumentNode by processing its single content node.
-func (c *Constructor) document(n *Node, out reflect.Value) (good bool) {
+func (c *Constructor) document(ctx context.Context, n *Node, out reflect.Value) (good bool) {
 	if len(n.Content) == 1 {
 		c.doc = n
-		c.Construct(n.Content[0], out)
+		c.Construct(ctx, n.Content[0], out)
 		return true
 	}
 	return false
@@ -453,7 +460,7 @@ func (c *Constructor) document(n *Node, out reflect.Value) (good bool) {
 
 // alias constructs an AliasNode by following the alias reference and
 // tracking alias depth to detect circular references.
-func (c *Constructor) alias(n *Node, out reflect.Value) (good bool) {
+func (c *Constructor) alias(ctx context.Context, n *Node, out reflect.Value) (good bool) {
 	if c.aliases[n] {
 		// TODO this could actually be allowed in some circumstances.
 		Fail(formatComposerError(
@@ -463,7 +470,7 @@ func (c *Constructor) alias(n *Node, out reflect.Value) (good bool) {
 	}
 	c.aliases[n] = true
 	c.aliasDepth++
-	good = c.Construct(n.Alias, out)
+	good = c.Construct(ctx, n.Alias, out)
 	c.aliasDepth--
 	delete(c.aliases, n)
 	return good
@@ -548,7 +555,7 @@ func (c *Constructor) scalar(n *Node, out reflect.Value) bool {
 }
 
 // sequence constructs a SequenceNode into a Go slice, array, or interface.
-func (c *Constructor) sequence(n *Node, out reflect.Value) (good bool) {
+func (c *Constructor) sequence(ctx context.Context, n *Node, out reflect.Value) (good bool) {
 	l := len(n.Content)
 
 	var iface reflect.Value
@@ -575,7 +582,7 @@ func (c *Constructor) sequence(n *Node, out reflect.Value) (good bool) {
 	j := 0
 	for i := 0; i < l; i++ {
 		e := reflect.New(et).Elem()
-		if ok := c.Construct(n.Content[i], e); ok {
+		if ok := c.Construct(ctx, n.Content[i], e); ok {
 			out.Index(j).Set(e)
 			j++
 		}
@@ -592,7 +599,7 @@ func (c *Constructor) sequence(n *Node, out reflect.Value) (good bool) {
 // mapping constructs a MappingNode into a Go map, struct, or interface.
 // It handles key uniqueness checking, merge keys, and type-appropriate
 // map construction (string-keyed vs general).
-func (c *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
+func (c *Constructor) mapping(ctx context.Context, n *Node, out reflect.Value) (good bool) {
 	l := len(n.Content)
 	if c.UniqueKeys {
 		nerrs := len(c.TypeErrors)
@@ -614,7 +621,7 @@ func (c *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 	}
 	switch out.Kind() {
 	case reflect.Struct:
-		return c.mappingStruct(n, out)
+		return c.mappingStruct(ctx, n, out)
 	case reflect.Map:
 		// okay
 	case reflect.Interface:
@@ -660,7 +667,7 @@ func (c *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 			continue
 		}
 		k := reflect.New(kt).Elem()
-		if c.Construct(n.Content[i], k) {
+		if c.Construct(ctx, n.Content[i], k) {
 			if mergedFields != nil {
 				ki := k.Interface()
 				if c.getPossiblyUnhashableKey(mergedFields, ki, n.Content[i]) {
@@ -679,7 +686,7 @@ func (c *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 				))
 			}
 			e := reflect.New(et).Elem()
-			if c.Construct(n.Content[i+1], e) || n.Content[i+1].ShortTag() == nullTag && (mapIsNew || !out.MapIndex(k).IsValid()) {
+			if c.Construct(ctx, n.Content[i+1], e) || n.Content[i+1].ShortTag() == nullTag && (mapIsNew || !out.MapIndex(k).IsValid()) {
 				out.SetMapIndex(k, e)
 			}
 		}
@@ -687,7 +694,7 @@ func (c *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 
 	c.mergedFields = mergedFields
 	if mergeNode != nil {
-		c.merge(n, mergeNode, out)
+		c.merge(ctx, n, mergeNode, out)
 	}
 
 	c.stringMapType = stringMapType
@@ -701,7 +708,7 @@ func (c *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 // mappingStruct constructs a MappingNode into a struct value.
 // It handles field matching by name, inline fields, inline maps, merge keys,
 // and enforces known fields and unique keys when configured.
-func (c *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
+func (c *Constructor) mappingStruct(ctx context.Context, n *Node, out reflect.Value) (good bool) {
 	sinfo, err := getStructInfo(out.Type())
 	if err != nil {
 		panic(err)
@@ -716,7 +723,7 @@ func (c *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
 
 	for _, index := range sinfo.InlineConstructors {
 		field := c.fieldByIndex(n, out, index)
-		c.prepare(n, field)
+		c.prepare(ctx, n, field)
 	}
 
 	mergedFields := c.mergedFields
@@ -734,7 +741,7 @@ func (c *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
 			mergeNode = n.Content[i+1]
 			continue
 		}
-		if !c.Construct(ni, name) {
+		if !c.Construct(ctx, ni, name) {
 			continue
 		}
 		sname := name.String()
@@ -761,13 +768,13 @@ func (c *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
 			} else {
 				field = c.fieldByIndex(n, out, info.Inline)
 			}
-			c.Construct(n.Content[i+1], field)
+			c.Construct(ctx, n.Content[i+1], field)
 		} else if sinfo.InlineMap != -1 {
 			if inlineMap.IsNil() {
 				inlineMap.Set(reflect.MakeMap(inlineMap.Type()))
 			}
 			value := reflect.New(elemType).Elem()
-			c.Construct(n.Content[i+1], value)
+			c.Construct(ctx, n.Content[i+1], value)
 			inlineMap.SetMapIndex(name, value)
 		} else if c.KnownFields {
 			c.TypeErrors = append(c.TypeErrors, formatConstructorError(
@@ -779,7 +786,7 @@ func (c *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
 
 	c.mergedFields = mergedFields
 	if mergeNode != nil {
-		c.merge(n, mergeNode, out)
+		c.merge(ctx, n, mergeNode, out)
 	}
 	return true
 }
@@ -788,13 +795,13 @@ func (c *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
 // The merge value can be a single mapping, an alias to a mapping, or a
 // sequence of mappings.
 // Fields from the parent mapping take precedence over merged fields.
-func (c *Constructor) merge(parent *Node, merge *Node, out reflect.Value) {
+func (c *Constructor) merge(ctx context.Context, parent *Node, merge *Node, out reflect.Value) {
 	mergedFields := c.mergedFields
 	if mergedFields == nil {
 		c.mergedFields = make(map[any]bool)
 		for i := 0; i < len(parent.Content); i += 2 {
 			k := reflect.New(ifaceType).Elem()
-			if c.Construct(parent.Content[i], k) {
+			if c.Construct(ctx, parent.Content[i], k) {
 				c.setPossiblyUnhashableKey(c.mergedFields, k.Interface(), true, parent.Content[i])
 			}
 		}
@@ -802,12 +809,12 @@ func (c *Constructor) merge(parent *Node, merge *Node, out reflect.Value) {
 
 	switch merge.Kind {
 	case MappingNode:
-		c.Construct(merge, out)
+		c.Construct(ctx, merge, out)
 	case AliasNode:
 		if merge.Alias != nil && merge.Alias.Kind != MappingNode {
 			failWantMap(merge.Alias)
 		}
-		c.Construct(merge, out)
+		c.Construct(ctx, merge, out)
 	case SequenceNode:
 		for i := 0; i < len(merge.Content); i++ {
 			ni := merge.Content[i]
@@ -818,7 +825,7 @@ func (c *Constructor) merge(parent *Node, merge *Node, out reflect.Value) {
 			} else if ni.Kind != MappingNode {
 				failWantMap(ni)
 			}
-			c.Construct(ni, out)
+			c.Construct(ctx, ni, out)
 		}
 	default:
 		failWantMap(merge)
@@ -867,7 +874,7 @@ func failWantMap(n *Node) {
 // its types constructed appropriately.
 //
 // If n holds a null value, prepare returns before doing anything.
-func (c *Constructor) prepare(n *Node, out reflect.Value) (newout reflect.Value, constructed, good bool) {
+func (c *Constructor) prepare(ctx context.Context, n *Node, out reflect.Value) (newout reflect.Value, constructed, good bool) {
 	if n.ShortTag() == nullTag {
 		return out, false, false
 	}
@@ -893,12 +900,17 @@ func (c *Constructor) prepare(n *Node, out reflect.Value) (newout reflect.Value,
 				good = c.callConstructor(n, u)
 				return out, true, good
 			}
+			if u, ok := outi.(constructorContext); ok {
+				good = c.callConstructorContext(ctx, n, u)
+				return out, true, good
+			}
 			if u, ok := outi.(legacyConstructor); ok {
-				good = c.callLegacyConstructor(n, u)
+				good = c.callLegacyConstructor(ctx, n, u)
 				return out, true, good
 			}
 		}
 	}
+
 	return out, false, false
 }
 
@@ -1014,13 +1026,30 @@ func (c *Constructor) callConstructor(n *Node, u constructor) (good bool) {
 	}
 }
 
+func (c *Constructor) callConstructorContext(ctx context.Context, n *Node, u constructorContext) (good bool) {
+	err := u.UnmarshalYAML(ctx, n)
+	switch e := err.(type) {
+	case nil:
+		return true
+	case *LoadErrors:
+		c.TypeErrors = append(c.TypeErrors, e.Errors...)
+		return false
+	default:
+		c.TypeErrors = append(c.TypeErrors, formatConstructorError(
+			err,
+			Mark{Line: n.Line, Column: n.Column},
+		))
+		return false
+	}
+}
+
 // callLegacyConstructor invokes the UnmarshalYAML method on a value
 // implementing the old-style legacyConstructor interface.
-func (c *Constructor) callLegacyConstructor(n *Node, u legacyConstructor) (good bool) {
+func (c *Constructor) callLegacyConstructor(ctx context.Context, n *Node, u legacyConstructor) (good bool) {
 	terrlen := len(c.TypeErrors)
 	err := u.UnmarshalYAML(func(v any) (err error) {
 		defer handleErr(&err)
-		c.Construct(n, reflect.ValueOf(v))
+		c.Construct(ctx, n, reflect.ValueOf(v))
 		if len(c.TypeErrors) > terrlen {
 			issues := append([]*LoadError{}, c.TypeErrors[terrlen:]...)
 			c.TypeErrors = c.TypeErrors[:terrlen]

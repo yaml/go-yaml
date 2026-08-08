@@ -8,6 +8,7 @@
 package libyaml
 
 import (
+	"context"
 	"reflect"
 	"strings"
 	"unicode"
@@ -280,13 +281,22 @@ func (n *Node) SetString(s string) {
 // See the documentation for Unmarshal for details about the
 // conversion of YAML into a Go value.
 func (n *Node) Decode(v any) (err error) {
+	return n.DecodeContext(context.Background(), v)
+}
+
+// DecodeContext decodes the node and stores its data into the value pointed to by v,
+// applying the given context.
+//
+// The only difference with [Node.Decode] is the ability to receive the provided context for types implementing the [UnmarshalerContext] interface,
+// allowing them to access the context during unmarshalling.
+func (n *Node) DecodeContext(ctx context.Context, v any) (err error) {
 	d := NewConstructor(DefaultOptions)
 	defer handleErr(&err)
 	out := reflect.ValueOf(v)
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
 		out = out.Elem()
 	}
-	d.Construct(n, out)
+	d.Construct(ctx, n, out)
 	if len(d.TypeErrors) > 0 {
 		return &LoadErrors{Errors: d.TypeErrors}
 	}
@@ -307,6 +317,23 @@ func (n *Node) Decode(v any) (err error) {
 // See the documentation of the package-level Load function for details
 // about YAML to Go conversion and tag options.
 func (n *Node) Load(v any, opts ...Option) (err error) {
+	return n.LoadContext(context.Background(), v, opts...)
+}
+
+// LoadContext decodes the node and stores its data into the value pointed to by v,
+// applying the given context and options.
+//
+// This method is useful when you need to preserve options like WithKnownFields()
+// inside custom UnmarshalYAML implementations.
+//
+// Maps and pointers (to a struct, string, int, etc) are accepted as v
+// values. If an internal pointer within a struct is not initialized,
+// the yaml package will initialize it if necessary. The v parameter
+// must not be nil.
+//
+// See the documentation of the package-level Load function for details
+// about YAML to Go conversion and tag options.
+func (n *Node) LoadContext(ctx context.Context, v any, opts ...Option) (err error) {
 	defer handleErr(&err)
 	o, err := ApplyOptions(opts...)
 	if err != nil {
@@ -317,7 +344,7 @@ func (n *Node) Load(v any, opts ...Option) (err error) {
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
 		out = out.Elem()
 	}
-	d.Construct(n, out)
+	d.Construct(ctx, n, out)
 	if len(d.TypeErrors) > 0 {
 		return &LoadErrors{Errors: d.TypeErrors}
 	}
@@ -394,6 +421,17 @@ type Marshaler interface {
 // a YAML description of themselves.
 type Unmarshaler interface {
 	UnmarshalYAML(node *Node) error
+}
+
+// UnmarshalerContext is the interface implemented by types that can unmarshal
+// a YAML description of themselves with context.
+//
+// You can provide a context by using [LoadContext] or [Loader.LoadContext] to pass a context to your unmarshaling process.
+//
+// The UnmarshalYAML method will be called with the provided context, allowing you to access it during unmarshaling.
+// If you don't need to use a context, you can still implement the [Unmarshaler] interface instead.
+type UnmarshalerContext interface {
+	UnmarshalYAML(ctx context.Context, node *Node) error
 }
 
 // IsZeroer is used to check whether an object is zero to determine whether
