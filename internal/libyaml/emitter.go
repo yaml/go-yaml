@@ -1989,7 +1989,18 @@ func (emitter *Emitter) writeBlockScalarHints(value []byte) error {
 		// https://github.com/yaml/go-yaml/issues/65
 		// isLineBreak(value, 0) removed as the linebreak will only
 		// write the indentation value.
-		indent_hint := []byte{'0' + byte(emitter.BestIndent)}
+		// The indentation indicator is relative to the indentation of the
+		// parent node, and this emitter does not always indent by BestIndent
+		// (a block sequence item only adds 2), so use the actual difference.
+		parent_indent := 0
+		if len(emitter.indents) > 0 && emitter.indents[len(emitter.indents)-1] > 0 {
+			parent_indent = emitter.indents[len(emitter.indents)-1]
+		}
+		indent := emitter.indent - parent_indent
+		if indent < 1 || indent > 9 {
+			indent = emitter.BestIndent
+		}
+		indent_hint := []byte{'0' + byte(indent)}
 		if err := emitter.writeIndicator(indent_hint, false, false, false); err != nil {
 			return err
 		}

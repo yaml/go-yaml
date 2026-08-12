@@ -2739,6 +2739,42 @@ func TestSetIndent(t *testing.T) {
 	assert.Equal(t, "a:\n        b:\n                c: d\n", buf.String())
 }
 
+// A block scalar whose content starts with a space needs an explicit
+// indentation indicator, and that indicator is relative to the indentation of
+// the parent node.
+// See https://github.com/go-yaml/yaml/issues/1071
+func TestBlockScalarIndentIndicatorRoundTrip(t *testing.T) {
+	type params struct {
+		Description string `yaml:"description"`
+	}
+	type spec struct {
+		Parameters []params `yaml:"parameters"`
+	}
+
+	for _, indent := range []int{0, 1, 2, 3, 4, 8} {
+		for _, description := range []string{
+			"  a\nb",
+			"     a\nb",
+			" a\n      b",
+		} {
+			in := spec{Parameters: []params{{Description: description}}}
+
+			var buf bytes.Buffer
+			enc := yaml.NewEncoder(&buf)
+			if indent > 0 {
+				enc.SetIndent(indent)
+			}
+			assert.NoError(t, enc.Encode(&in))
+			assert.NoError(t, enc.Close())
+
+			var out spec
+			err := yaml.Unmarshal(buf.Bytes(), &out)
+			assert.NoErrorf(t, err, "indent %d, encoded as:\n%s", indent, buf.String())
+			assert.DeepEqualf(t, in, out, "indent %d, encoded as:\n%s", indent, buf.String())
+		}
+	}
+}
+
 func TestSortedOutput(t *testing.T) {
 	order := []any{
 		false,
