@@ -83,7 +83,7 @@ jobs:
 
     - name: Get latest patch for each minor version
       # yamllint disable-line rule:line-length
-      uses: arnested/go-version-action@6ccff891beb7200dc4a3389378c726c75b7d4b1e  # v2.1.5
+      uses: arnested/go-version-action@697236828ba755d1949ca46316abf0b4d9f6a205  # v2.1.6
       id: latest-patch-versions
       with:
         latest-patches-only: true
