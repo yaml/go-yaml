@@ -1985,10 +1985,16 @@ func (emitter *Emitter) writeDoubleQuotedScalar(value []byte, allow_breaks bool)
 // writeBlockScalarHints writes the indentation and chomping indicators for
 // block scalars.
 func (emitter *Emitter) writeBlockScalarHints(value []byte) error {
-	if isSpace(value, 0) {
-		// https://github.com/yaml/go-yaml/issues/65
-		// isLineBreak(value, 0) removed as the linebreak will only
-		// write the indentation value.
+	// A parser infers a block scalar's indentation from its first non-empty
+	// line, so an explicit indentation indicator is needed whenever that line
+	// begins with a space. Leading line breaks only produce empty lines, which
+	// carry no indentation of their own, so skip past them first.
+	// https://github.com/yaml/go-yaml/issues/65
+	i := 0
+	for i < len(value) && isLineBreak(value, i) {
+		i += width(value[i])
+	}
+	if i < len(value) && isSpace(value, i) {
 		indent_hint := []byte{'0' + byte(emitter.BestIndent)}
 		if err := emitter.writeIndicator(indent_hint, false, false, false); err != nil {
 			return err
