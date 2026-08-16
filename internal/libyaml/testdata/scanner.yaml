@@ -675,6 +675,21 @@
     data: [0xC2, 0xA0]
 
 - char-predicate:
+    name: Is printable - U+10000 (lowest 4 byte sequence)
+    func: isPrintable
+    data: [0xF0, 0x90, 0x80, 0x80]
+
+- char-predicate:
+    name: Is printable - U+1F6A7 (astral plane emoji)
+    func: isPrintable
+    data: [0xF0, 0x9F, 0x9A, 0xA7]
+
+- char-predicate:
+    name: Is printable - U+10FFFF (highest code point)
+    func: isPrintable
+    data: [0xF4, 0x8F, 0xBF, 0xBF]
+
+- char-predicate:
     name: Is printable - null
     func: isPrintable
     data: [0x00]

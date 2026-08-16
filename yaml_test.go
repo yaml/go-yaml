@@ -3018,6 +3018,54 @@ func TestScalarStyleWithTabs(t *testing.T) {
 	}
 }
 
+// Code points above the BMP are printable per the YAML spec, so they are
+// emitted as-is and do not stop a multiline scalar using literal style.
+func TestScalarStyleAboveBMP(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected string
+		desc     string
+	}{
+		{
+			"a\U0001F6A7b",
+			"a\U0001F6A7b\n",
+			"Astral plane emoji stays unescaped",
+		},
+		{
+			"\U00010000",
+			"\U00010000\n",
+			"Lowest code point needing four bytes",
+		},
+		{
+			"\U0010FFFF",
+			"\U0010FFFF\n",
+			"Highest code point",
+		},
+		{
+			"one\n\U0001F6A7\ntwo\n",
+			"|\n    one\n    \U0001F6A7\n    two\n",
+			"Multiline with astral plane emoji uses literal style",
+		},
+		{
+			"one\n✅\ntwo\n",
+			"|\n    one\n    ✅\n    two\n",
+			"Multiline with BMP symbol uses literal style",
+		},
+	}
+
+	for i, testCase := range testCases {
+		t.Run(fmt.Sprintf("test_%d_%s", i, testCase.desc), func(t *testing.T) {
+			data, err := yaml.Marshal(testCase.input)
+			assert.NoError(t, err)
+			assert.Equal(t, testCase.expected, string(data))
+
+			var roundTripped string
+			assert.NoError(t, yaml.Unmarshal(data, &roundTripped))
+			assert.Equal(t, testCase.input, roundTripped)
+		})
+	}
+}
+
 func TestUnicodeWhitespaceHandling(t *testing.T) {
 	// Test cases for Unicode whitespace characters that should be properly handled
 	// by the shouldUseLiteralStyle function using unicode.IsSpace()
