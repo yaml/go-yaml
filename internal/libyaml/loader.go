@@ -260,10 +260,10 @@ func loadSingle(in []byte, out any, opts *Options) error {
 	return nil
 }
 
-// SetKnownFields enables or disables strict field checking for subsequent Load
-// calls.
-// This is used by the legacy Decoder.KnownFields() method.
-func (l *Loader) SetKnownFields(enable bool) {
+// SetLegacyLoaderKnownFields allows changing the known fields setting from the legacy Decoder API.
+//
+// Note: This is not a method on Loader to avoid exposing it; callers should use [WithKnownFields] instead.
+func SetLegacyLoaderKnownFields(l *Loader, enable bool) {
 	l.constructor.KnownFields = enable
 }
 
