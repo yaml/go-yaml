@@ -149,7 +149,7 @@ type EmitterError struct {
 
 // Error returns the error message.
 func (e EmitterError) Error() string {
-	return fmt.Sprintf("yaml: %s", e.Message)
+	return "yaml: " + e.Message
 }
 
 // WriterError represents an error that occurred while writing output.
@@ -233,7 +233,7 @@ type TypeError struct {
 
 // Error returns a formatted error message listing all unmarshal errors.
 func (e *TypeError) Error() string {
-	return fmt.Sprintf("yaml: unmarshal errors: %s", strings.Join(e.Errors, "; "))
+	return "yaml: unmarshal errors: " + strings.Join(e.Errors, "; ")
 }
 
 // YAMLError is an internal error wrapper type.

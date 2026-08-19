@@ -9,6 +9,7 @@ package yaml_test
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"reflect"
 	"testing"
@@ -387,7 +388,7 @@ func isStandardTag(tag string) bool {
 // parseNodeInfo converts a NodeInfo structure into a yaml.Node
 func parseNodeInfo(info *NodeInfo) (*yaml.Node, error) {
 	if info == nil {
-		return nil, fmt.Errorf("nil NodeInfo")
+		return nil, errors.New("nil NodeInfo")
 	}
 
 	node := &yaml.Node{}
