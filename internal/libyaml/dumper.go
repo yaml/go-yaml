@@ -78,8 +78,9 @@ func Dump(in any, opts ...Option) (out []byte, err error) {
 		inVal := reflect.ValueOf(in)
 		if inVal.Kind() != reflect.Slice {
 			return nil, &DumpError{
-				Stage:   RepresenterStage,
-				Message: "WithAllDocuments requires a slice input",
+				Stage:     RepresenterStage,
+				Message:   "WithAllDocuments requires a slice input",
+				formatter: o.FormatDumpError,
 			}
 		}
 
@@ -136,7 +137,11 @@ func (d *Dumper) Close() (err error) {
 // This is used by the legacy Encoder.SetIndent() method.
 func (d *Dumper) SetIndent(spaces int) {
 	if spaces < 0 {
-		failDumpf(SerializerStage, "cannot indent to a negative number of spaces")
+		failDumpf(
+			SerializerStage,
+			d.options.FormatDumpError,
+			"cannot indent to a negative number of spaces",
+		)
 	}
 	// Set on serializer's emitter
 	d.serializer.Emitter.BestIndent = spaces

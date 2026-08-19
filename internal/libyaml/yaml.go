@@ -123,6 +123,12 @@ func (m Mark) String() string {
 	return builder.String()
 }
 
+// ShortString is the exported form of shortString for use by plugins.
+func (m Mark) ShortString() string { return m.shortString() }
+
+// RangeString is the exported form of rangeString for use by plugins.
+func (m Mark) RangeString(end Mark) string { return m.rangeString(end) }
+
 // shortString returns a compact position string.
 // Returns "<unknown position>" when Line is 0 (position not known).
 // When Column is 0 (unknown), it is omitted from output ("L{line}");
