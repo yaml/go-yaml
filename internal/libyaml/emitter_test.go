@@ -28,6 +28,48 @@ func TestEmitter(t *testing.T) {
 	})
 }
 
+func TestEmitSingleQuotedScalarClosingQuoteIndent(t *testing.T) {
+	cases := []struct {
+		name  string
+		value string
+		want  string
+	}{
+		{
+			name:  "multi-line scalar ending with a line break",
+			value: " Get quacked.\n- Duck\n",
+			want:  "' Get quacked.\n\n  - Duck\n\n  '\n",
+		},
+		{
+			name:  "two short lines ending with a line break",
+			value: "a\nb\n",
+			want:  "'a\n\n  b\n\n  '\n",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			events := []Event{
+				NewStreamStartEvent(UTF8_ENCODING),
+				NewDocumentStartEvent(nil, nil, true),
+				NewScalarEvent(nil, nil, []byte(tc.value), true, true, SINGLE_QUOTED_SCALAR_STYLE),
+				NewDocumentEndEvent(true),
+				NewStreamEndEvent(),
+			}
+
+			emitter := NewEmitter()
+			emitter.SetIndent(2)
+			var output []byte
+			emitter.SetOutputString(&output)
+			for i := range events {
+				err := emitter.Emit(&events[i])
+				assert.NoErrorf(t, err, "Emit() error: %v", err)
+			}
+			assert.Equal(t, tc.want, string(output))
+		})
+	}
+}
+
 func TestEmitFoldedScalarNoExtraNewline(t *testing.T) {
 	cases := []struct {
 		name  string
