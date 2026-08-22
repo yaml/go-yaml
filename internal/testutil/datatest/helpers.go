@@ -30,7 +30,7 @@ func HexToBytes(t *testing.T, s string) []byte {
 func GetField(t *testing.T, obj any, fieldName string) any {
 	t.Helper()
 	v := reflect.ValueOf(obj)
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
 	}
 	field := v.FieldByName(fieldName)
@@ -122,7 +122,7 @@ func WantSlice(t *testing.T, want any) []any {
 func SetFieldValue(t *testing.T, obj any, fieldName string, value any) {
 	t.Helper()
 	v := reflect.ValueOf(obj)
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
 	}
 	field := v.FieldByName(fieldName)

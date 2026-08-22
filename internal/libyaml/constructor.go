@@ -948,7 +948,7 @@ func (c *Constructor) tryCallYAMLConstructor(n *Node, out reflect.Value) (called
 
 	// Check if parameter is a pointer to a Node-like struct
 	paramType := mtype.In(0)
-	if paramType.Kind() != reflect.Ptr {
+	if paramType.Kind() != reflect.Pointer {
 		return false, false
 	}
 
