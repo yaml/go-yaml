@@ -673,10 +673,7 @@ func (c *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 				kkind = k.Elem().Kind()
 			}
 			if kkind == reflect.Map || kkind == reflect.Slice {
-				Fail(formatConstructorError(
-					fmt.Errorf("cannot use '%#v' as a map key; try decoding into yaml.Node", k.Interface()),
-					Mark{Line: n.Content[i].Line, Column: n.Content[i].Column},
-				))
+				failUnhashableKey(k.Interface(), n.Content[i])
 			}
 			e := reflect.New(et).Elem()
 			if c.Construct(n.Content[i+1], e) || n.Content[i+1].ShortTag() == nullTag && (mapIsNew || !out.MapIndex(k).IsValid()) {
@@ -853,6 +850,15 @@ func isMerge(n *Node) bool {
 func failWantMap(n *Node) {
 	Fail(formatConstructorError(
 		fmt.Errorf("map merge requires map or sequence of maps as the value"),
+		Mark{Line: n.Line, Column: n.Column},
+	))
+}
+
+// failUnhashableKey panics with an error message for keys that cannot be used
+// as Go map keys.
+func failUnhashableKey(key any, n *Node) {
+	Fail(formatConstructorError(
+		fmt.Errorf("cannot use '%#v' as a map key; try decoding into yaml.Node", key),
 		Mark{Line: n.Line, Column: n.Column},
 	))
 }
@@ -1108,11 +1114,8 @@ func settableValueOf(i any) reflect.Value {
 // type is unhashable.
 func (c *Constructor) setPossiblyUnhashableKey(m map[any]bool, key any, value bool, n *Node) {
 	defer func() {
-		if err := recover(); err != nil {
-			Fail(formatConstructorError(
-				fmt.Errorf("%v", err),
-				Mark{Line: n.Line, Column: n.Column},
-			))
+		if recover() != nil {
+			failUnhashableKey(key, n)
 		}
 	}()
 	m[key] = value
@@ -1122,11 +1125,8 @@ func (c *Constructor) setPossiblyUnhashableKey(m map[any]bool, key any, value bo
 // the key type is unhashable.
 func (c *Constructor) getPossiblyUnhashableKey(m map[any]bool, key any, n *Node) bool {
 	defer func() {
-		if err := recover(); err != nil {
-			Fail(formatConstructorError(
-				fmt.Errorf("%v", err),
-				Mark{Line: n.Line, Column: n.Column},
-			))
+		if recover() != nil {
+			failUnhashableKey(key, n)
 		}
 	}()
 	return m[key]
