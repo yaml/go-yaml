@@ -80,6 +80,24 @@
     want: "go-yaml load error in constructor at L1.C2: cannot use 'map[string]interface {}{\".\":interface {}(nil)}' as a map key; try decoding into yaml.Node"
 
 - unmarshal-error:
+    name: Slice as map key beside a merge key (Issue 378)
+    yaml: |
+      <<:
+      ? -
+    type: map[string]any
+    want: "go-yaml load error in constructor at L2.C3: cannot use '[]interface {}{interface {}(nil)}' as a map key; try decoding into yaml.Node"
+
+- unmarshal-error:
+    name: Slice as map key in a merged mapping
+    yaml: |
+      a: 1
+      <<:
+        ? -
+        : 2
+    type: map[any]any
+    want: "go-yaml load error in constructor at L3.C5: cannot use '[]interface {}{interface {}(nil)}' as a map key; try decoding into yaml.Node"
+
+- unmarshal-error:
     name: Forward reference to anchor
     yaml: |
       b: *a
