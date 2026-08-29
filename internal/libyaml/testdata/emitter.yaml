@@ -479,6 +479,20 @@
     - value
     - item1
 
+# Regression test for https://github.com/google/yamlfmt/issues/110: a foot
+# comment attached to a flow mapping must not add a superfluous trailing
+# comma before the closing '}'.
+- roundtrip:
+    name: Flow mapping with foot comment has no superfluous comma
+    yaml: |
+      ---
+      - {foo: bar}
+      # comment
+    want: |
+      ---
+      - {foo: bar}
+      # comment
+
 # Regression tests for https://github.com/yaml/go-yaml/issues/337
 - roundtrip:
     name: Folded scalar preserves newlines
