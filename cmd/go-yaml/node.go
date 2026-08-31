@@ -58,7 +58,7 @@ type NodeInfo struct {
 	Head          string             `yaml:"head,omitempty"`
 	Line          string             `yaml:"line,omitempty"`
 	Foot          string             `yaml:"foot,omitempty"`
-	Text          string             `yaml:"text,omitempty"`
+	Value         string             `yaml:"value,omitempty"`
 	Content       []*NodeInfo        `yaml:"content,omitempty"`
 	Encoding      string             `yaml:"encoding,omitempty"`
 	Version       string             `yaml:"version,omitempty"`
@@ -71,8 +71,8 @@ func FormatNode(n yaml.Node, profuse bool) *NodeInfo {
 		Kind: formatKind(n.Kind),
 	}
 
-	// Don't set style for Document or Stream nodes
-	if n.Kind != yaml.DocumentNode && n.Kind != yaml.StreamNode {
+	// Don't set style for Document, Stream, or Alias nodes
+	if n.Kind != yaml.DocumentNode && n.Kind != yaml.StreamNode && n.Kind != yaml.AliasNode {
 		if style := formatStyle(n.Style, profuse); style != "" {
 			info.Style = style
 		}
@@ -93,8 +93,8 @@ func FormatNode(n yaml.Node, profuse bool) *NodeInfo {
 		info.Foot = n.FootComment
 	}
 
-	if info.Kind == "Scalar" {
-		info.Text = n.Value
+	if info.Kind == "Scalar" || info.Kind == "Alias" {
+		info.Value = n.Value
 	} else if n.Content != nil {
 		info.Content = make([]*NodeInfo, len(n.Content))
 		for i, node := range n.Content {

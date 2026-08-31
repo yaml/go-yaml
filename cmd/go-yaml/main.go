@@ -352,6 +352,7 @@ func main() {
 
 	// Shared flags
 	longMode := flag.Bool("l", false, "Long (block) formatted output")
+	fromStage := flag.String("f", "", "Force input stage: t, e, n, or y")
 
 	// Config file flag
 	configFile := flag.String("C", "", "Load options from YAML config file")
@@ -380,6 +381,7 @@ func main() {
 	flag.BoolVar(nodeMode, "node", false, "Node representation output")
 	flag.BoolVar(nodeProfuseMode, "NODE", false, "Node with tag and style for all scalars")
 	flag.BoolVar(longMode, "long", false, "Long (block) formatted output")
+	flag.StringVar(fromStage, "from", "", "Force input stage: token, event, node, or yaml")
 	flag.StringVar(configFile, "config", "", "Load options from YAML config file")
 
 	// API selection flags (long form only)
@@ -480,6 +482,39 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error: only one file argument supported\n")
 		os.Exit(1)
 	}
+
+	inputData, err := io.ReadAll(input)
+	if err != nil {
+		log.Fatal("Failed to read input:", err)
+	}
+	structured, err := detectStructuredInput(inputData, *fromStage)
+	if err != nil {
+		log.Fatal("Failed to read input stage:", err)
+	}
+	if structured.stage != stageYAML {
+		var target stageKind
+		var profuse bool
+		switch {
+		case *tokenMode, *tokenProfuseMode:
+			target, profuse = stageToken, *tokenProfuseMode
+		case *eventMode, *eventProfuseMode:
+			target, profuse = stageEvent, *eventProfuseMode
+		case *nodeMode, *nodeProfuseMode, *longMode:
+			target, profuse = stageNode, *nodeProfuseMode
+		case *yamlMode, *yamlPreserveMode:
+			target = stageYAML
+		case *jsonMode, *jsonPrettyMode:
+			log.Fatal("JSON output is only supported for YAML text input")
+		default:
+			log.Fatal("No output stage specified")
+		}
+		if err := processStructuredInput(structured, target, profuse,
+			!*longMode, *yamlPreserveMode, opts); err != nil {
+			log.Fatal("Failed to process structured input:", err)
+		}
+		return
+	}
+	input = bytes.NewReader(inputData)
 
 	// Process YAML input
 	if *eventMode {
@@ -672,6 +707,10 @@ The go-yaml API has three sets of functions for reading/writing YAML:
 
 Usage:
   go-yaml [options] [file]
+
+Input Options:
+  -f, --from STAGE  Force input stage when auto-detection is ambiguous
+                    Values: token (t), event (e), node (n), yaml (y)
 
 Output Mode Options:
   -y, --yaml       YAML encoding output

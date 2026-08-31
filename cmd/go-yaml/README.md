@@ -29,7 +29,45 @@ See the [LICENSE](LICENSE) file for more details.
 - `-E` / `--EVENT`: Outputs events with line information.
 
 ### Node Representation
-- `-n` / `--node`: Outputs a detailed representation of the YAML node structure.
+- `-n` / `--node`: Outputs a compact representation of the YAML node structure.
+- `-N` / `--NODE`: Outputs nodes with tags and styles.
+
+### Chaining
+
+Token, event, and node output is also accepted as input. The supported forward
+pipeline is:
+
+```text
+YAML text -> tokens -> events -> nodes -> YAML text
+```
+
+Input stages are detected from their sequence/map schema. Use
+`-f` / `--from` with `token`, `event`, `node`, or `yaml` (or `t`, `e`, `n`,
+or `y`) when input is ambiguous. Backward conversions fail explicitly because
+later stages do not retain enough information to reconstruct earlier ones.
+
+```bash
+# Exercise the complete pipeline.
+go-yaml -t file.yaml | go-yaml -e | go-yaml -N | go-yaml -Y
+
+# Edit an event stream with yq before continuing.
+go-yaml -e file.yaml |
+  yq '(.[] | select(.event == "SCALAR" and .value == "old")).value = "new"' |
+  go-yaml -Y
+
+# Edit detailed nodes and then emit YAML.
+go-yaml -N file.yaml |
+  yq '(.. | select(.kind? == "Scalar" and .value == "old")).value = "new"' |
+  go-yaml -Y
+
+# Treat contract-shaped data as ordinary YAML.
+go-yaml -f yaml -n contract-shaped-data.yaml
+```
+
+The lowercase and uppercase forms select the same stage. Uppercase output adds
+metadata such as source positions, tags, and styles; both forms are valid
+inputs. Token and event streams include `STREAM-START` and `STREAM-END` so a
+pipeline can validate that it received a complete stream.
 
 ### Formatting Options
 - `-l` / `--long`: Enables long (block) formatted output.

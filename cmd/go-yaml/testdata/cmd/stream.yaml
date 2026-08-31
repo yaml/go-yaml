@@ -31,11 +31,11 @@
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: a
+          value: a
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: b
+          value: b
     - kind: Stream
       encoding: UTF-8
 

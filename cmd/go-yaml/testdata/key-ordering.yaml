@@ -16,7 +16,7 @@
       style: Plain
       anchor: myanchor
       tag: '!!str'
-      text: value
+      value: value
 
 - name: Scalar with anchor and comments
   text: |
@@ -39,7 +39,7 @@
       head: '# head comment'
       line: '# line comment'
       foot: '# foot comment'
-      text: value
+      value: value
 
 - name: Mapping with tag, anchor, and comments
   text: |
@@ -69,12 +69,12 @@
         tag: '!!str'
         head: '# head comment'
         foot: '# foot comment'
-        text: key
+        value: key
       - kind: Scalar
         style: Plain
         tag: '!!str'
         line: '# line comment'
-        text: value
+        value: value
 
 - name: Sequence with tag and anchor
   text: |
@@ -98,11 +98,11 @@
       - kind: Scalar
         style: Plain
         tag: '!!str'
-        text: item1
+        value: item1
       - kind: Scalar
         style: Plain
         tag: '!!str'
-        text: item2
+        value: item2
 
 - name: Sequence with all metadata fields
   text: |
@@ -131,12 +131,12 @@
         style: Plain
         tag: '!!str'
         head: '# head comment'
-        text: item1
+        value: item1
       - kind: Scalar
         style: Plain
         tag: '!!str'
         foot: '# foot comment'
-        text: item2
+        value: item2
 
 - name: Tag comes before anchor
   text: |
@@ -151,7 +151,7 @@
       style: Plain
       anchor: anchor
       tag: '!!str'
-      text: tagged
+      value: tagged
 
 - name: Comments come before content
   text: |
@@ -174,12 +174,12 @@
         style: Plain
         tag: '!!str'
         head: '# head'
-        text: key
+        value: key
       - kind: Scalar
         style: Plain
         tag: '!!str'
         line: '# line'
-        text: value
+        value: value
 
 - name: Double quoted scalar with tag and anchor
   text: |
@@ -194,7 +194,7 @@
       style: Double
       anchor: myanchor
       tag: '!!str'
-      text: quoted
+      value: quoted
 
 - name: Nested mapping with ordered keys
   text: |
@@ -228,7 +228,7 @@
         style: Plain
         tag: '!!str'
         head: '# outer head'
-        text: nested
+        value: nested
       - kind: Mapping
         style: Plain
         anchor: inner
@@ -238,8 +238,8 @@
           style: Plain
           tag: '!!str'
           head: '# inner head'
-          text: key
+          value: key
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: value
+          value: value

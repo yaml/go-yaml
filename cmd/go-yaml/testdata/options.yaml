@@ -30,9 +30,9 @@
 
 - name: Line width wrapping
   text: |
-    text: "This is a very long line of text that should wrap at a specific width"
+    value: "This is a very long line of text that should wrap at a specific width"
   width40-yaml: |
-    text: This is a very long line of text that
+    value: This is a very long line of text that
       should wrap at a specific width
 
 - name: Compact sequence indentation
@@ -201,11 +201,11 @@
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: a
+          value: a
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: b
+          value: b
     - kind: Stream
       encoding: UTF-8
 
