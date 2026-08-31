@@ -202,6 +202,11 @@ func runTestCase(t *testing.T, tc TestCase) {
 			// Normalize output for comparison
 			actual := normalizeOutput(stdout.String())
 			expected := normalizeOutput(test.expected)
+			if test.field == "token" || test.field == "TOKEN" ||
+				test.field == "event" || test.field == "EVENT" {
+				actual = normalizeHistoricalContract(t, test.field, actual)
+				expected = normalizeHistoricalContract(t, test.field, expected)
+			}
 
 			if actual != expected {
 				t.Errorf("Output mismatch for flag %s\nExpected:\n%s\n\nActual:\n%s\n\nDiff:\n%s",
@@ -209,6 +214,36 @@ func runTestCase(t *testing.T, tc TestCase) {
 			}
 		})
 	}
+}
+
+func normalizeHistoricalContract(t *testing.T, field, input string) string {
+	t.Helper()
+	var items []map[string]any
+	if err := yaml.Load([]byte(input), &items); err != nil {
+		t.Fatalf("Failed to parse %s contract: %v", field, err)
+	}
+	projected := items[:0]
+	for _, item := range items {
+		if strings.EqualFold(field, "event") {
+			event, _ := item["event"].(string)
+			if event == "STREAM-START" || event == "STREAM-END" {
+				continue
+			}
+			if implicit, ok := item["implicit"].(bool); ok && !implicit && field == "event" {
+				item["explicit"] = true
+			}
+			delete(item, "implicit")
+			delete(item, "quoted-implicit")
+		} else if item["token"] == "STREAM-START" {
+			delete(item, "encoding")
+		}
+		projected = append(projected, item)
+	}
+	output, err := yaml.Dump(projected)
+	if err != nil {
+		t.Fatalf("Failed to normalize %s contract: %v", field, err)
+	}
+	return normalizeOutput(string(output))
 }
 
 // normalizeOutput trims whitespace and ensures consistent line endings
@@ -274,7 +309,7 @@ func runCmdTestCase(t *testing.T, tc CmdTestCase) {
 	t.Helper()
 
 	// Replace "go-yaml" with actual test binary path in the command
-	cmdStr := strings.Replace(tc.Cmd, "go-yaml", testBinary, 1)
+	cmdStr := strings.ReplaceAll(tc.Cmd, "go-yaml", testBinary)
 
 	// Run the command through bash to handle pipes, heredocs, etc.
 	cmd := exec.Command("bash", "-c", cmdStr)

@@ -792,6 +792,14 @@ const max_number_length = 2
 
 // fetchMoreTokens ensures the token queue has at least one token for lookahead.
 func (parser *Parser) fetchMoreTokens() error {
+	if parser.token_input {
+		if parser.tokens_head >= len(parser.tokens) {
+			return io.EOF
+		}
+		parser.token_available = true
+		return nil
+	}
+
 	// While we need more tokens to fetch, do it.
 	for {
 		// [Go] The comment parsing logic requires a lookahead of two tokens

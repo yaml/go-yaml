@@ -23,11 +23,11 @@
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: doc1
+          value: doc1
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: value1
+          value: value1
     - kind: Document
       content:
       - kind: Mapping
@@ -37,11 +37,11 @@
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: doc2
+          value: doc2
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: value2
+          value: value2
 
 - name: Three documents with mixed types
   text: |
@@ -65,7 +65,7 @@
       - kind: Scalar
         style: Plain
         tag: '!!str'
-        text: scalar1
+        value: scalar1
     - kind: Document
       content:
       - kind: Sequence
@@ -75,11 +75,11 @@
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: item1
+          value: item1
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: item2
+          value: item2
     - kind: Document
       content:
       - kind: Mapping
@@ -89,11 +89,11 @@
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: key
+          value: key
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: value
+          value: value
 
 - name: Documents with anchors and tags
   text: |
@@ -116,7 +116,7 @@
         style: Plain
         anchor: anchor1
         tag: '!!str'
-        text: first
+        value: first
     - kind: Document
       content:
       - kind: Mapping
@@ -127,11 +127,11 @@
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: key
+          value: key
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: value
+          value: value
 
 - name: Documents with comments
   text: |
@@ -160,11 +160,11 @@
           style: Plain
           tag: '!!str'
           head: '# comment 1'
-          text: doc1
+          value: doc1
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: value1
+          value: value1
     - kind: Document
       content:
       - kind: Mapping
@@ -175,11 +175,11 @@
           style: Plain
           tag: '!!str'
           head: '# comment 2'
-          text: doc2
+          value: doc2
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: value2
+          value: value2
 
 - name: Five documents
   text: |
@@ -204,31 +204,31 @@
       - kind: Scalar
         style: Plain
         tag: '!!str'
-        text: first
+        value: first
     - kind: Document
       content:
       - kind: Scalar
         style: Plain
         tag: '!!str'
-        text: second
+        value: second
     - kind: Document
       content:
       - kind: Scalar
         style: Plain
         tag: '!!str'
-        text: third
+        value: third
     - kind: Document
       content:
       - kind: Scalar
         style: Plain
         tag: '!!str'
-        text: fourth
+        value: fourth
     - kind: Document
       content:
       - kind: Scalar
         style: Plain
         tag: '!!str'
-        text: fifth
+        value: fifth
 
 - name: Multiple sequences
   text: |
@@ -260,11 +260,11 @@
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: a
+          value: a
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: b
+          value: b
     - kind: Document
       content:
       - kind: Sequence
@@ -274,11 +274,11 @@
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: c
+          value: c
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: d
+          value: d
     - kind: Document
       content:
       - kind: Sequence
@@ -288,11 +288,11 @@
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: e
+          value: e
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: f
+          value: f
 
 - name: Documents with different scalar styles
   text: |
@@ -311,19 +311,19 @@
       - kind: Scalar
         style: Plain
         tag: '!!str'
-        text: plain
+        value: plain
     - kind: Document
       content:
       - kind: Scalar
         style: Double
         tag: '!!str'
-        text: double
+        value: double
     - kind: Document
       content:
       - kind: Scalar
         style: Single
         tag: '!!str'
-        text: single
+        value: single
 
 - name: Nested structures across documents
   text: |
@@ -360,7 +360,7 @@
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: outer
+          value: outer
         - kind: Mapping
           style: Plain
           tag: '!!map'
@@ -368,7 +368,7 @@
           - kind: Scalar
             style: Plain
             tag: '!!str'
-            text: inner
+            value: inner
           - kind: Mapping
             style: Plain
             tag: '!!map'
@@ -376,11 +376,11 @@
             - kind: Scalar
               style: Plain
               tag: '!!str'
-              text: deep
+              value: deep
             - kind: Scalar
               style: Plain
               tag: '!!str'
-              text: value1
+              value: value1
     - kind: Document
       content:
       - kind: Mapping
@@ -390,7 +390,7 @@
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: list
+          value: list
         - kind: Sequence
           style: Plain
           tag: '!!seq'
@@ -402,7 +402,7 @@
             - kind: Scalar
               style: Plain
               tag: '!!str'
-              text: nested
+              value: nested
             - kind: Mapping
               style: Plain
               tag: '!!map'
@@ -410,11 +410,11 @@
               - kind: Scalar
                 style: Plain
                 tag: '!!str'
-                text: item
+                value: item
               - kind: Scalar
                 style: Plain
                 tag: '!!str'
-                text: value2
+                value: value2
 
 - name: Documents with full metadata
   text: |
@@ -462,7 +462,7 @@
         tag: '!!str'
         head: '# head1'
         line: '# line1'
-        text: value1
+        value: value1
     - kind: Document
       foot: '# foot2'
       content:
@@ -476,7 +476,7 @@
           tag: '!!str'
           head: '# head2'
           line: '# line2'
-          text: item
+          value: item
     - kind: Document
       content:
       - kind: Mapping
@@ -489,12 +489,12 @@
           tag: '!!str'
           head: '# head3'
           foot: '# foot3'
-          text: key
+          value: key
         - kind: Scalar
           style: Plain
           tag: '!!str'
           line: '# line3'
-          text: val
+          value: val
 
 - name: Documents with integers and special values
   text: |
@@ -516,25 +516,25 @@
       - kind: Scalar
         style: Plain
         tag: '!!int'
-        text: '42'
+        value: '42'
     - kind: Document
       content:
       - kind: Scalar
         style: Plain
         tag: '!!float'
-        text: '3.14'
+        value: '3.14'
     - kind: Document
       content:
       - kind: Scalar
         style: Plain
         tag: '!!bool'
-        text: 'true'
+        value: 'true'
     - kind: Document
       content:
       - kind: Scalar
         style: Plain
         tag: '!!null'
-        text: 'null'
+        value: 'null'
 
 - name: Documents with flow style
   text: |
@@ -558,11 +558,11 @@
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: key1
+          value: key1
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: value1
+          value: value1
     - kind: Document
       content:
       - kind: Sequence
@@ -572,11 +572,11 @@
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: item1
+          value: item1
         - kind: Scalar
           style: Plain
           tag: '!!str'
-          text: item2
+          value: item2
 
 - name: Multiple sequences with explicit markers (no duplicates)
   text: |

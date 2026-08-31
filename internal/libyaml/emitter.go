@@ -454,7 +454,9 @@ func (emitter *Emitter) emitDocumentStart(event *Event, first bool) error {
 			if err := emitter.writeIndicator([]byte("%YAML"), true, false, false); err != nil {
 				return err
 			}
-			if err := emitter.writeIndicator([]byte("1.1"), true, false, false); err != nil {
+			version := fmt.Sprintf("%d.%d", event.versionDirective.major,
+				event.versionDirective.minor)
+			if err := emitter.writeIndicator([]byte(version), true, false, false); err != nil {
 				return err
 			}
 			if err := emitter.writeIndent(); err != nil {
