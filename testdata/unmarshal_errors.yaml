@@ -82,20 +82,18 @@
 - unmarshal-error:
     name: Slice as map key beside a merge key (Issue 378)
     yaml: |
-      <<:
-      ? -
+      <<: {a: 1}
+      [b]: 2
     type: map[string]any
-    want: "go-yaml load error in constructor at L2.C3: cannot use '[]interface {}{interface {}(nil)}' as a map key; try decoding into yaml.Node"
+    want: "go-yaml load error in constructor at L2.C1: cannot use '[]interface {}{\"b\"}' as a map key; try decoding into yaml.Node"
 
 - unmarshal-error:
     name: Slice as map key in a merged mapping
     yaml: |
-      a: 1
-      <<:
-        ? -
-        : 2
+      <<: {[a]: 2}
+      b: 2
     type: map[any]any
-    want: "go-yaml load error in constructor at L3.C5: cannot use '[]interface {}{interface {}(nil)}' as a map key; try decoding into yaml.Node"
+    want: "go-yaml load error in constructor at L1.C6: cannot use '[]interface {}{\"a\"}' as a map key; try decoding into yaml.Node"
 
 - unmarshal-error:
     name: Forward reference to anchor
