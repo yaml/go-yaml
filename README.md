@@ -1,266 +1,310 @@
-go.yaml.in/yaml
-===============
+# go.yaml.in/yaml
 
-YAML Support for the Go Language
+[![Go Reference](https://pkg.go.dev/badge/go.yaml.in/yaml/v4.svg)](
+https://pkg.go.dev/go.yaml.in/yaml/v4)
+[![Go Report Card](https://goreportcard.com/badge/go.yaml.in/yaml/v4)](
+https://goreportcard.com/report/go.yaml.in/yaml/v4)
+[![CI](https://github.com/yaml/go-yaml/actions/workflows/go.yaml/badge.svg)](
+https://github.com/yaml/go-yaml/actions/workflows/go.yaml)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](
+LICENSE)
 
+**YAML support for Go — fast, compliant, and actively maintained**
 
-## Introduction
-
-The `yaml` package enables [Go](https://go.dev/) programs to comfortably encode
-and decode [YAML](https://yaml.org/) values.
-
-It was originally developed within [Canonical](https://www.canonical.com) as
-part of the [juju](https://juju.ubuntu.com) project, and is based on a pure Go
-port of the well-known [libyaml](http://pyyaml.org/wiki/LibYAML) C library to
-parse and generate YAML data quickly and reliably.
-
-
-## Project Status
-
-This project started as a fork of the extremely popular [go-yaml](
-https://github.com/go-yaml/yaml/)
-project, and is being maintained by the official [YAML organization](
-https://github.com/yaml/).
-
-The YAML team took over ongoing maintenance and development of the project after
-discussion with go-yaml's author, @niemeyer, following his decision to
-[label the project repository as "unmaintained"](
-https://github.com/go-yaml/yaml/blob/944c86a7d2/README.md) in April 2025.
-
-We have put together a team of dedicated maintainers including representatives
-of go-yaml's most important downstream projects.
-
-We will strive to earn the trust of the various go-yaml forks to switch back to
-this repository as their upstream.
-
-Please [contact us](https://cloud-native.slack.com/archives/C08PPAT8PS7) if you
-would like to contribute or be involved.
+This is the official YAML library for Go, maintained by the
+[YAML organization](https://github.com/yaml).
+We are the actively maintained fork of the original go-yaml project.
+[Learn more about the project history →](#project-history)
 
 
-### Version Intentions
+## What's New in v4
 
-Versions `v1`, `v2`, and `v3` will remain as **frozen legacy**.
-They will receive **security-fixes only** so that existing consumers keep
-working without breaking changes.
+### New Streaming API
 
-All ongoing work, including new features and routine bug-fixes, will happen in
-**`v4`**.
-If you’re starting a new project or upgrading an existing one, please use the
-`go.yaml.in/yaml/v4` import path.
+v4 introduces a cleaner, more intuitive API with `Load`/`Dump` and
+`Loader`/`Dumper`:
+
+```go
+// Simple loading
+var config Config
+err := yaml.Load(data, &config)
+
+// Streaming from io.Reader
+loader := yaml.NewLoader(file)
+err := loader.Load(&config)
+```
+
+The old `Unmarshal`/`Marshal` API still works but is deprecated.
+
+### Functional Options System
+
+Configure YAML processing with composable options:
+
+```go
+// Use version presets
+yaml.Dump(&data, yaml.V4)
+
+// Customize formatting
+yaml.Dump(&data, yaml.WithIndent(4), yaml.WithCompactSeqIndent(false))
+
+// Combine presets with custom options
+yaml.Dump(&data, yaml.V3, yaml.WithIndent(2))
+```
+
+Available presets: `yaml.V2`, `yaml.V3`, `yaml.V4`
+
+### Better Error Messages
+
+Structured error types with precise location information:
+
+```go
+var config Config
+if err := yaml.Load(data, &config); err != nil {
+    if typeErr, ok := err.(*yaml.TypeError); ok {
+        for _, e := range typeErr.Errors {
+            fmt.Printf("Error at line %d, column %d: %s\n",
+                e.Line, e.Column, e.Problem)
+        }
+    }
+}
+```
+
+### Plugin System (Coming Soon)
+
+v4 will support plugins that hook into the YAML processing pipeline,
+allowing custom behavior at each stage (scanning, parsing, composition,
+construction, etc.).
+This is a major extensibility feature coming to v4.
 
 
-## Compatibility
-
-The `yaml` package supports most of YAML 1.2, but preserves some behavior from
-1.1 for backwards compatibility.
-
-Specifically, v3 of the `yaml` package:
-
-* Supports YAML 1.1 bools (`yes`/`no`, `on`/`off`) as long as they are being
-  decoded into a typed bool value.
-  Otherwise they behave as a string.
-  Booleans in YAML 1.2 are `true`/`false` only.
-* Supports octals encoded and decoded as `0777` per YAML 1.1, rather than
-  `0o777` as specified in YAML 1.2, because most parsers still use the old
-  format.
-  Octals in the `0o777` format are supported though, so new files work.
-* Does not support base-60 floats.
-  These are gone from YAML 1.2, and were actually never supported by this
-  package as it's clearly a poor choice.
-
-
-## Installation and Usage
-
-The import path for the package is *go.yaml.in/yaml/v4*.
-
-To install it, run:
+## Installation
 
 ```bash
 go get go.yaml.in/yaml/v4
 ```
 
 
-## API Documentation
-
-See: <https://pkg.go.dev/go.yaml.in/yaml/v4>
-
-
-## API Stability
-
-The package API for yaml v3 will remain stable as described in [gopkg.in](
-https://gopkg.in).
-
-
-## Example
+## Quick Start
 
 ```go
 package main
 
 import (
-	"fmt"
-	"log"
+    "fmt"
+    "log"
 
-	"go.yaml.in/yaml/v4"
+    "go.yaml.in/yaml/v4"
 )
 
-var data = `
-a: Easy!
-b:
-  c: 2
-  d: [3, 4]
-`
-
-// Note: struct fields must be public in order for unmarshal to
-// correctly populate the data.
-type T struct {
-	A string
-	B struct {
-		RenamedC int   `yaml:"c"`
-		D	[]int `yaml:",flow"`
-	}
+type Config struct {
+    Name    string
+    Version string
+    Server  struct {
+        Host string
+        Port int
+    }
 }
 
 func main() {
-	t := T{}
+    data := []byte(`
+name: MyApp
+version: 1.0.0
+server:
+  host: localhost
+  port: 8080
+`)
 
-	err := yaml.Unmarshal([]byte(data), &t)
-	if err != nil {
-		log.Fatalf("error: %v", err)
-	}
-	fmt.Printf("--- t:\n%v\n\n", t)
+    var config Config
+    if err := yaml.Load(data, &config); err != nil {
+        log.Fatal(err)
+    }
 
-	d, err := yaml.Marshal(&t)
-	if err != nil {
-		log.Fatalf("error: %v", err)
-	}
-	fmt.Printf("--- t dump:\n%s\n\n", string(d))
+    fmt.Printf("Name: %s\n", config.Name)
+    fmt.Printf("Server: %s:%d\n", config.Server.Host, config.Server.Port)
 
-	m := make(map[any]any)
-
-	err = yaml.Unmarshal([]byte(data), &m)
-	if err != nil {
-		log.Fatalf("error: %v", err)
-	}
-	fmt.Printf("--- m:\n%v\n\n", m)
-
-	d, err = yaml.Marshal(&m)
-	if err != nil {
-		log.Fatalf("error: %v", err)
-	}
-	fmt.Printf("--- m dump:\n%s\n\n", string(d))
+    // Dump back to YAML
+    output, err := yaml.Dump(&config, yaml.V4)
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Printf("\n%s", output)
 }
 ```
 
-This example will generate the following output:
 
+## Examples
+
+The [`example/`](example/) directory contains 17 working examples
+demonstrating different features:
+
+| Example | Description |
+|---------|-------------|
+| [basic_loader](example/basic_loader) | Simple YAML loading into structs |
+| [basic_dumper](example/basic_dumper) | Simple YAML dumping from structs |
+| [multi_document_loader](example/multi_document_loader) | Loading multiple YAML documents |
+| [multi_document_dumper](example/multi_document_dumper) | Dumping multiple YAML documents |
+| [single_document_loader](example/single_document_loader) | Loading a single YAML document |
+| [loader_dumper_demo](example/loader_dumper_demo) | Combining loading and dumping operations |
+| [version_options](example/version_options) | Using YAML version presets |
+| [with_v4_option](example/with_v4_option) | Using the V4 version preset |
+| [with_v4_override](example/with_v4_override) | Overriding V4 preset options |
+| [multiple_options_loader](example/multiple_options_loader) | Using multiple options together |
+| [dumper_with_indent](example/dumper_with_indent) | Custom indentation settings |
+| [dumper_indent_comparison](example/dumper_indent_comparison) | Comparing different indentation options |
+| [load_into_node](example/load_into_node) | Loading YAML into Node structures |
+| [node_dump_with_options](example/node_dump_with_options) | Dumping Nodes with custom options |
+| [node_load_decode_comparison](example/node_load_decode_comparison) | Comparing loading vs decoding with Nodes |
+| [node_load_strict_unmarshaler](example/node_load_strict_unmarshaler) | Strict unmarshaling with Nodes |
+| [node_programmatic_build](example/node_programmatic_build) | Building YAML Nodes programmatically |
+
+
+## Documentation
+
+For detailed guides, see the [`docs/`](docs/) directory:
+
+- [v3 to v4 Migration Guide](docs/v3-to-v4-migration.md) — Complete upgrade guide
+- [Dump and Load API Guide](docs/dump-load-api.md) — Comprehensive API walkthrough
+- [Options Reference](docs/options.md) — All configuration options explained
+
+Full API documentation is available at
+[pkg.go.dev/go.yaml.in/yaml/v4](
+https://pkg.go.dev/go.yaml.in/yaml/v4).
+
+
+## Migrating from v3
+
+If you're upgrading from v3, the main changes are:
+
+- **Import path**: `gopkg.in/yaml.v3` → `go.yaml.in/yaml/v4`
+- **API naming**: `Unmarshal`/`Marshal` → `Load`/`Dump`
+  (old API still works but deprecated)
+- **Options**: New functional options system with version presets
+- **Errors**: `TypeError.Errors` is now `[]*UnmarshalError` with
+  line/column info (was `[]string`)
+- **Formatting**: Default is 2-space indent with compact sequences
+  (use `yaml.V3` preset for v3 behavior)
+
+All v3 APIs remain functional but are deprecated for removal in v5.
+
+See [MIGRATION.md](docs/v3-to-v4-migration.md) for a complete migration
+guide.
+
+
+## YAML Compatibility
+
+This library supports YAML 1.2 with some YAML 1.1 compatibility for
+common cases:
+
+- **YAML 1.1 booleans** (`yes`/`no`, `on`/`off`) are supported when
+  decoding into typed bool values, otherwise treated as strings
+- **Octals** support both YAML 1.1 format (`0777`) and YAML 1.2 format
+  (`0o777`)
+- **Base-60 floats** are not supported (removed in YAML 1.2)
+
+
+## Development
+
+This project uses GNU Make for deterministic builds and testing:
+
+```bash
+make test          # Run all tests
+make lint          # Run linter
+make fmt           # Format code
+make shell         # Open shell with project environment
 ```
---- t:
-{Easy! {2 [3 4]}}
 
---- t dump:
-a: Easy!
-b:
-  c: 2
-  d: [3, 4]
+The makefile auto-installs Go and dependencies to `.cache/` for
+reproducibility.
+You don't need Go installed locally.
 
-
---- m:
-map[a:Easy! b:map[c:2 d:[3 4]]]
-
---- m dump:
-a: Easy!
-b:
-  c: 2
-  d:
-  - 3
-  - 4
-```
-
-
-## Development and Testing with `make`
-
-This project's makefile (`GNUmakefile`) is set up to support all of the
-project's testing, automation and development tasks in a completely
-deterministic way.
-
-Some `make` commands are:
-
-* `make test`
-* `make lint tidy`
-* `make test-shell`
-* `make test v=1`
-* `make test o='-foo --bar=baz'`  # Add extra CLI options
-* `make test GO-VERSION=1.2.34`
-* `make test GO_YAML_PATH=/usr/local/go/bin`
-* `make shell`  # Start a shell with the local `go` environment
-* `make shell GO-VERSION=1.2.34`
-* `make distclean`  # Remove all generated files including `.cache/`
-
-
-### Dependency Auto-install
-
-By default, this makefile will not use your system's Go installation, or any
-other system tools that it needs.
-
-The only things from your system that it relies on are:
-* Linux or macOS
-* GNU `make` (3.81+)
-* `git`
-* `bash`
-* `curl`
-
-Everything else, including Go and Go utils, are installed and cached as they
-are needed by the makefile (under `.cache/`).
-
-> **Note**: Use `make shell` to get a subshell with the same environment that
-> the makefile set up for its commands.
-
-
-### Using your own Go
-
-If you want to use your own Go installation and utils, export `GO_YAML_PATH` to
-the directory containing the `go` binary.
-
-Use something like this:
-
-```
-export GO_YAML_PATH=$(dirname "$(command -v go)")
-make <rule>
-# or:
-make <rule> GO_YAML_PATH=$(dirname "$(command -v go)")
-```
-
-> **Note:** `GO-VERSION` and `GO_YAML_PATH` are mutually exclusive.
-> When `GO_YAML_PATH` is set, the Makefile uses your own Go installation and
-> ignores any `GO-VERSION` setting.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development
+instructions, coding conventions, and how to contribute.
 
 
 ## The `go-yaml` CLI Tool
 
-This repository includes a `go-yaml` CLI tool which can be used to understand
-the internal stages and final results of YAML processing with the go-yaml
-library.
-
-We strongly encourage you to show pertinent output from this command when
-reporting and discussing issues.
+This repository includes a CLI tool for debugging and understanding YAML
+processing:
 
 ```bash
+# Build the tool
 make go-yaml
+
+# Use it to inspect YAML processing stages
 ./go-yaml --help
-./go-yaml <<< '
-foo: &a1 bar
-*a1: baz
-' -n        # Show value on decoded Node structs (formatted in YAML)
+./go-yaml -t <<< 'foo: bar'    # Show tokens
+./go-yaml -e <<< 'foo: bar'    # Show events
+./go-yaml -n <<< 'foo: bar'    # Show node tree
 ```
 
-You can also install it with:
+Install globally:
 
 ```bash
 go install go.yaml.in/yaml/v4/cmd/go-yaml@latest
 ```
 
+The `go-yaml` tool is invaluable for debugging issues and understanding
+how YAML is parsed.
+
+
+## Project History
+
+This project started as the widely-used
+[go-yaml/yaml](https://github.com/go-yaml/yaml) library,
+originally developed within [Canonical](https://www.canonical.com) as part
+of the [juju](https://juju.ubuntu.com) project.
+
+In April 2025, the original author
+[@niemeyer](https://github.com/niemeyer)
+[labeled the project as "Archived"](
+https://github.com/go-yaml/yaml/blob/944c86a7d2/README.md).
+The official [YAML organization](https://github.com/yaml/) took over
+ongoing maintenance and development.
+
+We have assembled a dedicated team of maintainers including
+representatives from go-yaml's most important downstream projects.
+Our goal is to provide a stable, actively maintained YAML library for the
+Go ecosystem.
+
+### Version Strategy
+
+- **v4**: Active development — all new features and bug fixes go here
+- **v1, v2, v3**: Frozen legacy versions receiving security fixes only
+
+If you're starting a new project or can upgrade, please use
+`go.yaml.in/yaml/v4`.
+
+### Get Involved
+
+We welcome contributions!
+Join us:
+
+- [GitHub Issues](https://github.com/yaml/go-yaml/issues) — Report bugs,
+  request features
+- [GitHub Discussions](https://github.com/yaml/go-yaml/discussions) —
+  Ask questions, share ideas
+- [Slack](https://cloud-native.slack.com/archives/C08PPAT8PS7) —
+  Real-time chat with maintainers
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
+
 
 ## License
 
-The yaml package is licensed under the MIT and Apache License 2.0 licenses.
-Please see the LICENSE file for details.
+The yaml package is licensed under the MIT and Apache License 2.0
+licenses.
+Please see the [LICENSE](LICENSE) file for details.
+
+
+<!--
+## Resources
+
+Helpful resources for learning and using go-yaml:
+
+- Blog posts
+- Tutorials
+- Conference talks
+- Third-party tools
+
+(Coming soon)
+-->
