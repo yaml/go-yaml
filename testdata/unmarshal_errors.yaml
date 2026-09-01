@@ -129,6 +129,13 @@
     want: "go-yaml load error in scanner (while scanning a simple key) at L3.C1-L4.C1: could not find expected ':'"
 
 - unmarshal-error:
+    name: Unseparated content after implicit document (Issue 410)
+    yaml: |2
+       name: test
+      value: 2
+    want: 'go-yaml load error in parser at L2.C1: did not find expected <document start>'
+
+- unmarshal-error:
     name: Missing colon after comment and list (Issue 665)
     yaml: |
       #
