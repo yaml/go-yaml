@@ -535,6 +535,52 @@
 
           indented tail
 
+
+# Regression tests for block scalars whose first non-empty line is indented.
+# Without an explicit indentation indicator the output does not parse back.
+- roundtrip:
+    name: Literal scalar with leading empty lines and indented content
+    yaml: |
+      key: |2
+
+
+           more indented
+          regular
+    want: |
+      key: |2
+
+
+           more indented
+          regular
+
+- roundtrip:
+    name: Folded scalar with leading empty lines and indented content
+    yaml: |
+      key: >2
+
+
+           more indented
+          regular
+    want: |
+      key: >2
+
+
+           more indented
+          regular
+
+- roundtrip:
+    name: Literal scalar with a leading empty line and indented content
+    yaml: |
+      key: |2
+
+          indented
+        regular
+    want: |
+      key: |2
+
+          indented
+        regular
+
 # Writer test
 - emit-writer:
     name: Writer
