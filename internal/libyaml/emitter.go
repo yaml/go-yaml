@@ -1849,6 +1849,11 @@ func (emitter *Emitter) writeSingleQuotedScalar(value []byte, allow_breaks bool)
 			breaks = false
 		}
 	}
+	if breaks {
+		if err := emitter.writeIndent(); err != nil {
+			return err
+		}
+	}
 	if err := emitter.writeIndicator([]byte{'\''}, false, false, false); err != nil {
 		return err
 	}

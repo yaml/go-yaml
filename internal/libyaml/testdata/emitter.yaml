@@ -252,6 +252,40 @@
     want: "'"
 
 - emit:
+    name: Single quoted scalar closing quote indented after trailing line breaks
+    data:
+    - STREAM_START_EVENT:
+        encoding: UTF8_ENCODING
+    - DOCUMENT_START_EVENT:
+        implicit: true
+    - SCALAR_EVENT:
+        value: " Get quacked.\n- Duck\n"
+        implicit: true
+        quoted_implicit: true
+        style: SINGLE_QUOTED_SCALAR_STYLE
+    - DOCUMENT_END_EVENT:
+        implicit: true
+    - STREAM_END_EVENT
+    want: "  '"
+
+- emit:
+    name: Single quoted scalar closing quote indented short lines
+    data:
+    - STREAM_START_EVENT:
+        encoding: UTF8_ENCODING
+    - DOCUMENT_START_EVENT:
+        implicit: true
+    - SCALAR_EVENT:
+        value: "a\nb\n"
+        implicit: true
+        quoted_implicit: true
+        style: SINGLE_QUOTED_SCALAR_STYLE
+    - DOCUMENT_END_EVENT:
+        implicit: true
+    - STREAM_END_EVENT
+    want: "  '"
+
+- emit:
     name: Double quoted scalar
     data:
     - STREAM_START_EVENT:
