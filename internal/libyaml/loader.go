@@ -11,6 +11,7 @@ package libyaml
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"reflect"
@@ -89,6 +90,53 @@ func NewLoader(r io.Reader, opts ...Option) (*Loader, error) {
 // See the documentation of Dump for the format of tags and a list of
 // supported tag options.
 func Load(in []byte, out any, opts ...Option) error {
+	return LoadContext(context.Background(), in, out, opts...)
+}
+
+// LoadContext loads YAML document(s) with the given context and options.
+//
+// By default, Load requires exactly one document in the input.
+// If zero documents are found, it returns an error.
+// If multiple documents are found, it returns an error.
+//
+// Use WithAllDocuments() to load all documents into a slice:
+//
+//	var configs []Config
+//	yaml.LoadContext(ctx, multiDocYAML, &configs, yaml.WithAllDocuments())
+//
+// When WithAllDocuments is used, out must be a pointer to a slice.
+// Each document is loaded into the slice element type.
+// Zero documents results in an empty slice (no error).
+//
+// Maps and pointers (to a struct, string, int, etc) are accepted as out
+// values. If an internal pointer within a struct is not initialized,
+// the yaml package will initialize it if necessary. The out parameter
+// must not be nil.
+//
+// The type of the loaded values should be compatible with the respective
+// values in out. If one or more values cannot be loaded due to type
+// mismatches, decoding continues partially until the end of the YAML
+// content, and a *yaml.LoadErrors is returned with details for all
+// missed values.
+//
+// Struct fields are only loaded if they are exported (have an upper case
+// first letter), and are loaded using the field name lowercased as the
+// default key. Custom keys may be defined via the "yaml" name in the field
+// tag: the content preceding the first comma is used as the key, and the
+// following comma-separated options control the loading and dumping behavior.
+//
+// For example:
+//
+//	type T struct {
+//	    F int `yaml:"a,omitempty"`
+//	    B int
+//	}
+//	var t T
+//	yaml.LoadContext(ctx, []byte("a: 1\nb: 2"), &t)
+//
+// See the documentation of Dump for the format of tags and a list of
+// supported tag options.
+func LoadContext(ctx context.Context, in []byte, out any, opts ...Option) error {
 	o, err := ApplyOptions(opts...)
 	if err != nil {
 		return err
@@ -96,11 +144,11 @@ func Load(in []byte, out any, opts ...Option) error {
 
 	if o.AllDocuments {
 		// Multi-document mode: out must be pointer to slice
-		return loadAll(in, out, o)
+		return loadAll(ctx, in, out, o)
 	}
 
 	// Single-document mode: exactly one document required
-	return loadSingle(in, out, o)
+	return loadSingle(ctx, in, out, o)
 }
 
 // Load reads the next YAML-encoded document from its input and stores it
@@ -123,7 +171,31 @@ func Load(in []byte, out any, opts ...Option) error {
 //
 // See the documentation of the package-level Load function for more details
 // about YAML to Go conversion and tag options.
-func (l *Loader) Load(v any) (err error) {
+func (l *Loader) Load(v any) error {
+	return l.LoadContext(context.Background(), v)
+}
+
+// LoadContext reads the next YAML-encoded document from its input and stores it
+// in the value pointed to by v.
+//
+// Returns [io.EOF] when there are no more documents to read.
+// If WithSingleDocument option was set and a document was already read,
+// subsequent calls return [io.EOF].
+//
+// Maps and pointers (to a struct, string, int, etc) are accepted as v
+// values. If an internal pointer within a struct is not initialized,
+// the yaml package will initialize it if necessary. The v parameter
+// must not be nil.
+//
+// Struct fields are only loaded if they are exported (have an upper case
+// first letter), and are loaded using the field name lowercased as the
+// default key. Custom keys may be defined via the "yaml" name in the field
+// tag: the content preceding the first comma is used as the key, and the
+// following comma-separated options control the loading and dumping behavior.
+//
+// See the documentation of the package-level Load function for more details
+// about YAML to Go conversion and tag options.
+func (l *Loader) LoadContext(ctx context.Context, v any) (err error) {
 	defer handleErr(&err)
 	if l.options.SingleDocument && l.docCount > 0 {
 		return io.EOF
@@ -144,7 +216,7 @@ func (l *Loader) Load(v any) (err error) {
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
 		out = out.Elem()
 	}
-	l.constructor.Construct(node, out)
+	l.constructor.Construct(ctx, node, out)
 	if len(l.constructor.TypeErrors) > 0 {
 		typeErrors := l.constructor.TypeErrors
 		l.constructor.TypeErrors = nil
@@ -156,7 +228,7 @@ func (l *Loader) Load(v any) (err error) {
 // loadAll loads all documents from the input into a slice.
 // The out parameter must be a non-nil pointer to a slice.
 // Each document is appended to the slice as an element.
-func loadAll(in []byte, out any, opts *Options) error {
+func loadAll(ctx context.Context, in []byte, out any, opts *Options) error {
 	outVal := reflect.ValueOf(out)
 	if outVal.Kind() != reflect.Pointer || outVal.IsNil() {
 		msg := "yaml: WithAllDocuments requires a non-nil pointer to a slice"
@@ -192,7 +264,7 @@ func loadAll(in []byte, out any, opts *Options) error {
 	for {
 		// Create new element of slice's element type
 		elemPtr := reflect.New(elemType)
-		err := l.Load(elemPtr.Interface())
+		err := l.LoadContext(ctx, elemPtr.Interface())
 		if err == io.EOF {
 			break
 		}
@@ -209,7 +281,7 @@ func loadAll(in []byte, out any, opts *Options) error {
 // loadSingle loads exactly one document from the input.
 // Returns an error if the input contains zero or multiple documents
 // (unless FromLegacy option is set for backward compatibility).
-func loadSingle(in []byte, out any, opts *Options) error {
+func loadSingle(ctx context.Context, in []byte, out any, opts *Options) error {
 	l, err := NewLoader(bytes.NewReader(in), func(o *Options) error {
 		*o = *opts // Copy options
 		return nil
@@ -219,7 +291,7 @@ func loadSingle(in []byte, out any, opts *Options) error {
 	}
 
 	// Load first document
-	err = l.Load(out)
+	err = l.LoadContext(ctx, out)
 	if err == io.EOF {
 		if opts.FromLegacy {
 			return nil
@@ -242,7 +314,7 @@ func loadSingle(in []byte, out any, opts *Options) error {
 
 	// Check for additional documents
 	var dummy any
-	err = l.Load(&dummy)
+	err = l.LoadContext(ctx, &dummy)
 	if err != io.EOF {
 		if err != nil {
 			// Some other error occurred
