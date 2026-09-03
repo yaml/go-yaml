@@ -1,0 +1,45 @@
+# Forward stage chaining and editable interchange contracts.
+
+- name: Complete token event node YAML chain
+  cmd: |
+    printf 'a: &x [1, "two"]\nb: *x\n' | go-yaml -t | go-yaml -e | go-yaml -N | go-yaml -Y
+  out: |
+    a: &x [1, "two"]
+    b: *x
+
+- name: Transform event contract between commands
+  cmd: |
+    printf 'old\n' | go-yaml -e | sed 's/value: old/value: new/' | go-yaml -Y
+  out: |
+    new
+    ...
+
+- name: Preserve comments through every stage
+  cmd: |
+    printf '# head\na: b # line\n# foot\n' | go-yaml -t | go-yaml -e | go-yaml -N | go-yaml -Y
+  out: |
+    # head
+    a: b # line
+    # foot
+
+- name: Force ambiguous contract-shaped YAML text
+  cmd: |
+    printf '%s\n' '- {event: STREAM-START}' '- {event: STREAM-END}' | go-yaml -f y -n
+  out: |
+    sequence:
+    - mapping:
+      - plain: event
+      - plain: STREAM-START
+    - mapping:
+      - plain: event
+      - plain: STREAM-END
+
+- name: Preserve version and tag directives through tokens
+  cmd: |
+    printf '%s\n' '%YAML 1.1' '%TAG !e! tag:example.com,2026:' '--- !e!thing value' | go-yaml -t | go-yaml -Y
+  out: |
+    %YAML 1.1
+    %TAG !e! tag:example.com,2026:
+    ---
+    !e!thing value
+    ...

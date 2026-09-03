@@ -19,6 +19,8 @@ type EventType string
 
 // Event type constants for CLI output formatting.
 const (
+	EventStreamStart   EventType = "STREAM-START"
+	EventStreamEnd     EventType = "STREAM-END"
 	EventDocumentStart EventType = "DOCUMENT-START"
 	EventDocumentEnd   EventType = "DOCUMENT-END"
 	EventScalar        EventType = "SCALAR"
@@ -26,38 +28,48 @@ const (
 	EventSequenceEnd   EventType = "SEQUENCE-END"
 	EventMappingStart  EventType = "MAPPING-START"
 	EventMappingEnd    EventType = "MAPPING-END"
+	EventTailComment   EventType = "TAIL-COMMENT"
 )
 
 // Event represents a YAML event
 type Event struct {
-	Type        EventType
-	Value       string
-	Anchor      string
-	Tag         string
-	Style       string
-	Implicit    bool
-	StartLine   int
-	StartColumn int
-	EndLine     int
-	EndColumn   int
-	HeadComment string
-	LineComment string
-	FootComment string
+	Type           EventType
+	Encoding       string
+	Version        string
+	Directives     []TagDirectiveInfo
+	Value          string
+	Anchor         string
+	Tag            string
+	Style          string
+	Implicit       bool
+	QuotedImplicit bool
+	StartLine      int
+	StartColumn    int
+	EndLine        int
+	EndColumn      int
+	HeadComment    string
+	LineComment    string
+	FootComment    string
+	TailComment    string
 }
 
 // EventInfo represents the information about a YAML event for YAML encoding
 type EventInfo struct {
-	Event    string `yaml:"event"`
-	Value    string `yaml:"value,omitempty"`
-	Style    string `yaml:"style,omitempty"`
-	Tag      string `yaml:"tag,omitempty"`
-	Anchor   string `yaml:"anchor,omitempty"`
-	Implicit *bool  `yaml:"implicit,omitempty"`
-	Explicit *bool  `yaml:"explicit,omitempty"`
-	Head     string `yaml:"head,omitempty"`
-	Line     string `yaml:"line,omitempty"`
-	Foot     string `yaml:"foot,omitempty"`
-	Pos      string `yaml:"pos,omitempty"`
+	Event          string             `yaml:"event"`
+	Encoding       string             `yaml:"encoding,omitempty"`
+	Version        string             `yaml:"version,omitempty"`
+	TagDirectives  []TagDirectiveInfo `yaml:"tag-directives,omitempty"`
+	Value          string             `yaml:"value,omitempty"`
+	Style          string             `yaml:"style,omitempty"`
+	Tag            string             `yaml:"tag,omitempty"`
+	Anchor         string             `yaml:"anchor,omitempty"`
+	Implicit       *bool              `yaml:"implicit,omitempty"`
+	QuotedImplicit *bool              `yaml:"quoted-implicit,omitempty"`
+	Head           string             `yaml:"head,omitempty"`
+	Line           string             `yaml:"line,omitempty"`
+	Foot           string             `yaml:"foot,omitempty"`
+	Tail           string             `yaml:"tail,omitempty"`
+	Pos            string             `yaml:"pos,omitempty"`
 }
 
 // ProcessEvents reads YAML from reader and outputs event information
@@ -97,6 +109,7 @@ func processEventsDecode(reader io.Reader, profuse, compact bool) error {
 			compactNode.Content = append(compactNode.Content,
 				&yaml.Node{Kind: yaml.ScalarNode, Value: "event"},
 				&yaml.Node{Kind: yaml.ScalarNode, Value: info.Event})
+			appendEventContractFields(compactNode, info)
 
 			// Add other fields if they exist
 			if info.Value != "" {
@@ -124,10 +137,10 @@ func processEventsDecode(reader io.Reader, profuse, compact bool) error {
 					&yaml.Node{Kind: yaml.ScalarNode, Value: "implicit"},
 					&yaml.Node{Kind: yaml.ScalarNode, Value: fmt.Sprintf("%t", *info.Implicit)})
 			}
-			if info.Explicit != nil {
+			if info.QuotedImplicit != nil {
 				compactNode.Content = append(compactNode.Content,
-					&yaml.Node{Kind: yaml.ScalarNode, Value: "explicit"},
-					&yaml.Node{Kind: yaml.ScalarNode, Value: fmt.Sprintf("%t", *info.Explicit)})
+					&yaml.Node{Kind: yaml.ScalarNode, Value: "quoted-implicit"},
+					&yaml.Node{Kind: yaml.ScalarNode, Value: fmt.Sprintf("%t", *info.QuotedImplicit)})
 			}
 			if info.Head != "" {
 				compactNode.Content = append(compactNode.Content,
@@ -143,6 +156,11 @@ func processEventsDecode(reader io.Reader, profuse, compact bool) error {
 				compactNode.Content = append(compactNode.Content,
 					&yaml.Node{Kind: yaml.ScalarNode, Value: "foot"},
 					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Foot})
+			}
+			if info.Tail != "" {
+				compactNode.Content = append(compactNode.Content,
+					&yaml.Node{Kind: yaml.ScalarNode, Value: "tail"},
+					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Tail})
 			}
 			if info.Pos != "" {
 				compactNode.Content = append(compactNode.Content,
@@ -217,6 +235,7 @@ func processEventsUnmarshal(reader io.Reader, profuse, compact bool) error {
 			compactNode.Content = append(compactNode.Content,
 				&yaml.Node{Kind: yaml.ScalarNode, Value: "event"},
 				&yaml.Node{Kind: yaml.ScalarNode, Value: info.Event})
+			appendEventContractFields(compactNode, info)
 
 			// Add other fields if they exist
 			if info.Value != "" {
@@ -244,10 +263,10 @@ func processEventsUnmarshal(reader io.Reader, profuse, compact bool) error {
 					&yaml.Node{Kind: yaml.ScalarNode, Value: "implicit"},
 					&yaml.Node{Kind: yaml.ScalarNode, Value: fmt.Sprintf("%t", *info.Implicit)})
 			}
-			if info.Explicit != nil {
+			if info.QuotedImplicit != nil {
 				compactNode.Content = append(compactNode.Content,
-					&yaml.Node{Kind: yaml.ScalarNode, Value: "explicit"},
-					&yaml.Node{Kind: yaml.ScalarNode, Value: fmt.Sprintf("%t", *info.Explicit)})
+					&yaml.Node{Kind: yaml.ScalarNode, Value: "quoted-implicit"},
+					&yaml.Node{Kind: yaml.ScalarNode, Value: fmt.Sprintf("%t", *info.QuotedImplicit)})
 			}
 			if info.Head != "" {
 				compactNode.Content = append(compactNode.Content,
@@ -263,6 +282,11 @@ func processEventsUnmarshal(reader io.Reader, profuse, compact bool) error {
 				compactNode.Content = append(compactNode.Content,
 					&yaml.Node{Kind: yaml.ScalarNode, Value: "foot"},
 					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Foot})
+			}
+			if info.Tail != "" {
+				compactNode.Content = append(compactNode.Content,
+					&yaml.Node{Kind: yaml.ScalarNode, Value: "tail"},
+					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Tail})
 			}
 			if info.Pos != "" {
 				compactNode.Content = append(compactNode.Content,
@@ -308,10 +332,47 @@ func processEventsUnmarshal(reader io.Reader, profuse, compact bool) error {
 	return nil
 }
 
+func appendEventContractFields(node *yaml.Node, info *EventInfo) {
+	for _, field := range []struct {
+		name  string
+		value string
+	}{
+		{"encoding", info.Encoding},
+		{"version", info.Version},
+	} {
+		if field.value != "" {
+			node.Content = append(node.Content,
+				&yaml.Node{Kind: yaml.ScalarNode, Value: field.name},
+				&yaml.Node{Kind: yaml.ScalarNode, Value: field.value})
+		}
+	}
+	if len(info.TagDirectives) == 0 {
+		return
+	}
+	directives := &yaml.Node{Kind: yaml.SequenceNode}
+	for _, directive := range info.TagDirectives {
+		directives.Content = append(directives.Content, &yaml.Node{
+			Kind: yaml.MappingNode,
+			Content: []*yaml.Node{
+				{Kind: yaml.ScalarNode, Value: "handle"},
+				{Kind: yaml.ScalarNode, Value: directive.Handle},
+				{Kind: yaml.ScalarNode, Value: "prefix"},
+				{Kind: yaml.ScalarNode, Value: directive.Prefix},
+			},
+		})
+	}
+	node.Content = append(node.Content,
+		&yaml.Node{Kind: yaml.ScalarNode, Value: "tag-directives"},
+		directives)
+}
+
 // formatEventInfo converts an Event to an EventInfo struct for YAML encoding
 func formatEventInfo(event *Event, profuse bool) *EventInfo {
 	info := &EventInfo{
-		Event: string(event.Type),
+		Event:         string(event.Type),
+		Encoding:      event.Encoding,
+		Version:       event.Version,
+		TagDirectives: event.Directives,
 	}
 
 	if event.Value != "" {
@@ -335,6 +396,9 @@ func formatEventInfo(event *Event, profuse bool) *EventInfo {
 	if event.FootComment != "" {
 		info.Foot = event.FootComment
 	}
+	if event.TailComment != "" {
+		info.Tail = event.TailComment
+	}
 	if profuse {
 		if event.StartLine == event.EndLine && event.StartColumn == event.EndColumn {
 			// Single position
@@ -348,21 +412,16 @@ func formatEventInfo(event *Event, profuse bool) *EventInfo {
 		}
 	}
 
-	// Handle implicit/explicit for document start/end events
-	if event.Type == "DOCUMENT-START" || event.Type == "DOCUMENT-END" {
-		if profuse {
-			// For -E mode: show implicit: true when implicit
-			if event.Implicit {
-				trueVal := true
-				info.Implicit = &trueVal
-			}
-		} else {
-			// For -e mode: show explicit: true when NOT implicit
-			if !event.Implicit {
-				trueVal := true
-				info.Explicit = &trueVal
-			}
-		}
+	// Implicitness is semantic event data, not diagnostic metadata.
+	switch event.Type {
+	case EventDocumentStart, EventDocumentEnd, EventScalar,
+		EventSequenceStart, EventMappingStart:
+		implicit := event.Implicit
+		info.Implicit = &implicit
+	}
+	if event.Type == EventScalar {
+		quotedImplicit := event.QuotedImplicit
+		info.QuotedImplicit = &quotedImplicit
 	}
 
 	return info
@@ -401,28 +460,38 @@ func getEventsFromParser(input []byte, profuse bool) ([]*Event, error) {
 
 // convertLibyamlEvent converts a libyaml event to our Event struct
 func convertLibyamlEvent(ev *libyaml.Event, profuse bool) *Event {
-	// Skip stream events
-	if ev.Type == libyaml.STREAM_START_EVENT || ev.Type == libyaml.STREAM_END_EVENT {
-		return nil
-	}
-
 	event := &Event{
-		StartLine:   ev.StartMark.Line,
-		StartColumn: ev.StartMark.Column,
-		EndLine:     ev.EndMark.Line,
-		EndColumn:   ev.EndMark.Column,
-		HeadComment: string(ev.HeadComment),
-		LineComment: string(ev.LineComment),
-		FootComment: string(ev.FootComment),
+		StartLine:      ev.StartMark.Line,
+		StartColumn:    ev.StartMark.Column,
+		EndLine:        ev.EndMark.Line,
+		EndColumn:      ev.EndMark.Column,
+		HeadComment:    string(ev.HeadComment),
+		LineComment:    string(ev.LineComment),
+		FootComment:    string(ev.FootComment),
+		TailComment:    string(ev.TailComment),
+		Implicit:       ev.Implicit,
+		QuotedImplicit: ev.GetQuotedImplicit(),
 	}
 
 	switch ev.Type {
+	case libyaml.STREAM_START_EVENT:
+		event.Type = EventStreamStart
+		event.Encoding = formatTokenEncoding(ev.GetEncoding())
+	case libyaml.STREAM_END_EVENT:
+		event.Type = EventStreamEnd
 	case libyaml.DOCUMENT_START_EVENT:
-		event.Type = "DOCUMENT-START"
-		event.Implicit = ev.Implicit
+		event.Type = EventDocumentStart
+		if version := ev.GetVersionDirective(); version != nil {
+			event.Version = fmt.Sprintf("%d.%d", version.Major(), version.Minor())
+		}
+		for _, directive := range ev.GetTagDirectives() {
+			event.Directives = append(event.Directives, TagDirectiveInfo{
+				Handle: directive.GetHandle(),
+				Prefix: directive.GetPrefix(),
+			})
+		}
 	case libyaml.DOCUMENT_END_EVENT:
-		event.Type = "DOCUMENT-END"
-		event.Implicit = ev.Implicit
+		event.Type = EventDocumentEnd
 	case libyaml.MAPPING_START_EVENT:
 		event.Type = "MAPPING-START"
 		event.Anchor = string(ev.Anchor)
@@ -467,6 +536,8 @@ func convertLibyamlEvent(ev *libyaml.Event, profuse bool) *Event {
 	case libyaml.ALIAS_EVENT:
 		event.Type = "ALIAS"
 		event.Anchor = string(ev.Anchor)
+	case libyaml.TAIL_COMMENT_EVENT:
+		event.Type = EventTailComment
 	}
 
 	return event

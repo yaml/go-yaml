@@ -11,7 +11,7 @@
     - kind: Scalar
       style: Plain
       tag: '!!str'
-      text: hello
+      value: hello
 
 - name: Double quoted scalar
   text: |
@@ -24,7 +24,7 @@
     - kind: Scalar
       style: Double
       tag: '!!str'
-      text: hello
+      value: hello
 
 - name: Integer scalar
   text: |
@@ -37,7 +37,7 @@
     - kind: Scalar
       style: Plain
       tag: '!!int'
-      text: '42'
+      value: '42'
 
 - name: Explicit tag
   text: |
@@ -50,7 +50,7 @@
     - kind: Scalar
       style: Plain
       tag: '!!str'
-      text: '42'
+      value: '42'
 
 - name: Mapping with plain scalars
   text: |
@@ -69,8 +69,8 @@
       - kind: Scalar
         style: Plain
         tag: '!!str'
-        text: key
+        value: key
       - kind: Scalar
         style: Plain
         tag: '!!str'
-        text: value
+        value: value

@@ -56,6 +56,37 @@ func NewComposerFromReader(r io.Reader, opts *Options) *Composer {
 	return &p
 }
 
+// NewComposerFromEvents creates a composer that reads an existing event
+// stream instead of parsing YAML text.
+func NewComposerFromEvents(events []Event, opts *Options) *Composer {
+	c := Composer{
+		Parser: NewParser(),
+		opts:   opts,
+	}
+	c.Parser.SetInputEvents(events)
+	if opts != nil {
+		c.Parser.depthCheck = opts.DepthCheck
+	}
+	return &c
+}
+
+// ComposeEvents resolves an event stream into document nodes.
+func ComposeEvents(events []Event, opts *Options) (nodes []*Node, err error) {
+	defer handleErr(&err)
+	c := NewComposerFromEvents(events, opts)
+	defer c.Destroy()
+	r := NewResolver(opts)
+	for {
+		node := c.Compose()
+		if node == nil {
+			break
+		}
+		r.Resolve(node)
+		nodes = append(nodes, node)
+	}
+	return nodes, nil
+}
+
 // Compose composes the next YAML node from the event stream.
 func (c *Composer) Compose() *Node {
 	c.init()
