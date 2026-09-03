@@ -686,6 +686,38 @@
     data: [0x19]
     want: false
 
+- char-predicate:
+    name: Is printable - Unicode Supplementary Multilingual Plane character 𐀀
+    func: isPrintable
+    data: [0xF0, 0x90, 0x80, 0x80] # U+10000
+    want: true
+
+- char-predicate:
+    name: Is printable - CJK character 漢
+    func: isPrintable
+    data: [0xE6, 0xBC, 0xA2] # U+6F22
+    want: true
+
+- char-predicate:
+    name: Is printable - emoji 😅
+    func: isPrintable
+    data: [0xF0, 0x9F, 0x98, 0x85] # U+1F605
+    want: true
+
+- char-predicate:
+    name: Is printable - emoji base code point 👍 in 👍🏽
+    func: isPrintable
+    index: 0  # Only check the first code point (👍) for printability
+    data: [0xF0, 0x9F, 0x91, 0x8D, 0xF0, 0x9F, 0x8F, 0xBD] # U+1F44D U+1F3FD
+    want: true
+
+- char-predicate:
+    name: Is printable - skin tone modifier code point 🏽 in 👍🏽
+    func: isPrintable
+    index: 4  # Check the second code point (skin tone modifier) for printability
+    data: [0xF0, 0x9F, 0x91, 0x8D, 0xF0, 0x9F, 0x8F, 0xBD] # U+1F44D U+1F3FD
+    want: true
+
 # isZeroChar tests
 - char-predicate:
     name: Is zero char - null
@@ -957,7 +989,7 @@
 
 # width tests
 - char-convert:
-    name: Width - 0x00
+    name: Width - null character
     func: width
     data: [0x00]
     want: 1
@@ -1009,6 +1041,42 @@
     func: width
     data: [0xF8]
     want: 0
+
+- char-convert:
+    name: Width - ASCII - letter A
+    func: width
+    data: [0x41] # 'A'
+    want: 1
+
+- char-convert:
+    name: Width - 2-byte char - U+00A9 COPYRIGHT SIGN
+    func: width
+    data: [0xC2, 0xA9]
+    want: 2
+
+- char-convert:
+    name: Width - 3-byte char - U+20AC EURO SIGN
+    func: width
+    data: [0xE2, 0x82, 0xAC]
+    want: 3
+
+- char-convert:
+    name: Width - 3-byte char - U+6F22 CJK character 漢
+    func: width
+    data: [0xE6, 0xBC, 0xA2] # U+6F22 CJK character 漢
+    want: 3
+
+- char-convert:
+    name: Width - emoji 👍
+    func: width
+    data: [0xF0, 0x9F, 0x91, 0x8D]
+    want: 4
+
+- char-convert:
+    name: Width - emoji with skin tone modifier 👍🏽
+    func: width
+    data: [0xF0, 0x9F, 0x91, 0x8D, 0xF0, 0x9F, 0x8F, 0xBD]
+    want: 4
 
 # isTagURIChar tests
 - char-predicate:
