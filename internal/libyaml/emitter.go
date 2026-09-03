@@ -680,9 +680,9 @@ func (emitter *Emitter) emitFlowMappingKey(event *Event, first, trail bool) erro
 	}
 
 	if event.Type == MAPPING_END_EVENT {
-		if (emitter.canonical ||
-			len(emitter.HeadComment)+len(emitter.FootComment)+len(emitter.TailComment) > 0) &&
-			!first && !trail {
+		// Pending comments never require a separator here: foot comments are
+		// written after '}' and head/tail comments always start on a new line.
+		if emitter.canonical && !first && !trail {
 			if err := emitter.writeIndicator([]byte{','}, false, false, false); err != nil {
 				return err
 			}
@@ -2086,11 +2086,11 @@ func (emitter *Emitter) writeFoldedScalar(value []byte) error {
 	for i := 0; i < len(value); {
 		if isLineBreak(value, i) {
 			if !breaks && !leading_spaces && value[i] == '\n' {
-				k := 0
-				for isLineBreak(value, k) {
+				k := i
+				for k < len(value) && isLineBreak(value, k) {
 					k += width(value[k])
 				}
-				if !isBlankOrZero(value, k) {
+				if k < len(value) && !isBlankOrZero(value, k) {
 					if err := emitter.putLineBreak(); err != nil {
 						return err
 					}

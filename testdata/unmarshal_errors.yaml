@@ -80,6 +80,22 @@
     want: "go-yaml load error in constructor at L1.C2: cannot use 'map[string]interface {}{\".\":interface {}(nil)}' as a map key; try decoding into yaml.Node"
 
 - unmarshal-error:
+    name: Slice as map key beside a merge key (Issue 378)
+    yaml: |
+      <<: {a: 1}
+      [b]: 2
+    type: map[string]any
+    want: "go-yaml load error in constructor at L2.C1: cannot use '[]interface {}{\"b\"}' as a map key; try decoding into yaml.Node"
+
+- unmarshal-error:
+    name: Slice as map key in a merged mapping
+    yaml: |
+      <<: {[a]: 2}
+      b: 2
+    type: map[any]any
+    want: "go-yaml load error in constructor at L1.C6: cannot use '[]interface {}{\"a\"}' as a map key; try decoding into yaml.Node"
+
+- unmarshal-error:
     name: Forward reference to anchor
     yaml: |
       b: *a
@@ -111,6 +127,13 @@
       c 2
       d: 3
     want: "go-yaml load error in scanner (while scanning a simple key) at L3.C1-L4.C1: could not find expected ':'"
+
+- unmarshal-error:
+    name: Unseparated content after implicit document (Issue 410)
+    yaml: |2
+       name: test
+      value: 2
+    want: 'go-yaml load error in parser at L2.C1: did not find expected <document start>'
 
 - unmarshal-error:
     name: Missing colon after comment and list (Issue 665)
