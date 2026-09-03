@@ -139,6 +139,10 @@ func (l *Loader) Load(v any) (err error) {
 	// Stage 2: Resolve - determine implicit types for untagged scalars
 	l.resolver.Resolve(node)
 
+	// Propagate a snapshot of loader options onto every node so that Node.Decode called
+	// inside custom UnmarshalYAML implementations inherits settings like KnownFields
+	propagateLoadOptions(node, l.options)
+
 	// Stage 3: Construct - convert node tree to Go values
 	out := reflect.ValueOf(v)
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
@@ -151,6 +155,24 @@ func (l *Loader) Load(v any) (err error) {
 		return &LoadErrors{Errors: typeErrors}
 	}
 	return nil
+}
+
+// propagateLoadOptions stamps n and every node reachable through Content with opts.
+// Alias pointers are not followed: in valid YAML, anchors are defined before
+// their aliases, so the anchor node is always reachable through n.Content traversal.
+func propagateLoadOptions(n *Node, opts *Options) {
+	if n == nil || opts == nil {
+		return
+	}
+	snapshot := *opts // pass a snapshot to avoid data race
+	propagateLoadOptionsRecursion(n, &snapshot)
+}
+
+func propagateLoadOptionsRecursion(n *Node, opts *Options) {
+	n.options = opts
+	for _, child := range n.Content {
+		propagateLoadOptionsRecursion(child, opts)
+	}
 }
 
 // loadAll loads all documents from the input into a slice.
@@ -265,6 +287,7 @@ func loadSingle(in []byte, out any, opts *Options) error {
 // This is used by the legacy Decoder.KnownFields() method.
 func (l *Loader) SetKnownFields(enable bool) {
 	l.constructor.KnownFields = enable
+	l.options.KnownFields = enable
 }
 
 // ComposeAndResolve composes and resolves the next document from the input
@@ -284,6 +307,10 @@ func (l *Loader) ComposeAndResolve() *Node {
 
 	// Stage 2: Resolve - determine implicit types for untagged scalars
 	l.resolver.Resolve(node)
+
+	// Propagate a snapshot of loader options onto every node so that Node.Decode called
+	// inside custom UnmarshalYAML implementations inherits settings like KnownFields
+	propagateLoadOptions(node, l.options)
 
 	return node
 }
