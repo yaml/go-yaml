@@ -79,6 +79,12 @@
     yaml: '"42"'
     want: '42'
 
+# https://github.com/yaml/go-yaml/issues/245
+- scalar-resolution:
+    name: Escaped slash in double-quoted string
+    yaml: '"\/"'
+    want: '/'
+
 - scalar-resolution:
     name: Mapping with numeric values
     yaml: |
