@@ -785,46 +785,55 @@ func TestDecoderSingleDocument(t *testing.T) {
 	}
 }
 
-var decoderTests = []struct {
-	data   string
-	values []any
-}{{
-	"",
-	nil,
-}, {
-	"a: b",
-	[]any{
-		map[string]any{"a": "b"},
-	},
-}, {
-	"---\na: b\n...\n",
-	[]any{
-		map[string]any{"a": "b"},
-	},
-}, {
-	"---\n'hello'\n...\n---\ngoodbye\n...\n",
-	[]any{
-		"hello",
-		"goodbye",
-	},
-}}
-
 func TestDecoder(t *testing.T) {
-	for i, item := range decoderTests {
-		t.Run(fmt.Sprintf("test %d: %q", i, item.data), func(t *testing.T) {
-			var values []any
-			dec := yaml.NewDecoder(strings.NewReader(item.data))
-			for {
-				var value any
-				err := dec.Decode(&value)
-				if err == io.EOF {
-					break
-				}
-				assert.NoError(t, err)
-				values = append(values, value)
-			}
-			assert.DeepEqual(t, item.values, values)
-		})
+	datatest.RunTestCases(t, func() ([]map[string]any, error) {
+		return datatest.LoadTestCasesFromFile("testdata/decoder.yaml", libyaml.LoadAny)
+	}, map[string]datatest.TestHandler{
+		"decoder":       runDecoderTest,
+		"decoder-error": runDecoderErrorTest,
+	})
+}
+
+func runDecoderTest(t *testing.T, tc map[string]any) {
+	t.Helper()
+
+	yamlInput := datatest.RequireString(t, tc, "yaml")
+	want := datatest.RequireSlice(t, tc, "want")
+
+	var values []any
+	dec := yaml.NewDecoder(strings.NewReader(yamlInput))
+	for {
+		var value any
+		err := dec.Decode(&value)
+		if err == io.EOF {
+			break
+		}
+		assert.NoError(t, err)
+		values = append(values, value)
+	}
+	if values == nil {
+		values = []any{}
+	}
+	assert.DeepEqual(t, want, values)
+}
+
+func runDecoderErrorTest(t *testing.T, tc map[string]any) {
+	t.Helper()
+
+	yamlInput := datatest.RequireString(t, tc, "yaml")
+	want := datatest.RequireString(t, tc, "want")
+
+	dec := yaml.NewDecoder(strings.NewReader(yamlInput))
+	for {
+		var value any
+		err := dec.Decode(&value)
+		if err == io.EOF {
+			t.Fatalf("got EOF; want error %q", want)
+		}
+		if err != nil {
+			assert.Equal(t, want, err.Error())
+			return
+		}
 	}
 }
 
