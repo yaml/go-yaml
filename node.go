@@ -49,6 +49,14 @@ type (
 	// a YAML description of themselves.
 	Unmarshaler = libyaml.Unmarshaler
 
+	// CustomMarshaler is a function which implements Marshaler functionality
+	// but can be parameterized by type and YAML marshaling session
+	CustomMarshaler = libyaml.CustomMarshaler
+
+	// CustomUnmarshaler is a function which implements Unmarshaler functionality
+	// but can be parameterized by type and YAML unmarshaling session
+	CustomUnmarshaler = libyaml.CustomUnmarshaler
+
 	// IsZeroer is used to check whether an object is zero to determine whether
 	// it should be omitted when marshaling with the ,omitempty flag.
 	// One notable implementation is [time.Time].

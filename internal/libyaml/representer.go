@@ -33,10 +33,17 @@ type Representer struct {
 	explicitEnd           bool
 	flowSimpleCollections bool
 	quotePreference       QuoteStyle
+
+	customTypeMarshalers map[reflect.Type]CustomMarshaler
 }
 
 // NewRepresenter creates a new YAML representer with the given options.
 func NewRepresenter(opts *Options) *Representer {
+	customTypeMarshaler := opts.CustomTypeMarshaler
+	if customTypeMarshaler == nil {
+		customTypeMarshaler = make(map[reflect.Type]CustomMarshaler)
+	}
+
 	return &Representer{
 		Indent:                opts.Indent,
 		lineWidth:             opts.LineWidth,
@@ -44,6 +51,7 @@ func NewRepresenter(opts *Options) *Representer {
 		explicitEnd:           opts.ExplicitEnd,
 		flowSimpleCollections: opts.FlowSimpleCollections,
 		quotePreference:       opts.QuotePreference,
+		customTypeMarshalers:  customTypeMarshaler,
 	}
 }
 
@@ -78,7 +86,21 @@ func (r *Representer) represent(tag string, in reflect.Value) *Node {
 	if !in.IsValid() || in.Kind() == reflect.Pointer && in.IsNil() {
 		return r.nilv()
 	}
+
 	iface := in.Interface()
+
+	// Check for a custom marshaler override
+	if marshaler, found := r.customTypeMarshalers[in.Type()]; found {
+		v, err := marshaler(iface)
+		if err != nil {
+			Fail(err)
+		}
+		if v == nil {
+			return r.nilv()
+		}
+		return r.represent(tag, reflect.ValueOf(v))
+	}
+
 	switch value := iface.(type) {
 	case *Node:
 		return r.nodev(in)
@@ -170,7 +192,7 @@ func (r *Representer) mapv(tag string, in reflect.Value) *Node {
 // structv converts a Go struct to a YAML mapping node, handling field tags,
 // omitempty, inline fields, and inline maps.
 func (r *Representer) structv(tag string, in reflect.Value) *Node {
-	sinfo, err := getStructInfo(in.Type())
+	sinfo, err := getStructInfo(in.Type(), nil, nil)
 	if err != nil {
 		failDump(RepresenterStage, err)
 	}
