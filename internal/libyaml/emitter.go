@@ -1883,6 +1883,15 @@ func (emitter *Emitter) writeDoubleQuotedScalar(value []byte, allow_breaks bool)
 				w, v = 3, rune(octet&0x0F)
 			case octet&0xF8 == 0xF0:
 				w, v = 4, rune(octet&0x07)
+			default:
+				return EmitterError{
+					Message: "invalid leading UTF-8 octet",
+				}
+			}
+			if len(value)-i < w {
+				return EmitterError{
+					Message: "incomplete UTF-8 octet sequence",
+				}
 			}
 			for k := 1; k < w; k++ {
 				octet = value[i+k]
