@@ -298,6 +298,21 @@
   from: "hello\nworld"
   want: true
 
+- name: shouldUseLiteralStyle with leading tab
+  type: should-literal
+  from: "\tcontent\nnext"
+  want: false
+
+- name: shouldUseLiteralStyle with leading break then tab
+  type: should-literal
+  from: "\n\tcontent\nnext"
+  want: false
+
+- name: shouldUseLiteralStyle with tab on later line
+  type: should-literal
+  from: "first\n\tsecond"
+  want: true
+
 - name: shouldUseLiteralStyle with single char
   type: should-literal
   from: "a"
