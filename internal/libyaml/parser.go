@@ -852,6 +852,7 @@ func (parser *Parser) parseNode(event *Event, block, indentless_sequence bool) e
 			Type:            SCALAR_EVENT,
 			StartMark:       start_mark,
 			EndMark:         end_mark,
+			contentEndMark:  token.contentEndMark,
 			Anchor:          anchor,
 			Tag:             tag,
 			Value:           token.Value,

@@ -326,6 +326,12 @@ type Token struct {
 	// The start/end of the token.
 	StartMark, EndMark Mark
 
+	// contentEndMark is the position just past the last content character, for
+	// tokens whose EndMark reaches beyond it. A block scalar's EndMark advances
+	// to the start of the next line, which overshoots the value; this records
+	// where the value actually stops. Zero means EndMark already marks it.
+	contentEndMark Mark
+
 	// The stream encoding (for STREAM_START_TOKEN).
 	encoding Encoding
 
@@ -400,6 +406,9 @@ type Event struct {
 
 	// The start and end of the event.
 	StartMark, EndMark Mark
+
+	// contentEndMark carries Token.contentEndMark through to composition.
+	contentEndMark Mark
 
 	// The document encoding (for STREAM_START_EVENT).
 	encoding Encoding

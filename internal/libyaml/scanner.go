@@ -1659,6 +1659,11 @@ func (parser *Parser) scanBlockScalar(token *Token, literal bool) error {
 		}
 	}
 
+	// The value stops at the last content character, while end_mark advances to
+	// the start of the following line. Captured after each content line is read
+	// and before its break is consumed.
+	content_end_mark := end_mark
+
 	// Scan the leading line breaks and determine the indentation level if
 	// needed.
 	var s, leading_break, trailing_breaks []byte
@@ -1707,6 +1712,8 @@ func (parser *Parser) scanBlockScalar(token *Token, literal bool) error {
 			}
 		}
 
+		content_end_mark = parser.mark
+
 		// Consume the line break.
 		if parser.unread < 2 {
 			if err := parser.updateBuffer(2); err != nil {
@@ -1732,11 +1739,12 @@ func (parser *Parser) scanBlockScalar(token *Token, literal bool) error {
 
 	// Create a token.
 	*token = Token{
-		Type:      SCALAR_TOKEN,
-		StartMark: start_mark,
-		EndMark:   end_mark,
-		Value:     s,
-		Style:     LITERAL_SCALAR_STYLE,
+		Type:           SCALAR_TOKEN,
+		StartMark:      start_mark,
+		EndMark:        end_mark,
+		contentEndMark: content_end_mark,
+		Value:          s,
+		Style:          LITERAL_SCALAR_STYLE,
 	}
 	if !literal {
 		token.Style = FOLDED_SCALAR_STYLE

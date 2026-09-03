@@ -127,6 +127,19 @@ func (c *Composer) node(kind Kind, tag, value string) *Node {
 	if !c.Textless {
 		n.Line = c.event.StartMark.Line
 		n.Column = c.event.StartMark.Column
+		// EndMark is the position just past this event. For scalars and aliases
+		// it already spans the whole node; for collections this is the START
+		// event, so sequence()/mapping() overwrite it from the END event.
+		//
+		// A block scalar is the exception: its EndMark advances to the start of
+		// the following line, so the value's own end is carried separately.
+		if c.event.contentEndMark != (Mark{}) {
+			n.EndLine = c.event.contentEndMark.Line
+			n.EndColumn = c.event.contentEndMark.Column
+		} else {
+			n.EndLine = c.event.EndMark.Line
+			n.EndColumn = c.event.EndMark.Column
+		}
 		n.HeadComment = string(c.event.HeadComment)
 		n.LineComment = string(c.event.LineComment)
 		n.FootComment = string(c.event.FootComment)
@@ -222,6 +235,20 @@ func (c *Composer) sequence() *Node {
 	for c.peek() != SEQUENCE_END_EVENT {
 		c.parseChild(n)
 	}
+	// End at the last child's end so the span reaches the end of the actual
+	// content, consistent with scalars and aliases. The END token sits at the
+	// start of the following line after a block dedent, which would overshoot.
+	// Flow collections close with an explicit delimiter, so their END mark is
+	// correct; an empty collection has no child and uses it too.
+	if !c.Textless {
+		if n.Style&FlowStyle != 0 || len(n.Content) == 0 {
+			n.EndLine = c.event.EndMark.Line
+			n.EndColumn = c.event.EndMark.Column
+		} else {
+			last := n.Content[len(n.Content)-1]
+			n.EndLine, n.EndColumn = last.EndLine, last.EndColumn
+		}
+	}
 	n.LineComment = string(c.event.LineComment)
 	n.FootComment = string(c.event.FootComment)
 	c.expect(SEQUENCE_END_EVENT)
@@ -258,6 +285,16 @@ func (c *Composer) mapping() *Node {
 				k.FootComment = string(c.event.FootComment)
 			}
 			c.expect(TAIL_COMMENT_EVENT)
+		}
+	}
+	// End at the last entry's value, for the reason given in sequence().
+	if !c.Textless {
+		if n.Style&FlowStyle != 0 || len(n.Content) == 0 {
+			n.EndLine = c.event.EndMark.Line
+			n.EndColumn = c.event.EndMark.Column
+		} else {
+			last := n.Content[len(n.Content)-1]
+			n.EndLine, n.EndColumn = last.EndLine, last.EndColumn
 		}
 	}
 	n.LineComment = string(c.event.LineComment)
