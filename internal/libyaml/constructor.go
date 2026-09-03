@@ -67,6 +67,7 @@ type Constructor struct {
 
 	customTypeUnmarshalers map[reflect.Type]CustomUnmarshaler
 	reentrancyGuards       map[reentrantKey]struct{}
+	constructorExclusions  map[interface{}]struct{}
 	// localFieldMap caches structinfo lookups when custom unmarshalers are
 	// being used.
 	localFieldMap map[structMapKey]*structInfo
@@ -80,6 +81,11 @@ func NewConstructor(opts *Options) *Constructor {
 		customTypeUnmarshaler = make(map[reflect.Type]CustomUnmarshaler)
 	}
 
+	constructorExclusions := opts.ConstructorExclusions
+	if constructorExclusions == nil {
+		constructorExclusions = make(map[interface{}]struct{})
+	}
+
 	return &Constructor{
 		stringMapType:          stringMapType,
 		generalMapType:         generalMapType,
@@ -89,6 +95,7 @@ func NewConstructor(opts *Options) *Constructor {
 		aliasCheck:             opts.AliasCheck,
 		customTypeUnmarshalers: customTypeUnmarshaler,
 		reentrancyGuards:       make(map[reentrantKey]struct{}),
+		constructorExclusions:  constructorExclusions,
 		localFieldMap:          map[structMapKey]*structInfo{},
 	}
 }
@@ -948,19 +955,24 @@ againLoop:
 					}
 				}
 			}
-			// Try yaml.Unmarshaler (from root package) first
-			if called, good := c.tryCallYAMLConstructor(n, out); called {
-				return newnode, out, true, good
-			}
+			// Check if this has been excluded from constructor calling (i.e.
+			// a type implementing a constructor is calling node.Load with an exclusion
+			// on it's own pointer)
+			if _, excluded := c.constructorExclusions[outi]; !excluded {
+				// Try yaml.Unmarshaler (from root package) first
+				if called, good := c.tryCallYAMLConstructor(n, out); called {
+					return newnode, out, true, good
+				}
 
-			// Check for libyaml.constructor
-			if u, ok := outi.(constructor); ok {
-				good = c.callConstructor(n, u)
-				return newnode, out, true, good
-			}
-			if u, ok := outi.(legacyConstructor); ok {
-				good = c.callLegacyConstructor(n, u)
-				return newnode, out, true, good
+				// Check for libyaml.constructor
+				if u, ok := outi.(constructor); ok {
+					good = c.callConstructor(n, u)
+					return newnode, out, true, good
+				}
+				if u, ok := outi.(legacyConstructor); ok {
+					good = c.callLegacyConstructor(n, u)
+					return newnode, out, true, good
+				}
 			}
 		}
 	}

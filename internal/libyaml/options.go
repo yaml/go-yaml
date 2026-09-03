@@ -16,25 +16,26 @@ import (
 // Options holds configuration for both loading and dumping YAML.
 type Options struct {
 	// Loading options
-	KnownFields    bool // Enforce known fields in structs
-	SingleDocument bool // Only load first document
-	UniqueKeys     bool // Enforce unique keys in mappings
-	StreamNodes    bool // Enable stream node emission
-	AllDocuments   bool // Load/Dump all documents in multi-document streams
+	KnownFields           bool                               // Enforce known fields in structs
+	SingleDocument        bool                               // Only load first document
+	UniqueKeys            bool                               // Enforce unique keys in mappings
+	StreamNodes           bool                               // Enable stream node emission
+	AllDocuments          bool                               // Load/Dump all documents in multi-document streams
 	CustomTypeUnmarshaler map[reflect.Type]CustomUnmarshaler // Apply a custom unmarshaler function to a type
+	ConstructorExclusions map[interface{}]struct{}           // Selectively exclude pointers from constructor function usage
 
 	// Dumping options
-	Indent                int        // Indentation spaces (2-9)
-	CompactSeqIndent      bool       // Whether '- ' counts as indentation
-	LineWidth             int        // Preferred line width (-1 for unlimited)
-	Unicode               bool       // Allow non-ASCII characters
-	Canonical             bool       // Canonical YAML output
-	LineBreak             LineBreak  // Line ending style
-	ExplicitStart         bool       // Always emit ---
-	ExplicitEnd           bool       // Always emit ...
-	FlowSimpleCollections bool       // Use flow style for simple collections
-	QuotePreference       QuoteStyle // Preferred quote style when quoting is required
-	CustomTypeMarshaler map[reflect.Type]CustomMarshaler // Apply a custom marshaling function to a type
+	Indent                int                              // Indentation spaces (2-9)
+	CompactSeqIndent      bool                             // Whether '- ' counts as indentation
+	LineWidth             int                              // Preferred line width (-1 for unlimited)
+	Unicode               bool                             // Allow non-ASCII characters
+	Canonical             bool                             // Canonical YAML output
+	LineBreak             LineBreak                        // Line ending style
+	ExplicitStart         bool                             // Always emit ---
+	ExplicitEnd           bool                             // Always emit ...
+	FlowSimpleCollections bool                             // Use flow style for simple collections
+	QuotePreference       QuoteStyle                       // Preferred quote style when quoting is required
+	CustomTypeMarshaler   map[reflect.Type]CustomMarshaler // Apply a custom marshaling function to a type
 
 	// Safety limit checks (set by ApplyOptions or WithPlugin(limit.New(...)))
 	DepthCheck func(depth int, ctx *DepthContext) error
@@ -422,6 +423,22 @@ func WithCustomTypeUnmarshaler(typ reflect.Type, unmarshaler CustomUnmarshaler) 
 			o.CustomTypeUnmarshaler = make(map[reflect.Type]CustomUnmarshaler)
 		}
 		o.CustomTypeUnmarshaler[typ] = unmarshaler
+		return nil
+	}
+}
+
+// WithConstructorExclusions sets the given pointer as an object which should be
+// excluded from calling YAML constructor functions. The primary use of this is
+// to allow a struct to request conventional unmarshalling without an infinite
+// loop.
+func WithConstructorExclusions(ptrs ...interface{}) Option {
+	return func(o *Options) error {
+		if o.ConstructorExclusions == nil {
+			o.ConstructorExclusions = make(map[interface{}]struct{})
+		}
+		for _, ptr := range ptrs {
+			o.ConstructorExclusions[ptr] = struct{}{}
+		}
 		return nil
 	}
 }

@@ -251,6 +251,10 @@ var (
 
 	// WithCustomTypeUnmarshaler associates a type with a custom unmarshalling function.
 	WithCustomTypeUnmarshaler = libyaml.WithCustomTypeUnmarshaler
+
+	// WithConstructorExclusions excludes the given pointers to types from being
+	// unmarshalled using constructor functions (but not custom type unmarshallers).
+	WithConstructorExclusions = libyaml.WithConstructorExclusions
 )
 
 // Options combines multiple options into a single Option.
