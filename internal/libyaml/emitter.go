@@ -602,6 +602,11 @@ func (emitter *Emitter) emitFlowSequenceItem(event *Event, first, trail bool) er
 				return err
 			}
 		}
+		// Interior comments of an empty flow sequence are held as HeadComment
+		// on START; write them after '[' and before ']'.
+		if err := emitter.processHeadComment(); err != nil {
+			return err
+		}
 		emitter.flow_level--
 		emitter.indent = emitter.indents[len(emitter.indents)-1]
 		emitter.indents = emitter.indents[:len(emitter.indents)-1]
@@ -1005,6 +1010,7 @@ func (emitter *Emitter) emitSequenceStart(event *Event) error {
 	} else {
 		emitter.state = EMIT_BLOCK_SEQUENCE_FIRST_ITEM_STATE
 	}
+	emitter.holdEmptyFlowCollectionComment()
 	return nil
 }
 
@@ -1023,7 +1029,34 @@ func (emitter *Emitter) emitMappingStart(event *Event) error {
 	} else {
 		emitter.state = EMIT_BLOCK_MAPPING_FIRST_KEY_STATE
 	}
+	emitter.holdEmptyFlowCollectionComment()
 	return nil
+}
+
+// holdEmptyFlowCollectionComment keeps an interior comment of an otherwise-
+// empty flow collection from being flushed by the caller of emitNode.
+//
+// The parser attaches that comment as FootComment on the START event because
+// there is no key/value event to carry it. emitNode only switches state, so
+// the caller would write the foot comment before the matching END event
+// writes '{' or '['. Reclassify it as HeadComment so it is emitted inside
+// the collection after the opening indicator.
+func (emitter *Emitter) holdEmptyFlowCollectionComment() {
+	if len(emitter.FootComment) == 0 || len(emitter.HeadComment) != 0 {
+		return
+	}
+	var empty bool
+	switch emitter.events[emitter.events_head].Type {
+	case SEQUENCE_START_EVENT:
+		empty = emitter.checkEmptySequence()
+	case MAPPING_START_EVENT:
+		empty = emitter.checkEmptyMapping()
+	}
+	if !empty {
+		return
+	}
+	emitter.HeadComment = emitter.FootComment
+	emitter.FootComment = nil
 }
 
 // Check if the document content is an empty scalar.
