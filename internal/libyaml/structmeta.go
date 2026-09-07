@@ -55,11 +55,23 @@ type fieldInfo struct {
 	Inline []int
 }
 
+// customConstructorCheckFn is the type which a check function for the custom
+// constructor must have.
+type customConstructorCheckFn func(p reflect.Type) bool
+
+// structMapKey defines the key for caching struct reflection information.
+// Namely, we must cache the type of check performed for inline-constructors,
+// since unmarshaling and marshaling are assymmetric in what data they should
+// return (this allows nested fields to work properly).
+type structMapKey struct {
+	st reflect.Type
+}
+
 // structMap caches struct reflection information.
 // fieldMapMutex protects access to structMap.
 // constructorType holds the [reflect.Type] for the constructor interface.
 var (
-	structMap       = make(map[reflect.Type]*structInfo)
+	structMap       = make(map[structMapKey]*structInfo)
 	fieldMapMutex   sync.RWMutex
 	constructorType reflect.Type
 )
@@ -113,6 +125,7 @@ func hasConstructYAMLMethod(t reflect.Type) bool {
 	return true
 }
 
+
 func isYAMLNodePkg(pkg string) bool {
 	switch pkg {
 	case "gopkg.in/yaml.v3", "go.yaml.in/yaml/v3":
@@ -121,14 +134,41 @@ func isYAMLNodePkg(pkg string) bool {
 	return false
 }
 
+func defaultCustomConstructorCheck(p reflect.Type) bool {
+	return true
+}
+
 // getStructInfo returns cached information about a struct type's fields.
 // It parses struct tags and builds a map of field names to field info.
-func getStructInfo(st reflect.Type) (*structInfo, error) {
-	fieldMapMutex.RLock()
-	sinfo, found := structMap[st]
-	fieldMapMutex.RUnlock()
-	if found {
-		return sinfo, nil
+// hasConstructorCheck is an optional function which should be supplied by
+// the caller if custom constructors are being used. In this case, localFieldMap
+// can also be supplied to cache these lookups - it must be ensured that the
+// supplied map is used when the same lookup function is used.
+func getStructInfo(st reflect.Type, hasConstructorCheck customConstructorCheckFn, localFieldMap map[structMapKey]*structInfo) (*structInfo, error) {
+	// Only use the lookup if we're not also looking for a custom constructor
+	var found bool
+	var sinfo *structInfo
+	if hasConstructorCheck == nil {
+		fieldMapMutex.RLock()
+		sinfo, found = structMap[structMapKey{st}]
+		fieldMapMutex.RUnlock()
+		if found {
+			return sinfo, nil
+		}
+	} else if localFieldMap != nil {
+		sinfo, found = localFieldMap[structMapKey{st}]
+		if found {
+			return sinfo, nil
+		}
+	}
+
+	// make the interface for this function easy to use. When not supplied it
+	// should always return false
+	var callableHasConstructorCheck customConstructorCheckFn
+	if hasConstructorCheck == nil {
+		callableHasConstructorCheck = defaultCustomConstructorCheck
+	} else {
+		callableHasConstructorCheck = hasConstructorCheck
 	}
 
 	n := st.NumField()
@@ -188,11 +228,13 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 				if ftype.Kind() != reflect.Struct {
 					return nil, errors.New("option ,inline may only be used on a struct or map field")
 				}
-				// Check for both libyaml.constructor and yaml.Unmarshaler (by method name)
-				if reflect.PointerTo(ftype).Implements(constructorType) || hasConstructYAMLMethod(reflect.PointerTo(ftype)) {
+				// Check for both libyaml.constructor and yaml.Unmarshaler (by method name).
+				// Also check for a customTypeUnmarshaler in the current context.
+				ftypePtr := reflect.PointerTo(ftype)
+				if ftypePtr.Implements(constructorType) || hasConstructYAMLMethod(ftypePtr) || callableHasConstructorCheck(ftype) {
 					inlineConstructors = append(inlineConstructors, []int{i})
 				} else {
-					sinfo, err := getStructInfo(ftype)
+					sinfo, err := getStructInfo(ftype, hasConstructorCheck, localFieldMap)
 					if err != nil {
 						return nil, err
 					}
@@ -243,8 +285,12 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 		InlineConstructors: inlineConstructors,
 	}
 
-	fieldMapMutex.Lock()
-	structMap[st] = sinfo
-	fieldMapMutex.Unlock()
+	if hasConstructorCheck == nil {
+		fieldMapMutex.Lock()
+		structMap[structMapKey{st}] = sinfo
+		fieldMapMutex.Unlock()
+	} else if localFieldMap != nil {
+		localFieldMap[structMapKey{st}] = sinfo
+	}
 	return sinfo, nil
 }
