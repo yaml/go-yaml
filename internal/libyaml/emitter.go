@@ -2024,11 +2024,39 @@ func (emitter *Emitter) writeDoubleQuotedScalar(value []byte, allow_breaks bool)
 // writeBlockScalarHints writes the indentation and chomping indicators for
 // block scalars.
 func (emitter *Emitter) writeBlockScalarHints(value []byte) error {
-	if isSpace(value, 0) {
-		// https://github.com/yaml/go-yaml/issues/65
-		// isLineBreak(value, 0) removed as the linebreak will only
-		// write the indentation value.
-		indent_hint := []byte{'0' + byte(emitter.BestIndent)}
+	// A parser infers a block scalar's indentation from its first non-empty
+	// line, so an explicit indentation indicator is needed whenever that line
+	// begins with a space. Leading line breaks only produce empty lines, which
+	// carry no indentation of their own, so skip past them first: this keeps
+	// the #65 behavior (no indicator when the first content line is not
+	// indented) while covering leading-blank-then-indented scalars.
+	// https://github.com/yaml/go-yaml/issues/65
+	// https://github.com/yaml/go-yaml/issues/76
+	i := 0
+	for i < len(value) && isLineBreak(value, i) {
+		i += width(value[i])
+	}
+	if i < len(value) && isSpace(value, i) {
+		// The indicator is the content's indentation relative to the parent
+		// node, not BestIndent: a block sequence item only adds 2 columns, so
+		// emitting BestIndent produces an unparseable document. It must also be
+		// a single digit 1..9, so clamp it to that range and align the actual
+		// content indentation to the clamped value; that keeps the document
+		// valid and round-trippable even when a caller requests a wider indent
+		// (e.g. SetIndent(10)).
+		// https://github.com/go-yaml/yaml/issues/1071
+		parent_indent := 0
+		if len(emitter.indents) > 0 && emitter.indents[len(emitter.indents)-1] > 0 {
+			parent_indent = emitter.indents[len(emitter.indents)-1]
+		}
+		indent := emitter.indent - parent_indent
+		if indent < 1 {
+			indent = 1
+		} else if indent > 9 {
+			indent = 9
+		}
+		emitter.indent = parent_indent + indent
+		indent_hint := []byte{'0' + byte(indent)}
 		if err := emitter.writeIndicator(indent_hint, false, false, false); err != nil {
 			return err
 		}

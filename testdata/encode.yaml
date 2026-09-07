@@ -986,3 +986,49 @@
     want: |
       v: hello
 
+# Regression tests for block scalars whose first non-empty line is indented.
+# Without an explicit indentation indicator the output does not parse back.
+- encode:
+    name: block scalar with leading empty lines and indented content
+    data:
+      v: "\n\n more indented\nregular\n"
+    type: map[string]string
+    want: |
+      v: |4
+
+
+           more indented
+          regular
+
+- encode:
+    name: block scalar with a leading empty line and indented content
+    data:
+      v: "\n  indented\nplain\n"
+    type: map[string]string
+    want: |
+      v: |4
+
+            indented
+          plain
+
+- encode:
+    name: block scalar with an indented first line
+    data:
+      v: " first indented\nregular\n"
+    type: map[string]string
+    want: |
+      v: |4
+           first indented
+          regular
+
+- encode:
+    name: block scalar with a leading empty line and unindented content
+    data:
+      v: "\nno indent\nhere\n"
+    type: map[string]string
+    want: |
+      v: |
+
+          no indent
+          here
+
