@@ -853,9 +853,15 @@ func parseVersion(value string) (int, int, error) {
 	if err != nil {
 		return 0, 0, err
 	}
+	if major < 0 || major > 127 {
+		return 0, 0, fmt.Errorf("invalid YAML version %q", value)
+	}
 	minor, err := strconv.Atoi(parts[1])
 	if err != nil {
 		return 0, 0, err
+	}
+	if minor < 0 || minor > 127 {
+		return 0, 0, fmt.Errorf("invalid YAML version %q", value)
 	}
 	return major, minor, nil
 }
