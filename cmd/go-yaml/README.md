@@ -57,7 +57,7 @@ go-yaml -e file.yaml |
 
 # Edit detailed nodes and then emit YAML.
 go-yaml -N file.yaml |
-  yq '(.. | select(.kind? == "Scalar" and .value == "old")).value = "new"' |
+  yq '(.. | select(.node? == "Scalar" and .value == "old")).value = "new"' |
   go-yaml -Y
 
 # Treat contract-shaped data as ordinary YAML.

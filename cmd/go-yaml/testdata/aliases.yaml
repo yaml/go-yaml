@@ -8,18 +8,18 @@
       plain: foo
     - alias: a
   NODE: |
-    kind: Document
+    node: Document
     content:
-    - kind: Sequence
+    - node: Sequence
       style: Plain
       tag: '!!seq'
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         anchor: a
         tag: '!!str'
         value: foo
-      - kind: Alias
+      - node: Alias
         value: a
 
 - name: Multiple aliases to same anchor
@@ -34,20 +34,20 @@
     - alias: x
     - alias: x
   NODE: |
-    kind: Document
+    node: Document
     content:
-    - kind: Sequence
+    - node: Sequence
       style: Plain
       tag: '!!seq'
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         anchor: x
         tag: '!!str'
         value: value
-      - kind: Alias
+      - node: Alias
         value: x
-      - kind: Alias
+      - node: Alias
         value: x
 
 - name: Alias in sequence
@@ -62,20 +62,20 @@
     - alias: item
     - plain: second
   NODE: |
-    kind: Document
+    node: Document
     content:
-    - kind: Sequence
+    - node: Sequence
       style: Plain
       tag: '!!seq'
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         anchor: item
         tag: '!!str'
         value: first
-      - kind: Alias
+      - node: Alias
         value: item
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!str'
         value: second
@@ -92,26 +92,26 @@
     - plain: ref
     - alias: val
   NODE: |
-    kind: Document
+    node: Document
     content:
-    - kind: Mapping
+    - node: Mapping
       style: Plain
       tag: '!!map'
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!str'
         value: key
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         anchor: val
         tag: '!!str'
         value: value
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!str'
         value: ref
-      - kind: Alias
+      - node: Alias
         value: val
 
 - name: Alias to complex structure
@@ -132,40 +132,40 @@
       - plain: alias
       - alias: data
   NODE: |
-    kind: Document
+    node: Document
     content:
-    - kind: Sequence
+    - node: Sequence
       style: Plain
       tag: '!!seq'
       content:
-      - kind: Mapping
+      - node: Mapping
         style: Plain
         anchor: data
         tag: '!!map'
         content:
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: x
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!int'
           value: '1'
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: 'y'
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!int'
           value: '2'
-      - kind: Mapping
+      - node: Mapping
         style: Plain
         tag: '!!map'
         content:
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: alias
-        - kind: Alias
+        - node: Alias
           value: data

@@ -10,9 +10,9 @@
     anchor: myanchor
     plain: value
   NODE: |
-    kind: Document
+    node: Document
     content:
-    - kind: Scalar
+    - node: Scalar
       style: Plain
       anchor: myanchor
       tag: '!!str'
@@ -30,9 +30,9 @@
     foot: '# foot comment'
     plain: value
   NODE: |
-    kind: Document
+    node: Document
     content:
-    - kind: Scalar
+    - node: Scalar
       style: Plain
       anchor: myanchor
       tag: '!!str'
@@ -57,20 +57,20 @@
     - line: '# line comment'
       plain: value
   NODE: |
-    kind: Document
+    node: Document
     content:
-    - kind: Mapping
+    - node: Mapping
       style: Plain
       anchor: myanchor
       tag: '!!map'
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!str'
         head: '# head comment'
         foot: '# foot comment'
         value: key
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!str'
         line: '# line comment'
@@ -88,18 +88,18 @@
     - plain: item1
     - plain: item2
   NODE: |
-    kind: Document
+    node: Document
     content:
-    - kind: Sequence
+    - node: Sequence
       style: Plain
       anchor: myseq
       tag: '!!seq'
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!str'
         value: item1
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!str'
         value: item2
@@ -120,19 +120,19 @@
     - foot: '# foot comment'
       plain: item2
   NODE: |
-    kind: Document
+    node: Document
     content:
-    - kind: Sequence
+    - node: Sequence
       style: Plain
       anchor: myseq
       tag: '!!seq'
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!str'
         head: '# head comment'
         value: item1
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!str'
         foot: '# foot comment'
@@ -145,9 +145,9 @@
     anchor: anchor
     plain: tagged
   NODE: |
-    kind: Document
+    node: Document
     content:
-    - kind: Scalar
+    - node: Scalar
       style: Plain
       anchor: anchor
       tag: '!!str'
@@ -164,18 +164,18 @@
     - line: '# line'
       plain: value
   NODE: |
-    kind: Document
+    node: Document
     content:
-    - kind: Mapping
+    - node: Mapping
       style: Plain
       tag: '!!map'
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!str'
         head: '# head'
         value: key
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!str'
         line: '# line'
@@ -188,9 +188,9 @@
     anchor: myanchor
     double: quoted
   NODE: |
-    kind: Document
+    node: Document
     content:
-    - kind: Scalar
+    - node: Scalar
       style: Double
       anchor: myanchor
       tag: '!!str'
@@ -217,29 +217,29 @@
         plain: key
       - plain: value
   NODE: |
-    kind: Document
+    node: Document
     content:
-    - kind: Mapping
+    - node: Mapping
       style: Plain
       anchor: outer
       tag: '!!map'
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!str'
         head: '# outer head'
         value: nested
-      - kind: Mapping
+      - node: Mapping
         style: Plain
         anchor: inner
         tag: '!!map'
         content:
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           head: '# inner head'
           value: key
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: value

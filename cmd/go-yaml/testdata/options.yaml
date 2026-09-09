@@ -190,23 +190,23 @@
     - stream:
         encoding: UTF-8
   stream-NODE: |
-    - kind: Stream
+    - node: Stream
       encoding: UTF-8
-    - kind: Document
+    - node: Document
       content:
-      - kind: Mapping
+      - node: Mapping
         style: Plain
         tag: '!!map'
         content:
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: a
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: b
-    - kind: Stream
+    - node: Stream
       encoding: UTF-8
 
 - name: Stream option with scalar

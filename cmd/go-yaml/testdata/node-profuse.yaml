@@ -6,9 +6,9 @@
   node: |
     plain: hello
   NODE: |
-    kind: Document
+    node: Document
     content:
-    - kind: Scalar
+    - node: Scalar
       style: Plain
       tag: '!!str'
       value: hello
@@ -19,9 +19,9 @@
   node: |
     double: hello
   NODE: |
-    kind: Document
+    node: Document
     content:
-    - kind: Scalar
+    - node: Scalar
       style: Double
       tag: '!!str'
       value: hello
@@ -32,9 +32,9 @@
   node: |
     plain: '42'
   NODE: |
-    kind: Document
+    node: Document
     content:
-    - kind: Scalar
+    - node: Scalar
       style: Plain
       tag: '!!int'
       value: '42'
@@ -45,9 +45,9 @@
   node: |
     plain: '42'
   NODE: |
-    kind: Document
+    node: Document
     content:
-    - kind: Scalar
+    - node: Scalar
       style: Plain
       tag: '!!str'
       value: '42'
@@ -60,17 +60,17 @@
     - plain: key
     - plain: value
   NODE: |
-    kind: Document
+    node: Document
     content:
-    - kind: Mapping
+    - node: Mapping
       style: Plain
       tag: '!!map'
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!str'
         value: key
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!str'
         value: value

@@ -8,7 +8,52 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+
+	"go.yaml.in/yaml/v4"
 )
+
+func TestDetailedNodeContractKey(t *testing.T) {
+	for _, source := range []string{
+		"a: b\n",
+		"a: &x [1, two]\nb: *x\n",
+		"---\na: b\n---\n- c\n",
+	} {
+		cmd := exec.Command(testBinary, "-N")
+		cmd.Stdin = strings.NewReader(source)
+		output, err := cmd.Output()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(output), "node: Document") ||
+			strings.Contains(string(output), "kind:") {
+			t.Fatalf("unexpected node contract: %s", output)
+		}
+		input, err := detectStructuredInput(output, "")
+		if err != nil || input.stage != stageNode {
+			t.Fatalf("node contract was not detected: %v", err)
+		}
+		if len(input.nodes) == 0 || input.nodes[0].Kind != yaml.DocumentNode {
+			t.Fatal("expected a document node")
+		}
+	}
+}
+
+func TestRejectRetiredNodeKey(t *testing.T) {
+	for _, source := range []string{
+		"kind: Scalar\nvalue: old\n",
+		"node: Scalar\nkind: Scalar\nvalue: old\n",
+		"node: Document\ncontent:\n- kind: Scalar\n  value: old\n",
+		"node: Document\ncontent:\n- node: Scalar\n  kind: Scalar\n  value: old\n",
+	} {
+		if _, err := detectStructuredInput([]byte(source), "n"); err == nil {
+			t.Fatalf("accepted retired key in node input: %s", source)
+		}
+	}
+	input, err := detectStructuredInput([]byte("kind: Scalar\nvalue: old\n"), "")
+	if err != nil || input.stage != stageYAML {
+		t.Fatalf("ordinary YAML should remain YAML: %v", err)
+	}
+}
 
 func TestParseVersionBounds(t *testing.T) {
 	for _, value := range []string{"0.0", "1.1", "1.2", "127.127"} {

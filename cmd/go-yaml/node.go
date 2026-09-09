@@ -51,7 +51,7 @@ func (ms MapSlice) MarshalYAML() (any, error) {
 
 // NodeInfo represents the information about a YAML node
 type NodeInfo struct {
-	Kind          string             `yaml:"kind"`
+	Kind          string             `yaml:"node"`
 	Style         string             `yaml:"style,omitempty"`
 	Anchor        string             `yaml:"anchor,omitempty"`
 	Tag           string             `yaml:"tag,omitempty"`

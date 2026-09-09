@@ -14,31 +14,31 @@
       - plain: doc2
       - plain: value2
   NODE: |
-    - kind: Document
+    - node: Document
       content:
-      - kind: Mapping
+      - node: Mapping
         style: Plain
         tag: '!!map'
         content:
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: doc1
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: value1
-    - kind: Document
+    - node: Document
       content:
-      - kind: Mapping
+      - node: Mapping
         style: Plain
         tag: '!!map'
         content:
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: doc2
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: value2
@@ -60,37 +60,37 @@
       - plain: key
       - plain: value
   NODE: |
-    - kind: Document
+    - node: Document
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!str'
         value: scalar1
-    - kind: Document
+    - node: Document
       content:
-      - kind: Sequence
+      - node: Sequence
         style: Plain
         tag: '!!seq'
         content:
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: item1
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: item2
-    - kind: Document
+    - node: Document
       content:
-      - kind: Mapping
+      - node: Mapping
         style: Plain
         tag: '!!map'
         content:
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: key
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: value
@@ -110,25 +110,25 @@
       - plain: key
       - plain: value
   NODE: |
-    - kind: Document
+    - node: Document
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         anchor: anchor1
         tag: '!!str'
         value: first
-    - kind: Document
+    - node: Document
       content:
-      - kind: Mapping
+      - node: Mapping
         style: Plain
         anchor: anchor2
         tag: '!!map'
         content:
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: key
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: value
@@ -150,33 +150,33 @@
         plain: doc2
       - plain: value2
   NODE: |
-    - kind: Document
+    - node: Document
       content:
-      - kind: Mapping
+      - node: Mapping
         style: Plain
         tag: '!!map'
         content:
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           head: '# comment 1'
           value: doc1
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: value1
-    - kind: Document
+    - node: Document
       content:
-      - kind: Mapping
+      - node: Mapping
         style: Plain
         tag: '!!map'
         content:
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           head: '# comment 2'
           value: doc2
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: value2
@@ -199,33 +199,33 @@
     - plain: fourth
     - plain: fifth
   NODE: |
-    - kind: Document
+    - node: Document
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!str'
         value: first
-    - kind: Document
+    - node: Document
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!str'
         value: second
-    - kind: Document
+    - node: Document
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!str'
         value: third
-    - kind: Document
+    - node: Document
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!str'
         value: fourth
-    - kind: Document
+    - node: Document
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!str'
         value: fifth
@@ -251,45 +251,45 @@
       - plain: e
       - plain: f
   NODE: |
-    - kind: Document
+    - node: Document
       content:
-      - kind: Sequence
+      - node: Sequence
         style: Plain
         tag: '!!seq'
         content:
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: a
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: b
-    - kind: Document
+    - node: Document
       content:
-      - kind: Sequence
+      - node: Sequence
         style: Plain
         tag: '!!seq'
         content:
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: c
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: d
-    - kind: Document
+    - node: Document
       content:
-      - kind: Sequence
+      - node: Sequence
         style: Plain
         tag: '!!seq'
         content:
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: e
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: f
@@ -306,21 +306,21 @@
     - double: double
     - single: single
   NODE: |
-    - kind: Document
+    - node: Document
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!str'
         value: plain
-    - kind: Document
+    - node: Document
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Double
         tag: '!!str'
         value: double
-    - kind: Document
+    - node: Document
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Single
         tag: '!!str'
         value: single
@@ -351,67 +351,67 @@
             - plain: item
             - plain: value2
   NODE: |
-    - kind: Document
+    - node: Document
       content:
-      - kind: Mapping
+      - node: Mapping
         style: Plain
         tag: '!!map'
         content:
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: outer
-        - kind: Mapping
+        - node: Mapping
           style: Plain
           tag: '!!map'
           content:
-          - kind: Scalar
+          - node: Scalar
             style: Plain
             tag: '!!str'
             value: inner
-          - kind: Mapping
+          - node: Mapping
             style: Plain
             tag: '!!map'
             content:
-            - kind: Scalar
+            - node: Scalar
               style: Plain
               tag: '!!str'
               value: deep
-            - kind: Scalar
+            - node: Scalar
               style: Plain
               tag: '!!str'
               value: value1
-    - kind: Document
+    - node: Document
       content:
-      - kind: Mapping
+      - node: Mapping
         style: Plain
         tag: '!!map'
         content:
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: list
-        - kind: Sequence
+        - node: Sequence
           style: Plain
           tag: '!!seq'
           content:
-          - kind: Mapping
+          - node: Mapping
             style: Plain
             tag: '!!map'
             content:
-            - kind: Scalar
+            - node: Scalar
               style: Plain
               tag: '!!str'
               value: nested
-            - kind: Mapping
+            - node: Mapping
               style: Plain
               tag: '!!map'
               content:
-              - kind: Scalar
+              - node: Scalar
                 style: Plain
                 tag: '!!str'
                 value: item
-              - kind: Scalar
+              - node: Scalar
                 style: Plain
                 tag: '!!str'
                 value: value2
@@ -453,44 +453,44 @@
       - line: '# line3'
         plain: val
   NODE: |
-    - kind: Document
+    - node: Document
       foot: '# foot1'
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         anchor: anchor1
         tag: '!!str'
         head: '# head1'
         line: '# line1'
         value: value1
-    - kind: Document
+    - node: Document
       foot: '# foot2'
       content:
-      - kind: Sequence
+      - node: Sequence
         style: Plain
         anchor: anchor2
         tag: '!!seq'
         content:
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           head: '# head2'
           line: '# line2'
           value: item
-    - kind: Document
+    - node: Document
       content:
-      - kind: Mapping
+      - node: Mapping
         style: Plain
         anchor: anchor3
         tag: '!!map'
         content:
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           head: '# head3'
           foot: '# foot3'
           value: key
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           line: '# line3'
@@ -511,27 +511,27 @@
     - plain: 'true'
     - plain: 'null'
   NODE: |
-    - kind: Document
+    - node: Document
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!int'
         value: '42'
-    - kind: Document
+    - node: Document
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!float'
         value: '3.14'
-    - kind: Document
+    - node: Document
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!bool'
         value: 'true'
-    - kind: Document
+    - node: Document
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!null'
         value: 'null'
@@ -549,31 +549,31 @@
       - plain: item1
       - plain: item2
   NODE: |
-    - kind: Document
+    - node: Document
       content:
-      - kind: Mapping
+      - node: Mapping
         style: Flow
         tag: '!!map'
         content:
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: key1
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: value1
-    - kind: Document
+    - node: Document
       content:
-      - kind: Sequence
+      - node: Sequence
         style: Flow
         tag: '!!seq'
         content:
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: item1
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
           value: item2
