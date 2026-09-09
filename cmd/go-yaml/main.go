@@ -499,12 +499,14 @@ func main() {
 			target, profuse = stageToken, *tokenProfuseMode
 		case *eventMode, *eventProfuseMode:
 			target, profuse = stageEvent, *eventProfuseMode
-		case *nodeMode, *nodeProfuseMode, *longMode:
+		case *nodeMode, *nodeProfuseMode:
 			target, profuse = stageNode, *nodeProfuseMode
 		case *yamlMode, *yamlPreserveMode:
 			target = stageYAML
 		case *jsonMode, *jsonPrettyMode:
 			log.Fatal("JSON output is only supported for YAML text input")
+		case *longMode:
+			target = stageNode
 		default:
 			log.Fatal("No output stage specified")
 		}

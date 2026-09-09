@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -52,6 +53,68 @@ func TestRejectRetiredNodeKey(t *testing.T) {
 	input, err := detectStructuredInput([]byte("kind: Scalar\nvalue: old\n"), "")
 	if err != nil || input.stage != stageYAML {
 		t.Fatalf("ordinary YAML should remain YAML: %v", err)
+	}
+}
+
+func TestLongOutputStage(t *testing.T) {
+	const source = "foo: bar\n"
+	for _, stage := range []string{"-t", "-e", "-N"} {
+		generate := exec.Command(testBinary, stage)
+		generate.Stdin = strings.NewReader(source)
+		contract, err := generate.Output()
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, flag := range []string{"-y", "-Y", "--yaml", "--YAML"} {
+			t.Run(stage+"/"+flag, func(t *testing.T) {
+				cmd := exec.Command(testBinary, flag, "-l")
+				cmd.Stdin = bytes.NewReader(contract)
+				output, err := cmd.CombinedOutput()
+				if err != nil || string(output) != source {
+					t.Fatalf("expected YAML output, got %s (error: %v)", output, err)
+				}
+			})
+		}
+		for _, flag := range []string{"-j", "-J"} {
+			t.Run(stage+"/"+flag, func(t *testing.T) {
+				cmd := exec.Command(testBinary, flag, "-l")
+				cmd.Stdin = bytes.NewReader(contract)
+				output, err := cmd.CombinedOutput()
+				if err == nil || !strings.Contains(string(output),
+					"JSON output is only supported for YAML text input") {
+					t.Fatalf("expected JSON rejection, got %s (error: %v)", output, err)
+				}
+			})
+		}
+		cmd := exec.Command(testBinary, "-l")
+		cmd.Stdin = bytes.NewReader(contract)
+		output, err := cmd.CombinedOutput()
+		if err != nil || string(output) != "mapping:\n- plain: foo\n- plain: bar\n" {
+			t.Fatalf("expected default node output, got %s (error: %v)", output, err)
+		}
+	}
+}
+
+func TestLongEventFormatting(t *testing.T) {
+	cmd := exec.Command(testBinary, "-e")
+	cmd.Stdin = strings.NewReader("foo: bar\n")
+	compact, err := cmd.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, input := range []string{"foo: bar\n", string(compact)} {
+		cmd := exec.Command(testBinary, "-e", "-l")
+		cmd.Stdin = strings.NewReader(input)
+		output, err := cmd.CombinedOutput()
+		if err != nil || !bytes.HasPrefix(output, []byte("- event: STREAM-START\n")) {
+			t.Fatalf("expected block event output, got %s (error: %v)", output, err)
+		}
+		cmd = exec.Command(testBinary, "-Y")
+		cmd.Stdin = bytes.NewReader(output)
+		output, err = cmd.CombinedOutput()
+		if err != nil || string(output) != "foo: bar\n" {
+			t.Fatalf("event round trip failed: %s (error: %v)", output, err)
+		}
 	}
 }
 
