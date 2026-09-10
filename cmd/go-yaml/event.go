@@ -28,6 +28,7 @@ const (
 	EventSequenceEnd   EventType = "SEQUENCE-END"
 	EventMappingStart  EventType = "MAPPING-START"
 	EventMappingEnd    EventType = "MAPPING-END"
+	EventAlias         EventType = "ALIAS"
 	EventTailComment   EventType = "TAIL-COMMENT"
 )
 
@@ -534,7 +535,7 @@ func convertLibyamlEvent(ev *libyaml.Event, profuse bool) *Event {
 			event.Style = "Folded"
 		}
 	case libyaml.ALIAS_EVENT:
-		event.Type = "ALIAS"
+		event.Type = EventAlias
 		event.Anchor = string(ev.Anchor)
 	case libyaml.TAIL_COMMENT_EVENT:
 		event.Type = EventTailComment

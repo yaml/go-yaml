@@ -162,7 +162,7 @@ func validEventType(value string) bool {
 	switch EventType(value) {
 	case EventStreamStart, EventStreamEnd, EventDocumentStart, EventDocumentEnd,
 		EventScalar, EventSequenceStart, EventSequenceEnd, EventMappingStart,
-		EventMappingEnd, "ALIAS", EventTailComment:
+		EventMappingEnd, EventAlias, EventTailComment:
 		return true
 	default:
 		return false
@@ -619,7 +619,7 @@ func eventContractToLibyaml(infos []*EventInfo) ([]libyaml.Event, error) {
 				implicit, parseMappingStyle(info.Style))
 		case EventMappingEnd:
 			event = libyaml.NewMappingEndEvent()
-		case "ALIAS":
+		case EventAlias:
 			event = libyaml.NewAliasEvent([]byte(info.Anchor))
 		case EventTailComment:
 			event = libyaml.Event{Type: libyaml.TAIL_COMMENT_EVENT}

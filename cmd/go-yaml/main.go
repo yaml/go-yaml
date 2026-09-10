@@ -409,6 +409,7 @@ func main() {
 	}
 
 	flag.Parse()
+	compact := !*longMode // compact is default, long mode negates it
 
 	// Validate flag combinations
 
@@ -511,7 +512,7 @@ func main() {
 			log.Fatal("No output stage specified")
 		}
 		if err := processStructuredInput(structured, target, profuse,
-			!*longMode, *yamlPreserveMode, opts); err != nil {
+			compact, *yamlPreserveMode, opts); err != nil {
 			log.Fatal("Failed to process structured input:", err)
 		}
 		return
@@ -521,25 +522,21 @@ func main() {
 	// Process YAML input
 	if *eventMode {
 		// Use event formatting mode (compact by default)
-		compact := !*longMode // compact is default, long mode negates it
 		if err := ProcessEvents(input, false, compact, unmarshalMode); err != nil {
 			log.Fatal("Failed to process events:", err)
 		}
 	} else if *eventProfuseMode {
 		// Use event formatting mode with profuse output
-		compact := !*longMode // compact is default, long mode negates it
 		if err := ProcessEvents(input, true, compact, unmarshalMode); err != nil {
 			log.Fatal("Failed to process events:", err)
 		}
 	} else if *tokenMode {
 		// Use token formatting mode (compact by default)
-		compact := !*longMode // compact is default, long mode negates it
 		if err := ProcessTokens(input, false, compact, unmarshalMode); err != nil {
 			log.Fatal("Failed to process tokens:", err)
 		}
 	} else if *tokenProfuseMode {
 		// Use token formatting mode with profuse output
-		compact := !*longMode // compact is default, long mode negates it
 		if err := ProcessTokens(input, true, compact, unmarshalMode); err != nil {
 			log.Fatal("Failed to process tokens:", err)
 		}
