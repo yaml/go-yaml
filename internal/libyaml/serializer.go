@@ -215,8 +215,10 @@ func (s *Serializer) node(node *Node, tail string) {
 			style = LITERAL_SCALAR_STYLE
 		case node.Style&FoldedStyle != 0:
 			style = FOLDED_SCALAR_STYLE
-		case strings.Contains(value, "\n"):
+		case shouldUseLiteralStyle(value):
 			style = LITERAL_SCALAR_STYLE
+		case strings.Contains(value, "\n"):
+			style = DOUBLE_QUOTED_SCALAR_STYLE
 		case forceQuoting:
 			style = s.quotePreference.ScalarStyle()
 		}
