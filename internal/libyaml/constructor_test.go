@@ -7,6 +7,7 @@
 package libyaml
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"testing"
@@ -82,7 +83,7 @@ func TestCallLegacyConstructorWrappedErrorNoCycle(t *testing.T) {
 	c := NewConstructor(&Options{})
 	n := &Node{Kind: ScalarNode, Tag: strTag, Value: "not-an-object", Line: 1, Column: 1}
 
-	good := c.callLegacyConstructor(n, wrappingLegacyConstructor{})
+	good := c.callLegacyConstructor(context.Background(), n, wrappingLegacyConstructor{})
 	assert.False(t, good)
 	assert.NotNil(t, &c.TypeErrors)
 	if len(c.TypeErrors) == 0 {

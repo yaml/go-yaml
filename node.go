@@ -47,7 +47,27 @@ type (
 
 	// Unmarshaler is the interface implemented by types that can unmarshal
 	// a YAML description of themselves.
+	// You can implement this interface on a struct to customize how it is
+	// unmarshaled from a YAML document.
+	//
+	// The UnmarshalYAML method will be called with a pointer to the Node
+	// representing the YAML data for that struct, allowing you to access
+	// the raw data and perform custom unmarshaling logic.
 	Unmarshaler = libyaml.Unmarshaler
+
+	// UnmarshalerContext is the interface implemented by types that can unmarshal
+	// a YAML description of themselves with context.
+	//
+	// You can provide a context by using [LoadContext], [UnmarshalContext], [Decoder.DecodeContext], or [Node.DecodeContext]
+	// to pass a context to your unmarshaling process.
+	//
+	// The UnmarshalYAML method will be called with the provided context, allowing you to access it during unmarshaling.
+	// If you don't need to use a context, you can simply implement the [Unmarshaler] interface instead.
+	//
+	// If a type implements [UnmarshalerContext] and you call a method that doesn't accept a context,
+	// such as [Load], [Unmarshal], [Decoder.Decode], or [Node.Decode], the [UnmarshalerContext] method
+	// will receive [context.Background] instead.
+	UnmarshalerContext = libyaml.UnmarshalerContext
 
 	// IsZeroer is used to check whether an object is zero to determine whether
 	// it should be omitted when marshaling with the ,omitempty flag.
