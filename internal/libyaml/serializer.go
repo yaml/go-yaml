@@ -215,8 +215,13 @@ func (s *Serializer) node(node *Node, tail string) {
 			style = LITERAL_SCALAR_STYLE
 		case node.Style&FoldedStyle != 0:
 			style = FOLDED_SCALAR_STYLE
-		case strings.Contains(value, "\n"):
+		case shouldUseLiteralStyle(value):
 			style = LITERAL_SCALAR_STYLE
+		case strings.Contains(value, "\n"):
+			// Multiline but not literal-eligible (e.g. first content line
+			// starts with a tab): a block scalar would not round-trip, so
+			// emit a double-quoted scalar instead.
+			style = DOUBLE_QUOTED_SCALAR_STYLE
 		case forceQuoting:
 			style = s.quotePreference.ScalarStyle()
 		}

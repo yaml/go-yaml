@@ -2739,6 +2739,78 @@ func TestSetIndent(t *testing.T) {
 	assert.Equal(t, "a:\n        b:\n                c: d\n", buf.String())
 }
 
+// A block scalar whose first non-empty line is indented needs an explicit
+// indentation indicator, and that indicator is relative to the parent node's
+// indentation, not BestIndent.
+// This covers both the missing-indicator case (a leading empty line followed
+// by indented content) and the wrong-value case (a scalar nested in a block
+// sequence item, which only adds two columns of indentation).
+// See https://github.com/yaml/go-yaml/issues/76
+// and https://github.com/go-yaml/yaml/issues/1071
+func TestBlockScalarIndentIndicatorRoundTrip(t *testing.T) {
+	type params struct {
+		Description string `yaml:"description"`
+	}
+	type spec struct {
+		Parameters []params `yaml:"parameters"`
+	}
+
+	// Includes indents at and beyond the 1..9 indicator range (9, 10) to
+	// cover clamping of the indentation indicator.
+	for _, indent := range []int{0, 1, 2, 3, 4, 8, 9, 10} {
+		for _, description := range []string{
+			"  a\nb",
+			"     a\nb",
+			" a\n      b",
+			"\n  indented\nregular",
+			"\n\n  more indented\nregular",
+		} {
+			in := spec{Parameters: []params{{Description: description}}}
+
+			var buf bytes.Buffer
+			enc := yaml.NewEncoder(&buf)
+			if indent > 0 {
+				enc.SetIndent(indent)
+			}
+			assert.NoError(t, enc.Encode(&in))
+			assert.NoError(t, enc.Close())
+
+			var out spec
+			err := yaml.Unmarshal(buf.Bytes(), &out)
+			assert.NoErrorf(
+				t, err, "indent %d, encoded as:\n%s", indent, buf.String())
+			assert.DeepEqualf(
+				t, in, out, "indent %d, encoded as:\n%s", indent, buf.String())
+		}
+	}
+}
+
+// A multiline scalar whose first content line begins with a tab cannot be
+// expressed as a block scalar (block indentation is spaces only), so it must
+// be emitted double-quoted and still round-trip exactly.
+// See https://github.com/yaml/go-yaml/issues/383
+func TestTabLeadingScalarRoundTrip(t *testing.T) {
+	type doc struct {
+		Text string `yaml:"text"`
+	}
+
+	for _, text := range []string{
+		"\tthis\nis\nmultiline",
+		"\tB\n\tC\n",
+		"\n\tindented by tab\nregular",
+		"first\n\tsecond\n", // tab on a later line: stays literal
+	} {
+		in := doc{Text: text}
+		out, err := yaml.Marshal(&in)
+		assert.NoError(t, err)
+
+		var back doc
+		assert.NoErrorf(t, yaml.Unmarshal(out, &back),
+			"encoded as:\n%s", out)
+		assert.DeepEqualf(t, in, back, "encoded as:\n%s", out)
+	}
+}
+
 func TestSortedOutput(t *testing.T) {
 	order := []any{
 		false,
@@ -2984,27 +3056,27 @@ func TestScalarStyleWithTabs(t *testing.T) {
 		},
 		{
 			"\tThis starts with tab\nand is long enough\nfor literal style",
-			"|-\n    \tThis starts with tab\n    and is long enough\n    for literal style\n",
+			"\"\\tThis starts with tab\\nand is long enough\\nfor literal style\"\n",
 			"Multiline starting with tab",
 		},
 		{
 			"\tB\n\tC\n",
-			"|\n    \tB\n    \tC\n",
+			"\"\\tB\\n\\tC\\n\"\n",
 			"Tab B newline tab C newline",
 		},
 		{
 			"\ta\n",
-			"|\n    \ta\n",
+			"\"\\ta\\n\"\n",
 			"Tab + char + newline",
 		},
 		{
 			"\thello\n",
-			"|\n    \thello\n",
+			"\"\\thello\\n\"\n",
 			"Tab + text + newline",
 		},
 		{
 			"\t\nhello",
-			"|-\n    \t\n    hello\n",
+			"\"\\t\\nhello\"\n",
 			"Tab + newline + text",
 		},
 	}
