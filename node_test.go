@@ -160,8 +160,9 @@ func TestSetString(t *testing.T) {
 
 			buf := bytes.Buffer{}
 			enc := yaml.NewEncoder(&buf)
-			enc.SetIndent(2)
-			err := enc.Encode(&item.node)
+			err := enc.SetIndent(2)
+			assert.NoError(t, err)
+			err = enc.Encode(&item.node)
 			assert.NoError(t, err)
 			err = enc.Close()
 			assert.NoError(t, err)
@@ -309,7 +310,9 @@ func nodeRoundTrip(t *testing.T, src []byte, indent int) []byte {
 	}
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
-	enc.SetIndent(indent)
+	if err := enc.SetIndent(indent); err != nil {
+		t.Fatalf("SetIndent: %v", err)
+	}
 	if err := enc.Encode(&n); err != nil {
 		t.Fatalf("Encode Node: %v", err)
 	}
@@ -601,8 +604,9 @@ func runNodeTestCase(t *testing.T, tc map[string]any) {
 		// Encode the expected node with 2-space indent
 		buf := bytes.Buffer{}
 		enc := yaml.NewEncoder(&buf)
-		enc.SetIndent(2)
-		err := enc.Encode(expectedNode)
+		err := enc.SetIndent(2)
+		assert.NoError(t, err)
+		err = enc.Encode(expectedNode)
 		assert.NoError(t, err)
 		err = enc.Close()
 		assert.NoError(t, err)

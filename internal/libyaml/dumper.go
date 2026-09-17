@@ -134,12 +134,16 @@ func (d *Dumper) Close() (err error) {
 
 // SetIndent changes the indentation used when encoding.
 // This is used by the legacy Encoder.SetIndent() method.
-func (d *Dumper) SetIndent(spaces int) {
+// A negative number of spaces is rejected with an error so callers can
+// handle invalid input without a panic.
+func (d *Dumper) SetIndent(spaces int) error {
 	if spaces < 0 {
-		failDumpf(SerializerStage, "cannot indent to a negative number of spaces")
+		return NewDumpError(SerializerStage,
+			"cannot indent to a negative number of spaces", nil)
 	}
 	// Set on serializer's emitter
 	d.serializer.Emitter.BestIndent = spaces
+	return nil
 }
 
 // SetCompactSeqIndent controls whether '- ' is considered part of the indentation.

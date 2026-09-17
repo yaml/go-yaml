@@ -634,9 +634,11 @@ func (e *Encoder) Encode(v any) error {
 	return e.dumper.Dump(v)
 }
 
-// SetIndent changes the used indentation used when encoding.
-func (e *Encoder) SetIndent(spaces int) {
-	e.dumper.SetIndent(spaces)
+// SetIndent changes the indentation used when encoding.
+// A negative number of spaces is rejected with an error so callers can
+// handle invalid input without a panic.
+func (e *Encoder) SetIndent(spaces int) error {
+	return e.dumper.SetIndent(spaces)
 }
 
 // CompactSeqIndent makes it so that '- ' is considered part of the indentation.
