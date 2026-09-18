@@ -726,6 +726,12 @@ func withFromLegacy() Option {
 //	             method (see the IsZeroer interface type), in which
 //	             case the field will be excluded if IsZero returns true.
 //
+//	omitzero     Same as omitempty. Accepted so structs that share
+//	             encoding/json tags (Go 1.24+) can be marshaled and
+//	             unmarshaled without panicking on an unknown flag.
+//	             Types with an IsZero() bool method are already
+//	             honored by omitempty.
+//
 //	flow         Marshal using a flow style (useful for structs,
 //	             sequences and maps).
 //

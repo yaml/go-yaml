@@ -5,7 +5,7 @@
 // Struct metadata extraction for YAML marshaling/unmarshaling.
 //
 // This file analyzes Go struct types to build mappings between YAML keys and
-// struct fields. It parses struct tags like `yaml:"name,omitempty,flow,inline"`
+// struct fields. It parses struct tags like `yaml:"name,omitempty,omitzero,flow,inline"`
 // and caches the results for efficient repeated access.
 //
 // Used by:
@@ -157,7 +157,7 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 		if len(fields) > 1 {
 			for _, flag := range fields[1:] {
 				switch flag {
-				case "omitempty":
+				case "omitempty", "omitzero":
 					info.OmitEmpty = true
 				case "flow":
 					info.Flow = true
