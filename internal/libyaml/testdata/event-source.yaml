@@ -1,0 +1,27 @@
+# Invalid event streams must fail before reaching the recursive composer.
+- name: Missing stream start
+  types: [scalar, stream_end]
+- name: Missing stream end
+  types: [stream_start]
+- name: Duplicate stream start
+  types: [stream_start, stream_start, stream_end]
+- name: Trailing events
+  types: [stream_start, stream_end, stream_end]
+- name: Node outside document
+  types: [stream_start, scalar, stream_end]
+- name: Empty document
+  types: [stream_start, document_start, document_end, stream_end]
+- name: Two document roots
+  types: [stream_start, document_start, scalar, scalar, document_end, stream_end]
+- name: Odd mapping
+  types: [stream_start, document_start, mapping_start, scalar, mapping_end,
+    document_end, stream_end]
+- name: Wrong collection end
+  types: [stream_start, document_start, sequence_start, mapping_end,
+    document_end, stream_end]
+- name: Premature stream end
+  types: [stream_start, document_start, sequence_start, stream_end]
+- name: Unknown event
+  types: [stream_start, document_start, mystery, document_end, stream_end]
+- name: Alias without name
+  types: [stream_start, document_start, alias, document_end, stream_end]

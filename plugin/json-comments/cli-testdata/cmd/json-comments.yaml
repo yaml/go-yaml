@@ -1,0 +1,63 @@
+- name: JSON comments selected by flag
+  cmd: >-
+    printf 'a: true // comment\n' | go-yaml --plugin=json-comments -j
+  out: '{"a":true}'
+- name: JSON comments implementation selected by flag
+  cmd: >-
+    printf 'a: true // comment\n' |
+    go-yaml --plugin=json-comments=json-comments -j
+  out: '{"a":true}'
+- name: JSON comments selected by config
+  cmd: >-
+    printf 'a: true // comment\n' |
+    go-yaml -C testdata/json-comments-config.yml -j
+  out: '{"a":true}'
+- name: Events use the selected event source
+  cmd: >-
+    printf 'true// comment\n' | go-yaml --plugin=json-comments -e
+  out: |
+    - {event: STREAM-START, encoding: UTF-8}
+    - {event: DOCUMENT-START, implicit: true}
+    - {event: SCALAR, value: true, implicit: true, quoted-implicit: true}
+    - {event: DOCUMENT-END, implicit: true}
+    - {event: STREAM-END}
+- name: No invented event positions
+  cmd: >-
+    printf 'true// comment\n' | go-yaml --plugin=json-comments -E
+  out: |
+    - {event: STREAM-START, encoding: UTF-8}
+    - {event: DOCUMENT-START, implicit: true}
+    - {event: SCALAR, value: true, style: Plain, implicit: true, quoted-implicit: true}
+    - {event: DOCUMENT-END, implicit: true}
+    - {event: STREAM-END}
+- name: YAML output
+  cmd: >-
+    printf 'a: true // comment\n' | go-yaml --plugin=json-comments -y
+  out: 'a: true'
+- name: Multiple documents
+  cmd: >-
+    printf '%s\n' '--- true// first' '--- false' | go-yaml --plugin=json-comments -j
+  out: |
+    true
+    false
+- name: Token mode rejects event-source plugin
+  cmd: >-
+    if printf 'true// comment\n' | go-yaml --plugin=json-comments -t
+    2>testdata/rejection.err; then exit 1; else
+    perl -ne '$found ||= /event-source plugins are not supported/; END {exit !$found}'
+    testdata/rejection.err && printf 'rejected\n'; fi
+  out: rejected
+- name: Legacy mode rejects event-source plugin
+  cmd: >-
+    if printf 'true// comment\n' | go-yaml --plugin=json-comments -j --unmarshal
+    2>testdata/rejection.err; then exit 1; else
+    perl -ne '$found ||= /event-source plugins are not supported/; END {exit !$found}'
+    testdata/rejection.err && printf 'rejected\n'; fi
+  out: rejected
+- name: Node output uses the selected event source
+  cmd: >-
+    printf 'a: true // comment\n' | go-yaml --plugin=json-comments -n
+  out: |
+    mapping:
+    - plain: a
+    - plain: 'true'

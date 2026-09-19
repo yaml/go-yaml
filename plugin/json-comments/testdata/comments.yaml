@@ -1,0 +1,80 @@
+- name: JSON token boundaries
+  input: |
+    [null// c
+    ,true/* c */,false// c
+    ,-20/* c */,1.25// c
+    ,1e3/* c */]
+  want: '[null, true, false, -20, 1.25, 1e3]'
+- name: Plain scalars and URLs
+  input: |
+    a: true// comment
+    b: foo// not a comment
+    c: foo // comment
+    d: http://example.com
+    e: True// text
+    f: 01// text
+    g: nullish/* text */
+  want: |
+    a: true
+    b: foo// not a comment
+    c: foo
+    d: http://example.com
+    e: True// text
+    f: 01// text
+    g: nullish/* text */
+- name: Quoted and block scalars
+  input: |
+    double: "http://example.com/* path */"
+    single: '// text /* text */'
+    literal: | // header
+      // line
+      /* block */
+    folded: >
+      // still content
+  want: |
+    double: "http://example.com/* path */"
+    single: '// text /* text */'
+    literal: |
+      // line
+      /* block */
+    folded: >
+      // still content
+- name: Nested flow collections
+  input: |
+    {// before
+    "a":1,/* comma */"b":[true// value
+    ,false],"c":{/* nested */"d":null}}
+  want: '{a: 1, b: [true, false], c: {d: null}}'
+- name: Tags and aliases
+  input: |
+    base: &base [!!str 1, !custom value] // base
+    alias: *base /* reuse */
+  want: |
+    base: &base [!!str 1, !custom value]
+    alias: *base
+- name: Unicode and CRLF
+  input: "a: true// 注\r\nb: false/* λ\nμ */\r\n"
+  want: '{a: true, b: false}'
+- name: Document boundaries
+  input: |
+    --- true// first
+    .../* between */
+    --- false
+  want: |
+    --- true
+    ...
+    --- false
+- name: Empty input
+  input: ''
+  want: ''
+- name: Comments only
+  input: |
+    // no document
+    /* no document */
+  want: ''
+- name: Unterminated comment
+  input: 'a: true/* unterminated'
+  error: Unterminated block comment
+- name: Invalid YAML
+  input: '[1, 2'
+  error: parse

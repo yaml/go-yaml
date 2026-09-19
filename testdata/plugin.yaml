@@ -41,6 +41,32 @@
     want: 'go-yaml load error in scanner (while increasing flow level) at L1.C6: exceeded max depth of 5'
 
 - plugin-pass:
+    name: disabled limit mapping ignores depth 3
+    plugin:
+      limit:
+        depth: 3
+        alias: 100
+        disable: true
+    data:
+      join:
+      - loop: ['[', 20]
+      - text: 'x'
+      - loop: [']', 20]
+
+- plugin-error:
+    name: enabled limit mapping enforces depth 3
+    plugin:
+      limit:
+        depth: 3
+        disable: false
+    data:
+      join:
+      - loop: ['[', 20]
+      - text: 'x'
+      - loop: [']', 20]
+    want: 'go-yaml load error in scanner (while increasing flow level) at L1.C4: exceeded max depth of 3'
+
+- plugin-pass:
     name: depth null disables depth checking (10001 nesting)
     plugin:
       limit:
@@ -86,9 +112,9 @@
       - loop: ["- *anchor\n", 200]
 
 - plugin-pass:
-    name: default limits (bare limits key)
+    name: default limits (true limits key)
     plugin:
-      limit:
+      limit: true
     data:
       join:
       - loop: ['[', 20]
@@ -98,7 +124,7 @@
 - plugin-error:
     name: default limits reject deep nesting (10001)
     plugin:
-      limit:
+      limit: true
     data:
       join:
       - loop: ['[', 10001]

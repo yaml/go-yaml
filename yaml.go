@@ -277,6 +277,7 @@ type DepthContext = libyaml.DepthContext
 // Each plugin implements one or more plugin interfaces.
 // Currently supported plugin types:
 //   - LimitPlugin: Controls depth and alias expansion limits
+//   - EventSourcePlugin: Supplies a complete YAML event stream
 //
 // Example:
 //
@@ -293,7 +294,13 @@ func WithPlugin(plugins ...any) Option {
 				o.AliasCheck = lp.CheckAlias
 				registered = true
 			}
-			// Future plugin types add cases here (non-exclusive if)
+			if source, ok := p.(EventSourcePlugin); ok {
+				if o.EventSource != nil {
+					return errors.New("yaml: multiple event-source plugins")
+				}
+				o.EventSource = source
+				registered = true
+			}
 			if !registered {
 				return fmt.Errorf("yaml: unsupported plugin type: %T", p)
 			}
@@ -318,10 +325,16 @@ func WithPlugin(plugins ...any) Option {
 // - known-fields (bool)
 // - single-document (bool)
 // - unique-keys (bool)
-// - plugin (map of plugin name to config)
+// - plugin (map of plugin API to config)
 //
-// The plugin field configures plugins by name. Each key is a plugin
-// name and the value is its configuration map (or null for defaults).
+// The plugin field configures plugins by API. Each value is a configuration
+// map, true for the default implementation, or false to leave the plugin
+// disabled. A map may select an implementation with "name" and require its
+// exact release with "version". Versions may include a leading "v".
+// A map may contain "disable": true to leave the plugin disabled.
+// The "name", "version", and "disable" host fields are not passed to the
+// plugin factory. "disable": false keeps the plugin enabled.
+// Null plugin values are invalid.
 // Currently supported: "limit" with keys "depth" and "alias" (int
 // or null to disable).
 //
@@ -340,22 +353,32 @@ func WithPlugin(plugins ...any) Option {
 //	yaml.Dump(&data, yaml.Options(V4, opts))
 func OptsYAML(yamlStr string) (Option, error) {
 	var cfg struct {
-		Indent                *int           `yaml:"indent"`
-		CompactSeqIndent      *bool          `yaml:"compact-seq-indent"`
-		LineWidth             *int           `yaml:"line-width"`
-		Unicode               *bool          `yaml:"unicode"`
-		Canonical             *bool          `yaml:"canonical"`
-		LineBreak             *string        `yaml:"line-break"`
-		ExplicitStart         *bool          `yaml:"explicit-start"`
-		ExplicitEnd           *bool          `yaml:"explicit-end"`
-		FlowSimpleCollections *bool          `yaml:"flow-simple-coll"`
-		KnownFields           *bool          `yaml:"known-fields"`
-		SingleDocument        *bool          `yaml:"single-document"`
-		UniqueKeys            *bool          `yaml:"unique-keys"`
-		Plugin                map[string]any `yaml:"plugin"`
+		Indent                *int    `yaml:"indent"`
+		CompactSeqIndent      *bool   `yaml:"compact-seq-indent"`
+		LineWidth             *int    `yaml:"line-width"`
+		Unicode               *bool   `yaml:"unicode"`
+		Canonical             *bool   `yaml:"canonical"`
+		LineBreak             *string `yaml:"line-break"`
+		ExplicitStart         *bool   `yaml:"explicit-start"`
+		ExplicitEnd           *bool   `yaml:"explicit-end"`
+		FlowSimpleCollections *bool   `yaml:"flow-simple-coll"`
+		KnownFields           *bool   `yaml:"known-fields"`
+		SingleDocument        *bool   `yaml:"single-document"`
+		UniqueKeys            *bool   `yaml:"unique-keys"`
+		Plugin                Node    `yaml:"plugin"`
 	}
 	if err := Load([]byte(yamlStr), &cfg, WithKnownFields()); err != nil {
 		return nil, err
+	}
+	var plugins map[string]any
+	switch cfg.Plugin.Kind {
+	case 0:
+	case MappingNode:
+		if err := cfg.Plugin.Load(&plugins); err != nil {
+			return nil, err
+		}
+	default:
+		return nil, errors.New("yaml: plugin configuration must be a mapping")
 	}
 
 	// Build options only for fields that were set
@@ -406,26 +429,41 @@ func OptsYAML(yamlStr string) (Option, error) {
 		}
 	}
 
-	for name, val := range cfg.Plugin {
-		switch name {
-		case "limit":
-			var cfgMap map[string]any
-			switch v := val.(type) {
-			case nil:
-				cfgMap = map[string]any{}
-			case map[string]any:
-				cfgMap = v
-			default:
-				return nil, fmt.Errorf("yaml: plugin %q value must be a mapping or null", name)
+	for name, val := range plugins {
+		var cfgMap map[string]any
+		switch v := val.(type) {
+		case bool:
+			if !v {
+				continue
 			}
-			p, err := limit.NewFromYAML(cfgMap)
-			if err != nil {
-				return nil, err
+			cfgMap = map[string]any{}
+		case map[string]any:
+			cfgMap = v
+			if raw, found := v["disable"]; found {
+				disabled, ok := raw.(bool)
+				if !ok {
+					return nil, fmt.Errorf(
+						"yaml: plugin %q disable must be a boolean", name)
+				}
+				if disabled {
+					continue
+				}
+				cfgMap = make(map[string]any, len(v)-1)
+				for key, value := range v {
+					if key != "disable" {
+						cfgMap[key] = value
+					}
+				}
 			}
-			optList = append(optList, WithPlugin(p))
 		default:
-			return nil, fmt.Errorf("yaml: unknown plugin %q", name)
+			return nil, fmt.Errorf(
+				"yaml: plugin %q value must be a mapping or boolean", name)
 		}
+		p, err := namedPlugin(name, cfgMap)
+		if err != nil {
+			return nil, err
+		}
+		optList = append(optList, WithPlugin(p))
 	}
 
 	return Options(optList...), nil
