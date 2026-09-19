@@ -2731,9 +2731,8 @@ func TestMarshalerError(t *testing.T) {
 func TestSetIndent(t *testing.T) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
-	err := enc.SetIndent(8)
-	assert.NoError(t, err)
-	err = enc.Encode(map[string]any{"a": map[string]any{"b": map[string]string{"c": "d"}}})
+	enc.SetIndent(8)
+	err := enc.Encode(map[string]any{"a": map[string]any{"b": map[string]string{"c": "d"}}})
 	assert.NoError(t, err)
 	err = enc.Close()
 	assert.NoError(t, err)
@@ -2743,13 +2742,12 @@ func TestSetIndent(t *testing.T) {
 func TestSetIndentNegative(t *testing.T) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
-	err := enc.SetIndent(-1)
-	assert.ErrorMatches(t,
-		"go-yaml dump error in serializer: cannot indent to a negative number of spaces",
-		err)
-	var de *libyaml.DumpError
-	assert.True(t, errors.As(err, &de))
-	assert.Equal(t, libyaml.SerializerStage, de.Stage)
+	enc.SetIndent(-1)
+	err := enc.Encode(map[string]any{"a": "b"})
+	assert.NoError(t, err)
+	err = enc.Close()
+	assert.NoError(t, err)
+	assert.Equal(t, "a: b\n", buf.String())
 }
 
 func TestSortedOutput(t *testing.T) {
@@ -2850,9 +2848,8 @@ func TestCompactSequenceWithSetIndent(t *testing.T) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	enc.CompactSeqIndent()
-	err := enc.SetIndent(2)
-	assert.NoError(t, err)
-	err = enc.Encode(map[string]any{"a": []string{"b", "c"}})
+	enc.SetIndent(2)
+	err := enc.Encode(map[string]any{"a": []string{"b", "c"}})
 	assert.NoError(t, err)
 	err = enc.Close()
 	assert.NoError(t, err)

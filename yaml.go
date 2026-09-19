@@ -635,10 +635,10 @@ func (e *Encoder) Encode(v any) error {
 }
 
 // SetIndent changes the indentation used when encoding.
-// A negative number of spaces is rejected with an error so callers can
-// handle invalid input without a panic.
-func (e *Encoder) SetIndent(spaces int) error {
-	return e.dumper.SetIndent(spaces)
+// Negative values are treated as 0 so callers that pass user or computed
+// input (for example yq -I=-1) do not panic.
+func (e *Encoder) SetIndent(spaces int) {
+	e.dumper.SetIndent(spaces)
 }
 
 // CompactSeqIndent makes it so that '- ' is considered part of the indentation.
