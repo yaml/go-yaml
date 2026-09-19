@@ -85,3 +85,74 @@ The tool reads YAML data from `stdin` and processes it based on the specified
 flags.
 It validates flag combinations and provides error messages for incompatible
 options.
+
+## JSON-comments plugin build
+
+From the repository root, run
+`make cli CONFIG=example/json-comments/options.yaml` to build `./go-yaml`
+with the plugins and defaults named in the options file.
+The example configuration enables JSON-comments.
+The build resolves the newest tagged JSON-comments Go release each time.
+
+```bash
+make cli CONFIG=example/json-comments/options.yaml
+./go-yaml -j example/json-comments/data.yaml
+```
+
+The plugin also works in node, YAML, and event output modes and can be selected
+through `-C` YAML configuration using `plugin: {json-comments: {}}`.
+Token output and legacy loading modes do not support event-source plugins.
+Input is buffered, comments are discarded, and source positions are unknown.
+Use `make cli` to restore the ordinary binary.
+
+## Build with embedded options
+
+`make cli CONFIG=FILE` compiles the plugins named in the file and embeds its
+contents as the CLI's default configuration.
+For example:
+
+```yaml
+indent: 4
+plugin:
+  limit:
+    depth: 50
+    alias: 100
+  json-comments: {}
+```
+
+```bash
+make cli CONFIG=example/json-comments/options.yaml
+printf 'a: true // comment\n' | ./go-yaml -j
+```
+
+The binary no longer needs the options file at runtime.
+Rebuild to pick up edits to the file.
+Missing files, invalid options, and unknown enabled plugin names fail the build
+without replacing the existing binary.
+Set a plugin to `true` for its defaults, `false` to leave it unselected,
+or a mapping for its settings.
+Any plugin mapping can include `disable: true` to leave it unselected while
+retaining its other settings.
+`disable: false` enables it and passes the other settings to the plugin.
+`json-comments: false` keeps its optional event source out of the build.
+Null plugin values are invalid.
+To select a specific JSON-comments release, use
+`json-comments: {version: 0.1.8}` instead of `true`.
+`version: v0.1.8` is also accepted.
+The version selects code at build time and remains in embedded defaults.
+The binary validates it against the linked release when loading options.
+The same file works with `-C`; a different version request fails.
+
+A runtime `-C other.yaml` replaces the entire embedded configuration.
+`-o` flags override the selected configuration's options.
+`--plugin=NAME` selects the default implementation with default settings.
+`--plugin=API=NAME` selects an implementation explicitly.
+Either form overrides configuration for the same API.
+Using `-C` with an empty mapping (`{}`) selects ordinary defaults; compiled
+plugins remain available through `--plugin`.
+
+A configured build containing only core options or `limit` does not link
+Glojure.
+For development against a local plugin checkout under
+`repos/yamlstar-plugin-json-comments`, set `JSON-COMMENTS-LOCAL=1`.
+`make cli` without `CONFIG` restores the ordinary CLI with no embedded options.

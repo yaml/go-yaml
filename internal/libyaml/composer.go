@@ -8,6 +8,7 @@
 package libyaml
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 )
@@ -15,6 +16,7 @@ import (
 // Composer produces a node tree out of a libyaml event stream.
 type Composer struct {
 	Parser       Parser
+	source       *EventReader
 	event        Event
 	doc          *Node
 	anchors      map[string]*Node
@@ -37,6 +39,9 @@ func NewComposer(b []byte, opts *Options) *Composer {
 		b = []byte{'\n'}
 	}
 	p.Parser.SetInputString(b)
+	if opts != nil && opts.EventSource != nil {
+		p.source = NewEventReader(bytes.NewReader(b), opts)
+	}
 	if opts != nil {
 		p.Parser.depthCheck = opts.DepthCheck
 	}
@@ -50,6 +55,9 @@ func NewComposerFromReader(r io.Reader, opts *Options) *Composer {
 		opts:   opts,
 	}
 	p.Parser.SetInputReader(r)
+	if opts != nil && opts.EventSource != nil {
+		p.source = NewEventReader(r, opts)
+	}
 	if opts != nil {
 		p.Parser.depthCheck = opts.DepthCheck
 	}
@@ -335,6 +343,9 @@ func (c *Composer) Destroy() {
 		c.event.Delete()
 	}
 	c.Parser.Delete()
+	if c.source != nil {
+		c.source.Delete()
+	}
 }
 
 // SetStreamNodes enables or disables stream node emission.
@@ -346,7 +357,7 @@ func (c *Composer) SetStreamNodes(enable bool) {
 // checks that it's of the expected type.
 func (c *Composer) expect(e EventType) {
 	if c.event.Type == NO_EVENT {
-		if err := c.Parser.Parse(&c.event); err != nil {
+		if err := c.nextEvent(); err != nil {
 			c.fail(err)
 		}
 	}
@@ -375,7 +386,7 @@ func (c *Composer) peek() EventType {
 	// It's curious choice from the underlying API to generally return a
 	// positive result on success, but on this case return true in an error
 	// scenario. This was the source of bugs in the past (issue #666).
-	if err := c.Parser.Parse(&c.event); err != nil {
+	if err := c.nextEvent(); err != nil {
 		c.fail(err)
 	}
 	return c.event.Type
@@ -453,4 +464,11 @@ func formatComposerErrorContext(context string, contextMark Mark, message string
 		Mark:        mark,
 		Message:     message,
 	}
+}
+
+func (c *Composer) nextEvent() error {
+	if c.source != nil {
+		return c.source.Parse(&c.event)
+	}
+	return c.Parser.Parse(&c.event)
 }

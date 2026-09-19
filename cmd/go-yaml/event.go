@@ -74,15 +74,15 @@ type EventInfo struct {
 }
 
 // ProcessEvents reads YAML from reader and outputs event information
-func ProcessEvents(reader io.Reader, profuse, compact, unmarshal bool) error {
+func ProcessEvents(reader io.Reader, profuse, compact, unmarshal bool, opts ...yaml.Option) error {
 	if unmarshal {
 		return processEventsUnmarshal(reader, profuse, compact)
 	}
-	return processEventsDecode(reader, profuse, compact)
+	return processEventsDecode(reader, profuse, compact, opts...)
 }
 
 // processEventsDecode uses libyaml.Parser.Parse for YAML processing
-func processEventsDecode(reader io.Reader, profuse, compact bool) error {
+func processEventsDecode(reader io.Reader, profuse, compact bool, opts ...yaml.Option) error {
 	// Read all input from reader
 	input, err := io.ReadAll(reader)
 	if err != nil {
@@ -90,7 +90,7 @@ func processEventsDecode(reader io.Reader, profuse, compact bool) error {
 	}
 
 	// Get events from parser directly
-	events, err := getEventsFromParser(input, profuse)
+	events, err := getEventsFromParser(input, profuse, opts...)
 	if err != nil {
 		return err
 	}
@@ -400,7 +400,7 @@ func formatEventInfo(event *Event, profuse bool) *EventInfo {
 	if event.TailComment != "" {
 		info.Tail = event.TailComment
 	}
-	if profuse {
+	if profuse && event.StartLine > 0 {
 		if event.StartLine == event.EndLine && event.StartColumn == event.EndColumn {
 			// Single position
 			info.Pos = fmt.Sprintf("%d:%d", event.StartLine, event.StartColumn)
@@ -429,12 +429,16 @@ func formatEventInfo(event *Event, profuse bool) *EventInfo {
 }
 
 // getEventsFromParser parses YAML input and extracts events with implicit field information
-func getEventsFromParser(input []byte, profuse bool) ([]*Event, error) {
-	p := libyaml.NewParser()
+func getEventsFromParser(input []byte, profuse bool, opts ...yaml.Option) ([]*Event, error) {
+	options, err := libyaml.ApplyOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
 	if len(input) == 0 {
 		input = []byte{'\n'}
 	}
-	p.SetInputString(input)
+	p := libyaml.NewEventReader(bytes.NewReader(input), options)
+	defer p.Delete()
 
 	var events []*Event
 	var ev libyaml.Event

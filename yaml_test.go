@@ -143,7 +143,7 @@ func TestTextUnmarshalerWithYAMLUnmarshaler(t *testing.T) {
 	var target textUnmarshalerWithYAMLUnmarshaler
 	const input = `[foo, bar]`
 
-	// NOTE: also verified with [yaml.Unmarshal] — no shortcut bypasses
+	// NOTE: also verified with [yaml.Unmarshal]; no shortcut bypasses
 	// Constructor since PR #310, so this is a regression test for
 	// [libyaml.Constructor.Construct] via both paths.
 	err := yaml.NewDecoder(strings.NewReader(input)).Decode(&target)
@@ -3241,6 +3241,40 @@ func TestOptsYAML(t *testing.T) {
 			name:      "valid options",
 			yamlStr:   "indent: 4\nknown-fields: true",
 			expectErr: false,
+		},
+		{
+			name:    "plugin defaults",
+			yamlStr: "plugin: {limit: true}",
+		},
+		{
+			name:    "plugin disabled",
+			yamlStr: "plugin: {limit: false}",
+		},
+		{
+			name:    "plugin disabled in mapping",
+			yamlStr: "plugin: {limit: {depth: 3, disable: true}}",
+		},
+		{
+			name:    "plugin enabled in mapping",
+			yamlStr: "plugin: {limit: {depth: 3, disable: false}}",
+		},
+		{
+			name:      "invalid disable setting",
+			yamlStr:   "plugin: {limit: {disable: null}}",
+			expectErr: true,
+			errMatch:  "disable must be a boolean",
+		},
+		{
+			name:      "null plugin value",
+			yamlStr:   "plugin: {limit: null}",
+			expectErr: true,
+			errMatch:  "mapping or boolean",
+		},
+		{
+			name:      "null plugin field",
+			yamlStr:   "plugin: null",
+			expectErr: true,
+			errMatch:  "plugin configuration must be a mapping",
 		},
 		{
 			name:      "typo in field name",

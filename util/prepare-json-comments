@@ -1,0 +1,140 @@
+#!/usr/bin/env perl
+# Copyright 2026 The go-yaml Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+use strict;
+use warnings;
+use Cwd qw(abs_path);
+use File::Copy qw(copy);
+use File::Find qw(find);
+use File::Path qw(make_path remove_tree);
+use JSON::PP;
+
+my $root = abs_path('.');
+my $upstream = "$root/repos/yamlstar-plugin-json-comments";
+my $local = $ENV{GO_YAML_JSON_COMMENTS_LOCAL} // '0';
+my $module = 'github.com/yamlstar/yamlstar-plugin-json-comments';
+my $query = $ENV{GO_YAML_JSON_COMMENTS_VERSION} || 'latest';
+my $go = $ENV{GO_YAML_BUILD_GO} || 'go';
+$local =~ /\A[01]\z/ or die "JSON-COMMENTS-LOCAL must be 0 or 1\n";
+$query =~ /\A(?:latest|v[0-9]+\.[0-9]+\.[0-9]+)\z/
+    or die "Invalid JSON-comments version: $query\n";
+if ($local eq '1') {
+    -d "$upstream/parser" or die "Missing importable parser in $upstream\n";
+    -f "$upstream/internal/glojure/pkg/yamlstar_plugin/json_comments/loader.go"
+        or die "Missing generated parser sources in $upstream; run make generate there\n";
+}
+my $version = 'v0.0.0';
+if ($local eq '1') {
+    open my $manifest, '<', "$upstream/plugin.edn"
+        or die "Cannot read $upstream/plugin.edn: $!\n";
+    local $/;
+    my $text = <$manifest>;
+    close $manifest or die "Cannot close $upstream/plugin.edn: $!\n";
+    $text =~ /:version\s+"([0-9]+\.[0-9]+\.[0-9]+)"/
+        or die "Missing release version in $upstream/plugin.edn\n";
+    $version = "v$1";
+    $query eq 'latest' || $version eq $query
+        or die "Requested local plugin $query has version $version\n";
+}
+else {
+    local $ENV{GOWORK} = 'off';
+    local $ENV{GOPROXY} = $ENV{GOPROXY} // 'direct';
+    open my $result, '-|', $go, 'list', '-m', '-json', "$module\@$query"
+        or die "Cannot run $go: $!\n";
+    local $/;
+    my $output = <$result>;
+    close $result or die "Cannot resolve $module\@$query\n";
+    my $info = JSON::PP->new->decode($output);
+    $version = $info->{Version} // '';
+    $version =~ /\Av[0-9]+\.[0-9]+\.[0-9]+\z/
+        or die "No tagged Go release for $module\@$query; " .
+            "publish a v-prefixed release tag first\n";
+    $query eq 'latest' || $version eq $query
+        or die "Requested $module\@$query resolved to $version\n";
+}
+my $stage = "$root/.cache/cli-json-comments";
+remove_tree($stage);
+make_path($stage);
+
+sub copy_tree {
+    my ($from, $to) = @_;
+    find({no_chdir => 1, wanted => sub {
+        my $path = $File::Find::name;
+        my $relative = substr($path, length($from));
+        if (-d $path) { make_path("$to$relative"); }
+        elsif (-f $path) { copy($path, "$to$relative") or die "$path: $!"; }
+    }}, $from);
+}
+
+sub write_file {
+    my ($path, $text) = @_;
+    open my $file, '>', $path or die "$path: $!";
+    print {$file} $text;
+    close $file or die "$path: $!";
+}
+
+copy_tree("$root/cmd/go-yaml", $stage);
+copy_tree("$root/plugin/json-comments/cli-testdata", "$stage/testdata")
+    if -d "$root/plugin/json-comments/cli-testdata";
+write_file("$stage/go.mod", <<"MOD");
+module go.yaml.in/yaml/v4/json-comments-cli
+
+go 1.24
+
+require (
+    go.yaml.in/yaml/v4 v4.0.0-rc.6
+    go.yaml.in/yaml/v4/plugin/json-comments v0.0.0
+    $module $version
+)
+MOD
+my $registration_version = $version;
+$registration_version =~ s/^v//;
+write_file("$stage/json_comments.go", <<"GO");
+package main
+
+import (
+	"fmt"
+
+	"go.yaml.in/yaml/v4"
+	jsoncomments "go.yaml.in/yaml/v4/plugin/json-comments"
+)
+
+func init() {
+	err := yaml.RegisterPlugin(yaml.PluginRegistration{
+		API: "json-comments", Name: "json-comments",
+		Version: "$registration_version",
+		Factory: func(config map[string]any) (any, error) {
+			if len(config) != 0 {
+				return nil, fmt.Errorf(
+					"json-comments: configuration must be empty")
+			}
+			return jsoncomments.New(), nil
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+}
+GO
+my $workspace = "go 1.24\n\nuse (\n";
+my @modules = ($root, "$root/plugin/json-comments", $stage);
+for my $path (@modules) {
+    $path =~ s/([\\"])/\\$1/g;
+    $workspace .= "    \"$path\"\n";
+}
+$workspace .= ")\n\nreplace (\n";
+my @replacements = (
+    ['go.yaml.in/yaml/v4 v4.0.0-rc.6', $root],
+    ['go.yaml.in/yaml/v4/plugin/json-comments v0.0.0', "$root/plugin/json-comments"],
+);
+push @replacements,
+    ['github.com/yamlstar/yamlstar-plugin-json-comments', $upstream]
+    if $local eq '1';
+for my $entry (@replacements) {
+    my ($module, $path) = @$entry;
+    $path =~ s/([\\"])/\\$1/g;
+    $workspace .= "    $module => \"$path\"\n";
+}
+$workspace .= ")\n";
+write_file("$root/.cache/json-comments.work", $workspace);
