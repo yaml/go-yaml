@@ -155,7 +155,7 @@ func buildCLI(root, configFile, output, goTool, perlTool string) error {
 		stage = filepath.Join(root, ".cache", "cli-json-comments")
 	} else {
 		stage = filepath.Join(root, ".cache", "cli-config")
-		if err := stageNative(root, stage); err != nil {
+		if err := stageNative(root, stage, goTool); err != nil {
 			return err
 		}
 	}
@@ -206,7 +206,7 @@ func buildEnvironment(workspace string) []string {
 	return append(env, "GOWORK="+workspace, "CGO_ENABLED=0")
 }
 
-func stageNative(root, stage string) error {
+func stageNative(root, stage, goTool string) error {
 	if err := os.RemoveAll(stage); err != nil {
 		return err
 	}
@@ -235,8 +235,20 @@ func stageNative(root, stage string) error {
 	if err != nil {
 		return err
 	}
-	mod := "module go.yaml.in/yaml/v4/config-cli\n\ngo 1.18\n\n" +
-		"require go.yaml.in/yaml/v4 v4.0.0-rc.6\n\n" +
-		"replace go.yaml.in/yaml/v4 => " + strconv.Quote(root) + "\n"
-	return os.WriteFile(filepath.Join(stage, "go.mod"), []byte(mod), 0o644)
+	for _, args := range [][]string{
+		{"mod", "init", "go.yaml.in/yaml/v4/config-cli"},
+		{"mod", "edit", "-go=1.18"},
+		{"mod", "edit", "-replace=go.yaml.in/yaml/v4=" + root},
+		{"get", "go.yaml.in/yaml/v4@v4.0.0-rc.6"},
+		{"mod", "tidy"},
+	} {
+		cmd := exec.Command(goTool, args...)
+		cmd.Dir = stage
+		cmd.Env = buildEnvironment("off")
+		if output, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("go %s: %w\n%s",
+				strings.Join(args, " "), err, output)
+		}
+	}
+	return nil
 }
