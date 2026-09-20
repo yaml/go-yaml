@@ -208,7 +208,7 @@ func loadAll(in []byte, out any, opts *Options) error {
 
 // loadSingle loads exactly one document from the input.
 // Returns an error if the input contains zero or multiple documents
-// (unless FromLegacy option is set for backward compatibility).
+// (unless [Options.fromLegacy] option is set for backward compatibility).
 func loadSingle(in []byte, out any, opts *Options) error {
 	l, err := NewLoader(bytes.NewReader(in), func(o *Options) error {
 		*o = *opts // Copy options
@@ -221,7 +221,7 @@ func loadSingle(in []byte, out any, opts *Options) error {
 	// Load first document
 	err = l.Load(out)
 	if err == io.EOF {
-		if opts.FromLegacy {
+		if opts.fromLegacy {
 			return nil
 		}
 		msg := "yaml: no documents in stream"
@@ -236,7 +236,7 @@ func loadSingle(in []byte, out any, opts *Options) error {
 	}
 
 	// Skip trailing document check for legacy Unmarshal() compatibility
-	if opts.FromLegacy {
+	if opts.fromLegacy {
 		return nil
 	}
 
