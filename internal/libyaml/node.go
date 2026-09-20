@@ -69,45 +69,57 @@ func longTag(tag string) string {
 	return tag
 }
 
-// Kind represents the type of YAML node
+// Kind represents the type of YAML [Node.Kind].
 type Kind uint32
 
-// Kind constants define the different types of YAML nodes.
+// [Kind] constants define the different types of YAML [Node].
 const (
+	// DocumentNode represents the root of a YAML document.
 	DocumentNode Kind = 1 << iota
+	// SequenceNode represents a YAML sequence (list).
 	SequenceNode
+	// MappingNode represents a YAML mapping (dictionary).
 	MappingNode
+	// ScalarNode represents a YAML scalar value.
 	ScalarNode
+	// AliasNode represents a reference to an anchored node.
 	AliasNode
+	// StreamNode represents a container for multiple YAML documents.
 	StreamNode
 )
 
-// Style represents the formatting style of a YAML node
+// Style represents the formatting style of a YAML Node (see [Node.Style])
 type Style uint32
 
-// Style constants define different formatting styles for YAML nodes.
+// [Style] constants define different formatting styles for YAML [Node].
 const (
+	// TaggedStyle explicitly shows the tag on the node.
 	TaggedStyle Style = 1 << iota
+	// DoubleQuotedStyle uses double quotes for scalar values.
 	DoubleQuotedStyle
+	// SingleQuotedStyle uses single quotes for scalar values.
 	SingleQuotedStyle
+	// LiteralStyle uses literal block scalar style (|).
 	LiteralStyle
+	// FoldedStyle uses folded block scalar style (>).
 	FoldedStyle
+	// FlowStyle uses flow style (inline) formatting.
 	FlowStyle
 )
 
-// StreamVersionDirective represents a YAML %YAML version directive for stream nodes.
+// StreamVersionDirective represents a YAML %YAML version directive for [Stream.StreamVersionDirective].
 type StreamVersionDirective struct {
 	Major int
 	Minor int
 }
 
-// StreamTagDirective represents a YAML %TAG directive for stream nodes.
+// StreamTagDirective represents a YAML %TAG directive for [Stream.TagDirectives].
 type StreamTagDirective struct {
 	Handle string
 	Prefix string
 }
 
-// Stream holds stream-level metadata for StreamNode.
+// Stream holds stream-level metadata for [StreamNode].
 // This includes encoding, version directive, and tag directives.
 type Stream struct {
 	Encoding      Encoding
@@ -277,8 +289,10 @@ func (n *Node) SetString(s string) {
 
 // Decode decodes the node and stores its data into the value pointed to by v.
 //
-// See the documentation for Unmarshal for details about the
+// See the documentation for [yaml.Unmarshal] for details about the
 // conversion of YAML into a Go value.
+//
+// [yaml.Unmarshal]: https://pkg.go.dev/go.yaml.in/yaml/v4#Unmarshal
 func (n *Node) Decode(v any) (err error) {
 	d := NewConstructor(DefaultOptions)
 	defer handleErr(&err)
@@ -326,8 +340,10 @@ func (n *Node) Load(v any, opts ...Option) (err error) {
 
 // Encode encodes value v and stores its representation in n.
 //
-// See the documentation for Marshal for details about the
+// See the documentation for [yaml.Marshal] for details about the
 // conversion of Go values into YAML.
+//
+// [yaml.Marshal]: https://pkg.go.dev/go.yaml.in/yaml/v4#Marshal
 func (n *Node) Encode(v any) (err error) {
 	defer handleErr(&err)
 	// Use the 3-stage dump pipeline with round-trip to preserve styles
@@ -356,8 +372,10 @@ func (n *Node) Encode(v any) (err error) {
 // This method is useful when you need to apply specific encoding options
 // while building Node trees programmatically.
 //
-// See the documentation for Marshal for details about the
+// See the documentation for [yaml.Marshal] for details about the
 // conversion of Go values into YAML.
+//
+// [yaml.Marshal]: https://pkg.go.dev/go.yaml.in/yaml/v4#Marshal
 func (n *Node) Dump(v any, opts ...Option) (err error) {
 	defer handleErr(&err)
 	o, err := ApplyOptions(opts...)
