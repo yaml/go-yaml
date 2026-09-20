@@ -58,14 +58,14 @@ func linkedVersion() (string, error) {
 }
 
 // Parse implements yaml.EventSourcePlugin with the generated reference parser.
-func (p *Plugin) Parse(input []byte) ([]yaml.Event, error) {
+func (p *Plugin) Parse(input []byte) ([]yaml.PluginEvent, error) {
 	source, err := parser.Parse(input)
 	if err != nil {
 		return nil, err
 	}
-	events := make([]yaml.Event, len(source))
+	events := make([]yaml.PluginEvent, len(source))
 	for i, e := range source {
-		event := yaml.Event{
+		event := yaml.PluginEvent{
 			Type: e.Type, Value: e.Value, Anchor: e.Anchor, Tag: e.Tag,
 			Style: e.Style, Flow: e.Flow, Explicit: e.Explicit,
 		}

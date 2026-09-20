@@ -98,14 +98,14 @@ func TestDefaultBehavior_HasLimit(t *testing.T) {
 	}
 }
 
-type registeredSourceFunc func([]byte) ([]yaml.Event, error)
+type registeredSourceFunc func([]byte) ([]yaml.PluginEvent, error)
 
-func (f registeredSourceFunc) Parse(input []byte) ([]yaml.Event, error) {
+func (f registeredSourceFunc) Parse(input []byte) ([]yaml.PluginEvent, error) {
 	return f(input)
 }
 
-func registeredScalarStream(value string) []yaml.Event {
-	return []yaml.Event{
+func registeredScalarStream(value string) []yaml.PluginEvent {
+	return []yaml.PluginEvent{
 		{Type: "stream_start"},
 		{Type: "document_start"},
 		{Type: "scalar", Value: value},
@@ -125,7 +125,7 @@ func TestPluginRegistry(t *testing.T) {
 			}
 		}
 		value, _ := cfg["value"].(string)
-		return registeredSourceFunc(func([]byte) ([]yaml.Event, error) {
+		return registeredSourceFunc(func([]byte) ([]yaml.PluginEvent, error) {
 			return registeredScalarStream(value), nil
 		}), nil
 	}

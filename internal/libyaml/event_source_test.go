@@ -13,12 +13,12 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-type sourceFunc func([]byte) ([]yaml.Event, error)
+type sourceFunc func([]byte) ([]yaml.PluginEvent, error)
 
-func (f sourceFunc) Parse(b []byte) ([]yaml.Event, error) { return f(b) }
+func (f sourceFunc) Parse(b []byte) ([]yaml.PluginEvent, error) { return f(b) }
 
-func sourceScalarStream(value string) []yaml.Event {
-	return []yaml.Event{
+func sourceScalarStream(value string) []yaml.PluginEvent {
+	return []yaml.PluginEvent{
 		{Type: "stream_start"},
 		{Type: "document_start"},
 		{Type: "scalar", Value: value},
@@ -41,8 +41,8 @@ func TestEventSourcePluginValidation(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.Name, func(t *testing.T) {
-			p := sourceFunc(func([]byte) ([]yaml.Event, error) {
-				events := make([]yaml.Event, len(tc.Types))
+			p := sourceFunc(func([]byte) ([]yaml.PluginEvent, error) {
+				events := make([]yaml.PluginEvent, len(tc.Types))
 				for i, typ := range tc.Types {
 					events[i].Type = typ
 				}
@@ -65,7 +65,7 @@ func (r brokenReader) Read([]byte) (int, error) { return 0, r.err }
 func TestEventSourcePluginBufferingAndErrors(t *testing.T) {
 	calls := 0
 	cause := errors.New("reader failed")
-	p := sourceFunc(func(input []byte) ([]yaml.Event, error) {
+	p := sourceFunc(func(input []byte) ([]yaml.PluginEvent, error) {
 		calls++
 		if string(input) != "input" {
 			t.Fatalf("unexpected input: %q", input)
@@ -101,14 +101,14 @@ func TestEventSourcePluginBufferingAndErrors(t *testing.T) {
 	if calls != 1 {
 		t.Fatal("event source called on failed read")
 	}
-	p = func([]byte) ([]yaml.Event, error) { return nil, cause }
+	p = func([]byte) ([]yaml.PluginEvent, error) { return nil, cause }
 	if err := yaml.Load(nil, &value, yaml.WithPlugin(p)); !errors.Is(err, cause) {
 		t.Fatalf("lost event source cause: %v", err)
 	}
 }
 
 func TestEventSourcePluginMetadata(t *testing.T) {
-	p := sourceFunc(func([]byte) ([]yaml.Event, error) {
+	p := sourceFunc(func([]byte) ([]yaml.PluginEvent, error) {
 		events := sourceScalarStream("true")
 		events[1].Version = &yaml.VersionDirective{Major: 1, Minor: 2}
 		events[1].Explicit = true

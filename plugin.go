@@ -33,8 +33,8 @@ type LimitPlugin interface {
 // EventSourcePlugin supplies a complete event stream in place of native parsing.
 type EventSourcePlugin = libyaml.EventSourcePlugin
 
-// Event carries source-independent YAML syntax information.
-type Event = libyaml.SourceEvent
+// PluginEvent carries source-independent YAML syntax information.
+type PluginEvent = libyaml.PluginEvent
 
 // PluginFactory constructs a plugin from its plugin-specific configuration.
 type PluginFactory = pluginreg.Factory
