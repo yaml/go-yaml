@@ -215,7 +215,7 @@ $(GOLANGCI-LINT): $(GOLANGCI-LINT-VERSIONED)
 	cp $< $@
 
 # Optional parser dependency stays outside the core module.
-JSON-COMMENTS-WORK = $(CURDIR)/.cache/json-comments.work
+JSON-COMMENTS-WORK = $(CURDIR)/.cache/json-comments-work/go.work
 
 prepare-json-comments: $(PERL) $(GO-DEPS)
 	$(PERL) util/prepare-json-comments

@@ -141,7 +141,8 @@ func buildCLI(root, configFile, output, goTool, perlTool string) error {
 	if perlTool == "" {
 		perlTool = "perl"
 	}
-	var stage, workspace string
+	var stage string
+	workspace := "off"
 	if selection.jsonComments {
 		cmd := exec.Command(perlTool, "util/prepare-json-comments")
 		cmd.Dir = root
@@ -152,10 +153,8 @@ func buildCLI(root, configFile, output, goTool, perlTool string) error {
 			return fmt.Errorf("prepare JSON-comments: %w\n%s", err, out)
 		}
 		stage = filepath.Join(root, ".cache", "cli-json-comments")
-		workspace = filepath.Join(root, ".cache", "json-comments.work")
 	} else {
 		stage = filepath.Join(root, ".cache", "cli-config")
-		workspace = "off"
 		if err := stageNative(root, stage); err != nil {
 			return err
 		}
