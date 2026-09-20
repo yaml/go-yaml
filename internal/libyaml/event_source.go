@@ -231,7 +231,8 @@ func pluginEvent(p PluginEvent) Event {
 		e.Type = ALIAS_EVENT
 	case "scalar":
 		e.Type = SCALAR_EVENT
-		e.Implicit, e.quoted_implicit = p.Tag == "", p.Tag == ""
+		e.Implicit = (p.Tag == "" && p.Style == "") || p.Tag == "!"
+		e.quoted_implicit = p.Tag == "" && p.Style != ""
 		switch p.Style {
 		case "":
 			e.Style = Style(PLAIN_SCALAR_STYLE)
