@@ -6,8 +6,11 @@
 package libyaml
 
 import (
+	"context"
 	"reflect"
 	"testing"
+
+	"go.yaml.in/yaml/v4/internal/testutil/assert"
 )
 
 func TestIsYAMLNodePkg(t *testing.T) {
@@ -99,4 +102,62 @@ func TestRealNodeUnmarshal(t *testing.T) {
 	if y.Value != "hello" {
 		t.Errorf("Value = %q, want %q", y.Value, "hello")
 	}
+}
+
+type ctxKey string
+
+const ctxKeyName ctxKey = "key"
+
+type contextAwareData struct {
+	unmarshalCalled bool
+	ctxValue        any
+
+	Data struct {
+		Value int `yaml:"value"`
+	}
+}
+
+func (w *contextAwareData) UnmarshalYAML(ctx context.Context, n *Node) error {
+	w.unmarshalCalled = true
+	w.ctxValue = ctx.Value(ctxKeyName)
+
+	return n.DecodeContext(ctx, &w.Data)
+}
+
+var _ constructorContext = (*contextAwareData)(nil)
+
+type contextAwareStruct struct {
+	Foo     contextAwareData `yaml:"foo"`
+	Inlined contextAwareData `yaml:",inline"`
+}
+
+func TestLoadContext(t *testing.T) {
+	ctx := context.WithValue(context.Background(), ctxKeyName, "ctx-value")
+	var w contextAwareStruct
+
+	payload := `
+foo:
+  value: 42  # This is a regular field
+value: 1337  # This is an inlined field
+`
+	err := LoadContext(ctx, []byte(payload), &w)
+	assert.NoError(t, err)
+
+	assert.Equal(t, true, w.Foo.unmarshalCalled)
+	assert.Equal(t, "ctx-value", w.Foo.ctxValue)
+	assert.Equal(t, 42, w.Foo.Data.Value)
+
+	// the code to handle inlined fields is different than regular fields.
+	// We need to ensure that the context is passed correctly to inlined fields as well.
+	assert.Equal(t, true, w.Inlined.unmarshalCalled)
+	assert.Equal(t, "ctx-value", w.Inlined.ctxValue)
+	assert.Equal(t, 1337, w.Inlined.Data.Value)
+
+	// test that passing a nil context does not panic and is handled gracefully.
+	var nilCtx context.Context = nil
+	err = LoadContext(nilCtx, []byte(payload), &w)
+	assert.NoError(t, err)
+	assert.Equal(t, true, w.Foo.unmarshalCalled)
+	assert.Equal(t, nil, w.Foo.ctxValue)
+	assert.Equal(t, 42, w.Foo.Data.Value)
 }

@@ -19,6 +19,7 @@
 package yaml
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -567,7 +568,15 @@ func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
 
 // Load loads YAML document(s) with the given options.
 func Load(in []byte, out any, opts ...Option) error {
-	return libyaml.Load(in, out, opts...)
+	return LoadContext(context.Background(), in, out, opts...)
+}
+
+// LoadContext loads YAML document(s) with the given context and options.
+//
+// Use this function when you need to pass a context to the unmarshaling process.
+// The context is accessible to types that implement the [UnmarshalerContext] interface.
+func LoadContext(ctx context.Context, in []byte, out any, opts ...Option) error {
+	return libyaml.LoadContext(ctx, in, out, opts...)
 }
 
 // Dump encodes a value to YAML with the given options.
@@ -606,7 +615,17 @@ func (dec *Decoder) KnownFields(enable bool) {
 // See the documentation for Unmarshal for details about the
 // conversion of YAML into a Go value.
 func (dec *Decoder) Decode(v any) error {
-	return dec.loader.Load(v)
+	return dec.DecodeContext(context.Background(), v)
+}
+
+// DecodeContext reads the next YAML-encoded value from its input
+// and stores it in the value pointed to by v, using the provided context.
+//
+// The only difference with [Decoder.Decode] is the ability to send the provided context
+// to structs that implement the [UnmarshalerContext] interface,
+// allowing them to access the context during unmarshalling.
+func (dec *Decoder) DecodeContext(ctx context.Context, v any) error {
+	return dec.loader.LoadContext(ctx, v)
 }
 
 // An Encoder writes YAML values to an output stream.
@@ -684,12 +703,24 @@ func (e *Encoder) Close() error {
 //	    B int
 //	}
 //	var t T
-//	yaml.Construct([]byte("a: 1\nb: 2"), &t)
+//	yaml.Unmarshal([]byte("a: 1\nb: 2"), &t)
 //
 // See the documentation of Marshal for the format of tags and a list of
 // supported tag options.
 func Unmarshal(in []byte, out any) (err error) {
-	return Load(in, out, WithV3Defaults(), withFromLegacy())
+	return UnmarshalContext(context.Background(), in, out)
+}
+
+// UnmarshalContext decodes the first document found within the in byte slice
+// and assigns decoded values into the out value, using the provided context.
+//
+// The only difference with [Unmarshal] is the ability to receive the provided context
+// to a struct implementing [UnmarshalerContext] interface, allowing them to access the context
+// during unmarshalling process.
+//
+// See [Unmarshal] for details about the behavior of this function.
+func UnmarshalContext(ctx context.Context, in []byte, out any) (err error) {
+	return LoadContext(ctx, in, out, WithV3Defaults(), withFromLegacy())
 }
 
 // withFromLegacy is a private option that indicates this call is from
