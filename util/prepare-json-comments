@@ -4,7 +4,7 @@
 
 use strict;
 use warnings;
-use Cwd qw(abs_path);
+use Cwd qw(abs_path getcwd);
 use File::Copy qw(copy);
 use File::Find qw(find);
 use File::Path qw(make_path remove_tree);
@@ -74,20 +74,21 @@ sub write_file {
     close $file or die "$path: $!";
 }
 
+sub run_go {
+    my ($directory, $workspace, @args) = @_;
+    my $previous = getcwd();
+    chdir $directory or die "Cannot enter $directory: $!\n";
+    local $ENV{GOWORK} = $workspace;
+    local $ENV{GOPROXY} = $ENV{GOPROXY} // 'direct';
+    system {$go} $go, @args;
+    my $status = $?;
+    chdir $previous or die "Cannot return to $previous: $!\n";
+    $status == 0 or die "Cannot run $go @args\n";
+}
+
 copy_tree("$root/cmd/go-yaml", $stage);
 copy_tree("$root/plugin/json-comments/cli-testdata", "$stage/testdata")
     if -d "$root/plugin/json-comments/cli-testdata";
-write_file("$stage/go.mod", <<"MOD");
-module go.yaml.in/yaml/v4/json-comments-cli
-
-go 1.24
-
-require (
-    go.yaml.in/yaml/v4 v4.0.0-rc.6
-    go.yaml.in/yaml/v4/plugin/json-comments v0.0.0
-    $module $version
-)
-MOD
 my $registration_version = $version;
 $registration_version =~ s/^v//;
 write_file("$stage/json_comments.go", <<"GO");
@@ -117,24 +118,28 @@ func init() {
 	}
 }
 GO
-my $workspace = "go 1.24\n\nuse (\n";
-my @modules = ($root, "$root/plugin/json-comments", $stage);
-for my $path (@modules) {
-    $path =~ s/([\\"])/\\$1/g;
-    $workspace .= "    \"$path\"\n";
-}
-$workspace .= ")\n\nreplace (\n";
-my @replacements = (
-    ['go.yaml.in/yaml/v4 v4.0.0-rc.6', $root],
-    ['go.yaml.in/yaml/v4/plugin/json-comments v0.0.0', "$root/plugin/json-comments"],
-);
-push @replacements,
-    ['github.com/yamlstar/yamlstar-plugin-json-comments', $upstream]
+run_go($stage, 'off', 'mod', 'init',
+    'go.yaml.in/yaml/v4/json-comments-cli');
+run_go($stage, 'off', 'mod', 'edit', '-go=1.24');
+run_go($stage, 'off', 'mod', 'edit',
+    "-replace=go.yaml.in/yaml/v4=$root");
+run_go($stage, 'off', 'mod', 'edit',
+    "-replace=go.yaml.in/yaml/v4/plugin/json-comments=" .
+    "$root/plugin/json-comments");
+run_go($stage, 'off', 'mod', 'edit', "-replace=$module=$upstream")
     if $local eq '1';
-for my $entry (@replacements) {
-    my ($module, $path) = @$entry;
-    $path =~ s/([\\"])/\\$1/g;
-    $workspace .= "    $module => \"$path\"\n";
-}
-$workspace .= ")\n";
-write_file("$root/.cache/json-comments.work", $workspace);
+run_go($stage, 'off', 'get', 'go.yaml.in/yaml/v4');
+run_go($stage, 'off', 'get',
+    'go.yaml.in/yaml/v4/plugin/json-comments');
+run_go($stage, 'off', 'get', "$module\@$version");
+run_go($stage, 'off', 'mod', 'tidy');
+
+my $workdir = "$root/.cache/json-comments-work";
+remove_tree($workdir);
+make_path($workdir);
+run_go($workdir, 'off', 'work', 'init',
+    $root, "$root/plugin/json-comments", $stage);
+my $workfile = "$workdir/go.work";
+run_go($workdir, $workfile, 'work', 'edit', '-go=1.24');
+run_go($workdir, $workfile, 'work', 'edit',
+    "-replace=$module=$upstream") if $local eq '1';
