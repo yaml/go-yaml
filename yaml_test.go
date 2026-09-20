@@ -2748,6 +2748,17 @@ func TestSetIndent(t *testing.T) {
 	assert.Equal(t, "a:\n        b:\n                c: d\n", buf.String())
 }
 
+func TestSetIndentNegative(t *testing.T) {
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(-1)
+	err := enc.Encode(map[string]any{"a": "b"})
+	assert.NoError(t, err)
+	err = enc.Close()
+	assert.NoError(t, err)
+	assert.Equal(t, "a: b\n", buf.String())
+}
+
 func TestSortedOutput(t *testing.T) {
 	order := []any{
 		false,

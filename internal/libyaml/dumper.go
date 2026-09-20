@@ -134,9 +134,10 @@ func (d *Dumper) Close() (err error) {
 
 // SetIndent changes the indentation used when encoding.
 // This is used by the legacy Encoder.SetIndent() method.
+// Negative values are treated as 0 so the call cannot panic.
 func (d *Dumper) SetIndent(spaces int) {
 	if spaces < 0 {
-		failDumpf(SerializerStage, "cannot indent to a negative number of spaces")
+		spaces = 0
 	}
 	// Set on serializer's emitter
 	d.serializer.Emitter.BestIndent = spaces
