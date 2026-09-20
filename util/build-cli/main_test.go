@@ -255,6 +255,19 @@ func TestConfiguredJSONCLI(t *testing.T) {
 		t.Fatalf("linked plugin version: %v\n%s", err, modules)
 	}
 	write("plugin: {json-comments: {version: 0.1.7}}\n")
+	versionBefore, err := os.ReadFile(binary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = buildCLI(root, config, binary, goTool,
+		os.Getenv("GO_YAML_BUILD_PERL"))
+	if err == nil {
+		t.Fatal("unavailable plugin version built")
+	}
+	versionAfter, readErr := os.ReadFile(binary)
+	if readErr != nil || !bytes.Equal(versionBefore, versionAfter) {
+		t.Fatal("failed version selection replaced the binary")
+	}
 	cmd := exec.Command(binary, "-j", "-C", config)
 	cmd.Stdin = strings.NewReader("a: true // comment\n")
 	out, err := cmd.CombinedOutput()

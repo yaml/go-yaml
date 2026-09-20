@@ -16,6 +16,21 @@ my $local = $ENV{GO_YAML_JSON_COMMENTS_LOCAL} // '0';
 my $module = 'github.com/yamlstar/yamlstar-plugin-json-comments';
 my $query = $ENV{GO_YAML_JSON_COMMENTS_VERSION} || 'latest';
 my $go = $ENV{GO_YAML_BUILD_GO} || 'go';
+
+sub go_json {
+    my ($directory, $workspace, @args) = @_;
+    my $previous = getcwd();
+    chdir $directory or die "Cannot enter $directory: $!\n";
+    local $ENV{GOWORK} = $workspace;
+    local $ENV{GOPROXY} = $ENV{GOPROXY} // 'direct';
+    open my $result, '-|', $go, @args or die "Cannot run $go: $!\n";
+    local $/;
+    my $output = <$result>;
+    close $result or die "Cannot run $go @args\n";
+    chdir $previous or die "Cannot return to $previous: $!\n";
+    return JSON::PP->new->decode($output);
+}
+
 $local =~ /\A[01]\z/ or die "JSON-COMMENTS-LOCAL must be 0 or 1\n";
 $query =~ /\A(?:latest|v[0-9]+\.[0-9]+\.[0-9]+)\z/
     or die "Invalid JSON-comments version: $query\n";
@@ -38,14 +53,8 @@ if ($local eq '1') {
         or die "Requested local plugin $query has version $version\n";
 }
 else {
-    local $ENV{GOWORK} = 'off';
-    local $ENV{GOPROXY} = $ENV{GOPROXY} // 'direct';
-    open my $result, '-|', $go, 'list', '-m', '-json', "$module\@$query"
-        or die "Cannot run $go: $!\n";
-    local $/;
-    my $output = <$result>;
-    close $result or die "Cannot resolve $module\@$query\n";
-    my $info = JSON::PP->new->decode($output);
+    my $info = go_json($root, 'off',
+        'list', '-m', '-json', "$module\@$query");
     $version = $info->{Version} // '';
     $version =~ /\Av[0-9]+\.[0-9]+\.[0-9]+\z/
         or die "No tagged Go release for $module\@$query; " .
@@ -89,31 +98,13 @@ sub run_go {
 copy_tree("$root/cmd/go-yaml", $stage);
 copy_tree("$root/plugin/json-comments/cli-testdata", "$stage/testdata")
     if -d "$root/plugin/json-comments/cli-testdata";
-my $registration_version = $version;
-$registration_version =~ s/^v//;
 write_file("$stage/json_comments.go", <<"GO");
 package main
 
-import (
-	"fmt"
-
-	"go.yaml.in/yaml/v4"
-	jsoncomments "go.yaml.in/yaml/v4/plugin/json-comments"
-)
+import jsoncomments "go.yaml.in/yaml/v4/plugin/json-comments"
 
 func init() {
-	err := yaml.RegisterPlugin(yaml.PluginRegistration{
-		API: "json-comments", Name: "json-comments",
-		Version: "$registration_version",
-		Factory: func(config map[string]any) (any, error) {
-			if len(config) != 0 {
-				return nil, fmt.Errorf(
-					"json-comments: configuration must be empty")
-			}
-			return jsoncomments.New(), nil
-		},
-	})
-	if err != nil {
+	if err := jsoncomments.Register(); err != nil {
 		panic(err)
 	}
 }
@@ -133,6 +124,11 @@ run_go($stage, 'off', 'get',
     'go.yaml.in/yaml/v4/plugin/json-comments');
 run_go($stage, 'off', 'get', "$module\@$version");
 run_go($stage, 'off', 'mod', 'tidy');
+my $selected_info = go_json($stage, 'off',
+    'list', '-m', '-json', $module);
+my $selected = $selected_info->{Version} // '';
+$selected eq $version
+    or die "Requested $module\@$version but selected $selected\n";
 
 my $workdir = "$root/.cache/json-comments-work";
 remove_tree($workdir);
