@@ -686,6 +686,30 @@
     data: [0x19]
     want: false
 
+- char-predicate:
+    name: Is printable - truncated C2
+    func: isPrintable
+    data: [0xC2]
+    want: false
+
+- char-predicate:
+    name: Is printable - truncated ED
+    func: isPrintable
+    data: [0xED]
+    want: false
+
+- char-predicate:
+    name: Is printable - truncated EF
+    func: isPrintable
+    data: [0xEF]
+    want: false
+
+- char-predicate:
+    name: Is printable - truncated EF BB
+    func: isPrintable
+    data: [0xEF, 0xBB]
+    want: false
+
 # isZeroChar tests
 - char-predicate:
     name: Is zero char - null
@@ -708,6 +732,18 @@
     name: Is BOM - regular text
     func: isBOM
     data: abc
+    want: false
+
+- char-predicate:
+    name: Is BOM - truncated EF
+    func: isBOM
+    data: [0xEF]
+    want: false
+
+- char-predicate:
+    name: Is BOM - truncated EF BB
+    func: isBOM
+    data: [0xEF, 0xBB]
     want: false
 
 # isSpace tests
@@ -795,6 +831,18 @@
     data: ' '
     want: false
 
+- char-predicate:
+    name: Is line break - truncated C2
+    func: isLineBreak
+    data: [0xC2]
+    want: false
+
+- char-predicate:
+    name: Is line break - truncated E2 80
+    func: isLineBreak
+    data: [0xE2, 0x80]
+    want: false
+
 # isCRLF tests
 - char-predicate:
     name: Is CRLF - CRLF
@@ -811,6 +859,12 @@
     name: Is CRLF - CR only
     func: isCRLF
     data: [0x0D, 0x00]
+    want: false
+
+- char-predicate:
+    name: Is CRLF - truncated CR
+    func: isCRLF
+    data: [0x0D]
     want: false
 
 # isBreakOrZero tests

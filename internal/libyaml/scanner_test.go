@@ -182,6 +182,40 @@ func runCharPredicateTest(t *testing.T, tc TestCase) {
 	assert.Equalf(t, want, got, "%s(%q, %d) = %v, want %v", tc.Function, input, index, got, want)
 }
 
+func TestCharPredicatesTruncatedUTF8(t *testing.T) {
+	cases := []struct {
+		name string
+		fn   func([]byte, int) bool
+		in   []byte
+	}{
+		{"isPrintable C2", isPrintable, []byte{0xC2}},
+		{"isPrintable ED", isPrintable, []byte{0xED}},
+		{"isPrintable EF", isPrintable, []byte{0xEF}},
+		{"isPrintable EF BB", isPrintable, []byte{0xEF, 0xBB}},
+		{"isBOM EF", isBOM, []byte{0xEF}},
+		{"isBOM EF BB", isBOM, []byte{0xEF, 0xBB}},
+		{"isCRLF CR", isCRLF, []byte{'\r'}},
+		{"isLineBreak C2", isLineBreak, []byte{0xC2}},
+		{"isLineBreak E2", isLineBreak, []byte{0xE2}},
+		{"isLineBreak E2 80", isLineBreak, []byte{0xE2, 0x80}},
+		{"isBreakOrZero C2", isBreakOrZero, []byte{0xC2}},
+		{"isSpaceOrZero E2", isSpaceOrZero, []byte{0xE2}},
+		{"isBlankOrZero E2 80", isBlankOrZero, []byte{0xE2, 0x80}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			defer func() {
+				if rec := recover(); rec != nil {
+					t.Fatalf("panic: %v", rec)
+				}
+			}()
+			if tc.fn(tc.in, 0) {
+				t.Fatalf("got true, want false")
+			}
+		})
+	}
+}
+
 func runCharConvertTest(t *testing.T, tc TestCase) {
 	t.Helper()
 
