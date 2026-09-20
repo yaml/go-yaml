@@ -2383,6 +2383,19 @@ var marshalTests = []struct {
 		"'foo'\n",
 	},
 
+	// A single-quoted scalar whose value ends in a line break must have the
+	// closing quote indented like any other continuation line, not dropped
+	// to column 0 (mikefarah/yq#2819).
+	{
+		yaml.Node{
+			Kind:  yaml.ScalarNode,
+			Tag:   "!!str",
+			Value: " Get quacked.\n- Duck\n",
+			Style: yaml.SingleQuotedStyle,
+		},
+		"' Get quacked.\n\n    - Duck\n\n    '\n",
+	},
+
 	// Enforced tagging with shorthand notation (issue #616).
 	{
 		&struct {
