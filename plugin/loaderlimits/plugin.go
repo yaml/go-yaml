@@ -45,6 +45,8 @@ import (
 
 // DepthContext is an alias for the type used in depth check callbacks.
 // See [yaml.DepthContext] for field documentation.
+//
+// [yaml.DepthContext]: https://pkg.go.dev/go.yaml.in/yaml/v4#DepthContext
 type DepthContext = libyaml.DepthContext
 
 // Plugin implements configurable safety limits for YAML parsing.
