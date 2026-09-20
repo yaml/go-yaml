@@ -18,7 +18,7 @@
   out: |
     - {event: STREAM-START, encoding: UTF-8}
     - {event: DOCUMENT-START, implicit: true}
-    - {event: SCALAR, value: true, implicit: true, quoted-implicit: true}
+    - {event: SCALAR, value: true, implicit: true, quoted-implicit: false}
     - {event: DOCUMENT-END, implicit: true}
     - {event: STREAM-END}
 - name: No invented event positions
@@ -27,7 +27,7 @@
   out: |
     - {event: STREAM-START, encoding: UTF-8}
     - {event: DOCUMENT-START, implicit: true}
-    - {event: SCALAR, value: true, style: Plain, implicit: true, quoted-implicit: true}
+    - {event: SCALAR, value: true, style: Plain, implicit: true, quoted-implicit: false}
     - {event: DOCUMENT-END, implicit: true}
     - {event: STREAM-END}
 - name: YAML output

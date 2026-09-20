@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"go.yaml.in/yaml/v4"
+	"go.yaml.in/yaml/v4/internal/libyaml"
 )
 
 type sourceFunc func([]byte) ([]yaml.PluginEvent, error)
@@ -124,5 +125,43 @@ func TestEventSourcePluginMetadata(t *testing.T) {
 	scalar := node.Content[0]
 	if scalar.Tag != "!!str" || scalar.Style&yaml.DoubleQuotedStyle == 0 || scalar.Line != 4 || scalar.Column != 7 || scalar.HeadComment != "# comment" {
 		t.Fatalf("lost metadata: %#v", scalar)
+	}
+}
+
+func TestPluginEventScalarImplicitness(t *testing.T) {
+	for _, tc := range []struct {
+		name, tag, style string
+		implicit, quoted bool
+	}{
+		{"plain untagged", "", "", true, false},
+		{"quoted untagged", "", "double", false, true},
+		{"plain non-specific", "!", "", true, false},
+		{"quoted non-specific", "!", "double", true, false},
+		{"plain explicit", "tag:yaml.org,2002:str", "", false, false},
+		{"quoted explicit", "tag:yaml.org,2002:str", "double", false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			events := sourceScalarStream("value")
+			events[2].Tag = tc.tag
+			events[2].Style = tc.style
+			reader := libyaml.NewEventReader(strings.NewReader("input"),
+				&libyaml.Options{EventSource: sourceFunc(
+					func([]byte) ([]yaml.PluginEvent, error) {
+						return events, nil
+					})})
+			defer reader.Delete()
+			var event libyaml.Event
+			for i := 0; i < 3; i++ {
+				if err := reader.Parse(&event); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if event.Implicit != tc.implicit ||
+				event.GetQuotedImplicit() != tc.quoted {
+				t.Fatalf("got implicit %t, quoted %t; want %t, %t",
+					event.Implicit, event.GetQuotedImplicit(),
+					tc.implicit, tc.quoted)
+			}
+		})
 	}
 }
