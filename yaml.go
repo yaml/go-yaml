@@ -735,7 +735,7 @@ func Unmarshal(in []byte, out any) (err error) {
 // checking and allows trailing content for backward compatibility.
 func withFromLegacy() Option {
 	return func(o *libyaml.Options) error {
-		o.FromLegacy = true
+		libyaml.SetLegacyAllowTrailingContent(o)
 		return nil
 	}
 }

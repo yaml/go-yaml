@@ -41,7 +41,7 @@ type Options struct {
 	AliasCheck func(aliasCount, constructCount int) error
 
 	// Private options (not exported, used internally)
-	FromLegacy bool // Indicates legacy Unmarshal()/Decoder path (check Unmarshaler, allow trailing content)
+	fromLegacy bool // Indicates legacy Unmarshal()/Decoder path (check Unmarshaler, allow trailing content)
 }
 
 // Option allows configuring YAML loading and dumping operations.
@@ -449,4 +449,14 @@ var DefaultOptions = &Options{
 	Unicode:         true,
 	UniqueKeys:      true,
 	QuotePreference: QuoteLegacy,
+}
+
+// SetLegacyDecoderOption sets the internal fromLegacy flag to true.
+// This function is not exported out of the module and is used in [yaml.NewDecoder] and [yaml.Unmarshal]
+// to indicate that the legacy options is being used when loading YAML.1
+//
+// [NewDecoder]: https://pkg.go.dev/go.yaml.in/yaml/v4#NewDecoder
+// [Unmarshal]: https://pkg.go.dev/go.yaml.in/yaml/v4#Unmarshal
+func SetLegacyDecoderOption(o *Options) {
+	o.fromLegacy = true
 }
