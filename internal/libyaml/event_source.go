@@ -12,17 +12,17 @@ import (
 // Parse returns a complete stream, including stream and document boundaries.
 // Implementations must support concurrent calls with independent input.
 type EventSourcePlugin interface {
-	Parse(input []byte) ([]SourceEvent, error)
+	Parse(input []byte) ([]PluginEvent, error)
 }
 
-// SourceEvent is a source-independent YAML event.
+// PluginEvent is a portable YAML event supplied by a plugin.
 // Type is stream_start, stream_end, document_start, document_end,
 // mapping_start, mapping_end, sequence_start, sequence_end, scalar, or alias.
 // Style is empty (plain), single, double, literal, or folded for scalars.
 // Alias events use Anchor for the referenced name.
 // Tags are resolved URIs or local tags; an empty tag requests resolution.
 // Positions are one-based, with zero meaning unknown.
-type SourceEvent struct {
+type PluginEvent struct {
 	Type               string
 	Value, Anchor, Tag string
 	Style              string
@@ -41,7 +41,7 @@ type EventReader struct {
 	parser      Parser
 	reader      io.Reader
 	opts        *Options
-	events      []SourceEvent
+	events      []PluginEvent
 	index       int
 	initialized bool
 	err         error
@@ -81,7 +81,7 @@ func (e *EventReader) Parse(event *Event) error {
 		} else {
 			e.events, err = e.opts.EventSource.Parse(input)
 			if err == nil {
-				err = validateSourceEvents(e.events, e.opts.DepthCheck)
+				err = validatePluginEvents(e.events, e.opts.DepthCheck)
 			}
 			if err != nil {
 				e.err = NewLoadError(ParserStage, err.Error(), Mark{}, err)
@@ -94,13 +94,13 @@ func (e *EventReader) Parse(event *Event) error {
 	if e.index == len(e.events) {
 		return io.EOF
 	}
-	*event = sourceEvent(e.events[e.index])
+	*event = pluginEvent(e.events[e.index])
 	e.index++
 	return nil
 }
 
-// validateSourceEvents checks structure before the recursive composer sees it.
-func validateSourceEvents(events []SourceEvent, depthCheck func(int, *DepthContext) error) error {
+// validatePluginEvents checks structure before the recursive composer sees it.
+func validatePluginEvents(events []PluginEvent, depthCheck func(int, *DepthContext) error) error {
 	type frame struct {
 		kind     string
 		children int
@@ -188,7 +188,7 @@ func validateSourceEvents(events []SourceEvent, depthCheck func(int, *DepthConte
 	return nil
 }
 
-func sourceEvent(p SourceEvent) Event {
+func pluginEvent(p PluginEvent) Event {
 	e := Event{
 		StartMark: p.StartMark, EndMark: p.EndMark,
 		Value: []byte(p.Value), Tag: []byte(p.Tag),

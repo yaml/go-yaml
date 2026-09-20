@@ -161,11 +161,11 @@ Only one event-source plugin can be selected.
 
 ```go
 type EventSourcePlugin interface {
-    Parse(input []byte) ([]Event, error)
+    Parse(input []byte) ([]PluginEvent, error)
 }
 ```
 
-`Event` represents stream/document boundaries, mappings, sequences,
+`PluginEvent` represents stream/document boundaries, mappings, sequences,
 scalars, and aliases using ordinary Go fields.
 See its Go documentation for event names and optional metadata.
 The loader validates the complete event stream before composing nodes.
