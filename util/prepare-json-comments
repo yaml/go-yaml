@@ -96,8 +96,8 @@ sub run_go {
 }
 
 copy_tree("$root/cmd/go-yaml", $stage);
-copy_tree("$root/plugin/json-comments/cli-testdata", "$stage/testdata")
-    if -d "$root/plugin/json-comments/cli-testdata";
+copy_tree("$root/plugin/json-comments/testdata", "$stage/testdata")
+    if -d "$root/plugin/json-comments/testdata";
 write_file("$stage/json_comments.go", <<"GO");
 package main
 

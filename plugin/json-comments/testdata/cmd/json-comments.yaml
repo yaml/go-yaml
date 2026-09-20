@@ -10,7 +10,7 @@
 - name: JSON comments selected by config
   cmd: >-
     printf 'a: true // comment\n' |
-    go-yaml -C testdata/json-comments-config.yml -j
+    go-yaml -C testdata/config/json-comments.yaml -j
   out: '{"a":true}'
 - name: Events use the selected event source
   cmd: >-
