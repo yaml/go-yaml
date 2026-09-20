@@ -30,30 +30,49 @@ type WriteHandler func(emitter *Emitter, buffer []byte) error
 // EmitterState represents the current state of the emitter.
 type EmitterState int
 
-// The emitter states.
+// Possible [EmitterState] values.  The transitions between these states are managed internally by the emitter.
 const (
-	// Expect STREAM-START.
+	// EMIT_STREAM_START_STATE expects STREAM-START.
 	EMIT_STREAM_START_STATE EmitterState = iota
 
-	EMIT_FIRST_DOCUMENT_START_STATE       // Expect the first DOCUMENT-START or STREAM-END.
-	EMIT_DOCUMENT_START_STATE             // Expect DOCUMENT-START or STREAM-END.
-	EMIT_DOCUMENT_CONTENT_STATE           // Expect the content of a document.
-	EMIT_DOCUMENT_END_STATE               // Expect DOCUMENT-END.
-	EMIT_FLOW_SEQUENCE_FIRST_ITEM_STATE   // Expect the first item of a flow sequence.
-	EMIT_FLOW_SEQUENCE_TRAIL_ITEM_STATE   // Expect the next item of a flow sequence, with the comma already written out
-	EMIT_FLOW_SEQUENCE_ITEM_STATE         // Expect an item of a flow sequence.
-	EMIT_FLOW_MAPPING_FIRST_KEY_STATE     // Expect the first key of a flow mapping.
-	EMIT_FLOW_MAPPING_TRAIL_KEY_STATE     // Expect the next key of a flow mapping, with the comma already written out
-	EMIT_FLOW_MAPPING_KEY_STATE           // Expect a key of a flow mapping.
-	EMIT_FLOW_MAPPING_SIMPLE_VALUE_STATE  // Expect a value for a simple key of a flow mapping.
-	EMIT_FLOW_MAPPING_VALUE_STATE         // Expect a value of a flow mapping.
-	EMIT_BLOCK_SEQUENCE_FIRST_ITEM_STATE  // Expect the first item of a block sequence.
-	EMIT_BLOCK_SEQUENCE_ITEM_STATE        // Expect an item of a block sequence.
-	EMIT_BLOCK_MAPPING_FIRST_KEY_STATE    // Expect the first key of a block mapping.
-	EMIT_BLOCK_MAPPING_KEY_STATE          // Expect the key of a block mapping.
-	EMIT_BLOCK_MAPPING_SIMPLE_VALUE_STATE // Expect a value for a simple key of a block mapping.
-	EMIT_BLOCK_MAPPING_VALUE_STATE        // Expect a value of a block mapping.
-	EMIT_END_STATE                        // Expect nothing.
+	// EMIT_FIRST_DOCUMENT_START_STATE expects the first DOCUMENT-START or STREAM-END.
+	EMIT_FIRST_DOCUMENT_START_STATE
+	// EMIT_DOCUMENT_START_STATE expects DOCUMENT-START.
+	EMIT_DOCUMENT_START_STATE
+	// EMIT_DOCUMENT_CONTENT_STATE expects the content of a document.
+	EMIT_DOCUMENT_CONTENT_STATE
+	// EMIT_DOCUMENT_END_STATE expects DOCUMENT-END.
+	EMIT_DOCUMENT_END_STATE
+	// EMIT_FLOW_SEQUENCE_FIRST_ITEM_STATE expects the first item of a flow sequence.
+	EMIT_FLOW_SEQUENCE_FIRST_ITEM_STATE
+	// EMIT_FLOW_SEQUENCE_TRAIL_ITEM_STATE expects the next item of a flow sequence, with the comma already written out.
+	EMIT_FLOW_SEQUENCE_TRAIL_ITEM_STATE
+	// EMIT_FLOW_SEQUENCE_ITEM_STATE expects an item of a flow sequence.
+	EMIT_FLOW_SEQUENCE_ITEM_STATE
+	// EMIT_FLOW_MAPPING_FIRST_KEY_STATE expects the first key of a flow mapping.
+	EMIT_FLOW_MAPPING_FIRST_KEY_STATE
+	// EMIT_FLOW_MAPPING_TRAIL_KEY_STATE expects the next key of a flow mapping, with the comma already written out
+	EMIT_FLOW_MAPPING_TRAIL_KEY_STATE
+	// EMIT_FLOW_MAPPING_KEY_STATE expects a key of a flow mapping.
+	EMIT_FLOW_MAPPING_KEY_STATE
+	// EMIT_FLOW_MAPPING_SIMPLE_VALUE_STATE expects a value for a simple key of a flow mapping.
+	EMIT_FLOW_MAPPING_SIMPLE_VALUE_STATE
+	// EMIT_FLOW_MAPPING_VALUE_STATE expects a value of a flow mapping.
+	EMIT_FLOW_MAPPING_VALUE_STATE
+	// EMIT_BLOCK_SEQUENCE_FIRST_ITEM_STATE expects the first item of a block sequence.
+	EMIT_BLOCK_SEQUENCE_FIRST_ITEM_STATE
+	// EMIT_BLOCK_SEQUENCE_ITEM_STATE expects an item of a block sequence.
+	EMIT_BLOCK_SEQUENCE_ITEM_STATE
+	// EMIT_BLOCK_MAPPING_FIRST_KEY_STATE expects the first key of a block mapping.
+	EMIT_BLOCK_MAPPING_FIRST_KEY_STATE
+	// EMIT_BLOCK_MAPPING_KEY_STATE expects the key of a block mapping.
+	EMIT_BLOCK_MAPPING_KEY_STATE
+	// EMIT_BLOCK_MAPPING_SIMPLE_VALUE_STATE expects a value for a simple key of a block mapping.
+	EMIT_BLOCK_MAPPING_SIMPLE_VALUE_STATE
+	// EMIT_BLOCK_MAPPING_VALUE_STATE expects a value of a block mapping.
+	EMIT_BLOCK_MAPPING_VALUE_STATE
+	// EMIT_END_STATE expects nothing.
+	EMIT_END_STATE
 )
 
 // Emitter holds all information about the current state of the emitter.
@@ -72,8 +91,9 @@ type Emitter struct {
 
 	// Emitter stuff
 
-	canonical       bool       // If the output is in the canonical style?
-	BestIndent      int        // The number of indentation spaces.
+	canonical bool // If the output is in the canonical style?
+	// BestIndent is the number of spaces to use for indentation.
+	BestIndent      int
 	best_width      int        // The preferred width of the output lines.
 	unicode         bool       // Allow unescaped non-ASCII characters?
 	line_break      LineBreak  // The preferred line break.
@@ -91,7 +111,8 @@ type Emitter struct {
 
 	indent int // The current indentation level.
 
-	CompactSequenceIndent bool // Is '- ' is considered part of the indentation for sequence elements?
+	// CompactSequenceIndent is true if the '- ' is considered part of the indentation for sequence elements.
+	CompactSequenceIndent bool
 
 	flow_level int // The current flow level.
 
@@ -104,7 +125,9 @@ type Emitter struct {
 	column     int  // The current column.
 	whitespace bool // If the last character was a whitespace?
 	indention  bool // If the last character was an indentation character (' ', '-', '?', ':')?
-	OpenEnded  bool // If an explicit document end is required?
+
+	// OpenEnded is true if an explicit document end is required.
+	OpenEnded bool
 
 	space_above bool // Is there's an empty line above?
 	foot_indent int  // The indent used to write the foot comment above, or -1 if none.
