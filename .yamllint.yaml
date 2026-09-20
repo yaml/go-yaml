@@ -3,7 +3,9 @@
 
 extends: default
 
-ignore: /**/testdata/  # ignore testdata files that are not relevant for linting
+ignore: |
+  /**/testdata/
+  /example/json-comments/data.yaml
 
 rules:
   brackets:
