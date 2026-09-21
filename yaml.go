@@ -693,7 +693,7 @@ func (e *Encoder) Close() error {
 	return e.dumper.Close()
 }
 
-// Unmarshal decodes the first document found within the in byte slice
+// Unmarshal decodes the *first* document found within the in byte slice
 // and assigns decoded values into the out value.
 //
 // Maps and pointers (to a struct, string, int, etc) are accepted as out
@@ -722,7 +722,7 @@ func (e *Encoder) Close() error {
 //	    B int
 //	}
 //	var t T
-//	yaml.Construct([]byte("a: 1\nb: 2"), &t)
+//	yaml.Unmarshal([]byte("a: 1\nb: 2"), &t)
 //
 // See the documentation of Marshal for the format of tags and a list of
 // supported tag options.
