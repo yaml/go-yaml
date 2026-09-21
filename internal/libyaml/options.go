@@ -40,8 +40,14 @@ type Options struct {
 	DepthCheck func(depth int, ctx *DepthContext) error
 	AliasCheck func(aliasCount, constructCount int) error
 
-	// Private options (not exported, used internally)
-	fromLegacy bool // Indicates legacy Unmarshal()/Decoder path (check Unmarshaler, allow trailing content)
+	// allowLegacyTrailingContent is an unexported flag used internally
+	// to enable the legacy behavior of allowing trailing content after a document.
+	//
+	// [yaml.NewDecoder] and [yaml.Unmarshal] set this flag to true to enable legacy behavior for backward compatibility.
+	//
+	// [NewDecoder]: https://pkg.go.dev/go.yaml.in/yaml/v4#NewDecoder
+	// [Unmarshal]: https://pkg.go.dev/go.yaml.in/yaml/v4#Unmarshal
+	allowLegacyTrailingContent bool
 }
 
 // Option allows configuring YAML loading and dumping operations.
@@ -451,12 +457,14 @@ var DefaultOptions = &Options{
 	QuotePreference: QuoteLegacy,
 }
 
-// SetLegacyDecoderOption sets the internal fromLegacy flag to true.
+// SetLegacyAllowTrailingContent sets the internal allowLegacyTrailingContent flag to true.
+//
 // This function is not exported out of the module and is used in [yaml.NewDecoder] and [yaml.Unmarshal]
-// to indicate that the legacy options is being used when loading YAML.1
+// to indicate that the legacy behavior of allowing trailing content
+// after a document should be enabled for backward compatibility.
 //
 // [NewDecoder]: https://pkg.go.dev/go.yaml.in/yaml/v4#NewDecoder
 // [Unmarshal]: https://pkg.go.dev/go.yaml.in/yaml/v4#Unmarshal
-func SetLegacyDecoderOption(o *Options) {
-	o.fromLegacy = true
+func SetLegacyAllowTrailingContent(o *Options) {
+	o.allowLegacyTrailingContent = true
 }
