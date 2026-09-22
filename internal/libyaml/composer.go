@@ -39,12 +39,7 @@ func NewComposer(b []byte, opts *Options) *Composer {
 		b = []byte{'\n'}
 	}
 	p.Parser.SetInputString(b)
-	if opts != nil && (opts.Parser != nil || opts.JSONComments != nil) {
-		p.source = NewEventReader(bytes.NewReader(b), opts)
-	}
-	if opts != nil {
-		p.Parser.depthCheck = opts.DepthCheck
-	}
+	p.configureInput(bytes.NewReader(b))
 	return &p
 }
 
@@ -55,13 +50,18 @@ func NewComposerFromReader(r io.Reader, opts *Options) *Composer {
 		opts:   opts,
 	}
 	p.Parser.SetInputReader(r)
-	if opts != nil && (opts.Parser != nil || opts.JSONComments != nil) {
-		p.source = NewEventReader(r, opts)
-	}
-	if opts != nil {
-		p.Parser.depthCheck = opts.DepthCheck
-	}
+	p.configureInput(r)
 	return &p
+}
+
+// configureInput applies options that affect the YAML input pipeline.
+func (c *Composer) configureInput(r io.Reader) {
+	if hasInputPlugins(c.opts) {
+		c.source = NewEventReader(r, c.opts)
+	}
+	if c.opts != nil {
+		c.Parser.depthCheck = c.opts.DepthCheck
+	}
 }
 
 // NewComposerFromEvents creates a composer that reads an existing event
