@@ -1,0 +1,216 @@
+#!/usr/bin/env perl
+# Copyright 2026 The go-yaml Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+use strict;
+use warnings;
+use Cwd qw(abs_path getcwd);
+use File::Copy qw(copy);
+use File::Find qw(find);
+use File::Path qw(make_path remove_tree);
+use JSON::PP;
+
+my $root = abs_path('.');
+my $go = $ENV{GO_YAML_BUILD_GO} || 'go';
+my $json_enabled = ($ENV{GO_YAML_BUILD_JSON_COMMENTS} // '') eq 'true';
+my $reference_enabled = ($ENV{GO_YAML_BUILD_REFERENCE_PARSER} // '') eq 'true';
+
+sub go_json {
+    my ($directory, @args) = @_;
+    my $previous = getcwd();
+    chdir $directory or die "Cannot enter $directory: $!\n";
+    local $ENV{GOWORK} = 'off';
+    local $ENV{GOPROXY} = $ENV{GOPROXY} // 'direct';
+    open my $result, '-|', $go, @args or die "Cannot run $go: $!\n";
+    local $/;
+    my $output = <$result>;
+    close $result or die "Cannot run $go @args\n";
+    chdir $previous or die "Cannot return to $previous: $!\n";
+    return JSON::PP->new->decode($output);
+}
+
+sub run_go {
+    my ($directory, @args) = @_;
+    my $previous = getcwd();
+    chdir $directory or die "Cannot enter $directory: $!\n";
+    local $ENV{GOWORK} = 'off';
+    local $ENV{GOPROXY} = $ENV{GOPROXY} // 'direct';
+    system {$go} $go, @args;
+    my $status = $?;
+    chdir $previous or die "Cannot return to $previous: $!\n";
+    $status == 0 or die "Cannot run $go @args\n";
+}
+
+sub copy_tree {
+    my ($from, $to) = @_;
+    find({no_chdir => 1, wanted => sub {
+        my $path = $File::Find::name;
+        my $relative = substr($path, length($from));
+        if (-d $path) {
+            make_path("$to$relative");
+        }
+        elsif (-f $path) {
+            copy($path, "$to$relative") or die "$path: $!";
+        }
+    }}, $from);
+}
+
+sub write_file {
+    my ($path, $text) = @_;
+    open my $file, '>', $path or die "$path: $!";
+    print {$file} $text;
+    close $file or die "$path: $!";
+}
+
+sub canonical_query {
+    my ($value, $label) = @_;
+    $value ||= 'latest';
+    $value =~ /\A(?:latest|v[0-9]+\.[0-9]+\.[0-9]+)\z/
+        or die "Invalid $label version: $value\n";
+    return $value;
+}
+
+sub local_version {
+    my ($path, $pattern, $label) = @_;
+    open my $file, '<', $path or die "Cannot read $path: $!\n";
+    local $/;
+    my $text = <$file>;
+    close $file or die "Cannot close $path: $!\n";
+    $text =~ $pattern or die "Missing release version in $path\n";
+    return "v$1";
+}
+
+sub resolve_version {
+    my ($module, $query, $local, $version) = @_;
+    if ($local) {
+        $query eq 'latest' || $query eq $version
+            or die "Requested $module $query has local version $version\n";
+        return $version;
+    }
+    my $info = go_json($root, 'list', '-m', '-json', "$module\@$query");
+    my $resolved = $info->{Version} // '';
+    $resolved =~ /\Av[0-9]+\.[0-9]+\.[0-9]+\z/
+        or die "No v-prefixed release for $module\@$query\n";
+    return $resolved;
+}
+
+my @plugins;
+if ($json_enabled) {
+    my $local = ($ENV{GO_YAML_JSON_COMMENTS_LOCAL} // '0') eq '1';
+    my $upstream = "$root/repos/yamlstar-plugin-json-comments";
+    -f "$upstream/sanitizer/sanitizer.go"
+        or die "Missing JSON-comments sanitizer in $upstream\n" if $local;
+    my $query = canonical_query(
+        $ENV{GO_YAML_JSON_COMMENTS_VERSION}, 'JSON-comments');
+    my $local_version = $local
+        ? local_version("$upstream/plugin.edn",
+            qr/:version\s+"([0-9]+\.[0-9]+\.[0-9]+)"/,
+            'JSON-comments')
+        : '';
+    push @plugins, {
+        api => 'json-comments',
+        module => 'github.com/yamlstar/yamlstar-plugin-json-comments',
+        wrapper => 'go.yaml.in/yaml/v4/plugin/json-comments',
+        wrapper_path => "$root/plugin/json-comments",
+        upstream => $upstream,
+        local => $local,
+        version => resolve_version(
+            'github.com/yamlstar/yamlstar-plugin-json-comments',
+            $query, $local, $local_version),
+        source => <<'GO',
+package main
+
+import jsoncomments "go.yaml.in/yaml/v4/plugin/json-comments"
+
+func init() {
+	compiledPluginRegistrations = append(
+		compiledPluginRegistrations, jsoncomments.Register)
+}
+GO
+    };
+}
+if ($reference_enabled) {
+    my $local = ($ENV{GO_YAML_REFERENCE_PARSER_LOCAL} // '0') eq '1';
+    my $upstream = "$root/repos/yamlstar-plugin-parser-reference";
+    -f "$upstream/parser/parser.go"
+        or die "Missing reference parser in $upstream\n" if $local;
+    my $query = canonical_query(
+        $ENV{GO_YAML_REFERENCE_PARSER_VERSION}, 'reference parser');
+    my $local_version = $local
+        ? local_version("$upstream/Makefile",
+            qr/^VERSION := ([0-9]+\.[0-9]+\.[0-9]+)$/m,
+            'reference parser')
+        : '';
+    push @plugins, {
+        api => 'parser-reference',
+        module => 'github.com/yamlstar/yamlstar-plugin-parser-reference',
+        wrapper => 'go.yaml.in/yaml/v4/plugin/parser/reference',
+        wrapper_path => "$root/plugin/parser/reference",
+        upstream => $upstream,
+        local => $local,
+        version => resolve_version(
+            'github.com/yamlstar/yamlstar-plugin-parser-reference',
+            $query, $local, $local_version),
+        source => <<'GO',
+package main
+
+import reference "go.yaml.in/yaml/v4/plugin/parser/reference"
+
+func init() {
+	compiledPluginRegistrations = append(
+		compiledPluginRegistrations, reference.Register)
+}
+GO
+    };
+}
+@plugins or die "No compiled plugins were selected\n";
+
+my $stage = "$root/.cache/cli-plugins";
+remove_tree($stage);
+make_path($stage);
+copy_tree("$root/cmd/go-yaml", $stage);
+
+run_go($stage, 'mod', 'init', 'go.yaml.in/yaml/v4/plugin-cli');
+run_go($stage, 'mod', 'edit', '-go=1.24');
+run_go($stage, 'mod', 'edit', "-replace=go.yaml.in/yaml/v4=$root");
+run_go($stage, 'get', 'go.yaml.in/yaml/v4@v4.0.0-rc.6');
+for my $plugin (@plugins) {
+    write_file("$stage/$plugin->{api}.go", $plugin->{source});
+    run_go($stage, 'mod', 'edit',
+        "-replace=$plugin->{wrapper}=$plugin->{wrapper_path}");
+    run_go($stage, 'mod', 'edit',
+        "-replace=$plugin->{module}=$plugin->{upstream}")
+        if $plugin->{local};
+    run_go($stage, 'get', $plugin->{wrapper});
+    run_go($stage, 'get', "$plugin->{module}\@$plugin->{version}");
+}
+run_go($stage, 'mod', 'tidy');
+for my $plugin (@plugins) {
+    my $info = go_json($stage, 'list', '-m', '-json', $plugin->{module});
+    my $selected = $info->{Version} // '';
+    $selected eq $plugin->{version}
+        or die "Requested $plugin->{module}\@$plugin->{version} " .
+            "but selected $selected\n";
+}
+
+# The workspace is used only by the local optional-module test targets.
+# Configured CLI compilation runs with GOWORK=off and uses the staged module.
+my $workdir = "$root/.cache/plugin-work";
+remove_tree($workdir);
+make_path($workdir);
+write_file("$workdir/go.work", <<"WORK");
+go 1.24.0
+
+use (
+	$root
+	$root/example/json-comments
+	$root/plugin/json-comments
+	$root/plugin/parser/reference
+	$root/repos/yamlstar-plugin-json-comments
+	$root/repos/yamlstar-plugin-parser-reference
+	$stage
+)
+
+replace github.com/yamlstar/yamlstar-plugin-json-comments v0.1.9 => $root/repos/yamlstar-plugin-json-comments
+replace github.com/yamlstar/yamlstar-plugin-parser-reference v0.2.5 => $root/repos/yamlstar-plugin-parser-reference
+WORK

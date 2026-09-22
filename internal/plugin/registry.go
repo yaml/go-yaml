@@ -21,6 +21,7 @@ type Registration struct {
 	API     string
 	Name    string
 	Version string
+	Default bool
 	Factory Factory
 }
 
@@ -28,6 +29,7 @@ type Registration struct {
 type Registry struct {
 	sync.RWMutex
 	registrations map[string]map[string]Registration
+	defaults      map[string]string
 }
 
 var versionPattern = regexp.MustCompile(`^v?([0-9]+\.[0-9]+\.[0-9]+)$`)
@@ -36,6 +38,7 @@ var versionPattern = regexp.MustCompile(`^v?([0-9]+\.[0-9]+\.[0-9]+)$`)
 func NewRegistry(registrations ...Registration) *Registry {
 	registry := &Registry{
 		registrations: map[string]map[string]Registration{},
+		defaults:      map[string]string{},
 	}
 	for _, registration := range registrations {
 		if err := registry.Register(registration); err != nil {
@@ -71,13 +74,23 @@ func (r *Registry) Register(registration Registration) error {
 		return fmt.Errorf("yaml: plugin %q implementation %q is already registered",
 			registration.API, registration.Name)
 	}
+	if registration.Default || registration.Name == registration.API {
+		if current := r.defaults[registration.API]; current != "" {
+			return fmt.Errorf(
+				"yaml: plugin %q already has default implementation %q",
+				registration.API, current)
+		}
+		r.defaults[registration.API] = registration.Name
+	}
 	implementations[registration.Name] = registration
 	return nil
 }
 
 // Create resolves and constructs a configured implementation.
 func (r *Registry) Create(api string, cfg map[string]any) (any, error) {
-	name := api
+	r.RLock()
+	name := r.defaults[api]
+	r.RUnlock()
 	if raw, found := cfg["name"]; found {
 		var ok bool
 		name, ok = raw.(string)
@@ -85,6 +98,10 @@ func (r *Registry) Create(api string, cfg map[string]any) (any, error) {
 			return nil, fmt.Errorf(
 				"yaml: plugin %q name must be a non-empty string", api)
 		}
+	}
+	if name == "" {
+		return nil, fmt.Errorf(
+			"yaml: plugin %q has no default implementation", api)
 	}
 	requestedVersion := ""
 	if raw, found := cfg["version"]; found {

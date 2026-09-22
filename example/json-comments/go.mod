@@ -14,7 +14,7 @@ require (
 	github.com/glojurelang/glojure v0.7.15 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
-	github.com/yamlstar/yamlstar-plugin-json-comments v0.1.8 // indirect
+	github.com/yamlstar/yamlstar-plugin-json-comments v0.1.9 // indirect
 	go4.org/intern v0.0.0-20220617035311-6925f38cc365 // indirect
 	go4.org/unsafe/assume-no-moving-gc v0.0.0-20230525183740-e7c30c78aeb2 // indirect
 	golang.org/x/sys v0.8.0 // indirect

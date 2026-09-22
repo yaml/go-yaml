@@ -39,7 +39,7 @@ func NewComposer(b []byte, opts *Options) *Composer {
 		b = []byte{'\n'}
 	}
 	p.Parser.SetInputString(b)
-	if opts != nil && opts.EventSource != nil {
+	if opts != nil && (opts.Parser != nil || opts.JSONComments != nil) {
 		p.source = NewEventReader(bytes.NewReader(b), opts)
 	}
 	if opts != nil {
@@ -55,7 +55,7 @@ func NewComposerFromReader(r io.Reader, opts *Options) *Composer {
 		opts:   opts,
 	}
 	p.Parser.SetInputReader(r)
-	if opts != nil && opts.EventSource != nil {
+	if opts != nil && (opts.Parser != nil || opts.JSONComments != nil) {
 		p.source = NewEventReader(r, opts)
 	}
 	if opts != nil {

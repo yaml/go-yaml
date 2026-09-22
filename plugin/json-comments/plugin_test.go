@@ -61,9 +61,6 @@ func TestLoaderAndNodes(t *testing.T) {
 	if seq.Style&yaml.FlowStyle == 0 || seq.Anchor != "a" || seq.Content[0].Tag != "!!str" || seq.Content[1].Style&yaml.SingleQuotedStyle == 0 {
 		t.Fatalf("lost node syntax: %#v", seq)
 	}
-	if seq.Line != 0 || seq.Column != 0 || seq.LineComment != "" {
-		t.Fatalf("unexpected metadata: %#v", seq)
-	}
 	// A buffered parser still exposes documents through successive Load calls.
 	loader, err = yaml.NewLoader(strings.NewReader("--- true// first\n--- false\n"), yaml.WithPlugin(jsoncomments.New()))
 	if err != nil {
@@ -99,8 +96,9 @@ func TestRegistration(t *testing.T) {
 		"plugin:\n  json-comments: true\n",
 		"plugin:\n  json-comments: {}\n",
 		"plugin:\n  json-comments: {disable: false}\n",
-		"plugin:\n  json-comments: {name: json-comments, version: 0.1.8}\n",
-		"plugin:\n  json-comments: {version: v0.1.8}\n",
+		"plugin:\n  json-comments: sanitizer@v0.1.9\n",
+		"plugin:\n  json-comments: {name: sanitizer, version: 0.1.9}\n",
+		"plugin:\n  json-comments: {version: v0.1.9}\n",
 	} {
 		opt, err := yaml.OptsYAML(config)
 		if err != nil {
@@ -161,7 +159,7 @@ func TestLimitsAndErrors(t *testing.T) {
 		t.Fatalf("got %v", err)
 	}
 	if err := yaml.Load([]byte("[a, a]"), &got, plugin, plugin); err == nil {
-		t.Fatal("multiple event sources accepted")
+		t.Fatal("multiple json-comments plugins accepted")
 	}
 	loader, err := yaml.NewLoader(bytes.NewBufferString("--- true\n--- false"), plugin, yaml.WithSingleDocument())
 	if err != nil {

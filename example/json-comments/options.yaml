@@ -4,5 +4,5 @@ plugin:
     depth: 3
     alias: 100
   json-comments:
-    name: json-comments
-    version: 0.1.8
+    name: sanitizer
+    version: v0.1.9

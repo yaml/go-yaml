@@ -1,303 +1,242 @@
-# Plugin System
+# Plugin system
 
-The go-yaml v4 plugin system extends YAML processing with custom logic while
-maintaining performance, safety and backward compatibility.
+The go-yaml v4 plugin system lets applications replace selected processing
+stages without adding optional dependencies to the core module.
 
-## Overview
+A plugin API defines a role such as `parser`, `json-comments`, or `limit`.
+Each API can have several named implementations.
+The current implementations are:
 
-Plugins allow you to customize certain internal processing during loading and
-dumping.
-Plugin interfaces use public types and can be implemented by external packages.
+| API | Implementation | Package | Default |
+|---|---|---|---|
+| `parser` | `go-yaml` | core | yes |
+| `parser` | `reference` | `plugin/parser/reference` | no |
+| `json-comments` | `sanitizer` | `plugin/json-comments` | yes |
+| `limit` | `limit` | `plugin/limit` | yes |
 
-## Available Plugins
+The optional packages are separate Go modules.
+Importing the core `go.yaml.in/yaml/v4` module does not acquire Glojure or the
+YAMLStar generated code.
 
-### Limit Plugin
+## Direct Go use
 
-The limit plugin controls the maximum nesting depth and alias expansion
-allowed during parsing.
-By default, go-yaml enforces conservative limits to prevent DoS attacks.
-Use the limit plugin to relax or tighten those limits.
-
-```go
-import "go.yaml.in/yaml/v4/plugin/limit"
-
-// Default limits (same as library defaults)
-loader := yaml.NewLoader(data, yaml.WithPlugin(limit.New()))
-
-// Disable alias checking (e.g. for documents with many programmatic aliases)
-loader := yaml.NewLoader(data, yaml.WithPlugin(limit.New(limit.AliasNone())))
-
-// Custom depth limit
-loader := yaml.NewLoader(data, yaml.WithPlugin(limit.New(limit.DepthValue(50))))
-```
-
-#### Limit Options
-
-| Option | Effect |
-|---|---|
-| `DepthValue(n)` | Max nesting depth (both flow and block) |
-| `DepthNone()` | Disable depth checking |
-| `DepthFunc(fn)` | Custom `func(depth int, ctx *yaml.DepthContext) error` |
-| `AliasValue(n)` | Max alias expansion count (simple threshold) |
-| `AliasNone()` | Disable alias ratio checking |
-| `AliasFunc(fn)` | Custom `func(aliasCount, constructCount int) error` |
-
-## Using Plugins
-
-### Basic Usage
-
-Register plugins with `WithPlugin()`:
+Pass an implementation to `yaml.WithPlugin` when code constructs the plugin
+directly.
 
 ```go
 import (
     "go.yaml.in/yaml/v4"
+    jsoncomments "go.yaml.in/yaml/v4/plugin/json-comments"
     "go.yaml.in/yaml/v4/plugin/limit"
 )
 
-loader := yaml.NewLoader(data, yaml.WithPlugin(limit.New(limit.AliasNone())))
-var result any
-loader.Load(&result)
+var value any
+err := yaml.Load(input, &value,
+    yaml.WithPlugin(jsoncomments.New()),
+    yaml.WithPlugin(limit.New(limit.DepthValue(50))))
 ```
 
-## Default Behavior
-
-Both bare `NewLoader(data)` and version presets (`WithV4Defaults()`, etc.)
-include default limits equivalent to `limit.New()`.
-
-## YAML Configuration
-
-Plugins can be configured from YAML strings using `OptsYAML`:
+The public plugin interfaces are:
 
 ```go
-opts, err := yaml.OptsYAML(`
-  plugin:
-    limit:
-      depth: 50
-      alias: 1000
-`)
-```
+type ParserPlugin interface {
+    Parse(input []byte) ([]PluginEvent, error)
+}
 
-The `plugin` field must be a mapping whose keys identify plugin APIs.
-Each API maps to a configuration object, `true` for defaults, or `false` to
-leave that plugin disabled.
-The host fields `name`, `version`, and `disable` are removed before the
-remaining plugin-specific settings reach the plugin factory.
-`name` selects an implementation and defaults to the API key.
-`version` requires the linked implementation to match that release exactly.
-Release versions may be written with or without a leading `v`.
-Any plugin mapping can use `disable: true` to have the same effect as `false`,
-even when other settings are present.
-`disable: false` leaves the plugin enabled.
-The `disable` value must be a boolean.
-A null plugin value is invalid.
-Disabling `limit` leaves the built-in default limits active.
-The limit plugin accepts these settings:
+type JSONCommentsPlugin interface {
+    Sanitize(input []byte) ([]byte, error)
+}
 
-- `depth` (int) - max nesting depth; `null` disables depth checking
-- `alias` (int) - max alias count; `null` disables alias checking
-- Omitted keys keep defaults
-- `limit: true` uses all defaults
-
-```yaml
-# Disable depth checking, keep default alias limits
-plugin:
-  limit:
-    depth: null
-```
-
-Keep a plugin's settings for later while leaving it unselected:
-
-```yaml
-plugin:
-  limit:
-    depth: 3
-    alias: 100
-    disable: true
-```
-
-## Third-Party Plugins
-
-To write a third-party plugin, implement the `yaml.LimitPlugin`
-interface:
-
-```go
 type LimitPlugin interface {
     CheckDepth(depth int, ctx *DepthContext) error
     CheckAlias(aliasCount, constructCount int) error
 }
 ```
 
-Pass an instance to `yaml.WithPlugin()`; no import of
-`plugin/limit` is needed.
+A JSON-comments plugin transforms the input first.
+The selected parser then parses the transformed UTF-8 text.
+The built-in `go-yaml` parser remains the default unless a parser plugin is
+selected.
 
-Example:
+`PluginEvent` represents stream and document boundaries, mappings, sequences,
+scalars, and aliases with ordinary Go fields.
+The loader validates a parser plugin's complete event stream before composing
+nodes.
+Depth limits apply to that stream and cannot limit work already performed by
+an external parser.
 
-```go
-type StrictLimit struct{}
-
-func (s *StrictLimit) CheckDepth(depth int, ctx *yaml.DepthContext) error {
-    if depth > 100 {
-        return fmt.Errorf("depth %d exceeds policy limit of 100", depth)
-    }
-    return nil
-}
-
-func (s *StrictLimit) CheckAlias(aliasCount, constructCount int) error {
-    if aliasCount > 1000 {
-        return fmt.Errorf("alias count %d exceeds policy limit", aliasCount)
-    }
-    return nil
-}
-
-yaml.NewLoader(data, yaml.WithPlugin(&StrictLimit{}))
-```
-
-## Event Source Plugins
-
-An event-source plugin supplies a complete event stream for a load operation.
-The resulting events still pass through go-yaml's composer, resolver, and
-constructor, including configured alias limits and value conversion.
-Only one event-source plugin can be selected.
-
-```go
-type EventSourcePlugin interface {
-    Parse(input []byte) ([]PluginEvent, error)
-}
-```
-
-`PluginEvent` represents stream/document boundaries, mappings, sequences,
-scalars, and aliases using ordinary Go fields.
-See its Go documentation for event names and optional metadata.
-The loader validates the complete event stream before composing nodes.
-Depth limits apply to that event stream; they cannot limit work already
-performed inside the plugin's parser.
-
-Input is read once when loading begins.
-The plugin returns the full event stream, and subsequent `Loader.Load` calls
-consume its documents.
+Input is buffered when a parser or JSON-comments plugin is active.
 Plugin implementations must support independent concurrent calls.
-Reader and parser errors retain their underlying cause.
 
-### JSON Comments
+## Limit plugin
 
-The optional `go.yaml.in/yaml/v4/plugin/json-comments` module reuses YAMLStar's
-Gloat-generated JSON-comments processor and reference parser.
-It requires Go 1.24 or newer and Glojure, with no C compiler or shared library.
-The core go-yaml module does not acquire these dependencies.
+The limit plugin controls maximum nesting depth and alias expansion.
+The built-in defaults remain active unless another limit implementation is
+selected.
 
 ```go
-import (
-    "go.yaml.in/yaml/v4"
-    jsoncomments "go.yaml.in/yaml/v4/plugin/json-comments"
-)
-
-var value any
-err := yaml.Load([]byte("a: true // comment\n"), &value,
-    yaml.WithPlugin(jsoncomments.New()))
+loader := yaml.NewLoader(data, yaml.WithPlugin(limit.New()))
+loader = yaml.NewLoader(data,
+    yaml.WithPlugin(limit.New(limit.AliasNone())))
+loader = yaml.NewLoader(data,
+    yaml.WithPlugin(limit.New(limit.DepthValue(50))))
 ```
 
-The plugin accepts UTF-8 YAML containing `//` and non-nesting `/* */` comments.
-It preserves comment markers inside quoted and block scalars and URLs.
-JSON literals and numbers allow adjacent comments, such as `true// comment`.
-Other plain scalars require separation, so `foo// text` remains scalar text.
+| Option | Effect |
+|---|---|
+| `DepthValue(n)` | Set the flow and block nesting limit |
+| `DepthNone()` | Disable depth checking |
+| `DepthFunc(fn)` | Supply a depth policy function |
+| `AliasValue(n)` | Set the alias expansion limit |
+| `AliasNone()` | Disable alias checking |
+| `AliasFunc(fn)` | Supply an alias policy function |
 
-Comments are discarded, and node positions are unknown (zero).
-Styles, tags, anchors, aliases, and available version directives are preserved.
-Original tag-directive declarations are not supplied by this parser.
-Input is buffered, and syntax follows the reference parser.
-Concurrent callers are supported, with parsing serialized by the plugin because
-the generated parser shares mutable state.
+## Named configuration
 
-### Named Configuration
+External packages register named implementations for `yaml.OptsYAML` and
+`yaml.WithNamedPlugin`.
+Call each optional package's `Register` function once during startup.
 
-Applications may call `jsoncomments.Register()` once at startup to enable
-`yaml.WithNamedPlugin("json-comments")` and this `yaml.OptsYAML` configuration:
+```go
+if err := jsoncomments.Register(); err != nil {
+    log.Fatal(err)
+}
+if err := reference.Register(); err != nil {
+    log.Fatal(err)
+}
+```
+
+Configuration can use mappings, strings, or booleans:
 
 ```yaml
 plugin:
-  json-comments:
-    name: json-comments
-    version: 0.1.8
-```
-
-The mapping key `json-comments` identifies the plugin API.
-The `name` field selects its `json-comments` implementation, and `version`
-requires that implementation release to be linked.
-Both fields may be omitted because there is only one implementation here.
-`true` and an empty mapping enable the default implementation.
-`false` or `{disable: true}` leaves it disabled.
-`{disable: false}` also enables it with defaults.
-Null and unknown plugin-specific settings are rejected.
-Registration alone does not select a plugin.
-Direct use of `yaml.WithPlugin(jsoncomments.New())` needs no registration.
-
-External packages can register a factory with
-`yaml.RegisterPlugin(yaml.PluginRegistration{...})`.
-The registration supplies the API, implementation name, optional release
-version, and factory.
-The factory receives only plugin-specific settings and returns a plugin or
-error.
-Registration is synchronized; duplicate API and name pairs are errors.
-
-### Build Selection and Embedded Defaults
-
-Use `make cli CONFIG=options.yaml` to compile the plugins named in a YAML
-options file and embed that file as the default configuration:
-
-```yaml
-plugin:
+  parser: reference@v0.2.5
+  json-comments: sanitizer@v0.1.9
   limit:
     depth: 50
-    alias: 100
-  json-comments: {}
+    alias: 1000
 ```
 
-The resulting `./go-yaml -j input.yaml` uses these settings automatically.
-The configuration file is no longer needed at runtime; edits require a rebuild.
-A runtime `-C` file replaces the entire embedded configuration, while `-o`
-flags override the selected options.
-`--plugin=NAME` selects the default implementation with default settings.
-`--plugin=API=NAME` selects an implementation explicitly.
+A string is the short form `IMPLEMENTATION` or `IMPLEMENTATION@VERSION`.
+Versions with and without the leading `v` are accepted.
+Documentation and Git tags use the `v` prefix.
 
-Build selection currently supports `limit` and `json-comments`.
-Core-only configurations use the ordinary parser and do not link Glojure.
-Invalid configuration fails before the existing binary is replaced.
-`make cli` without `CONFIG` restores the ordinary build and defaults.
+`true` selects the API's default implementation with its defaults.
+`false` leaves the plugin disabled.
+A mapping can contain `name`, `version`, `disable`, and implementation
+settings.
+`disable: true` has the same effect as `false`, even when saved settings remain
+in the mapping.
+Null is invalid.
 
-### Testing the Optional CLI
+The host removes `name`, `version`, and `disable` before calling the
+implementation factory.
+A requested version must match the linked implementation exactly.
 
-By default, the build resolves the newest v-prefixed JSON-comments release
-directly from its Git repository each time.
-Go downloads the selected module through the configured module proxy.
-It requires no local checkout of the plugin repository.
-For local development, put a checkout with generated parser sources under
-`repos/yamlstar-plugin-json-comments` and set `JSON-COMMENTS-LOCAL=1`.
-The Make targets create a temporary CLI module and workspace under `.cache/`.
-Downloaded module sources use the Go module cache.
+Disabling `limit` leaves the core safety limits active.
+The limit implementation accepts integer `depth` and `alias` settings.
+A null setting disables that one check.
+
+## Optional implementations
+
+### Reference parser
+
+`go.yaml.in/yaml/v4/plugin/parser/reference` adapts the generated Go parser
+from `github.com/yamlstar/yamlstar-plugin-parser-reference`.
+The canonical parser source remains in `yaml/yaml-reference-parser-clj`.
+It requires Go 1.24 or newer and does not need Clojure, Gloat, CGO, or a shared
+library at runtime.
+
+```go
+import reference "go.yaml.in/yaml/v4/plugin/parser/reference"
+
+var value any
+err := yaml.Load(input, &value, yaml.WithPlugin(reference.New()))
+```
+
+### JSON comments
+
+`go.yaml.in/yaml/v4/plugin/json-comments` adapts the sanitizer from
+`github.com/yamlstar/yamlstar-plugin-json-comments`.
+It accepts UTF-8 YAML containing `//` and non-nesting `/* */` comments.
+Comment markers inside quoted scalars, block scalars, and URLs are preserved.
+JSON literals and numbers permit adjacent comments such as `true// comment`.
+Other plain scalars require separation, so `foo// text` remains scalar text.
+
+The sanitizer replaces comment characters while preserving line endings.
+The selected parser receives the sanitized text.
+Comments do not appear in nodes, while YAML styles, tags, anchors, aliases,
+and parser position information remain available.
+See the upstream syntax document for the exact recognition rules.
+
+## CLI build selection
+
+The ordinary `go-yaml` binary contains only core implementations.
+Optional implementations must be linked when the CLI is built.
+
+`CONFIG` is a YAML options file.
+It selects build dependencies and embeds the full configuration as the binary's
+defaults.
 
 ```bash
 make cli CONFIG=example/json-comments/options.yaml
-./go-yaml -j example/json-comments/data.yaml
-make test-json-comments
-make test-json-comments-race
 ```
 
-To build with a specific release, use
-`plugin: {json-comments: {version: 0.1.8}}` in the options file.
-The `v0.1.8` form is also accepted.
-`version` selects code at build time and remains in the embedded configuration.
-The completed binary validates it against the linked release.
-The same options file can therefore be supplied later through `-C`.
-A different runtime version request fails with both versions in the error.
-`JSON-COMMENTS-LOCAL=1` uses local sources and validates the requested version
-against the local plugin manifest.
+`PLUGIN` is only the plugin selector DSL.
+It never names a file and never contains YAML.
 
-`make cli CONFIG=example/json-comments/options.yaml` uses the sample
-configuration to link and enable JSON-comments in `./go-yaml`.
-It performs no runtime downloads or dynamic library loading.
-Runtime flags and `-C` can override the embedded configuration.
-JSON, YAML, node, and event output modes support the plugin.
-Token output and legacy loading modes reject event-source selection.
+```bash
+make cli PLUGIN=parser=reference@v0.2.5,json-comments
+```
 
-`make cli` replaces `./go-yaml` with the ordinary build.
-The ordinary build reports an unregistered plugin if JSON-comments is selected.
+Selectors have these forms:
+
+```text
+API
+API@VERSION
+API=IMPLEMENTATION
+API=IMPLEMENTATION@VERSION
+```
+
+A bare API selects its default implementation.
+The build resolves the newest v-prefixed release when no version is supplied.
+A version selects that exact release.
+Go downloads released modules through its configured module proxy and stores
+them in the Go module cache.
+Build staging and generated workspaces live under `.cache/`.
+
+For local development, place the related checkouts under `repos/` and set the
+matching override:
+
+```bash
+make cli PLUGIN=parser=reference@v0.2.5,json-comments \
+  REFERENCE-PARSER-LOCAL=1 JSON-COMMENTS-LOCAL=1
+```
+
+The compiled command uses the same selector DSL at runtime:
+
+```bash
+./go-yaml --plugin=parser=reference@0.2.5,json-comments -j data.yaml
+```
+
+A runtime selector can choose only implementations already linked into the
+binary.
+It cannot download or add Go code.
+`-C FILE` and `--config=FILE` continue to load YAML configuration files.
+A runtime configuration replaces embedded defaults.
+
+JSON, YAML, node, and event modes support parser and JSON-comments plugins.
+Token and legacy modes support the JSON-comments sanitizer with the built-in
+`go-yaml` parser.
+They reject an external parser because those modes do not consume parser event
+plugins.
+
+Run the optional module checks with:
+
+```bash
+make test-json-comments
+make test-json-comments-race
+make test-reference-parser
+```
+
+[upstream syntax document]: https://github.com/yamlstar/yamlstar-plugin-json-comments/blob/main/Syntax.md

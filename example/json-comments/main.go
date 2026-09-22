@@ -4,35 +4,24 @@ import (
 	"encoding/json"
 	"log"
 	"os"
-	"runtime/debug"
 
 	"go.yaml.in/yaml/v4"
 	jsoncomments "go.yaml.in/yaml/v4/plugin/json-comments"
 )
 
-const (
-	pluginModule  = "github.com/yamlstar/yamlstar-plugin-json-comments"
-	pluginVersion = "v0.1.8"
-)
+const pluginOptions = `
+plugin:
+  json-comments:
+    version: v0.1.9
+`
 
 func main() {
-	info, ok := debug.ReadBuildInfo()
-	if !ok {
-		log.Fatal("cannot inspect linked modules")
+	if err := jsoncomments.Register(); err != nil {
+		log.Fatal(err)
 	}
-	found := false
-	for _, dependency := range info.Deps {
-		if dependency.Path == pluginModule {
-			found = true
-			if dependency.Version != pluginVersion {
-				log.Fatalf("expected %s, got %s",
-					pluginVersion, dependency.Version)
-			}
-			break
-		}
-	}
-	if !found {
-		log.Fatalf("%s is not linked", pluginModule)
+	options, err := yaml.OptsYAML(pluginOptions)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	input, err := os.ReadFile("data.yaml")
@@ -40,8 +29,7 @@ func main() {
 		log.Fatal(err)
 	}
 	var value map[string]any
-	if err = yaml.Load(input, &value,
-		yaml.WithPlugin(jsoncomments.New())); err != nil {
+	if err = yaml.Load(input, &value, options); err != nil {
 		log.Fatal(err)
 	}
 	if err := json.NewEncoder(os.Stdout).Encode(value); err != nil {

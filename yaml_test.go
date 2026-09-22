@@ -3268,7 +3268,7 @@ func TestOptsYAML(t *testing.T) {
 			name:      "null plugin value",
 			yamlStr:   "plugin: {limit: null}",
 			expectErr: true,
-			errMatch:  "mapping or boolean",
+			errMatch:  "mapping, string, or boolean",
 		},
 		{
 			name:      "null plugin field",

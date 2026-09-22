@@ -1,7 +1,7 @@
 // Copyright 2026 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-// Build a CLI with the plugins and defaults named by CONFIG.
+// Build a CLI with the plugins and defaults named by CONFIG and PLUGIN.
 package main
 
 import (
@@ -17,14 +17,20 @@ import (
 
 	"go.yaml.in/yaml/v4"
 	"go.yaml.in/yaml/v4/internal/libyaml"
+	pluginreg "go.yaml.in/yaml/v4/internal/plugin"
 )
 
 func main() {
 	root, err := os.Getwd()
 	if err == nil {
-		err = buildCLI(root, os.Getenv("GO_YAML_BUILD_CONFIG"),
-			filepath.Join(root, "go-yaml"), os.Getenv("GO_YAML_BUILD_GO"),
-			os.Getenv("GO_YAML_BUILD_PERL"))
+		err = buildCLIWithPlugins(
+			root,
+			os.Getenv("GO_YAML_BUILD_CONFIG"),
+			os.Getenv("GO_YAML_BUILD_PLUGIN"),
+			filepath.Join(root, "go-yaml"),
+			os.Getenv("GO_YAML_BUILD_GO"),
+			os.Getenv("GO_YAML_BUILD_PERL"),
+		)
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "build CLI:", err)
@@ -33,12 +39,52 @@ func main() {
 }
 
 type buildConfig struct {
-	jsonComments bool
-	version      string
-	embedded     []byte
+	jsonComments, referenceParser bool
+	jsonVersion, referenceVersion string
+	embedded                      []byte
 }
 
 var pluginVersion = regexp.MustCompile(`^v?[0-9]+\.[0-9]+\.[0-9]+$`)
+
+func canonicalVersion(value any, api string) (string, error) {
+	version, ok := value.(string)
+	if !ok || !pluginVersion.MatchString(version) {
+		return "", fmt.Errorf(
+			"plugin %q version must be a release version", api)
+	}
+	return "v" + strings.TrimPrefix(version, "v"), nil
+}
+
+func pluginConfig(api string, value any) (map[string]any, bool, error) {
+	switch setting := value.(type) {
+	case bool:
+		return map[string]any{}, !setting, nil
+	case string:
+		config, err := pluginreg.ConfigValue(api, setting)
+		return config, false, err
+	case map[string]any:
+		if raw, found := setting["disable"]; found {
+			disabled, ok := raw.(bool)
+			if !ok {
+				return nil, false, fmt.Errorf(
+					"plugin %q disable must be a boolean", api)
+			}
+			if disabled {
+				return nil, true, nil
+			}
+		}
+		config := make(map[string]any, len(setting))
+		for key, item := range setting {
+			if key != "disable" {
+				config[key] = item
+			}
+		}
+		return config, false, nil
+	default:
+		return nil, false, fmt.Errorf(
+			"plugin %q value must be a mapping, string, or boolean", api)
+	}
+}
 
 // inspectConfig validates core options and selects known compiled plugins.
 // The completed binary validates embedded defaults against the real factories.
@@ -48,68 +94,80 @@ func inspectConfig(data []byte) (buildConfig, error) {
 	if err := yaml.Load(data, &config); err != nil {
 		return selection, err
 	}
+	if config == nil {
+		config = map[string]any{}
+	}
 	if value, present := config["plugin"]; present {
 		plugins, ok := value.(map[string]any)
 		if !ok {
-			return selection, fmt.Errorf("plugin configuration must be a mapping")
+			return selection, fmt.Errorf(
+				"plugin configuration must be a mapping")
 		}
-		for name, value := range plugins {
-			disabled := false
-			switch setting := value.(type) {
-			case bool:
-				if !setting {
-					disabled = true
-				}
-			case map[string]any:
-				if raw, found := setting["disable"]; found {
-					disabled, ok = raw.(bool)
-					if !ok {
-						return selection, fmt.Errorf(
-							"plugin %q disable must be a boolean", name)
-					}
-				}
-			default:
-				return selection, fmt.Errorf(
-					"plugin %q value must be a mapping or boolean", name)
+		for api, value := range plugins {
+			setting, disabled, err := pluginConfig(api, value)
+			if err != nil {
+				return selection, err
 			}
 			if disabled {
 				continue
 			}
-			switch name {
+			name := ""
+			if raw, found := setting["name"]; found {
+				name, ok = raw.(string)
+				if !ok || name == "" {
+					return selection, fmt.Errorf(
+						"plugin %q name must be a non-empty string", api)
+				}
+			}
+			switch api {
 			case "limit":
-			case "json-comments":
-				if setting, ok := value.(map[string]any); ok {
-					implementation := name
-					if raw, found := setting["name"]; found {
-						implementation, ok = raw.(string)
-						if !ok || implementation == "" {
-							return selection, fmt.Errorf(
-								"plugin %q name must be a non-empty string", name)
-						}
-					}
-					if implementation != "json-comments" {
-						return selection, fmt.Errorf(
-							"no CLI build provider for plugin %q implementation %q",
-							name, implementation)
-					}
+				if name != "" && name != "limit" {
+					return selection, fmt.Errorf(
+						"no CLI build provider for plugin %q implementation %q",
+						api, name)
+				}
+			case "parser":
+				if name == "" {
+					name = "go-yaml"
+				}
+				switch name {
+				case "go-yaml":
+				case "reference":
+					selection.referenceParser = true
 					if raw, found := setting["version"]; found {
-						version, ok := raw.(string)
-						if !ok || !pluginVersion.MatchString(version) {
-							return selection, fmt.Errorf(
-								"plugin %q version must be a release version",
-								name)
+						selection.referenceVersion, err = canonicalVersion(raw, api)
+						if err != nil {
+							return selection, err
 						}
-						selection.version = "v" + strings.TrimPrefix(version, "v")
 					}
+					delete(plugins, api)
+				default:
+					return selection, fmt.Errorf(
+						"no CLI build provider for plugin %q implementation %q",
+						api, name)
+				}
+			case "json-comments":
+				if name == "" {
+					name = "sanitizer"
+				}
+				if name != "sanitizer" {
+					return selection, fmt.Errorf(
+						"no CLI build provider for plugin %q implementation %q",
+						api, name)
 				}
 				selection.jsonComments = true
+				if raw, found := setting["version"]; found {
+					selection.jsonVersion, err = canonicalVersion(raw, api)
+					if err != nil {
+						return selection, err
+					}
+				}
+				delete(plugins, api)
 			default:
 				return selection, fmt.Errorf(
-					"no CLI build provider for plugin %q", name)
+					"no CLI build provider for plugin %q", api)
 			}
 		}
-		// Validation uses the actual factory after compilation.
-		delete(plugins, "json-comments")
 	}
 	plain, err := yaml.Dump(config)
 	if err != nil {
@@ -123,13 +181,70 @@ func inspectConfig(data []byte) (buildConfig, error) {
 	return selection, err
 }
 
-func buildCLI(root, configFile, output, goTool, perlTool string) error {
-	if configFile == "" {
-		return fmt.Errorf("CONFIG must name a YAML options file")
+func mergePluginDSL(data []byte, specs string) ([]byte, error) {
+	if strings.TrimSpace(specs) == "" {
+		return data, nil
 	}
-	data, err := os.ReadFile(configFile)
+	var config map[string]any
+	if len(data) != 0 {
+		if err := yaml.Load(data, &config); err != nil {
+			return nil, err
+		}
+	}
+	if config == nil {
+		config = map[string]any{}
+	}
+	plugins := map[string]any{}
+	if value, found := config["plugin"]; found {
+		var ok bool
+		plugins, ok = value.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("plugin configuration must be a mapping")
+		}
+	}
+	selections, err := pluginreg.ParseSelectors(specs)
 	if err != nil {
-		return fmt.Errorf("read CONFIG: %w", err)
+		return nil, err
+	}
+	for _, selection := range selections {
+		if selection.Name == "" && selection.Version == "" {
+			plugins[selection.API] = true
+			continue
+		}
+		setting := map[string]any{}
+		if selection.Name != "" {
+			setting["name"] = selection.Name
+		}
+		if selection.Version != "" {
+			setting["version"] = selection.Version
+		}
+		plugins[selection.API] = setting
+	}
+	config["plugin"] = plugins
+	return yaml.Dump(config)
+}
+
+func buildCLI(root, configFile, output, goTool, perlTool string) error {
+	return buildCLIWithPlugins(
+		root, configFile, "", output, goTool, perlTool)
+}
+
+func buildCLIWithPlugins(
+	root, configFile, pluginSpecs, output, goTool, perlTool string,
+) error {
+	var data []byte
+	var err error
+	if configFile != "" {
+		data, err = os.ReadFile(configFile)
+		if err != nil {
+			return fmt.Errorf("read CONFIG: %w", err)
+		}
+	} else if pluginSpecs == "" {
+		return fmt.Errorf("CONFIG or PLUGIN must be set")
+	}
+	data, err = mergePluginDSL(data, pluginSpecs)
+	if err != nil {
+		return fmt.Errorf("invalid PLUGIN: %w", err)
 	}
 	selection, err := inspectConfig(data)
 	if err != nil {
@@ -141,31 +256,34 @@ func buildCLI(root, configFile, output, goTool, perlTool string) error {
 	if perlTool == "" {
 		perlTool = "perl"
 	}
-	var stage string
-	workspace := "off"
-	if selection.jsonComments {
-		cmd := exec.Command(perlTool, "util/prepare-json-comments")
+	stage := filepath.Join(root, ".cache", "cli-config")
+	if selection.jsonComments || selection.referenceParser {
+		cmd := exec.Command(perlTool, "util/prepare-plugins")
 		cmd.Dir = root
 		cmd.Env = append(os.Environ(),
 			"GO_YAML_BUILD_GO="+goTool,
-			"GO_YAML_JSON_COMMENTS_VERSION="+selection.version)
+			"GO_YAML_BUILD_JSON_COMMENTS="+
+				strconv.FormatBool(selection.jsonComments),
+			"GO_YAML_BUILD_REFERENCE_PARSER="+
+				strconv.FormatBool(selection.referenceParser),
+			"GO_YAML_JSON_COMMENTS_VERSION="+selection.jsonVersion,
+			"GO_YAML_REFERENCE_PARSER_VERSION="+selection.referenceVersion)
 		if out, err := cmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("prepare JSON-comments: %w\n%s", err, out)
+			return fmt.Errorf("prepare plugins: %w\n%s", err, out)
 		}
-		stage = filepath.Join(root, ".cache", "cli-json-comments")
-	} else {
-		stage = filepath.Join(root, ".cache", "cli-config")
-		if err := stageNative(root, stage, goTool); err != nil {
-			return err
-		}
+		stage = filepath.Join(root, ".cache", "cli-plugins")
+	} else if err := stageNative(root, stage, goTool); err != nil {
+		return err
 	}
 	source := "package main\n\nfunc init() {\n\tdefaultConfig = " +
 		strconv.Quote(string(selection.embedded)) + "\n}\n"
-	if err := os.WriteFile(filepath.Join(stage, "config_defaults.go"), []byte(source), 0o644); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(stage, "config_defaults.go"),
+		[]byte(source), 0o644,
+	); err != nil {
 		return err
 	}
 
-	// Build beside the destination and replace it only after validation.
 	temporary, err := os.CreateTemp(filepath.Dir(output), ".go-yaml-build-*")
 	if err != nil {
 		return err
@@ -177,29 +295,31 @@ func buildCLI(root, configFile, output, goTool, perlTool string) error {
 	defer os.Remove(binary)
 	cmd := exec.Command(goTool, "build", "-o", binary, ".")
 	cmd.Dir = stage
-	cmd.Env = buildEnvironment(workspace)
+	cmd.Env = buildEnvironment("off")
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("compile configured CLI: %w", err)
 	}
-	// Help validates options before inspecting stdin or loading input.
 	check := exec.Command(binary, "--help")
 	var stderr bytes.Buffer
 	check.Stderr = &stderr
 	if err := check.Run(); err != nil {
-		return fmt.Errorf("embedded configuration rejected: %w\n%s", err, stderr.String())
+		return fmt.Errorf(
+			"embedded configuration rejected: %w\n%s",
+			err, stderr.String())
 	}
 	if err := os.Rename(binary, output); err != nil {
 		return err
 	}
-	fmt.Printf("Built %s with defaults from %s\n", output, configFile)
+	fmt.Printf("Built %s with configured plugins\n", output)
 	return nil
 }
 
 func buildEnvironment(workspace string) []string {
 	var env []string
 	for _, entry := range os.Environ() {
-		if !strings.HasPrefix(entry, "GOWORK=") && !strings.HasPrefix(entry, "CGO_ENABLED=") {
+		if !strings.HasPrefix(entry, "GOWORK=") &&
+			!strings.HasPrefix(entry, "CGO_ENABLED=") {
 			env = append(env, entry)
 		}
 	}
@@ -211,27 +331,30 @@ func stageNative(root, stage, goTool string) error {
 		return err
 	}
 	source := filepath.Join(root, "cmd", "go-yaml")
-	err := filepath.WalkDir(source, func(path string, entry fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		relative, err := filepath.Rel(source, path)
-		if err != nil {
-			return err
-		}
-		target := filepath.Join(stage, relative)
-		if entry.IsDir() {
-			return os.MkdirAll(target, 0o755)
-		}
-		if !entry.Type().IsRegular() {
-			return fmt.Errorf("unexpected CLI source file %s", path)
-		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(target, data, 0o644)
-	})
+	err := filepath.WalkDir(
+		source,
+		func(path string, entry fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			relative, err := filepath.Rel(source, path)
+			if err != nil {
+				return err
+			}
+			target := filepath.Join(stage, relative)
+			if entry.IsDir() {
+				return os.MkdirAll(target, 0o755)
+			}
+			if !entry.Type().IsRegular() {
+				return fmt.Errorf("unexpected CLI source file %s", path)
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			return os.WriteFile(target, data, 0o644)
+		},
+	)
 	if err != nil {
 		return err
 	}
@@ -246,8 +369,8 @@ func stageNative(root, stage, goTool string) error {
 		cmd.Dir = stage
 		cmd.Env = buildEnvironment("off")
 		if output, err := cmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("go %s: %w\n%s",
-				strings.Join(args, " "), err, output)
+			return fmt.Errorf(
+				"go %s: %w\n%s", strings.Join(args, " "), err, output)
 		}
 	}
 	return nil

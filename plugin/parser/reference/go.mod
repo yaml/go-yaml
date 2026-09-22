@@ -1,9 +1,9 @@
-module go.yaml.in/yaml/v4/plugin/json-comments
+module go.yaml.in/yaml/v4/plugin/parser/reference
 
 go 1.24
 
 require (
-	github.com/yamlstar/yamlstar-plugin-json-comments v0.1.9
+	github.com/yamlstar/yamlstar-plugin-parser-reference v0.2.5
 	go.yaml.in/yaml/v4 v4.0.0-rc.6
 )
 
