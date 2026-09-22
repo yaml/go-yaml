@@ -4,7 +4,7 @@
 package yaml
 
 import (
-	"fmt"
+	"errors"
 
 	"go.yaml.in/yaml/v4/internal/libyaml"
 	pluginreg "go.yaml.in/yaml/v4/internal/plugin"
@@ -62,7 +62,7 @@ var pluginRegistry = pluginreg.NewRegistry(
 		API: "parser", Name: "go-yaml", Default: true,
 		Factory: func(cfg map[string]any) (any, error) {
 			if len(cfg) != 0 {
-				return nil, fmt.Errorf(
+				return nil, errors.New(
 					"yaml: go-yaml parser configuration must be empty")
 			}
 			return nativeParserPlugin{}, nil

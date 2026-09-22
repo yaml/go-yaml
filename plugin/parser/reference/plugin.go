@@ -5,6 +5,7 @@
 package reference
 
 import (
+	"errors"
 	"fmt"
 
 	referenceparser "github.com/yamlstar/yamlstar-plugin-parser-reference/parser"
@@ -28,7 +29,7 @@ func Register() error {
 		API: "parser", Name: "reference", Version: Version,
 		Factory: func(cfg map[string]any) (any, error) {
 			if len(cfg) != 0 {
-				return nil, fmt.Errorf(
+				return nil, errors.New(
 					"reference parser configuration must be empty")
 			}
 			return New(), nil

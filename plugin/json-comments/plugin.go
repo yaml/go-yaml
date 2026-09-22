@@ -6,7 +6,7 @@
 package jsoncomments
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/yamlstar/yamlstar-plugin-json-comments/sanitizer"
 	"go.yaml.in/yaml/v4"
@@ -32,7 +32,7 @@ func Register() error {
 		Default: true,
 		Factory: func(cfg map[string]any) (any, error) {
 			if len(cfg) != 0 {
-				return nil, fmt.Errorf(
+				return nil, errors.New(
 					"json-comments: configuration must be empty")
 			}
 			return New(), nil
