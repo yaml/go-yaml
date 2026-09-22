@@ -21,6 +21,13 @@ type JSONCommentsPlugin interface {
 	Sanitize(input []byte) ([]byte, error)
 }
 
+// hasInputPlugins reports whether input must pass through EventReader.
+// Parser plugins replace native parsing, while JSON-comments plugins sanitize
+// the complete input before native parsing.
+func hasInputPlugins(opts *Options) bool {
+	return opts != nil && (opts.Parser != nil || opts.JSONComments != nil)
+}
+
 // PluginEvent is a portable YAML event supplied by a plugin.
 // Type is stream_start, stream_end, document_start, document_end,
 // mapping_start, mapping_end, sequence_start, sequence_end, scalar, or alias.
@@ -54,17 +61,9 @@ type EventReader struct {
 	err          error
 }
 
-// NewEventReader creates the configured native or plugin parser plugin.
+// NewEventReader creates an event reader for the configured input pipeline.
 func NewEventReader(r io.Reader, opts *Options) *EventReader {
-	e := &EventReader{reader: r, opts: opts}
-	if opts == nil || (opts.Parser == nil && opts.JSONComments == nil) {
-		e.parser = NewParser()
-		e.parser.SetInputReader(r)
-		if opts != nil {
-			e.parser.depthCheck = opts.DepthCheck
-		}
-	}
-	return e
+	return &EventReader{reader: r, opts: opts}
 }
 
 // Delete releases buffered input and native parser resources.
@@ -76,35 +75,8 @@ func (e *EventReader) Delete() {
 
 // Parse returns the next event, or [io.EOF] after the stream end.
 func (e *EventReader) Parse(event *Event) error {
-	if e.opts == nil || (e.opts.Parser == nil && e.opts.JSONComments == nil) {
-		return e.parser.Parse(event)
-	}
 	if !e.initialized {
-		e.initialized = true
-		input, err := io.ReadAll(e.reader)
-		e.reader = nil
-		if err != nil {
-			e.err = NewLoadError(ReaderStage, err.Error(), Mark{}, err)
-		} else if e.opts.JSONComments != nil {
-			input, err = e.opts.JSONComments.Sanitize(input)
-			if err != nil {
-				e.err = NewLoadError(ReaderStage, err.Error(), Mark{}, err)
-			}
-		}
-		if e.err == nil && e.opts.Parser != nil {
-			e.pluginEvents = true
-			e.events, err = e.opts.Parser.Parse(input)
-			if err == nil {
-				err = validatePluginEvents(e.events, e.opts.DepthCheck)
-			}
-			if err != nil {
-				e.err = NewLoadError(ParserStage, err.Error(), Mark{}, err)
-			}
-		} else if e.err == nil {
-			e.parser = NewParser()
-			e.parser.SetInputString(input)
-			e.parser.depthCheck = e.opts.DepthCheck
-		}
+		e.initialize()
 	}
 	if e.err != nil {
 		return e.err
@@ -118,6 +90,45 @@ func (e *EventReader) Parse(event *Event) error {
 	*event = pluginEvent(e.events[e.index])
 	e.index++
 	return nil
+}
+
+// initialize selects the native or plugin parsing pipeline on first use.
+func (e *EventReader) initialize() {
+	e.initialized = true
+	if !hasInputPlugins(e.opts) {
+		e.parser = NewParser()
+		e.parser.SetInputReader(e.reader)
+		e.reader = nil
+		if e.opts != nil {
+			e.parser.depthCheck = e.opts.DepthCheck
+		}
+		return
+	}
+
+	input, err := io.ReadAll(e.reader)
+	e.reader = nil
+	if err != nil {
+		e.err = NewLoadError(ReaderStage, err.Error(), Mark{}, err)
+	} else if e.opts.JSONComments != nil {
+		input, err = e.opts.JSONComments.Sanitize(input)
+		if err != nil {
+			e.err = NewLoadError(ReaderStage, err.Error(), Mark{}, err)
+		}
+	}
+	if e.err == nil && e.opts.Parser != nil {
+		e.pluginEvents = true
+		e.events, err = e.opts.Parser.Parse(input)
+		if err == nil {
+			err = validatePluginEvents(e.events, e.opts.DepthCheck)
+		}
+		if err != nil {
+			e.err = NewLoadError(ParserStage, err.Error(), Mark{}, err)
+		}
+	} else if e.err == nil {
+		e.parser = NewParser()
+		e.parser.SetInputString(input)
+		e.parser.depthCheck = e.opts.DepthCheck
+	}
 }
 
 // validatePluginEvents checks structure before the recursive composer sees it.

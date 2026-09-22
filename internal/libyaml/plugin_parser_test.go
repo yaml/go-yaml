@@ -108,6 +108,23 @@ func TestParserPluginBufferingAndErrors(t *testing.T) {
 	}
 }
 
+func TestEventReaderNativeInitialization(t *testing.T) {
+	reader := libyaml.NewEventReader(strings.NewReader("true"), nil)
+	reader.Delete()
+
+	reader = libyaml.NewEventReader(strings.NewReader("true"), nil)
+	defer reader.Delete()
+	var event libyaml.Event
+	for event.Type != libyaml.SCALAR_EVENT {
+		if err := reader.Parse(&event); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if string(event.Value) != "true" {
+		t.Fatalf("got scalar %q, want true", event.Value)
+	}
+}
+
 func TestParserPluginMetadata(t *testing.T) {
 	p := sourceFunc(func([]byte) ([]yaml.PluginEvent, error) {
 		events := sourceScalarStream("true")
