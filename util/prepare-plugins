@@ -198,19 +198,27 @@ for my $plugin (@plugins) {
 my $workdir = "$root/.cache/plugin-work";
 remove_tree($workdir);
 make_path($workdir);
+my @work_uses = ($root);
+my @work_replacements;
+for my $plugin (@plugins) {
+    push @work_uses, "$root/example/json-comments"
+        if $plugin->{api} eq 'json-comments';
+    push @work_uses, $plugin->{wrapper_path};
+    if ($plugin->{local}) {
+        push @work_uses, $plugin->{upstream};
+        push @work_replacements,
+            "replace $plugin->{module} $plugin->{version} => " .
+            "$plugin->{upstream}\n";
+    }
+}
+push @work_uses, $stage;
+my $work_uses = join '', map { "\t$_\n" } @work_uses;
+my $work_replacements = join '', @work_replacements;
 write_file("$workdir/go.work", <<"WORK");
 go 1.24.0
 
 use (
-	$root
-	$root/example/json-comments
-	$root/plugin/json-comments
-	$root/plugin/parser/reference
-	$root/repos/yamlstar-plugin-json-comments
-	$root/repos/yamlstar-plugin-parser-reference
-	$stage
-)
+$work_uses)
 
-replace github.com/yamlstar/yamlstar-plugin-json-comments v0.1.9 => $root/repos/yamlstar-plugin-json-comments
-replace github.com/yamlstar/yamlstar-plugin-parser-reference v0.2.5 => $root/repos/yamlstar-plugin-parser-reference
+$work_replacements
 WORK
