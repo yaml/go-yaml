@@ -205,7 +205,7 @@ func TestPluginRegistry(t *testing.T) {
 	}
 	p, _ := factory(nil)
 	if err := yaml.Load(nil, &value, yaml.WithPlugin(p, p)); err == nil {
-		t.Fatal("multiple event sources accepted")
+		t.Fatal("multiple parser plugins accepted")
 	}
 	if err := yaml.Load(nil, &value,
 		yaml.WithPlugin(p, limit.New())); err != nil {

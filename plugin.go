@@ -4,6 +4,8 @@
 package yaml
 
 import (
+	"fmt"
+
 	"go.yaml.in/yaml/v4/internal/libyaml"
 	pluginreg "go.yaml.in/yaml/v4/internal/plugin"
 	"go.yaml.in/yaml/v4/plugin/limit"
@@ -30,8 +32,11 @@ type LimitPlugin interface {
 	CheckAlias(aliasCount, constructCount int) error
 }
 
-// EventSourcePlugin supplies a complete event stream in place of native parsing.
-type EventSourcePlugin = libyaml.EventSourcePlugin
+// ParserPlugin supplies a complete event stream in place of native parsing.
+type ParserPlugin = libyaml.ParserPlugin
+
+// JSONCommentsPlugin sanitizes JSON-style comments before parsing.
+type JSONCommentsPlugin = libyaml.JSONCommentsPlugin
 
 // PluginEvent carries source-independent YAML syntax information.
 type PluginEvent = libyaml.PluginEvent
@@ -41,14 +46,29 @@ type PluginFactory = pluginreg.Factory
 
 // PluginRegistration describes one named implementation of a plugin API.
 // Version is empty for an unversioned implementation.
+// Default selects the implementation used by boolean configuration.
 type PluginRegistration = pluginreg.Registration
 
-var pluginRegistry = pluginreg.NewRegistry(PluginRegistration{
-	API: "limit", Name: "limit",
-	Factory: func(cfg map[string]any) (any, error) {
-		return limit.NewFromYAML(cfg)
+type nativeParserPlugin struct{}
+
+var pluginRegistry = pluginreg.NewRegistry(
+	PluginRegistration{
+		API: "limit", Name: "limit", Default: true,
+		Factory: func(cfg map[string]any) (any, error) {
+			return limit.NewFromYAML(cfg)
+		},
 	},
-})
+	PluginRegistration{
+		API: "parser", Name: "go-yaml", Default: true,
+		Factory: func(cfg map[string]any) (any, error) {
+			if len(cfg) != 0 {
+				return nil, fmt.Errorf(
+					"yaml: go-yaml parser configuration must be empty")
+			}
+			return nativeParserPlugin{}, nil
+		},
+	},
+)
 
 // RegisterPlugin registers a named implementation for [OptsYAML] and
 // [WithNamedPlugin]. Register during application startup, before parsing

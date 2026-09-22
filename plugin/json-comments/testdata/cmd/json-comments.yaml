@@ -5,7 +5,7 @@
 - name: JSON comments implementation selected by flag
   cmd: >-
     printf 'a: true // comment\n' |
-    go-yaml --plugin=json-comments=json-comments -j
+    go-yaml --plugin=json-comments=sanitizer -j
   out: '{"a":true}'
 - name: JSON comments selected by config
   cmd: >-
@@ -40,21 +40,15 @@
   out: |
     true
     false
-- name: Token mode rejects event-source plugin
+- name: Token mode uses JSON-comments sanitizer
   cmd: >-
-    if printf 'true// comment\n' | go-yaml --plugin=json-comments -t
-    2>testdata/rejection.err; then exit 1; else
-    perl -ne '$found ||= /event-source plugins are not supported/; END {exit !$found}'
-    testdata/rejection.err && printf 'rejected\n'; fi
-  out: rejected
-- name: Legacy mode rejects event-source plugin
-  cmd: >-
-    if printf 'true// comment\n' | go-yaml --plugin=json-comments -j --unmarshal
-    2>testdata/rejection.err; then exit 1; else
-    perl -ne '$found ||= /event-source plugins are not supported/; END {exit !$found}'
-    testdata/rejection.err && printf 'rejected\n'; fi
-  out: rejected
-- name: Node output uses the selected event source
+    printf 'true// comment\n' | go-yaml --plugin=json-comments -t |
+    perl -ne '$found ||= /value: true/; END {print "sanitized\n" if $found; exit !$found}'
+  out: sanitized
+- name: Legacy mode uses JSON-comments sanitizer
+  cmd: printf 'true// comment\n' | go-yaml --plugin=json-comments -j --unmarshal
+  out: 'true'
+- name: Node output uses the sanitizer
   cmd: >-
     printf 'a: true // comment\n' | go-yaml --plugin=json-comments -n
   out: |

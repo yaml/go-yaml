@@ -65,17 +65,17 @@ func TestInspectConfig(t *testing.T) {
 		{"syntax", "[", false, true, ""},
 		{"multiple documents", "--- {}\n--- {}", false, true, ""},
 		{
-			name: "version", config: "plugin: {json-comments: {version: 0.1.8}}",
-			json: true, version: "v0.1.8",
+			name: "version", config: "plugin: {json-comments: {version: 0.1.9}}",
+			json: true, version: "v0.1.9",
 		},
 		{
 			name:   "prefixed version",
-			config: "plugin: {json-comments: {version: v0.1.8}}",
-			json:   true, version: "v0.1.8",
+			config: "plugin: {json-comments: {version: v0.1.9}}",
+			json:   true, version: "v0.1.9",
 		},
 		{
 			name:   "implementation name",
-			config: "plugin: {json-comments: {name: json-comments}}",
+			config: "plugin: {json-comments: {name: sanitizer}}",
 			json:   true,
 		},
 		{
@@ -84,7 +84,7 @@ func TestInspectConfig(t *testing.T) {
 		},
 		{
 			name:   "disabled version",
-			config: "plugin: {json-comments: {version: 0.1.8, disable: true}}",
+			config: "plugin: {json-comments: {version: 0.1.9, disable: true}}",
 		},
 		{
 			name:   "disabled invalid host fields",
@@ -108,7 +108,7 @@ func TestInspectConfig(t *testing.T) {
 				return
 			}
 			if err != nil || got.jsonComments != tc.json ||
-				got.version != tc.version {
+				got.jsonVersion != tc.version {
 				t.Fatalf("got %+v, %v", got, err)
 			}
 			if tc.version != "" &&
@@ -185,7 +185,7 @@ func TestConfiguredCLI(t *testing.T) {
 	if bytes.Contains(modules, []byte("glojure")) {
 		t.Fatal("ordinary configured build linked Glojure")
 	}
-	write("plugin: {json-comments: {disable: true, version: 0.1.8}}\n")
+	write("plugin: {json-comments: {disable: true, version: 0.1.9}}\n")
 	if err := buildCLI(root, config, binary, goTool, ""); err != nil {
 		t.Fatal(err)
 	}
@@ -241,8 +241,8 @@ func TestConfiguredJSONCLI(t *testing.T) {
 	run("{\"a\":true}\n", "-j")
 	run("{\"a\":true}\n", "-j", "--plugin=json-comments")
 	run("{\"a\":true}\n", "-j",
-		"--plugin=json-comments=json-comments")
-	write("plugin: {json-comments: {name: json-comments, version: 0.1.8}}\n")
+		"--plugin=json-comments=sanitizer")
+	write("plugin: {json-comments: {name: sanitizer, version: 0.1.9}}\n")
 	if err := buildCLI(root, config, binary, goTool,
 		os.Getenv("GO_YAML_BUILD_PERL")); err != nil {
 		t.Fatal(err)
@@ -251,7 +251,7 @@ func TestConfiguredJSONCLI(t *testing.T) {
 	run("{\"a\":true}\n", "-j", "-C", config)
 	modules, err := exec.Command(goTool, "version", "-m", binary).CombinedOutput()
 	if err != nil || !bytes.Contains(modules, []byte(
-		"github.com/yamlstar/yamlstar-plugin-json-comments\tv0.1.8")) {
+		"github.com/yamlstar/yamlstar-plugin-json-comments\tv0.1.9")) {
 		t.Fatalf("linked plugin version: %v\n%s", err, modules)
 	}
 	write("plugin: {json-comments: {version: 0.1.7}}\n")
@@ -297,5 +297,55 @@ func TestConfiguredJSONCLI(t *testing.T) {
 	after, err := os.ReadFile(binary)
 	if err != nil || !bytes.Equal(before, after) {
 		t.Fatal("failed plugin validation replaced the binary")
+	}
+}
+
+func TestConfiguredReferenceCLI(t *testing.T) {
+	if os.Getenv("GO_YAML_TEST_REFERENCE_PARSER") == "" {
+		t.Skip("run make test-reference-parser for the optional plugin")
+	}
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	goTool, err := exec.LookPath("go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory := t.TempDir()
+	config := filepath.Join(directory, "options.yaml")
+	binary := filepath.Join(directory, "go-yaml")
+	write := func(text string) {
+		t.Helper()
+		if err := os.WriteFile(config, []byte(text), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	run := func(flags ...string) {
+		t.Helper()
+		cmd := exec.Command(binary, flags...)
+		cmd.Stdin = strings.NewReader("a: 1\n")
+		out, err := cmd.CombinedOutput()
+		if err != nil || string(out) != "{\"a\":1}\n" {
+			t.Fatalf("%v: got %q, %v", flags, out, err)
+		}
+	}
+	write("plugin: {parser: reference@v0.2.5}\n")
+	if err := buildCLI(root, config, binary, goTool,
+		os.Getenv("GO_YAML_BUILD_PERL")); err != nil {
+		t.Fatal(err)
+	}
+	run("-j")
+	run("-j", "--plugin=parser=reference@0.2.5")
+	run("-j", "--plugin=parser=go-yaml")
+	modules, err := exec.Command(goTool, "version", "-m", binary).CombinedOutput()
+	if err != nil || !bytes.Contains(modules, []byte(
+		"github.com/yamlstar/yamlstar-plugin-parser-reference\tv0.2.5")) {
+		t.Fatalf("linked plugin version: %v\n%s", err, modules)
+	}
+	write("plugin: {parser: reference@v0.2.4}\n")
+	if err := buildCLI(root, config, binary, goTool,
+		os.Getenv("GO_YAML_BUILD_PERL")); err == nil {
+		t.Fatal("unavailable parser version built")
 	}
 }

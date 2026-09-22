@@ -28,8 +28,8 @@ func sourceScalarStream(value string) []yaml.PluginEvent {
 	}
 }
 
-func TestEventSourcePluginValidation(t *testing.T) {
-	data, err := os.ReadFile("testdata/event-source.yaml")
+func TestParserPluginValidation(t *testing.T) {
+	data, err := os.ReadFile("testdata/parser.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestEventSourcePluginValidation(t *testing.T) {
 			err := yaml.Load(nil, &got, yaml.WithPlugin(p))
 			var loadErr *yaml.LoadError
 			if !errors.As(err, &loadErr) || loadErr.Stage != yaml.ParserStage {
-				t.Fatalf("want event source error, got %v", err)
+				t.Fatalf("want parser plugin error, got %v", err)
 			}
 		})
 	}
@@ -63,7 +63,7 @@ type brokenReader struct{ err error }
 
 func (r brokenReader) Read([]byte) (int, error) { return 0, r.err }
 
-func TestEventSourcePluginBufferingAndErrors(t *testing.T) {
+func TestParserPluginBufferingAndErrors(t *testing.T) {
 	calls := 0
 	cause := errors.New("reader failed")
 	p := sourceFunc(func(input []byte) ([]yaml.PluginEvent, error) {
@@ -78,7 +78,7 @@ func TestEventSourcePluginBufferingAndErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 	if calls != 0 {
-		t.Fatal("event source called before Load")
+		t.Fatal("parser plugin called before Load")
 	}
 	var value bool
 	if err := loader.Load(&value); err != nil || !value {
@@ -88,7 +88,7 @@ func TestEventSourcePluginBufferingAndErrors(t *testing.T) {
 		t.Fatalf("want EOF, got %v", err)
 	}
 	if calls != 1 {
-		t.Fatalf("event source called %d times", calls)
+		t.Fatalf("parser plugin called %d times", calls)
 	}
 	loader, err = yaml.NewLoader(brokenReader{cause}, yaml.WithPlugin(p))
 	if err != nil {
@@ -100,15 +100,15 @@ func TestEventSourcePluginBufferingAndErrors(t *testing.T) {
 		}
 	}
 	if calls != 1 {
-		t.Fatal("event source called on failed read")
+		t.Fatal("parser plugin called on failed read")
 	}
 	p = func([]byte) ([]yaml.PluginEvent, error) { return nil, cause }
 	if err := yaml.Load(nil, &value, yaml.WithPlugin(p)); !errors.Is(err, cause) {
-		t.Fatalf("lost event source cause: %v", err)
+		t.Fatalf("lost parser plugin cause: %v", err)
 	}
 }
 
-func TestEventSourcePluginMetadata(t *testing.T) {
+func TestParserPluginMetadata(t *testing.T) {
 	p := sourceFunc(func([]byte) ([]yaml.PluginEvent, error) {
 		events := sourceScalarStream("true")
 		events[1].Version = &yaml.VersionDirective{Major: 1, Minor: 2}
@@ -145,7 +145,7 @@ func TestPluginEventScalarImplicitness(t *testing.T) {
 			events[2].Tag = tc.tag
 			events[2].Style = tc.style
 			reader := libyaml.NewEventReader(strings.NewReader("input"),
-				&libyaml.Options{EventSource: sourceFunc(
+				&libyaml.Options{Parser: sourceFunc(
 					func([]byte) ([]yaml.PluginEvent, error) {
 						return events, nil
 					})})

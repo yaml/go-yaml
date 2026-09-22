@@ -24,6 +24,7 @@ import (
 	"io"
 
 	"go.yaml.in/yaml/v4/internal/libyaml"
+	pluginreg "go.yaml.in/yaml/v4/internal/plugin"
 	"go.yaml.in/yaml/v4/plugin/limit"
 )
 
@@ -277,7 +278,8 @@ type DepthContext = libyaml.DepthContext
 // Each plugin implements one or more plugin interfaces.
 // Currently supported plugin types:
 //   - LimitPlugin: Controls depth and alias expansion limits
-//   - EventSourcePlugin: Supplies a complete YAML event stream
+//   - ParserPlugin: Supplies a complete YAML event stream
+//   - JSONCommentsPlugin: Sanitizes JSON-style comments before parsing
 //
 // Example:
 //
@@ -289,16 +291,27 @@ func WithPlugin(plugins ...any) Option {
 	return func(o *libyaml.Options) error {
 		for _, p := range plugins {
 			registered := false
+			if _, ok := p.(nativeParserPlugin); ok {
+				registered = true
+			}
 			if lp, ok := p.(LimitPlugin); ok {
 				o.DepthCheck = lp.CheckDepth
 				o.AliasCheck = lp.CheckAlias
 				registered = true
 			}
-			if source, ok := p.(EventSourcePlugin); ok {
-				if o.EventSource != nil {
-					return errors.New("yaml: multiple event-source plugins")
+			if source, ok := p.(ParserPlugin); ok {
+				if o.Parser != nil {
+					return errors.New("yaml: multiple parser plugins")
 				}
-				o.EventSource = source
+				o.Parser = source
+				registered = true
+			}
+			if comments, ok := p.(JSONCommentsPlugin); ok {
+				if o.JSONComments != nil {
+					return errors.New(
+						"yaml: multiple json-comments plugins")
+				}
+				o.JSONComments = comments
 				registered = true
 			}
 			if !registered {
@@ -455,9 +468,16 @@ func OptsYAML(yamlStr string) (Option, error) {
 					}
 				}
 			}
+		case string:
+			var err error
+			cfgMap, err = pluginreg.ConfigValue(name, v)
+			if err != nil {
+				return nil, fmt.Errorf("yaml: plugin %q: %w", name, err)
+			}
 		default:
 			return nil, fmt.Errorf(
-				"yaml: plugin %q value must be a mapping or boolean", name)
+				"yaml: plugin %q value must be a mapping, string, or boolean",
+				name)
 		}
 		p, err := namedPlugin(name, cfgMap)
 		if err != nil {

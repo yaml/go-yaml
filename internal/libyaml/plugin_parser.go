@@ -8,11 +8,17 @@ import (
 	"io"
 )
 
-// EventSourcePlugin supplies a complete event stream for a load operation.
+// ParserPlugin supplies a complete event stream for a load operation.
 // Parse returns a complete stream, including stream and document boundaries.
 // Implementations must support concurrent calls with independent input.
-type EventSourcePlugin interface {
+type ParserPlugin interface {
 	Parse(input []byte) ([]PluginEvent, error)
+}
+
+// JSONCommentsPlugin sanitizes JSON-style comments before parsing.
+// Implementations must support concurrent calls with independent input.
+type JSONCommentsPlugin interface {
+	Sanitize(input []byte) ([]byte, error)
 }
 
 // PluginEvent is a portable YAML event supplied by a plugin.
@@ -38,19 +44,20 @@ type PluginEvent struct {
 // EventReader reads native or plugin events using the same loading options.
 // Plugin input is buffered on the first Parse call.
 type EventReader struct {
-	parser      Parser
-	reader      io.Reader
-	opts        *Options
-	events      []PluginEvent
-	index       int
-	initialized bool
-	err         error
+	parser       Parser
+	reader       io.Reader
+	opts         *Options
+	events       []PluginEvent
+	index        int
+	initialized  bool
+	pluginEvents bool
+	err          error
 }
 
-// NewEventReader creates the configured native or plugin event source.
+// NewEventReader creates the configured native or plugin parser plugin.
 func NewEventReader(r io.Reader, opts *Options) *EventReader {
 	e := &EventReader{reader: r, opts: opts}
-	if opts == nil || opts.EventSource == nil {
+	if opts == nil || (opts.Parser == nil && opts.JSONComments == nil) {
 		e.parser = NewParser()
 		e.parser.SetInputReader(r)
 		if opts != nil {
@@ -69,7 +76,7 @@ func (e *EventReader) Delete() {
 
 // Parse returns the next event, or [io.EOF] after the stream end.
 func (e *EventReader) Parse(event *Event) error {
-	if e.opts == nil || e.opts.EventSource == nil {
+	if e.opts == nil || (e.opts.Parser == nil && e.opts.JSONComments == nil) {
 		return e.parser.Parse(event)
 	}
 	if !e.initialized {
@@ -78,18 +85,32 @@ func (e *EventReader) Parse(event *Event) error {
 		e.reader = nil
 		if err != nil {
 			e.err = NewLoadError(ReaderStage, err.Error(), Mark{}, err)
-		} else {
-			e.events, err = e.opts.EventSource.Parse(input)
+		} else if e.opts.JSONComments != nil {
+			input, err = e.opts.JSONComments.Sanitize(input)
+			if err != nil {
+				e.err = NewLoadError(ReaderStage, err.Error(), Mark{}, err)
+			}
+		}
+		if e.err == nil && e.opts.Parser != nil {
+			e.pluginEvents = true
+			e.events, err = e.opts.Parser.Parse(input)
 			if err == nil {
 				err = validatePluginEvents(e.events, e.opts.DepthCheck)
 			}
 			if err != nil {
 				e.err = NewLoadError(ParserStage, err.Error(), Mark{}, err)
 			}
+		} else if e.err == nil {
+			e.parser = NewParser()
+			e.parser.SetInputString(input)
+			e.parser.depthCheck = e.opts.DepthCheck
 		}
 	}
 	if e.err != nil {
 		return e.err
+	}
+	if !e.pluginEvents {
+		return e.parser.Parse(event)
 	}
 	if e.index == len(e.events) {
 		return io.EOF
@@ -109,7 +130,7 @@ func validatePluginEvents(events []PluginEvent, depthCheck func(int, *DepthConte
 	started, ended := false, false
 	for i, e := range events {
 		bad := func() error {
-			return fmt.Errorf("invalid source event %d (%s)", i, e.Type)
+			return fmt.Errorf("invalid parser event %d (%s)", i, e.Type)
 		}
 		if ended || (!started && e.Type != "stream_start") {
 			return bad()
@@ -179,11 +200,11 @@ func validatePluginEvents(events []PluginEvent, depthCheck func(int, *DepthConte
 		}
 		if e.Version != nil && (e.Type != "document_start" ||
 			e.Version.Major != 1 || (e.Version.Minor != 1 && e.Version.Minor != 2)) {
-			return fmt.Errorf("unsupported source version directive at event %d", i)
+			return fmt.Errorf("unsupported parser version directive at event %d", i)
 		}
 	}
 	if !ended {
-		return fmt.Errorf("source stream is missing stream_end")
+		return fmt.Errorf("parser stream is missing stream_end")
 	}
 	return nil
 }

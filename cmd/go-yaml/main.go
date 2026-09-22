@@ -19,6 +19,7 @@ import (
 
 	"go.yaml.in/yaml/v4"
 	"go.yaml.in/yaml/v4/internal/libyaml"
+	pluginreg "go.yaml.in/yaml/v4/internal/plugin"
 )
 
 // version is the current version of the go-yaml CLI tool.
@@ -26,6 +27,18 @@ const version = "4.0.0.1"
 
 // defaultConfig is populated only in a configured CLI build.
 var defaultConfig string
+
+// compiledPluginRegistrations is populated only in a configured CLI build.
+var compiledPluginRegistrations []func() error
+
+func registerCompiledPlugins() error {
+	for _, register := range compiledPluginRegistrations {
+		if err := register(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // stringSlice is a custom flag type for collecting multiple -o flags
 type stringSlice []string
@@ -308,7 +321,7 @@ func buildOptions(configFile string, optionFlags []string, pluginSpecs ...string
 	}
 	if len(pluginSpecs) > 0 {
 		// Replace each explicitly selected plugin's configuration with defaults.
-		// This also avoids selecting a configured event source twice.
+		// This also avoids selecting a configured parser plugin twice.
 		config := map[string]any{}
 		if len(configData) > 0 {
 			if err := yaml.Load(configData, &config); err != nil {
@@ -327,16 +340,23 @@ func buildOptions(configFile string, optionFlags []string, pluginSpecs ...string
 			}
 		}
 		for _, spec := range pluginSpecs {
-			parts := strings.Split(spec, "=")
-			if len(parts) > 2 || parts[0] == "" ||
-				(len(parts) == 2 && parts[1] == "") {
-				return nil, fmt.Errorf(
-					"plugin selector must be NAME or API=NAME")
+			selections, err := pluginreg.ParseSelectors(spec)
+			if err != nil {
+				return nil, err
 			}
-			if len(parts) == 1 {
-				plugins[parts[0]] = true
-			} else {
-				plugins[parts[0]] = map[string]any{"name": parts[1]}
+			for _, selection := range selections {
+				if selection.Name == "" && selection.Version == "" {
+					plugins[selection.API] = true
+					continue
+				}
+				config := map[string]any{}
+				if selection.Name != "" {
+					config["name"] = selection.Name
+				}
+				if selection.Version != "" {
+					config["version"] = selection.Version
+				}
+				plugins[selection.API] = config
 			}
 		}
 		config["plugin"] = plugins
@@ -367,6 +387,9 @@ func buildOptions(configFile string, optionFlags []string, pluginSpecs ...string
 func main() {
 	// Initialize option registry
 	initOptionRegistry()
+	if err := registerCompiledPlugins(); err != nil {
+		log.Fatal(err)
+	}
 
 	// Parse command line flags
 	showHelp := flag.Bool("h", false, "Show this help information")
@@ -400,7 +423,7 @@ func main() {
 
 	var pluginSpecs stringSlice
 	flag.Var(&pluginSpecs, "plugin",
-		"Select a registered plugin (NAME or API=NAME)")
+		"Select plugins with API[=NAME][@VERSION] syntax")
 
 	// Option flags (-o/--option)
 	var optionFlags stringSlice
@@ -482,9 +505,9 @@ func main() {
 	if optionErr != nil {
 		log.Fatal(optionErr)
 	}
-	if configured.EventSource != nil &&
+	if configured.Parser != nil &&
 		(*tokenMode || *tokenProfuseMode || unmarshalMode || decodeMode) {
-		log.Fatal("event-source plugins are not supported with token output or legacy loading modes")
+		log.Fatal("parser plugins are not supported with token output or legacy loading modes")
 	}
 
 	// Show help and exit
@@ -566,6 +589,13 @@ func main() {
 			log.Fatal("Failed to process structured input:", err)
 		}
 		return
+	}
+	if configured.JSONComments != nil &&
+		(*tokenMode || *tokenProfuseMode || unmarshalMode || decodeMode) {
+		inputData, err = configured.JSONComments.Sanitize(inputData)
+		if err != nil {
+			log.Fatal("Failed to sanitize JSON comments:", err)
+		}
 	}
 	input = bytes.NewReader(inputData)
 
@@ -786,7 +816,7 @@ Formatting Options:
                    Presets: v2, v3, v4 (default: v4)
 
 API Selection Options:
-  --plugin=SPEC    Select a registered plugin (NAME or API=NAME)
+  --plugin=SPEC    Select plugins with API[=NAME][@VERSION] syntax
   --unmarshal      Use Unmarshal API for input (deprecated, v3 defaults)
   --decode         Use Decode API for input (deprecated)
   --marshal        Use Marshal API for output (deprecated)

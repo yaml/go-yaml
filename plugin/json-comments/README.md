@@ -1,8 +1,9 @@
 # JSON-comments plugin for go-yaml
 
-This separate Go module implements `yaml.EventSourcePlugin` using the generated
-parser in `github.com/yamlstar/yamlstar-plugin-json-comments/parser`.
+This separate Go module implements `yaml.JSONCommentsPlugin` with the sanitizer
+from `github.com/yamlstar/yamlstar-plugin-json-comments`.
 It requires Go 1.24 or newer and works with `CGO_ENABLED=0`.
+It does not use a shared library.
 
 ```go
 import (
@@ -14,54 +15,39 @@ var value any
 err := yaml.Load(input, &value, yaml.WithPlugin(jsoncomments.New()))
 ```
 
-Input is buffered and must be UTF-8.
-Comments are discarded and node positions are unknown.
-The reference parser determines syntax; go-yaml resolves and constructs values.
-Depth checks happen after reference parsing; alias checks remain active during
-construction.
+The plugin buffers UTF-8 input, removes recognized JSON-style comments, and
+passes the sanitized text to the selected YAML parser.
+Line endings and non-comment text are preserved.
+The parser still supplies node positions, styles, tags, anchors, and aliases.
+Concurrent calls are supported.
 
-For named YAML configuration, call `jsoncomments.Register()` once at startup.
-Registration does not enable the plugin until selected.
+Call `jsoncomments.Register()` once to use named configuration:
 
-From the go-yaml repository root, use the sample under
-`example/json-comments`:
+```yaml
+plugin:
+  json-comments: sanitizer@v0.1.9
+```
+
+The API name is `json-comments` and the implementation name is `sanitizer`.
+A bare `json-comments` selector uses this default implementation.
+
+From the repository root:
 
 ```bash
 make test-json-comments
 make test-json-comments-race
-make cli CONFIG=example/json-comments/options.yaml
-./go-yaml -j example/json-comments/data.yaml
+make cli PLUGIN=json-comments
+./go-yaml --plugin=json-comments -j example/json-comments/data.yaml
 ```
 
-The build resolves the newest tagged Go release of
-`github.com/yamlstar/yamlstar-plugin-json-comments` each time.
-To select a specific release, use:
+A build without an explicit version resolves the newest tagged release.
+Use `json-comments@v0.1.9` or
+`json-comments=sanitizer@v0.1.9` to select a specific release.
+For local development, use the checkout under
+`repos/yamlstar-plugin-json-comments` by setting `JSON-COMMENTS-LOCAL=1`.
 
-```yaml
-plugin:
-  json-comments:
-    name: json-comments
-    version: 0.1.8
-```
+See the [plugin documentation](../../docs/plugins.md) for configuration and
+CLI build details.
+See the upstream [syntax rules] for recognized comment forms.
 
-The version selects code while building and remains in the embedded runtime
-configuration so the binary can verify the linked release.
-The binary must be rebuilt to change the linked version.
-`version: v0.1.8` is also accepted.
-For local development, place the plugin checkout under
-`repos/yamlstar-plugin-json-comments` and set `JSON-COMMENTS-LOCAL=1`.
-This override validates the configured version against the local manifest.
-The temporary CLI module and workspace live under `.cache/`; downloaded
-module sources use the Go module cache.
-The CLI target produces `./go-yaml`; `make cli` restores the ordinary build.
-See [plugin documentation](../../docs/plugins.md) for the event interface,
-configuration, supported CLI modes, and limitations.
-
-Concurrent callers are supported.
-The generated parser shares mutable state, so the parser package serializes
-Go and EDN parsing calls with a common lock.
-
-To build with JSON-comments enabled by default, put `json-comments` under
-`plugin` in an options file and run `make cli CONFIG=FILE`.
-The binary embeds that configuration, so no `-C` or `--plugin` flag is needed.
-Runtime `-C` replaces the embedded configuration; `-o` overrides its options.
+[syntax rules]: https://github.com/yamlstar/yamlstar-plugin-json-comments/blob/main/Syntax.md

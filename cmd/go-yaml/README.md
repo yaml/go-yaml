@@ -86,73 +86,81 @@ flags.
 It validates flag combinations and provides error messages for incompatible
 options.
 
-## JSON-comments plugin build
+## Plugin builds
 
-From the repository root, run
-`make cli CONFIG=example/json-comments/options.yaml` to build `./go-yaml`
-with the plugins and defaults named in the options file.
-The example configuration enables JSON-comments.
-The build resolves the newest tagged JSON-comments Go release each time.
+The ordinary command contains the built-in `go-yaml` parser and limit plugin.
+Optional plugin implementations must be selected while building the command.
+
+`PLUGIN` contains only the plugin selector DSL:
 
 ```bash
-make cli CONFIG=example/json-comments/options.yaml
-./go-yaml -j example/json-comments/data.yaml
+make cli PLUGIN=parser=reference@v0.2.5,json-comments
+./go-yaml --plugin=parser=reference@0.2.5,json-comments \
+  -j example/json-comments/data.yaml
 ```
 
-The plugin also works in node, YAML, and event output modes and can be selected
-through `-C` YAML configuration using `plugin: {json-comments: {}}`.
-Token output and legacy loading modes do not support event-source plugins.
-Input is buffered, comments are discarded, and source positions are unknown.
-Use `make cli` to restore the ordinary binary.
+The selector forms are `API`, `API@VERSION`, `API=IMPLEMENTATION`, and
+`API=IMPLEMENTATION@VERSION`.
+Comma-separated selectors can be passed in one flag.
+A bare API selects its default implementation.
+The `json-comments` default is `sanitizer`, and the `parser` default is
+`go-yaml`.
+
+`PLUGIN` and `--plugin` never name files and never contain YAML.
+The build resolves the newest v-prefixed plugin release when a selector omits
+the version.
+Runtime selectors can choose only implementations already linked into the
+binary.
 
 ## Build with embedded options
 
-`make cli CONFIG=FILE` compiles the plugins named in the file and embeds its
-contents as the CLI's default configuration.
-For example:
+`CONFIG` names a YAML file.
+The build links its selected optional implementations and embeds the complete
+configuration as the command's defaults.
 
 ```yaml
 indent: 4
 plugin:
+  parser: reference@v0.2.5
   limit:
     depth: 50
     alias: 100
-  json-comments: {}
+  json-comments: sanitizer@v0.1.9
 ```
 
 ```bash
-make cli CONFIG=example/json-comments/options.yaml
-printf 'a: true // comment\n' | ./go-yaml -j
+make cli CONFIG=options.yaml
+./go-yaml -j data.yaml
 ```
 
-The binary no longer needs the options file at runtime.
-Rebuild to pick up edits to the file.
-Missing files, invalid options, and unknown enabled plugin names fail the build
-without replacing the existing binary.
-Set a plugin to `true` for its defaults, `false` to leave it unselected,
-or a mapping for its settings.
-Any plugin mapping can include `disable: true` to leave it unselected while
-retaining its other settings.
-`disable: false` enables it and passes the other settings to the plugin.
-`json-comments: false` keeps its optional event source out of the build.
+The binary does not need the options file at runtime.
+Rebuild it to pick up file changes.
+Missing files, invalid options, and unknown enabled implementations fail before
+the existing binary is replaced.
+
+`-C FILE` and `--config=FILE` load a YAML configuration at runtime.
+A runtime configuration replaces embedded defaults.
+`-o` flags then override individual non-plugin options.
+An empty configuration mapping selects ordinary defaults while leaving compiled
+implementations available to `--plugin`.
+
+A plugin value may be a mapping, short string, or boolean.
+`true` uses the API default, and `false` disables that API.
+Mappings can use `disable: true` to retain settings without selecting the
+plugin.
 Null plugin values are invalid.
-To select a specific JSON-comments release, use
-`json-comments: {version: 0.1.8}` instead of `true`.
-`version: v0.1.8` is also accepted.
-The version selects code at build time and remains in embedded defaults.
-The binary validates it against the linked release when loading options.
-The same file works with `-C`; a different version request fails.
+Versions may be entered with or without `v`, but documentation and Git tags use
+the prefix.
 
-A runtime `-C other.yaml` replaces the entire embedded configuration.
-`-o` flags override the selected configuration's options.
-`--plugin=NAME` selects the default implementation with default settings.
-`--plugin=API=NAME` selects an implementation explicitly.
-Either form overrides configuration for the same API.
-Using `-C` with an empty mapping (`{}`) selects ordinary defaults; compiled
-plugins remain available through `--plugin`.
+The JSON-comments sanitizer works in JSON, YAML, node, event, token, and legacy
+loading modes when the built-in parser is selected.
+External parser plugins work in JSON, YAML, node, and event modes.
+Token and legacy modes reject them because those paths do not consume parser
+plugin events.
 
-A configured build containing only core options or `limit` does not link
-Glojure.
-For development against a local plugin checkout under
-`repos/yamlstar-plugin-json-comments`, set `JSON-COMMENTS-LOCAL=1`.
-`make cli` without `CONFIG` restores the ordinary CLI with no embedded options.
+For local development, related checkouts must be under `repos/`.
+Set `JSON-COMMENTS-LOCAL=1` or `REFERENCE-PARSER-LOCAL=1` to use them.
+Build staging, workspaces, and downloaded build metadata live under `.cache/`.
+Go stores downloaded released modules in its module cache.
+
+Use `make cli` without `CONFIG` or `PLUGIN` to restore the ordinary command.

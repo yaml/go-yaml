@@ -4,6 +4,7 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,6 +12,27 @@ import (
 	"go.yaml.in/yaml/v4"
 	"go.yaml.in/yaml/v4/internal/libyaml"
 )
+
+func TestRegisterCompiledPlugins(t *testing.T) {
+	saved := compiledPluginRegistrations
+	t.Cleanup(func() { compiledPluginRegistrations = saved })
+	want := errors.New("registration failed")
+	called := false
+	compiledPluginRegistrations = []func() error{
+		func() error { return nil },
+		func() error { return want },
+		func() error {
+			called = true
+			return nil
+		},
+	}
+	if err := registerCompiledPlugins(); !errors.Is(err, want) {
+		t.Fatalf("got %v, want %v", err, want)
+	}
+	if called {
+		t.Fatal("registration continued after an error")
+	}
+}
 
 func TestEmbeddedOptions(t *testing.T) {
 	saved := defaultConfig
