@@ -109,13 +109,16 @@ func (e *EventReader) initialize() {
 	e.reader = nil
 	if err != nil {
 		e.err = NewLoadError(ReaderStage, err.Error(), Mark{}, err)
-	} else if e.opts.JSONComments != nil {
+		return
+	}
+	if e.opts.JSONComments != nil {
 		input, err = e.opts.JSONComments.Sanitize(input)
 		if err != nil {
 			e.err = NewLoadError(ReaderStage, err.Error(), Mark{}, err)
+			return
 		}
 	}
-	if e.err == nil && e.opts.Parser != nil {
+	if e.opts.Parser != nil {
 		e.pluginEvents = true
 		e.events, err = e.opts.Parser.Parse(input)
 		if err == nil {
@@ -124,11 +127,11 @@ func (e *EventReader) initialize() {
 		if err != nil {
 			e.err = NewLoadError(ParserStage, err.Error(), Mark{}, err)
 		}
-	} else if e.err == nil {
-		e.parser = NewParser()
-		e.parser.SetInputString(input)
-		e.parser.depthCheck = e.opts.DepthCheck
+		return
 	}
+	e.parser = NewParser()
+	e.parser.SetInputString(input)
+	e.parser.depthCheck = e.opts.DepthCheck
 }
 
 // validatePluginEvents checks structure before the recursive composer sees it.
