@@ -752,7 +752,7 @@ func Dump(in any, opts ...Option) (out []byte, err error) {
 
 // A Decoder reads and decodes YAML values from an input stream.
 type Decoder struct {
-	loader *Loader
+	loader *libyaml.Loader
 }
 
 // NewDecoder returns a new decoder that reads from r.
@@ -761,14 +761,14 @@ type Decoder struct {
 // data from r beyond the YAML values requested.
 func NewDecoder(r io.Reader) *Decoder {
 	// NewLoader won't return error with WithV3Defaults() and withFromLegacy
-	loader, _ := NewLoader(r, WithV3Defaults(), withFromLegacy())
+	loader, _ := libyaml.NewLoader(r, WithV3Defaults(), withFromLegacy())
 	return &Decoder{loader: loader}
 }
 
 // KnownFields ensures that the keys in decoded mappings to
 // exist as fields in the struct being decoded into.
 func (dec *Decoder) KnownFields(enable bool) {
-	libyaml.SetLegacyLoaderKnownFields(dec.loader, enable)
+	dec.loader.SetLegacyLoaderKnownFields(enable)
 }
 
 // Decode reads the next YAML-encoded value from its input
@@ -782,7 +782,7 @@ func (dec *Decoder) Decode(v any) error {
 
 // An Encoder writes YAML values to an output stream.
 type Encoder struct {
-	dumper *Dumper
+	dumper *libyaml.Dumper
 }
 
 // NewEncoder returns a new encoder that writes to w.
@@ -790,7 +790,7 @@ type Encoder struct {
 // to w.
 func NewEncoder(w io.Writer) *Encoder {
 	// NewDumper won't return an error when using WithV3Defaults()
-	dumper, _ := NewDumper(w, WithV3Defaults())
+	dumper, _ := libyaml.NewDumper(w, WithV3Defaults())
 	return &Encoder{dumper: dumper}
 }
 
@@ -807,17 +807,17 @@ func (e *Encoder) Encode(v any) error {
 
 // SetIndent changes the used indentation used when encoding.
 func (e *Encoder) SetIndent(spaces int) {
-	libyaml.SetLegacyEncoderIndent(e.dumper, spaces)
+	e.dumper.SetLegacyEncoderIndent(spaces)
 }
 
 // CompactSeqIndent makes it so that '- ' is considered part of the indentation.
 func (e *Encoder) CompactSeqIndent() {
-	libyaml.SetLegacyEncoderCompactSeqIndent(e.dumper, true)
+	e.dumper.SetLegacyEncoderCompactSeqIndent(true)
 }
 
 // DefaultSeqIndent makes it so that '- ' is not considered part of the indentation.
 func (e *Encoder) DefaultSeqIndent() {
-	libyaml.SetLegacyEncoderCompactSeqIndent(e.dumper, false)
+	e.dumper.SetLegacyEncoderCompactSeqIndent(false)
 }
 
 // Close closes the encoder by writing any remaining data.
