@@ -604,31 +604,144 @@ const (
 //-----------------------------------------------------------------------------
 
 // Advanced streaming API types
-type (
-	// Loader reads and loads YAML values from an input stream with
-	// configurable options.
-	Loader = libyaml.Loader
 
-	// Dumper writes YAML values to an output stream with configurable options.
-	Dumper = libyaml.Dumper
-)
-
-// NewLoader returns a new Loader that reads from r with the given options.
-func NewLoader(r io.Reader, opts ...Option) (*Loader, error) {
-	return libyaml.NewLoader(r, opts...)
+// Loader reads and loads YAML values from an input stream with
+// configurable options.
+type Loader struct {
+	loader *libyaml.Loader
 }
 
-// NewDumper returns a new Dumper that writes to w with the given options.
-func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
-	return libyaml.NewDumper(w, opts...)
+// Load reads the next YAML-encoded document from its input and stores it
+// in the value pointed to by out.
+//
+// Returns [io.EOF] when there are no more documents to read.
+// If the [WithSingleDocument] option was set and a document was already read,
+// subsequent calls return [io.EOF].
+//
+// Maps and pointers (to a struct, string, int, etc) are accepted as v
+// values. If an internal pointer within a struct is not initialized,
+// the yaml package will initialize it if necessary. The v parameter
+// must not be nil.
+//
+// Struct fields are only loaded if they are exported (have an upper case
+// first letter), and are loaded using the field name lowercased as the
+// default key. Custom keys may be defined via the "yaml" name in the field
+// tag: the content preceding the first comma is used as the key, and the
+// following comma-separated options control the loading and dumping behavior.
+//
+// See the documentation of the package-level [Load] function for more details
+// about YAML to Go conversion and tag options.
+func (l *Loader) Load(out any) error {
+	return l.loader.Load(out)
+}
+
+// NewLoader returns a new Loader that reads from r with the given options.
+//
+// The Loader introduces its own buffering and may read data from r beyond the
+// YAML values requested.
+func NewLoader(r io.Reader, opts ...Option) (*Loader, error) {
+	l, err := libyaml.NewLoader(r, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &Loader{
+		loader: l,
+	}, nil
 }
 
 // Load loads YAML document(s) with the given options.
+//
+// By default, Load requires exactly one document in the input.
+// If zero documents are found, it returns an error.
+// If multiple documents are found, it returns an error.
+//
+// Use [WithAllDocuments] to load all documents into a slice:
+//
+//	var configs []Config
+//	yaml.Load(multiDocYAML, &configs, yaml.WithAllDocuments())
+//
+// When [WithAllDocuments] is used, out must be a pointer to a slice.
+// Each document is loaded into the slice element type.
+// Zero documents results in an empty slice (no error).
+//
+// Maps and pointers (to a struct, string, int, etc) are accepted as out
+// values. If an internal pointer within a struct is not initialized,
+// the yaml package will initialize it if necessary. The out parameter
+// must not be nil.
+//
+// The type of the loaded values should be compatible with the respective
+// values in out. If one or more values cannot be loaded due to type
+// mismatches, decoding continues partially until the end of the YAML
+// content, and a *yaml.LoadErrors is returned with details for all
+// missed values.
+//
+// Struct fields are only loaded if they are exported (have an upper case
+// first letter), and are loaded using the field name lowercased as the
+// default key. Custom keys may be defined via the "yaml" name in the field
+// tag: the content preceding the first comma is used as the key, and the
+// following comma-separated options control the loading and dumping behavior.
+//
+// For example:
+//
+//	type T struct {
+//	    F int `yaml:"a,omitempty"`
+//	    B int
+//	}
+//	var t T
+//	yaml.Load([]byte("a: 1\nb: 2"), &t)
+//
+// See the documentation of Dump for the format of tags and a list of
+// supported tag options.
 func Load(in []byte, out any, opts ...Option) error {
 	return libyaml.Load(in, out, opts...)
 }
 
+// Dumper writes YAML values to an output stream with configurable options.
+type Dumper struct {
+	dumper *libyaml.Dumper
+}
+
+// NewDumper returns a new Dumper that writes to w with the given options.
+func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
+	d, err := libyaml.NewDumper(w, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &Dumper{
+		dumper: d,
+	}, nil
+}
+
+// Dump writes the YAML encoding of v to the stream.
+//
+// If multiple values are dumped to the stream, the second and subsequent
+// documents will be preceded with a "---" document separator.
+//
+// See the documentation for [Marshal] for details about the conversion of Go
+// values to YAML.
+func (d *Dumper) Dump(in any) error {
+	return d.dumper.Dump(in)
+}
+
+// Close closes the Dumper by writing any remaining data.
+// It does not write a stream terminating string "...".
+func (d *Dumper) Close() error {
+	return d.dumper.Close()
+}
+
 // Dump encodes a value to YAML with the given options.
+//
+// By default, Dump encodes a single value as a single YAML document.
+//
+// Use [WithAllDocuments] to encode multiple values as a multi-document stream:
+//
+//	docs := []Config{config1, config2, config3}
+//	yaml.Dump(docs, yaml.WithAllDocuments())
+//
+// When [WithAllDocuments] is used, in must be a slice.
+// Each element is encoded as a separate YAML document with "---" separators.
+//
+// See [Marshal] for details.
 func Dump(in any, opts ...Option) (out []byte, err error) {
 	return libyaml.Dump(in, opts...)
 }
