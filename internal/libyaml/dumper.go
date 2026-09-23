@@ -134,8 +134,9 @@ func (d *Dumper) Close() (err error) {
 
 // SetLegacyEncoderIndent allows changing the indentation for the legacy Encoder API.
 //
-// Note: This is not a method on Dumper to avoid exposing it; callers should use [WithIndent] instead.
-func SetLegacyEncoderIndent(d *Dumper, spaces int) {
+// This method is only provided for backward compatibility with the legacy Encoder API.
+// Do not use in libyaml, use [WithIndent] instead.
+func (d *Dumper) SetLegacyEncoderIndent(spaces int) {
 	if spaces < 0 {
 		failDumpf(SerializerStage, "cannot indent to a negative number of spaces")
 	}
@@ -145,7 +146,8 @@ func SetLegacyEncoderIndent(d *Dumper, spaces int) {
 
 // SetLegacyEncoderCompactSeqIndent allows changing the compact sequence indentation for the legacy Encoder API.
 //
-// Note: This is not a method on Dumper to avoid exposing it; callers should use [WithCompactSeqIndent] instead.
-func SetLegacyEncoderCompactSeqIndent(d *Dumper, compact bool) {
+// This method is only provided for backward compatibility with the legacy Encoder API.
+// Do not use in libyaml, use [WithCompactSeqIndent] instead.
+func (d *Dumper) SetLegacyEncoderCompactSeqIndent(compact bool) {
 	d.serializer.Emitter.CompactSequenceIndent = compact
 }

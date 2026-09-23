@@ -262,8 +262,9 @@ func loadSingle(in []byte, out any, opts *Options) error {
 
 // SetLegacyLoaderKnownFields allows changing the known fields setting from the legacy Decoder API.
 //
-// Note: This is not a method on Loader to avoid exposing it; callers should use [WithKnownFields] instead.
-func SetLegacyLoaderKnownFields(l *Loader, enable bool) {
+// This method is only provided for backward compatibility with the legacy Decoder API.
+// Do not use in libyaml, use [WithKnownFields] instead.
+func (l *Loader) SetLegacyLoaderKnownFields(enable bool) {
 	l.constructor.KnownFields = enable
 }
 
