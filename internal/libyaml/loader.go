@@ -267,27 +267,6 @@ func SetLegacyLoaderKnownFields(l *Loader, enable bool) {
 	l.constructor.KnownFields = enable
 }
 
-// ComposeAndResolve composes and resolves the next document from the input
-// and returns the node without constructing Go values. This is used by
-// Unmarshal() to support the Unmarshaler interface.
-func (l *Loader) ComposeAndResolve() *Node {
-	if l.options.SingleDocument && l.docCount > 0 {
-		return nil
-	}
-
-	// Stage 1: Compose - parse events into node tree (unresolved tags)
-	node := l.composer.Compose()
-	if node == nil {
-		return nil
-	}
-	l.docCount++
-
-	// Stage 2: Resolve - determine implicit types for untagged scalars
-	l.resolver.Resolve(node)
-
-	return node
-}
-
 // LoadAny parses YAML data into generic Go structures (map[string]any, []any).
 //
 // Useful for test data loading where the structure is unknown at compile time.
