@@ -79,31 +79,53 @@ type SimpleKey struct {
 // ParserState represents the state of the parser.
 type ParserState int
 
-// Parser state constants define the different states the parser can be in.
+// Possible [ParserState] constants are the different states the parser can be in.
 const (
+	// PARSE_STREAM_START_STATE expects STREAM-START.
 	PARSE_STREAM_START_STATE ParserState = iota
 
-	PARSE_IMPLICIT_DOCUMENT_START_STATE           // Expect the beginning of an implicit document.
-	PARSE_DOCUMENT_START_STATE                    // Expect DOCUMENT-START.
-	PARSE_DOCUMENT_CONTENT_STATE                  // Expect the content of a document.
-	PARSE_DOCUMENT_END_STATE                      // Expect DOCUMENT-END.
-	PARSE_BLOCK_NODE_STATE                        // Expect a block node.
-	PARSE_BLOCK_SEQUENCE_FIRST_ENTRY_STATE        // Expect the first entry of a block sequence.
-	PARSE_BLOCK_SEQUENCE_ENTRY_STATE              // Expect an entry of a block sequence.
-	PARSE_INDENTLESS_SEQUENCE_ENTRY_STATE         // Expect an entry of an indentless sequence.
-	PARSE_BLOCK_MAPPING_FIRST_KEY_STATE           // Expect the first key of a block mapping.
-	PARSE_BLOCK_MAPPING_KEY_STATE                 // Expect a block mapping key.
-	PARSE_BLOCK_MAPPING_VALUE_STATE               // Expect a block mapping value.
-	PARSE_FLOW_SEQUENCE_FIRST_ENTRY_STATE         // Expect the first entry of a flow sequence.
-	PARSE_FLOW_SEQUENCE_ENTRY_STATE               // Expect an entry of a flow sequence.
-	PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_KEY_STATE   // Expect a key of an ordered mapping.
-	PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_VALUE_STATE // Expect a value of an ordered mapping.
-	PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_END_STATE   // Expect the and of an ordered mapping entry.
-	PARSE_FLOW_MAPPING_FIRST_KEY_STATE            // Expect the first key of a flow mapping.
-	PARSE_FLOW_MAPPING_KEY_STATE                  // Expect a key of a flow mapping.
-	PARSE_FLOW_MAPPING_VALUE_STATE                // Expect a value of a flow mapping.
-	PARSE_FLOW_MAPPING_EMPTY_VALUE_STATE          // Expect an empty value of a flow mapping.
-	PARSE_END_STATE                               // Expect nothing.
+	// PARSE_IMPLICIT_DOCUMENT_START_STATE expects the beginning of an implicit document.
+	PARSE_IMPLICIT_DOCUMENT_START_STATE
+	// PARSE_DOCUMENT_START_STATE expects DOCUMENT-START.
+	PARSE_DOCUMENT_START_STATE
+	// PARSE_DOCUMENT_CONTENT_STATE expects the content of a document.
+	PARSE_DOCUMENT_CONTENT_STATE
+	// PARSE_DOCUMENT_END_STATE expects DOCUMENT-END.
+	PARSE_DOCUMENT_END_STATE
+	// PARSE_BLOCK_NODE_STATE expects a block node.
+	PARSE_BLOCK_NODE_STATE
+	// PARSE_BLOCK_SEQUENCE_FIRST_ENTRY_STATE expects the first entry of a block sequence.
+	PARSE_BLOCK_SEQUENCE_FIRST_ENTRY_STATE
+	// PARSE_BLOCK_SEQUENCE_ENTRY_STATE expects an entry of a block sequence.
+	PARSE_BLOCK_SEQUENCE_ENTRY_STATE
+	// PARSE_INDENTLESS_SEQUENCE_ENTRY_STATE expects an entry of an indentless sequence.
+	PARSE_INDENTLESS_SEQUENCE_ENTRY_STATE
+	// PARSE_BLOCK_MAPPING_FIRST_KEY_STATE expects the first key of a block mapping.
+	PARSE_BLOCK_MAPPING_FIRST_KEY_STATE
+	// PARSE_BLOCK_MAPPING_KEY_STATE expects a block mapping key.
+	PARSE_BLOCK_MAPPING_KEY_STATE
+	// PARSE_BLOCK_MAPPING_VALUE_STATE expects a block mapping value.
+	PARSE_BLOCK_MAPPING_VALUE_STATE
+	// PARSE_FLOW_SEQUENCE_FIRST_ENTRY_STATE expects the first entry of a flow sequence.
+	PARSE_FLOW_SEQUENCE_FIRST_ENTRY_STATE
+	// PARSE_FLOW_SEQUENCE_ENTRY_STATE expects an entry of a flow sequence.
+	PARSE_FLOW_SEQUENCE_ENTRY_STATE
+	// PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_KEY_STATE expects a key of an ordered mapping.
+	PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_KEY_STATE
+	// PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_VALUE_STATE expects a value of an ordered mapping.
+	PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_VALUE_STATE
+	// PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_END_STATE expects the and of an ordered mapping entry.
+	PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_END_STATE
+	// PARSE_FLOW_MAPPING_FIRST_KEY_STATE expects the first key of a flow mapping.
+	PARSE_FLOW_MAPPING_FIRST_KEY_STATE
+	// PARSE_FLOW_MAPPING_KEY_STATE expects a key of a flow mapping.
+	PARSE_FLOW_MAPPING_KEY_STATE
+	// PARSE_FLOW_MAPPING_VALUE_STATE expects a value of a flow mapping.
+	PARSE_FLOW_MAPPING_VALUE_STATE
+	// PARSE_FLOW_MAPPING_EMPTY_VALUE_STATE expects an empty value of a flow mapping.
+	PARSE_FLOW_MAPPING_EMPTY_VALUE_STATE
+	// PARSE_END_STATE expects nothing.
+	PARSE_END_STATE
 )
 
 // String returns a string representation of the parser state.
@@ -166,10 +188,14 @@ type AliasData struct {
 
 // Comment holds information about a comment in the YAML stream.
 type Comment struct {
-	ScanMark  Mark // Position where scanning for comments started
-	TokenMark Mark // Position after which tokens will be associated with this comment
-	StartMark Mark // Position of '#' comment mark
-	EndMark   Mark // Position where comment terminated
+	// ScanMark is the position where scanning for comments started
+	ScanMark Mark
+	// TokenMark is the position after which tokens will be associated with this comment
+	TokenMark Mark
+	// StartMark is the position of the '#' comment mark
+	StartMark Mark
+	// EndMark is the position where the comment ended
+	EndMark Mark
 
 	Head []byte
 	Line []byte
@@ -207,9 +233,12 @@ type Parser struct {
 
 	// Comments
 
-	HeadComment  []byte // The current head comments
-	LineComment  []byte // The current line comments
-	FootComment  []byte // The current foot comments
+	// HeadComment is the current head comments.
+	HeadComment []byte
+	// LineComment is the current line comments.
+	LineComment []byte
+	// FootComment is the current foot comments.
+	FootComment  []byte
 	tail_comment []byte // Foot comment that happens at the end of a block.
 	stem_comment []byte // Comment in item preceding a nested structure (list inside list item, etc)
 

@@ -37,13 +37,19 @@ const (
 // It provides detailed location information and identifies the processing
 // stage where the error occurred.
 type LoadError struct {
-	Stage   Stage  // Processing stage where error occurred
-	Message string // Error description
+	// Stage identifies the processing stage where the error occurred.
+	Stage Stage
+	// Message provides a description of the error.
+	Message string
 
 	// Position information
-	Mark        Mark   // Primary error position
-	ContextMark Mark   // Optional context position (e.g., start of construct)
-	ContextMsg  string // Optional context message
+
+	// Mark is the primary position in the input where the error occurred.
+	Mark Mark
+	// ContextMark is an optional context position (e.g., start of construct)
+	ContextMark Mark
+	// ContextMsg is an optional message describing the context of the error.
+	ContextMsg string
 
 	// Error chaining
 	err error // Underlying error (for Unwrap support)
@@ -101,8 +107,10 @@ func NewLoadError(stage Stage, message string, mark Mark, cause error) *LoadErro
 // It identifies the processing stage where the error occurred and provides
 // an optional underlying cause via Unwrap.
 type DumpError struct {
-	Stage   Stage  // Processing stage where error occurred
-	Message string // Error description
+	// Stage identifies the processing stage where the error occurred.
+	Stage Stage
+	// Message provides a description of the error.
+	Message string
 
 	// Error chaining
 	err error // Underlying error (for Unwrap support)
@@ -221,7 +229,7 @@ func (e *LoadErrors) Is(target error) bool {
 
 // TypeError is a legacy error type retained for compatibility.
 //
-// A TypeError is returned by Unmarshal when one or more fields in
+// A TypeError is returned by [Load] and [Loader.Load] when one or more fields in
 // the YAML document cannot be properly decoded into the requested
 // types. When this error is returned, the value is still
 // unmarshaled partially.

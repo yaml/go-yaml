@@ -36,7 +36,8 @@ import (
 //	yaml.Dump(&data, yaml.WithV3Defaults())
 //	yaml.Dump(&data, yaml.WithV3Defaults(), yaml.WithIndent(2), yaml.WithCompactSeqIndent())
 
-// WithV2Defaults returns V2-compatible default options.
+// WithV2Defaults returns options that match the behavior of go-yaml v2.
+// This is useful for migrating code from v2 to v4 while preserving the same output format.
 func WithV2Defaults() Option {
 	return Options(
 		WithIndent(2),
@@ -49,7 +50,10 @@ func WithV2Defaults() Option {
 	)
 }
 
-// WithV3Defaults returns V3-compatible default options.
+// WithV3Defaults returns options that match the behavior of go-yaml v3.
+// This is useful for migrating code from v3 to v4 while preserving the same output format.
+//
+// These is the default settings when using [Unmarshal] or [Marshal].
 func WithV3Defaults() Option {
 	return Options(
 		WithIndent(4),
@@ -63,6 +67,7 @@ func WithV3Defaults() Option {
 }
 
 // WithV4Defaults returns the current V4 default options.
+// These is the default settings when using [Dump] or [Load] without any options.
 func WithV4Defaults() Option {
 	return Options(
 		WithIndent(2),
@@ -82,7 +87,7 @@ func WithV4Defaults() Option {
 // Option allows configuring YAML loading and dumping operations.
 type Option = libyaml.Option
 
-// Option configuration functions
+// [Option] configuration functions
 var (
 	// WithIndent sets the number of spaces to use for indentation when
 	// dumping YAML content.
@@ -113,7 +118,7 @@ var (
 	// When called without arguments, defaults to true.
 	//
 	// This is useful when you expect exactly one document and want behavior
-	// similar to Unmarshal.
+	// similar to [Unmarshal].
 	WithSingleDocument = libyaml.WithSingleDocument
 
 	// WithStreamNodes enables returning stream boundary nodes when loading
@@ -263,9 +268,14 @@ func Options(opts ...Option) Option {
 // DepthKind represents the type of nesting (flow or block).
 type DepthKind = libyaml.DepthKind
 
-// DepthKind constants for nesting depth checks.
+// [DepthKind] constants for nesting depth checks
+//
+// They are the possible values for [DepthContext] when checking the nesting depth of YAML nodes.
 const (
-	DepthKindFlow  = libyaml.DepthKindFlow
+	// DepthKindFlow represents flow-style nesting (inside [] or {}).
+	DepthKindFlow = libyaml.DepthKindFlow
+
+	// DepthKindBlock represents block-style nesting (inside indentation).
 	DepthKindBlock = libyaml.DepthKindBlock
 )
 
@@ -493,19 +503,22 @@ func OptsYAML(yamlStr string) (Option, error) {
 // Type and constant re-exports
 //-----------------------------------------------------------------------------
 
-// Re-export stream-related types
 type (
-	Stream           = libyaml.Stream
+	// Stream holds stream-level metadata for [StreamNode].
+	// This includes encoding, version directive, and tag directives.
+	Stream = libyaml.Stream
+
+	// VersionDirective represents a YAML %YAML version directive for [Stream.VersionDirective].
 	VersionDirective = libyaml.StreamVersionDirective
 
-	// TagDirective represents a YAML %TAG directive for stream nodes.
+	// TagDirective represents a YAML %TAG directive for [Stream.TagDirectives].
 	TagDirective = libyaml.StreamTagDirective
 
-	// Encoding represents the character encoding of a YAML stream.
+	// Encoding represents the character encoding of a [Stream.Encoding].
 	Encoding = libyaml.Encoding
 )
 
-// Encoding constants for YAML stream encoding
+// [Encoding] constants for YAML stream encoding
 const (
 	// EncodingAny lets the parser choose the encoding.
 	EncodingAny = libyaml.ANY_ENCODING
@@ -524,21 +537,32 @@ const (
 // loading or dumping.
 type Stage = libyaml.Stage
 
-// Stage constants for YAML processing pipeline.
+// [Stage] constants for YAML loading stages
 const (
-	// Load stages
-	ReaderStage      = libyaml.ReaderStage      // Input reading and encoding
-	ScannerStage     = libyaml.ScannerStage     // Tokenization
-	ParserStage      = libyaml.ParserStage      // Event stream parsing
-	ComposerStage    = libyaml.ComposerStage    // Node tree construction
-	ResolverStage    = libyaml.ResolverStage    // Tag resolution
-	ConstructorStage = libyaml.ConstructorStage // Go value construction
+	// ReaderStage is the input reading and encoding stage.
+	ReaderStage = libyaml.ReaderStage
+	// ScannerStage is the tokenization stage.
+	ScannerStage = libyaml.ScannerStage
+	// ParserStage is the event stream parsing stage.
+	ParserStage = libyaml.ParserStage
+	// ComposerStage is the node tree construction stage.
+	ComposerStage = libyaml.ComposerStage
+	// ResolverStage is the tag resolution stage.
+	ResolverStage = libyaml.ResolverStage
+	// ConstructorStage is the Go value construction stage.
+	ConstructorStage = libyaml.ConstructorStage
+)
 
-	// Dump stages
-	RepresenterStage = libyaml.RepresenterStage // Go value to Node tree
-	SerializerStage  = libyaml.SerializerStage  // Node tree to events
-	EmitterStage     = libyaml.EmitterStage     // Events to YAML bytes
-	WriterStage      = libyaml.WriterStage      // Output writing
+// [Stage] constants for YAML dumping stages
+const (
+	// RepresenterStage is the Go value to Node tree stage.
+	RepresenterStage = libyaml.RepresenterStage
+	// SerializerStage is the Node tree to event stage.
+	SerializerStage = libyaml.SerializerStage
+	// EmitterStage is the events to YAML bytes stage.
+	EmitterStage = libyaml.EmitterStage
+	// WriterStage is the output writing stage.
+	WriterStage = libyaml.WriterStage
 )
 
 // Mark represents a position in the YAML document.
@@ -582,21 +606,32 @@ var NewDumpError = libyaml.NewDumpError
 // LineBreak represents the line ending style for YAML output.
 type LineBreak = libyaml.LineBreak
 
-// Line break constants for different platforms.
+// [LineBreak] constants for different platforms.
 const (
-	LineBreakLN   = libyaml.LN_BREAK   // Unix-style \n (default)
-	LineBreakCR   = libyaml.CR_BREAK   // Old Mac-style \r
-	LineBreakCRLN = libyaml.CRLN_BREAK // Windows-style \r\n
+
+	// LineBreakLN represents Unix-style line endings (\n), this is the default.
+	LineBreakLN = libyaml.LN_BREAK
+
+	// LineBreakCR represents Old Mac-style line endings (\r).
+	LineBreakCR = libyaml.CR_BREAK
+
+	// LineBreakCRLN represents Windows-style line endings (\r\n).
+	LineBreakCRLN = libyaml.CRLN_BREAK
 )
 
 // QuoteStyle represents the quote style to use when quoting is required.
 type QuoteStyle = libyaml.QuoteStyle
 
-// Quote style constants for required quoting.
+// [QuoteStyle] constants for required quoting.
 const (
-	QuoteSingle = libyaml.QuoteSingle // Prefer single quotes (v4 default)
-	QuoteDouble = libyaml.QuoteDouble // Prefer double quotes
-	QuoteLegacy = libyaml.QuoteLegacy // Legacy v2/v3 behavior
+	// QuoteSingle prefers single quotes (v4 default).
+	QuoteSingle = libyaml.QuoteSingle
+
+	// QuoteDouble prefers double quotes.
+	QuoteDouble = libyaml.QuoteDouble
+
+	// QuoteLegacy uses legacy v2/v3 behavior (mixed quoting).
+	QuoteLegacy = libyaml.QuoteLegacy
 )
 
 //-----------------------------------------------------------------------------

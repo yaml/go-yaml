@@ -435,7 +435,7 @@ func (c *Composer) captureDirectives(n *Node) {
 	}
 }
 
-// Fail panics with a YAMLError wrapping the given error.
+// Fail panics with a [YAMLError] wrapping the given error.
 func Fail(err error) {
 	panic(&YAMLError{err})
 }
