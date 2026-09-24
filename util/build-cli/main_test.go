@@ -20,7 +20,7 @@ func TestInspectConfig(t *testing.T) {
 	}{
 		{"defaults", "{}", false, false, ""},
 		{
-			"limit", "plugin: {limit: {depth: 50, alias: null}}",
+			"limit", "plugin: {loader-limits: {depth: 50, alias: null}}",
 			false, false, "",
 		},
 		{"tab indent", "plugin: {tab-indent: true}", false, false, ""},
@@ -30,15 +30,25 @@ func TestInspectConfig(t *testing.T) {
 				"{load: spaces, dump: spaces, auto: stream}}",
 			false, false, "",
 		},
+		{"legacy limit", "plugin: {limit: true}", false, false, ""},
+		{
+			"limit API conflict",
+			"plugin: {limit: true, loader-limits: true}", false, true, "",
+		},
+		{
+			"YAML parser", "plugin: {yaml-parser: go-yaml}",
+			false, false, "",
+		},
+		{"legacy parser", "plugin: {parser: go-yaml}", false, true, ""},
 		{"JSON comments", "plugin: {json-comments: true}", true, false, ""},
 		{
 			"JSON comments disabled", "plugin: {json-comments: false}",
 			false, false, "",
 		},
-		{"limit disabled", "plugin: {limit: false}", false, false, ""},
+		{"limit disabled", "plugin: {loader-limits: false}", false, false, ""},
 		{
 			"limit disabled in mapping",
-			"plugin: {limit: {depth: 3, disable: true}}", false, false, "",
+			"plugin: {loader-limits: {depth: 3, disable: true}}", false, false, "",
 		},
 		{
 			"JSON disabled in mapping",
@@ -53,12 +63,12 @@ func TestInspectConfig(t *testing.T) {
 			"plugin: {json-comments: {disable: false}}", true, false, "",
 		},
 		{"unknown disabled", "plugin: {absent: false}", false, false, ""},
-		{"both", "plugin: {limit: {}, json-comments: {}}", true, false, ""},
+		{"both", "plugin: {loader-limits: {}, json-comments: {}}", true, false, ""},
 		{
 			"null JSON comments", "plugin: {json-comments: null}",
 			false, true, "",
 		},
-		{"null limit", "plugin: {limit: null}", false, true, ""},
+		{"null limit", "plugin: {loader-limits: null}", false, true, ""},
 		{
 			"invalid disable", "plugin: {json-comments: {disable: null}}",
 			false, true, "",
@@ -67,7 +77,7 @@ func TestInspectConfig(t *testing.T) {
 		{"unknown plugin", "plugin: {absent: {}}", false, true, ""},
 		{"unknown option", "indnet: 4", false, true, ""},
 		{"bad indent", "indent: 100", false, true, ""},
-		{"bad limit", "plugin: {limit: {depth: nope}}", false, true, ""},
+		{"bad limit", "plugin: {loader-limits: {depth: nope}}", false, true, ""},
 		{
 			"bad tab indent", "plugin: {tab-indent: {mode: spaces}}",
 			false, true, "",
@@ -76,7 +86,7 @@ func TestInspectConfig(t *testing.T) {
 			"removed tab scope", "plugin: {tab-indent: {scope: document}}",
 			false, true, "",
 		},
-		{"bad plugins", "plugin: [limit]", false, true, ""},
+		{"bad plugins", "plugin: [loader-limits]", false, true, ""},
 		{"syntax", "[", false, true, ""},
 		{"multiple documents", "--- {}\n--- {}", false, true, ""},
 		{
@@ -367,20 +377,20 @@ func TestConfiguredReferenceCLI(t *testing.T) {
 			t.Fatalf("%v: got %q, %v", flags, out, err)
 		}
 	}
-	write("plugin: {parser: reference@v0.2.5}\n")
+	write("plugin: {yaml-parser: reference@v0.2.5}\n")
 	if err := buildCLI(root, config, binary, goTool,
 		os.Getenv("GO_YAML_BUILD_PERL")); err != nil {
 		t.Fatal(err)
 	}
 	run("-j")
-	run("-j", "--plugin=parser=reference@0.2.5")
-	run("-j", "--plugin=parser=go-yaml")
+	run("-j", "--plugin=yaml-parser=reference@0.2.5")
+	run("-j", "--plugin=yaml-parser=go-yaml")
 	modules, err := exec.Command(goTool, "version", "-m", binary).CombinedOutput()
 	if err != nil || !bytes.Contains(modules, []byte(
 		"github.com/yamlstar/yamlstar-plugin-parser-reference\tv0.2.5")) {
 		t.Fatalf("linked plugin version: %v\n%s", err, modules)
 	}
-	write("plugin: {parser: reference@v0.2.4}\n")
+	write("plugin: {yaml-parser: reference@v0.2.4}\n")
 	if err := buildCLI(root, config, binary, goTool,
 		os.Getenv("GO_YAML_BUILD_PERL")); err == nil {
 		t.Fatal("unavailable parser version built")

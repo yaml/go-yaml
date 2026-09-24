@@ -33,8 +33,8 @@ type Options struct {
 	FlowSimpleCollections bool       // Use flow style for simple collections
 	QuotePreference       QuoteStyle // Preferred quote style when quoting is required
 
-	// Parser supplies complete events in place of native parsing.
-	Parser ParserPlugin
+	// YAMLParser supplies complete events in place of native parsing.
+	YAMLParser YAMLParserPlugin
 
 	// JSONComments sanitizes JSON-style comments before parsing.
 	JSONComments JSONCommentsPlugin
@@ -42,7 +42,7 @@ type Options struct {
 	// IndentConfig enables tab-aware structural indentation.
 	IndentConfig *IndentConfig
 
-	// Safety limit checks (set by ApplyOptions or WithPlugin(limit.New(...)))
+	// Loader limit checks (set by ApplyOptions or a loader-limits plugin).
 	DepthCheck func(depth int, ctx *DepthContext) error
 	AliasCheck func(aliasCount, constructCount int) error
 

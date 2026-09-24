@@ -88,14 +88,15 @@ options.
 
 ## Plugin builds
 
-The ordinary command contains the built-in `go-yaml` parser and limit plugin.
+The ordinary command contains the built-in `go-yaml` parser and loader-limits
+plugin.
 Optional plugin implementations must be selected while building the command.
 
 `PLUGIN` contains only the plugin selector DSL:
 
 ```bash
-make cli PLUGIN=parser=reference@v0.2.5,json-comments
-./go-yaml --plugin=parser=reference@0.2.5,json-comments \
+make cli PLUGIN=yaml-parser=reference@v0.2.5,json-comments
+./go-yaml --plugin=yaml-parser=reference@0.2.5,json-comments \
   -j example/json-comments/data.yaml
 ```
 
@@ -103,7 +104,7 @@ The selector forms are `API`, `API@VERSION`, `API=IMPLEMENTATION`, and
 `API=IMPLEMENTATION@VERSION`.
 Comma-separated selectors can be passed in one flag.
 A bare API selects its default implementation.
-The `json-comments` default is `sanitizer`, and the `parser` default is
+The `json-comments` default is `sanitizer`, and the `yaml-parser` default is
 `go-yaml`.
 
 `PLUGIN` and `--plugin` never name files and never contain YAML.
@@ -121,8 +122,8 @@ configuration as the command's defaults.
 ```yaml
 indent: 4
 plugin:
-  parser: reference@v0.2.5
-  limit:
+  yaml-parser: reference@v0.2.5
+  loader-limits:
     depth: 50
     alias: 100
   json-comments: sanitizer@v0.1.9
@@ -154,9 +155,9 @@ the prefix.
 
 The JSON-comments sanitizer works in JSON, YAML, node, event, token, and legacy
 loading modes when the built-in parser is selected.
-External parser plugins work in JSON, YAML, node, and event modes.
-Token and legacy modes reject them because those paths do not consume parser
-plugin events.
+External YAML-parser plugins work in JSON, YAML, node, and event modes.
+Token and legacy modes reject them because those paths do not consume
+YAML-parser plugin events.
 
 For local development, related checkouts must be under `repos/`.
 Set `JSON-COMMENTS-LOCAL=1` or `REFERENCE-PARSER-LOCAL=1` to use them.

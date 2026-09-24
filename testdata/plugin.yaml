@@ -20,7 +20,7 @@
 - plugin-pass:
     name: depth 50 allows nesting of 20
     plugin:
-      limit:
+      loader-limits:
         depth: 50
     data:
       join:
@@ -31,7 +31,7 @@
 - plugin-error:
     name: depth 5 rejects nesting of 20
     plugin:
-      limit:
+      loader-limits:
         depth: 5
     data:
       join:
@@ -43,7 +43,7 @@
 - plugin-pass:
     name: disabled limit mapping ignores depth 3
     plugin:
-      limit:
+      loader-limits:
         depth: 3
         alias: 100
         disable: true
@@ -56,7 +56,7 @@
 - plugin-error:
     name: enabled limit mapping enforces depth 3
     plugin:
-      limit:
+      loader-limits:
         depth: 3
         disable: false
     data:
@@ -69,7 +69,7 @@
 - plugin-pass:
     name: depth null disables depth checking (10001 nesting)
     plugin:
-      limit:
+      loader-limits:
         depth:
     data:
       join:
@@ -80,7 +80,7 @@
 - plugin-pass:
     name: alias null disables alias checking (11000 aliases)
     plugin:
-      limit:
+      loader-limits:
         alias:
     data:
       join:
@@ -91,7 +91,7 @@
 - plugin-error:
     name: alias 5 rejects excessive aliases
     plugin:
-      limit:
+      loader-limits:
         alias: 5
     data:
       join:
@@ -103,7 +103,7 @@
 - plugin-pass:
     name: alias 10000 allows moderate aliases
     plugin:
-      limit:
+      loader-limits:
         alias: 10000
     data:
       join:
@@ -114,7 +114,7 @@
 - plugin-pass:
     name: default limits (true limits key)
     plugin:
-      limit: true
+      loader-limits: true
     data:
       join:
       - loop: ['[', 20]
@@ -124,7 +124,7 @@
 - plugin-error:
     name: default limits reject deep nesting (10001)
     plugin:
-      limit: true
+      loader-limits: true
     data:
       join:
       - loop: ['[', 10001]
