@@ -70,22 +70,17 @@ func TestEmbeddedOptions(t *testing.T) {
 	if err := yaml.Load([]byte("[[]]"), &value, opts...); err != nil {
 		t.Fatalf("explicit implementation should use defaults: %v", err)
 	}
-	if _, err := buildOptions("", nil, "limit=limit"); err != nil {
-		t.Fatalf("legacy limit selector: %v", err)
+	if _, err := buildOptions("", nil, "limit=limit"); err == nil {
+		t.Fatal("old limit selector accepted")
 	}
 	if _, err := buildOptions("", nil, "parser=go-yaml"); err == nil {
-		t.Fatal("legacy parser selector accepted")
+		t.Fatal("old parser selector accepted")
 	}
 	for _, selector := range []string{"", "=loader-limits", "loader-limits=", "a=b=c"} {
 		if _, err := buildOptions("", nil, selector); err == nil {
 			t.Fatalf("invalid selector %q accepted", selector)
 		}
 	}
-	defaultConfig = "plugin: {limit: true, loader-limits: true}\n"
-	if _, err := buildOptions("", nil); err == nil {
-		t.Fatal("legacy and canonical loader-limits APIs accepted together")
-	}
-
 	config := filepath.Join(t.TempDir(), "runtime.yaml")
 	if err := os.WriteFile(config, []byte("indent: 6\n"), 0o600); err != nil {
 		t.Fatal(err)

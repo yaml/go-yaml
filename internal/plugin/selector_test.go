@@ -74,27 +74,3 @@ func TestConfigValue(t *testing.T) {
 		}
 	}
 }
-
-func TestLoaderLimitsAliases(t *testing.T) {
-	got, err := ParseSelectors("limit=limit")
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := []Selection{{API: "loader-limits", Name: "loader-limits"}}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("got %#v, want %#v", got, want)
-	}
-
-	plugins := map[string]any{"limit": true}
-	if err := NormalizeConfig(plugins); err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(plugins, map[string]any{"loader-limits": true}) {
-		t.Fatalf("got %#v", plugins)
-	}
-	if err := NormalizeConfig(map[string]any{
-		"limit": true, "loader-limits": true,
-	}); err == nil {
-		t.Fatal("accepted both legacy and canonical loader-limits APIs")
-	}
-}
