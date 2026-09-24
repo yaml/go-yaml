@@ -33,8 +33,8 @@ type Options struct {
 	FlowSimpleCollections bool       // Use flow style for simple collections
 	QuotePreference       QuoteStyle // Preferred quote style when quoting is required
 
-	// YAMLParser supplies complete events in place of native parsing.
-	YAMLParser YAMLParserPlugin
+	// Parser supplies complete events in place of native parsing.
+	Parser ParserPlugin
 
 	// JSONComments sanitizes JSON-style comments before parsing.
 	JSONComments JSONCommentsPlugin

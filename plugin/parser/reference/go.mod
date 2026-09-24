@@ -1,4 +1,4 @@
-module go.yaml.in/yaml/v4/plugin/yaml-parser/reference
+module go.yaml.in/yaml/v4/plugin/parser/reference
 
 go 1.24
 

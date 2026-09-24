@@ -9,7 +9,7 @@
 //
 // # Available Plugins
 //
-// Loader-limits plugin (plugin/loader-limits), API loader-limits:
+// Loader-limits plugin (plugin/loaderlimits), API loader-limits:
 //   - Configurable depth and alias expansion limits
 //
 // Tab indentation plugin (plugin/tabindent):
@@ -18,7 +18,7 @@
 // JSON-comments plugin (plugin/json-comments), API json-comments:
 //   - Optional JSON-style comment sanitizing
 //
-// Reference YAML-parser plugin (plugin/yaml-parser/reference), API yaml-parser:
+// Reference YAML-parser plugin (plugin/parser/reference), API yaml-parser:
 //   - Optional YAMLStar reference parser implementation
 //
 // The JSON-comments and reference YAML-parser packages are separate Go modules
@@ -29,7 +29,7 @@
 // Import the plugin you need and register it with WithPlugin:
 //
 //	import "go.yaml.in/yaml/v4"
-//	import loaderlimits "go.yaml.in/yaml/v4/plugin/loader-limits"
+//	import "go.yaml.in/yaml/v4/plugin/loaderlimits"
 //
 //	// Disable alias checking for documents with many aliases
 //	loader := yaml.NewLoader(data,
