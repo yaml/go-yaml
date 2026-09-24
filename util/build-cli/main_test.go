@@ -119,6 +119,21 @@ func TestInspectConfig(t *testing.T) {
 	}
 }
 
+func TestInspectYamlfmtConfig(t *testing.T) {
+	selection, err := inspectConfig([]byte(
+		"plugin: {dumper-format: {name: yamlfmt, version: 0.1.0}}"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !selection.yamlfmt || selection.yamlfmtVersion != "v0.1.0" {
+		t.Fatalf("got %+v", selection)
+	}
+	if _, err := inspectConfig([]byte(
+		"plugin: {dumper-format: {name: missing}}")); err == nil {
+		t.Fatal("unknown dumper-format implementation accepted")
+	}
+}
+
 func TestConfiguredCLI(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
@@ -297,6 +312,45 @@ func TestConfiguredJSONCLI(t *testing.T) {
 	after, err := os.ReadFile(binary)
 	if err != nil || !bytes.Equal(before, after) {
 		t.Fatal("failed plugin validation replaced the binary")
+	}
+}
+
+func TestConfiguredYamlfmtCLI(t *testing.T) {
+	if os.Getenv("GO_YAML_TEST_YAMLFMT") == "" {
+		t.Skip("run make test-yamlfmt for the optional plugin")
+	}
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	goTool, err := exec.LookPath("go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory := t.TempDir()
+	config := filepath.Join(directory, "options.yaml")
+	binary := filepath.Join(directory, "go-yaml")
+	data := "plugin:\n  dumper-format:\n    name: yamlfmt\n" +
+		"    version: 0.1.0\n    formatter:\n" +
+		"      type: basic\n      indent: 4\n"
+	if err := os.WriteFile(config, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := buildCLI(root, config, binary, goTool,
+		os.Getenv("GO_YAML_BUILD_PERL")); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(binary, "-y")
+	cmd.Stdin = strings.NewReader("root: {child: [one]}\n")
+	out, err := cmd.CombinedOutput()
+	want := "root:\n    child:\n        - one\n"
+	if err != nil || string(out) != want {
+		t.Fatalf("got %q, %v; want %q", out, err, want)
+	}
+	modules, err := exec.Command(goTool, "version", "-m", binary).CombinedOutput()
+	if err != nil || !bytes.Contains(modules, []byte(
+		"github.com/yamlstar/yamlstar-plugin-yamlfmt\tv0.1.0")) {
+		t.Fatalf("linked plugin version: %v\n%s", err, modules)
 	}
 }
 

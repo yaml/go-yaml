@@ -14,6 +14,7 @@ my $root = abs_path('.');
 my $go = $ENV{GO_YAML_BUILD_GO} || 'go';
 my $json_enabled = ($ENV{GO_YAML_BUILD_JSON_COMMENTS} // '') eq 'true';
 my $reference_enabled = ($ENV{GO_YAML_BUILD_REFERENCE_PARSER} // '') eq 'true';
+my $yamlfmt_enabled = ($ENV{GO_YAML_BUILD_YAMLFMT} // '') eq 'true';
 
 sub go_json {
     my ($directory, @args) = @_;
@@ -163,6 +164,39 @@ func init() {
 GO
     };
 }
+if ($yamlfmt_enabled) {
+    my $local = ($ENV{GO_YAML_YAMLFMT_LOCAL} // '0') eq '1';
+    my $upstream = "$root/repos/yamlstar-plugin-yamlfmt";
+    -f "$upstream/plugin.go"
+        or die "Missing yamlfmt plugin in $upstream\n" if $local;
+    my $query = canonical_query(
+        $ENV{GO_YAML_YAMLFMT_VERSION}, 'yamlfmt');
+    my $local_version = $local
+        ? local_version("$upstream/plugin.edn",
+            qr/:version\s+"([0-9]+\.[0-9]+\.[0-9]+)"/,
+            'yamlfmt')
+        : '';
+    push @plugins, {
+        api => 'dumper-format-yamlfmt',
+        module => 'github.com/yamlstar/yamlstar-plugin-yamlfmt',
+        wrapper => 'github.com/yamlstar/yamlstar-plugin-yamlfmt/goyaml',
+        upstream => $upstream,
+        local => $local,
+        version => resolve_version(
+            'github.com/yamlstar/yamlstar-plugin-yamlfmt',
+            $query, $local, $local_version),
+        source => <<'GO',
+package main
+
+import yamlfmt "github.com/yamlstar/yamlstar-plugin-yamlfmt/goyaml"
+
+func init() {
+	compiledPluginRegistrations = append(
+		compiledPluginRegistrations, yamlfmt.Register)
+}
+GO
+    };
+}
 @plugins or die "No compiled plugins were selected\n";
 
 my $stage = "$root/.cache/cli-plugins";
@@ -177,7 +211,8 @@ run_go($stage, 'get', 'go.yaml.in/yaml/v4@v4.0.0-rc.6');
 for my $plugin (@plugins) {
     write_file("$stage/$plugin->{api}.go", $plugin->{source});
     run_go($stage, 'mod', 'edit',
-        "-replace=$plugin->{wrapper}=$plugin->{wrapper_path}");
+        "-replace=$plugin->{wrapper}=$plugin->{wrapper_path}")
+        if $plugin->{wrapper_path};
     run_go($stage, 'mod', 'edit',
         "-replace=$plugin->{module}=$plugin->{upstream}")
         if $plugin->{local};
@@ -203,7 +238,8 @@ my @work_replacements;
 for my $plugin (@plugins) {
     push @work_uses, "$root/example/json-comments"
         if $plugin->{api} eq 'json-comments';
-    push @work_uses, $plugin->{wrapper_path};
+    push @work_uses, $plugin->{wrapper_path}
+        if $plugin->{wrapper_path};
     if ($plugin->{local}) {
         push @work_uses, $plugin->{upstream};
         push @work_replacements,

@@ -280,6 +280,7 @@ type DepthContext = libyaml.DepthContext
 //   - LimitPlugin: Controls depth and alias expansion limits
 //   - ParserPlugin: Supplies a complete YAML event stream
 //   - JSONCommentsPlugin: Sanitizes JSON-style comments before parsing
+//   - DumperFormatPlugin: Formats a complete serialized YAML stream
 //
 // Example:
 //
@@ -312,6 +313,14 @@ func WithPlugin(plugins ...any) Option {
 						"yaml: multiple json-comments plugins")
 				}
 				o.JSONComments = comments
+				registered = true
+			}
+			if formatter, ok := p.(DumperFormatPlugin); ok {
+				if o.DumperFormat != nil {
+					return errors.New(
+						"yaml: multiple dumper-format plugins")
+				}
+				o.DumperFormat = formatter
 				registered = true
 			}
 			if !registered {
@@ -535,10 +544,11 @@ const (
 	ConstructorStage = libyaml.ConstructorStage // Go value construction
 
 	// Dump stages
-	RepresenterStage = libyaml.RepresenterStage // Go value to Node tree
-	SerializerStage  = libyaml.SerializerStage  // Node tree to events
-	EmitterStage     = libyaml.EmitterStage     // Events to YAML bytes
-	WriterStage      = libyaml.WriterStage      // Output writing
+	RepresenterStage  = libyaml.RepresenterStage  // Go value to Node tree
+	SerializerStage   = libyaml.SerializerStage   // Node tree to events
+	EmitterStage      = libyaml.EmitterStage      // Events to YAML bytes
+	DumperFormatStage = libyaml.DumperFormatStage // Complete stream formatting
+	WriterStage       = libyaml.WriterStage       // Output writing
 )
 
 // Mark represents a position in the YAML document.

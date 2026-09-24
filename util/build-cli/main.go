@@ -39,9 +39,9 @@ func main() {
 }
 
 type buildConfig struct {
-	jsonComments, referenceParser bool
-	jsonVersion, referenceVersion string
-	embedded                      []byte
+	jsonComments, referenceParser, yamlfmt        bool
+	jsonVersion, referenceVersion, yamlfmtVersion string
+	embedded                                      []byte
 }
 
 var pluginVersion = regexp.MustCompile(`^v?[0-9]+\.[0-9]+\.[0-9]+$`)
@@ -163,6 +163,23 @@ func inspectConfig(data []byte) (buildConfig, error) {
 					}
 				}
 				delete(plugins, api)
+			case "dumper-format":
+				if name == "" {
+					name = "yamlfmt"
+				}
+				if name != "yamlfmt" {
+					return selection, fmt.Errorf(
+						"no CLI build provider for plugin %q implementation %q",
+						api, name)
+				}
+				selection.yamlfmt = true
+				if raw, found := setting["version"]; found {
+					selection.yamlfmtVersion, err = canonicalVersion(raw, api)
+					if err != nil {
+						return selection, err
+					}
+				}
+				delete(plugins, api)
 			default:
 				return selection, fmt.Errorf(
 					"no CLI build provider for plugin %q", api)
@@ -257,7 +274,8 @@ func buildCLIWithPlugins(
 		perlTool = "perl"
 	}
 	stage := filepath.Join(root, ".cache", "cli-config")
-	if selection.jsonComments || selection.referenceParser {
+	if selection.jsonComments || selection.referenceParser ||
+		selection.yamlfmt {
 		cmd := exec.Command(perlTool, "util/prepare-plugins")
 		cmd.Dir = root
 		cmd.Env = append(os.Environ(),
@@ -266,8 +284,11 @@ func buildCLIWithPlugins(
 				strconv.FormatBool(selection.jsonComments),
 			"GO_YAML_BUILD_REFERENCE_PARSER="+
 				strconv.FormatBool(selection.referenceParser),
+			"GO_YAML_BUILD_YAMLFMT="+
+				strconv.FormatBool(selection.yamlfmt),
 			"GO_YAML_JSON_COMMENTS_VERSION="+selection.jsonVersion,
-			"GO_YAML_REFERENCE_PARSER_VERSION="+selection.referenceVersion)
+			"GO_YAML_REFERENCE_PARSER_VERSION="+selection.referenceVersion,
+			"GO_YAML_YAMLFMT_VERSION="+selection.yamlfmtVersion)
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("prepare plugins: %w\n%s", err, out)
 		}
