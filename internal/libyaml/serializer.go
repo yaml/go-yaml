@@ -32,7 +32,7 @@ func NewSerializer(w io.Writer, opts *Options) *Serializer {
 	emitter := NewEmitter()
 	tabs := opts.TabIndent != nil &&
 		opts.TabIndent.Dump == TabIndentDumpTabs
-	emitter.CompactSequenceIndent = opts.CompactSeqIndent && !tabs
+	emitter.CompactSequenceIndent = opts.CompactSeqIndent
 	emitter.quotePreference = opts.QuotePreference
 	emitter.SetWidth(opts.LineWidth)
 	emitter.SetUnicode(opts.Unicode)
