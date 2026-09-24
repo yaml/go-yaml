@@ -15,7 +15,7 @@ import (
 // Plugin parses YAML with the YAMLStar reference parser.
 type Plugin struct{}
 
-var _ yaml.ParserPlugin = (*Plugin)(nil)
+var _ yaml.YAMLParserPlugin = (*Plugin)(nil)
 
 // Version is the linked reference parser release version.
 const Version = referenceparser.Version
@@ -23,10 +23,10 @@ const Version = referenceparser.Version
 // New creates a reference parser plugin.
 func New() *Plugin { return &Plugin{} }
 
-// Register enables parser=reference in yaml.OptsYAML.
+// Register enables yaml-parser=reference in yaml.OptsYAML.
 func Register() error {
 	return yaml.RegisterPlugin(yaml.PluginRegistration{
-		API: "parser", Name: "reference", Version: Version,
+		API: "yaml-parser", Name: "reference", Version: Version,
 		Factory: func(cfg map[string]any) (any, error) {
 			if len(cfg) != 0 {
 				return nil, errors.New(
@@ -37,7 +37,7 @@ func Register() error {
 	})
 }
 
-// Parse implements yaml.ParserPlugin.
+// Parse implements yaml.YAMLParserPlugin.
 func (p *Plugin) Parse(input []byte) ([]yaml.PluginEvent, error) {
 	source, err := referenceparser.Parse(input)
 	if err != nil {

@@ -1,6 +1,6 @@
 indent: 2
 plugin:
-  limit:
+  loader-limits:
     depth: 3
     alias: 100
   json-comments:

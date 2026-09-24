@@ -11,7 +11,9 @@ import (
 	"testing"
 
 	"go.yaml.in/yaml/v4"
-	"go.yaml.in/yaml/v4/plugin/limit"
+	// Test the deprecated compatibility package.
+	oldlimit "go.yaml.in/yaml/v4/plugin/limit" //nolint:staticcheck // Compatibility.
+	loaderlimits "go.yaml.in/yaml/v4/plugin/loader-limits"
 )
 
 // generateAliases builds YAML with n aliases referencing a large anchor.
@@ -37,7 +39,7 @@ func generateDeepNesting(depth int) []byte {
 	return []byte(sb.String())
 }
 
-func TestWithPlugin_Limit_AliasFunc(t *testing.T) {
+func TestWithPlugin_LoaderLimits_AliasFunc(t *testing.T) {
 	called := false
 	fn := func(aliasCount, constructCount int) error {
 		called = true
@@ -45,7 +47,8 @@ func TestWithPlugin_Limit_AliasFunc(t *testing.T) {
 	}
 	data := generateAliases(200)
 	var result any
-	err := yaml.Load(data, &result, yaml.WithPlugin(limit.New(limit.AliasFunc(fn))))
+	err := yaml.Load(data, &result,
+		yaml.WithPlugin(loaderlimits.New(loaderlimits.AliasFunc(fn))))
 	if err != nil {
 		t.Fatalf("Expected success with custom AliasFunc, got: %v", err)
 	}
@@ -54,7 +57,7 @@ func TestWithPlugin_Limit_AliasFunc(t *testing.T) {
 	}
 }
 
-func TestWithPlugin_Limit_DepthFunc(t *testing.T) {
+func TestWithPlugin_LoaderLimits_DepthFunc(t *testing.T) {
 	called := false
 	fn := func(depth int, ctx *yaml.DepthContext) error {
 		called = true
@@ -62,7 +65,8 @@ func TestWithPlugin_Limit_DepthFunc(t *testing.T) {
 	}
 	data := generateDeepNesting(5)
 	var result any
-	err := yaml.Load(data, &result, yaml.WithPlugin(limit.New(limit.DepthFunc(fn))))
+	err := yaml.Load(data, &result,
+		yaml.WithPlugin(loaderlimits.New(loaderlimits.DepthFunc(fn))))
 	if err != nil {
 		t.Fatalf("Expected success with custom DepthFunc, got: %v", err)
 	}
@@ -84,7 +88,7 @@ func TestWithPlugin_UnsupportedType(t *testing.T) {
 	}
 }
 
-func TestDefaultBehavior_HasLimit(t *testing.T) {
+func TestDefaultBehaviorHasLoaderLimits(t *testing.T) {
 	// Bare NewLoader should have default depth limits
 	data := generateDeepNesting(10001)
 	loader, err := yaml.NewLoader(bytes.NewReader(data))
@@ -192,7 +196,7 @@ func TestPluginRegistry(t *testing.T) {
 		}
 	}
 	if _, err := yaml.OptsYAML(
-		"plugin: {limit: {version: 0.1.8}}"); err == nil ||
+		"plugin: {loader-limits: {version: 0.1.8}}"); err == nil ||
 		!strings.Contains(err.Error(), "unversioned") {
 		t.Fatalf("unversioned implementation: %v", err)
 	}
@@ -208,7 +212,53 @@ func TestPluginRegistry(t *testing.T) {
 		t.Fatal("multiple parser plugins accepted")
 	}
 	if err := yaml.Load(nil, &value,
-		yaml.WithPlugin(p, limit.New())); err != nil {
+		yaml.WithPlugin(p, loaderlimits.New())); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLegacyLimitAliases(t *testing.T) {
+	// These assertions intentionally exercise deprecated compatibility APIs.
+	var _ yaml.LimitPlugin = oldlimit.New()        //nolint:staticcheck // Compatibility.
+	var _ yaml.LoaderLimitsPlugin = oldlimit.New() //nolint:staticcheck // Compatibility.
+	for _, config := range []string{
+		"plugin: {limit: true}",
+		"plugin: {limit: limit}",
+	} {
+		opt, err := yaml.OptsYAML(config)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var value any
+		if err := yaml.Load([]byte("[[]]"), &value, opt); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var value any
+	if err := yaml.Load([]byte("[[]]"), &value,
+		yaml.WithNamedPlugin("limit")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := yaml.OptsYAML(
+		"plugin: {limit: true, loader-limits: true}"); err == nil {
+		t.Fatal("accepted legacy and canonical loader-limits APIs together")
+	}
+
+	name := fmt.Sprintf("legacy-limit-%d", atomic.AddUint64(&registryTestID, 1))
+	if err := yaml.RegisterPlugin(yaml.PluginRegistration{
+		API: "limit", Name: name,
+		Factory: func(map[string]any) (any, error) {
+			return loaderlimits.New(), nil
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	opt, err := yaml.OptsYAML(fmt.Sprintf(
+		"plugin: {loader-limits: {name: %s}}", name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := yaml.Load([]byte("[[]]"), &value, opt); err != nil {
 		t.Fatal(err)
 	}
 }

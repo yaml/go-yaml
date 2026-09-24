@@ -8,9 +8,51 @@ import (
 	"strings"
 )
 
+const (
+	// LoaderLimitsAPI is the canonical loader-limits plugin API name.
+	LoaderLimitsAPI = "loader-limits"
+	// YAMLParserAPI is the canonical YAML-parser plugin API name.
+	YAMLParserAPI = "yaml-parser"
+	// legacyLimitAPI exists only for release-candidate compatibility.
+	// Remove it before v4.0.0.
+	legacyLimitAPI = "limit"
+)
+
 // Selection identifies one plugin API, implementation, and optional version.
 type Selection struct {
 	API, Name, Version string
+}
+
+// CanonicalAPI returns the canonical name for a plugin API.
+func CanonicalAPI(api string) string {
+	if api == legacyLimitAPI {
+		return LoaderLimitsAPI
+	}
+	return api
+}
+
+// CanonicalName returns the canonical implementation name for an API.
+func CanonicalName(api, name string) string {
+	if CanonicalAPI(api) == LoaderLimitsAPI && name == legacyLimitAPI {
+		return LoaderLimitsAPI
+	}
+	return name
+}
+
+// NormalizeConfig replaces deprecated plugin API keys with canonical keys.
+func NormalizeConfig(plugins map[string]any) error {
+	value, legacy := plugins[legacyLimitAPI]
+	if !legacy {
+		return nil
+	}
+	if _, canonical := plugins[LoaderLimitsAPI]; canonical {
+		return fmt.Errorf(
+			"plugin APIs %q and %q cannot both be configured",
+			legacyLimitAPI, LoaderLimitsAPI)
+	}
+	delete(plugins, legacyLimitAPI)
+	plugins[LoaderLimitsAPI] = value
+	return nil
 }
 
 // ParseSelectors parses comma-separated plugin selector syntax.
@@ -54,6 +96,8 @@ func parseSelector(text string) (Selection, error) {
 				spec)
 		}
 	}
+	api = CanonicalAPI(api)
+	name = CanonicalName(api, name)
 	return Selection{API: api, Name: name, Version: version}, nil
 }
 
