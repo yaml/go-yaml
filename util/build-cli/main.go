@@ -19,7 +19,7 @@ import (
 	"go.yaml.in/yaml/v4"
 	"go.yaml.in/yaml/v4/internal/libyaml"
 	pluginreg "go.yaml.in/yaml/v4/internal/plugin"
-	tabindent "go.yaml.in/yaml/v4/plugin/tab-indent"
+	"go.yaml.in/yaml/v4/plugin/tabindent"
 )
 
 func main() {
@@ -181,7 +181,9 @@ func inspectConfig(data []byte) (buildConfig, error) {
 				}
 				delete(plugins, api)
 			case "tab-indent":
-				if name != "" && name != "tab-indent" {
+				switch name {
+				case "", "tab-indent":
+				default:
 					return selection, fmt.Errorf(
 						"no CLI build provider for plugin %q implementation %q",
 						api, name)

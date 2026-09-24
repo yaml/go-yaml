@@ -92,7 +92,7 @@ type Emitter struct {
 	indent int // The current indentation level.
 
 	CompactSequenceIndent bool // Is '- ' is considered part of the indentation for sequence elements?
-	tabIndent             bool
+	tabIndent             bool // Use tabs for structural indentation.
 
 	flow_level int // The current flow level.
 

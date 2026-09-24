@@ -38,41 +38,33 @@ type ParserPlugin = libyaml.ParserPlugin
 // JSONCommentsPlugin sanitizes JSON-style comments before parsing.
 type JSONCommentsPlugin = libyaml.JSONCommentsPlugin
 
-// TabIndentMode supplies loading and dumping defaults.
-type TabIndentMode = libyaml.TabIndentMode
+// IndentMode supplies loading and dumping defaults.
+type IndentMode = libyaml.IndentMode
 
 const (
-	TabIndentModeAuto = libyaml.TabIndentModeAuto
-	TabIndentModeTabs = libyaml.TabIndentModeTabs
+	IndentModeAuto = libyaml.IndentModeAuto
+	IndentModeTabs = libyaml.IndentModeTabs
 )
 
-// TabIndentLoad controls accepted structural indentation.
-type TabIndentLoad = libyaml.TabIndentLoad
+// IndentStyle identifies the characters used for structural indentation.
+type IndentStyle = libyaml.IndentStyle
 
 const (
-	TabIndentLoadTabs   = libyaml.TabIndentLoadTabs
-	TabIndentLoadSpaces = libyaml.TabIndentLoadSpaces
-	TabIndentLoadAuto   = libyaml.TabIndentLoadAuto
+	IndentStyleAuto   = libyaml.IndentStyleAuto
+	IndentStyleSpaces = libyaml.IndentStyleSpaces
+	IndentStyleTabs   = libyaml.IndentStyleTabs
 )
 
-// TabIndentDump controls emitted structural indentation.
-type TabIndentDump = libyaml.TabIndentDump
+// IndentScope controls how long an auto-detected style remains active.
+type IndentScope = libyaml.IndentScope
 
 const (
-	TabIndentDumpTabs   = libyaml.TabIndentDumpTabs
-	TabIndentDumpSpaces = libyaml.TabIndentDumpSpaces
+	IndentScopeDocument = libyaml.IndentScopeDocument
+	IndentScopeStream   = libyaml.IndentScopeStream
 )
 
-// TabIndentAuto controls how long an auto-detected style remains active.
-type TabIndentAuto = libyaml.TabIndentAuto
-
-const (
-	TabIndentAutoDocument = libyaml.TabIndentAutoDocument
-	TabIndentAutoStream   = libyaml.TabIndentAutoStream
-)
-
-// TabIndentConfig configures tab-indentation loading and dumping.
-type TabIndentConfig = libyaml.TabIndentConfig
+// IndentConfig configures tab-indentation loading and dumping.
+type IndentConfig = libyaml.IndentConfig
 
 // TabIndentPlugin enables tab-aware structural indentation.
 type TabIndentPlugin = libyaml.TabIndentPlugin

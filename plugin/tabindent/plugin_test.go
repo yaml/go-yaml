@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"go.yaml.in/yaml/v4"
-	tabindent "go.yaml.in/yaml/v4/plugin/tab-indent"
+	"go.yaml.in/yaml/v4/plugin/tabindent"
 )
 
 func TestLoadTabIndentation(t *testing.T) {
@@ -98,7 +98,7 @@ func TestLoadSpaces(t *testing.T) {
 	var got any
 	plugin := yaml.WithPlugin(tabindent.New(
 		tabindent.WithMode(tabindent.ModeTabs),
-		tabindent.WithLoad(tabindent.LoadSpaces)))
+		tabindent.WithLoad(tabindent.StyleSpaces)))
 	if err := yaml.Load(
 		[]byte("root:\n  value: true\n"), &got, plugin); err != nil {
 		t.Fatal(err)
@@ -208,9 +208,9 @@ func TestDumpNestedCollections(t *testing.T) {
 func TestDumpSpaceIndentation(t *testing.T) {
 	plugin := tabindent.New(
 		tabindent.WithMode(tabindent.ModeTabs),
-		tabindent.WithLoad(tabindent.LoadSpaces),
-		tabindent.WithDump(tabindent.DumpSpaces),
-		tabindent.WithAuto(tabindent.AutoStream))
+		tabindent.WithLoad(tabindent.StyleSpaces),
+		tabindent.WithDump(tabindent.StyleSpaces),
+		tabindent.WithAuto(tabindent.ScopeStream))
 	value := map[string]any{"root": map[string]any{"value": true}}
 	data, err := yaml.Dump(
 		value, yaml.WithIndent(4), yaml.WithPlugin(plugin))
@@ -315,7 +315,7 @@ func TestAutoDetectionScope(t *testing.T) {
 	err = yaml.Load(
 		[]byte(input), &values, yaml.WithAllDocuments(),
 		yaml.WithPlugin(tabindent.New(
-			tabindent.WithAuto(tabindent.AutoStream))))
+			tabindent.WithAuto(tabindent.ScopeStream))))
 	if err == nil {
 		t.Fatal("stream scope accepted a later indentation style")
 	}
