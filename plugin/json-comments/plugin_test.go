@@ -12,7 +12,7 @@ import (
 
 	"go.yaml.in/yaml/v4"
 	jsoncomments "go.yaml.in/yaml/v4/plugin/json-comments"
-	loaderlimits "go.yaml.in/yaml/v4/plugin/loader-limits"
+	"go.yaml.in/yaml/v4/plugin/loaderlimits"
 )
 
 func TestFixtures(t *testing.T) {
