@@ -42,7 +42,6 @@ func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []ya
 			if err != nil {
 				return fmt.Errorf("failed to create dumper: %w", err)
 			}
-			defer dumper.Close()
 		}
 
 		firstDoc := true
@@ -105,6 +104,11 @@ func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []ya
 				}
 			}
 		}
+		if dumper != nil {
+			if err := dumper.Close(); err != nil {
+				return fmt.Errorf("failed to close dumper: %w", err)
+			}
+		}
 
 	} else {
 		// Don't preserve comments and styles - use `any` for clean output
@@ -120,7 +124,6 @@ func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []ya
 			if err != nil {
 				return fmt.Errorf("failed to create dumper: %w", err)
 			}
-			defer dumper.Close()
 		}
 
 		firstDoc := true
@@ -170,6 +173,11 @@ func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []ya
 				if err := dumper.Dump(data); err != nil {
 					return fmt.Errorf("failed to dump YAML: %w", err)
 				}
+			}
+		}
+		if dumper != nil {
+			if err := dumper.Close(); err != nil {
+				return fmt.Errorf("failed to close dumper: %w", err)
 			}
 		}
 

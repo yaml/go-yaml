@@ -94,7 +94,7 @@ Optional plugin implementations must be selected while building the command.
 `PLUGIN` contains only the plugin selector DSL:
 
 ```bash
-make cli PLUGIN=parser=reference@v0.2.5,json-comments
+make cli PLUGIN=parser=reference@v0.2.5,json-comments,dumper-format=yamlfmt@v0.1.0
 ./go-yaml --plugin=parser=reference@0.2.5,json-comments \
   -j example/json-comments/data.yaml
 ```
@@ -126,6 +126,12 @@ plugin:
     depth: 50
     alias: 100
   json-comments: sanitizer@v0.1.9
+  dumper-format:
+    name: yamlfmt
+    version: v0.1.0
+    formatter:
+      type: basic
+      indent: 4
 ```
 
 ```bash
@@ -157,9 +163,13 @@ loading modes when the built-in parser is selected.
 External parser plugins work in JSON, YAML, node, and event modes.
 Token and legacy modes reject them because those paths do not consume parser
 plugin events.
+The dumper-format plugin applies to YAML output from the `Load` and `Dumper`
+path.
+It does not apply to legacy `Marshal` or `Encoder` output modes.
 
 For local development, related checkouts must be under `repos/`.
-Set `JSON-COMMENTS-LOCAL=1` or `REFERENCE-PARSER-LOCAL=1` to use them.
+Set `JSON-COMMENTS-LOCAL=1`, `REFERENCE-PARSER-LOCAL=1`, or `YAMLFMT-LOCAL=1`
+to use the corresponding checkout.
 Build staging, workspaces, and downloaded build metadata live under `.cache/`.
 Go stores downloaded released modules in its module cache.
 

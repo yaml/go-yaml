@@ -3,7 +3,8 @@
 The go-yaml v4 plugin system lets applications replace selected processing
 stages without adding optional dependencies to the core module.
 
-A plugin API defines a role such as `parser`, `json-comments`, or `limit`.
+A plugin API defines a role such as `parser`, `json-comments`, `dumper-format`,
+or `limit`.
 Each API can have several named implementations.
 The current implementations are:
 
@@ -12,6 +13,7 @@ The current implementations are:
 | `parser` | `go-yaml` | core | yes |
 | `parser` | `reference` | `plugin/parser/reference` | no |
 | `json-comments` | `sanitizer` | `plugin/json-comments` | yes |
+| `dumper-format` | `yamlfmt` | `yamlstar-plugin-yamlfmt/goyaml` | yes |
 | `limit` | `limit` | `plugin/limit` | yes |
 
 The optional packages are separate Go modules.
@@ -51,6 +53,10 @@ type LimitPlugin interface {
     CheckDepth(depth int, ctx *DepthContext) error
     CheckAlias(aliasCount, constructCount int) error
 }
+
+type DumperFormatPlugin interface {
+    Format(input []byte) ([]byte, error)
+}
 ```
 
 A JSON-comments plugin transforms the input first.
@@ -67,6 +73,13 @@ an external parser.
 
 Input is buffered when a parser or JSON-comments plugin is active.
 Plugin implementations must support independent concurrent calls.
+
+A dumper-format plugin receives the complete serialized YAML stream once.
+`Dump` returns formatter errors directly.
+`NewDumper` buffers while the plugin is active, then formats and writes the
+stream from `Close`.
+No output is written when formatting fails.
+The deprecated `Marshal` and `Encoder` APIs do not use dumper-format plugins.
 
 ## Limit plugin
 
@@ -104,6 +117,9 @@ if err := jsoncomments.Register(); err != nil {
 if err := reference.Register(); err != nil {
     log.Fatal(err)
 }
+if err := goyamlfmt.Register(); err != nil {
+    log.Fatal(err)
+}
 ```
 
 Configuration can use mappings, strings, or booleans:
@@ -112,6 +128,12 @@ Configuration can use mappings, strings, or booleans:
 plugin:
   parser: reference@v0.2.5
   json-comments: sanitizer@v0.1.9
+  dumper-format:
+    name: yamlfmt
+    version: v0.1.0
+    formatter:
+      type: basic
+      indent: 4
   limit:
     depth: 50
     alias: 1000
@@ -169,6 +191,15 @@ Comments do not appear in nodes, while YAML styles, tags, anchors, aliases,
 and parser position information remain available.
 See the upstream syntax document for the exact recognition rules.
 
+### YAML formatting
+
+`github.com/yamlstar/yamlstar-plugin-yamlfmt/goyaml` implements the generic
+`dumper-format` API using google/yamlfmt.
+Its `basic` and `kyaml` formatter types are available without adding yamlfmt to
+the core go-yaml module.
+Basic formatter settings use yamlfmt names and accept either underscores or
+hyphens.
+
 ## CLI build selection
 
 The ordinary `go-yaml` binary contains only core implementations.
@@ -186,7 +217,7 @@ make cli CONFIG=example/json-comments/options.yaml
 It never names a file and never contains YAML.
 
 ```bash
-make cli PLUGIN=parser=reference@v0.2.5,json-comments
+make cli PLUGIN=parser=reference@v0.2.5,json-comments,dumper-format=yamlfmt@v0.1.0
 ```
 
 Selectors have these forms:
@@ -209,8 +240,8 @@ For local development, place the related checkouts under `repos/` and set the
 matching override:
 
 ```bash
-make cli PLUGIN=parser=reference@v0.2.5,json-comments \
-  REFERENCE-PARSER-LOCAL=1 JSON-COMMENTS-LOCAL=1
+make cli PLUGIN=parser=reference@v0.2.5,json-comments,dumper-format=yamlfmt@v0.1.0 \
+  REFERENCE-PARSER-LOCAL=1 JSON-COMMENTS-LOCAL=1 YAMLFMT-LOCAL=1
 ```
 
 The compiled command uses the same selector DSL at runtime:
@@ -237,6 +268,7 @@ Run the optional module checks with:
 make test-json-comments
 make test-json-comments-race
 make test-reference-parser
+make test-yamlfmt
 ```
 
 [upstream syntax document]: https://github.com/yamlstar/yamlstar-plugin-json-comments/blob/main/Syntax.md

@@ -38,6 +38,9 @@ type ParserPlugin = libyaml.ParserPlugin
 // JSONCommentsPlugin sanitizes JSON-style comments before parsing.
 type JSONCommentsPlugin = libyaml.JSONCommentsPlugin
 
+// DumperFormatPlugin formats a complete serialized YAML stream.
+type DumperFormatPlugin = libyaml.DumperFormatPlugin
+
 // PluginEvent carries source-independent YAML syntax information.
 type PluginEvent = libyaml.PluginEvent
 

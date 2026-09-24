@@ -170,6 +170,8 @@ JSON-COMMENTS-LOCAL ?= 0
 export GO_YAML_JSON_COMMENTS_LOCAL = $(JSON-COMMENTS-LOCAL)
 REFERENCE-PARSER-LOCAL ?= 0
 export GO_YAML_REFERENCE_PARSER_LOCAL = $(REFERENCE-PARSER-LOCAL)
+YAMLFMT-LOCAL ?= 0
+export GO_YAML_YAMLFMT_LOCAL = $(YAMLFMT-LOCAL)
 
 cli: $(GO)
 ifneq ($(strip $(CONFIG)$(PLUGIN)),)
@@ -232,6 +234,12 @@ prepare-reference-parser: $(PERL) $(GO-DEPS)
 	GO_YAML_REFERENCE_PARSER_VERSION=v0.2.5 \
 	$(PERL) util/prepare-plugins
 
+prepare-yamlfmt: $(PERL) $(GO-DEPS)
+	GO_YAML_BUILD_YAMLFMT=true \
+	GO_YAML_YAMLFMT_LOCAL=1 \
+	GO_YAML_YAMLFMT_VERSION=v0.1.0 \
+	$(PERL) util/prepare-plugins
+
 test-json-comments: prepare-json-comments
 	GOWORK=$(PLUGIN-WORK) CGO_ENABLED=0 \
 	  go test ./plugin/json-comments/... ./.cache/cli-plugins/...$(TEST-OPTS)
@@ -258,6 +266,14 @@ test-reference-parser: prepare-reference-parser
 	GO_YAML_REFERENCE_PARSER_LOCAL=1 \
 	go test ./util/build-cli \
 	  -run TestConfiguredReferenceCLI$(TEST-OPTS)
+
+test-yamlfmt: prepare-yamlfmt
+	GOWORK=$(PLUGIN-WORK) CGO_ENABLED=0 \
+	  go test ./.cache/cli-plugins/...$(TEST-OPTS)
+	GO_YAML_TEST_YAMLFMT=1 \
+	GO_YAML_YAMLFMT_LOCAL=1 \
+	go test ./util/build-cli \
+	  -run TestConfiguredYamlfmtCLI$(TEST-OPTS)
 
 test-cli-build: $(GO-DEPS)
 	go test ./util/build-cli$(TEST-OPTS)

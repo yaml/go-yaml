@@ -25,6 +25,10 @@ type Dumper struct {
 	desolver    *Desolver
 	serializer  *Serializer
 	options     *Options
+	writer      io.Writer
+	buffer      *bytes.Buffer
+	closed      bool
+	closeErr    error
 }
 
 // NewDumper returns a new Dumper that writes to w with the given options.
@@ -35,11 +39,19 @@ func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
 	if err != nil {
 		return nil, err
 	}
+	serializerWriter := w
+	var buffer *bytes.Buffer
+	if o.DumperFormat != nil {
+		buffer = &bytes.Buffer{}
+		serializerWriter = buffer
+	}
 	return &Dumper{
 		representer: NewRepresenter(o), // No writer - builds nodes
 		desolver:    NewDesolver(o),
-		serializer:  NewSerializer(w, o), // Writer here - emits YAML
+		serializer:  NewSerializer(serializerWriter, o),
 		options:     o,
+		writer:      w,
+		buffer:      buffer,
 	}, nil
 }
 
@@ -127,8 +139,30 @@ func (d *Dumper) Dump(v any) (err error) {
 // Close closes the Dumper by writing any remaining data.
 // It does not write a stream terminating string "...".
 func (d *Dumper) Close() (err error) {
+	if d.closed {
+		return d.closeErr
+	}
+	d.closed = true
+	defer func() {
+		d.closeErr = err
+	}()
 	defer handleErr(&err)
 	d.serializer.Finish()
+	if d.options.DumperFormat == nil {
+		return nil
+	}
+
+	formatted, err := d.options.DumperFormat.Format(d.buffer.Bytes())
+	if err != nil {
+		return NewDumpError(DumperFormatStage, err.Error(), err)
+	}
+	n, err := d.writer.Write(formatted)
+	if err != nil {
+		return NewDumpError(WriterStage, err.Error(), err)
+	}
+	if n != len(formatted) {
+		return NewDumpError(WriterStage, io.ErrShortWrite.Error(), io.ErrShortWrite)
+	}
 	return nil
 }
 

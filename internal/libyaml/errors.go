@@ -26,10 +26,11 @@ const (
 	ConstructorStage Stage = "constructor" // Go value construction
 
 	// Dump stages
-	RepresenterStage Stage = "representer" // Go value to Node tree
-	SerializerStage  Stage = "serializer"  // Node tree to events
-	EmitterStage     Stage = "emitter"     // Events to YAML bytes
-	WriterStage      Stage = "writer"      // Output writing
+	RepresenterStage  Stage = "representer"   // Go value to Node tree
+	SerializerStage   Stage = "serializer"    // Node tree to events
+	EmitterStage      Stage = "emitter"       // Events to YAML bytes
+	DumperFormatStage Stage = "dumper-format" // Complete stream formatting
+	WriterStage       Stage = "writer"        // Output writing
 )
 
 // LoadError represents an error that occurred while loading a YAML document.
