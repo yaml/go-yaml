@@ -705,6 +705,12 @@
     data: [0xEF, 0xBB, 0xBF]
 
 - char-predicate:
+    name: Is BOM - invalid UTF-8 sequence starting with 0xEF (like BOM) should not panic
+    func: isBOM
+    data: [0xEF, 0xBB] # should have been 0xEF 0xBB 0xBF
+    want: false
+
+- char-predicate:
     name: Is BOM - regular text
     func: isBOM
     data: abc
@@ -769,17 +775,29 @@
     data: "\n"
 
 - char-predicate:
-    name: Is line break - NEL
+    name: Is line break - Unicode NEXT LINE (NEL) character U+0085
     func: isLineBreak
     data: [0xC2, 0x85]
 
 - char-predicate:
-    name: Is line break - LS
+    name: Is line break - invalid UTF-8 sequence starting with 0xC2 (like NEL) should not panic
+    func: isLineBreak
+    data: [0xC2] # should have been 0xC2 0x85
+    want: false
+
+- char-predicate:
+    name: Is line break - Unicode LINE SEPARATOR character U+2028
     func: isLineBreak
     data: [0xE2, 0x80, 0xA8]
 
 - char-predicate:
-    name: Is line break - PS
+    name: Is line break - invalid UTF-8 sequence starting with 0xE2 0x80 (like LINE SEPARATOR) should not panic
+    func: isLineBreak
+    data: [0xE2, 0x80] # should have been 0xE2 0x80 0xA8
+    want: false
+
+- char-predicate:
+    name: Is line break - Unicode PARAGRAPH SEPARATOR character U+2029
     func: isLineBreak
     data: [0xE2, 0x80, 0xA9]
 
@@ -804,13 +822,13 @@
 - char-predicate:
     name: Is CRLF - LF only
     func: isCRLF
-    data: [0x0A, 0x00]
+    data: "\n"
     want: false
 
 - char-predicate:
     name: Is CRLF - CR only
     func: isCRLF
-    data: [0x0D, 0x00]
+    data: "\r"
     want: false
 
 # isBreakOrZero tests
@@ -830,9 +848,15 @@
     data: [0x00]
 
 - char-predicate:
-    name: Is break or zero - NEL
+    name: Is break or zero - Unicode Next Line (NEL) character U+0085
     func: isBreakOrZero
     data: [0xC2, 0x85]
+
+- char-predicate:
+    name: Is break or zero - invalid UTF-8 sequence starting with 0xC2 (like NEL) should not panic
+    func: isBreakOrZero
+    data: [0xC2]
+    want: false
 
 - char-predicate:
     name: Is break or zero - letter
@@ -862,9 +886,27 @@
     data: [0x00]
 
 - char-predicate:
+    name: Is space or zero - tab
+    func: isSpaceOrZero
+    data: "\t"
+    want: false
+
+- char-predicate:
     name: Is space or zero - letter
     func: isSpaceOrZero
     data: a
+    want: false
+
+- char-predicate:
+    name: Is space or zero - Unicode Next Line (NEL) character U+0085
+    func: isSpaceOrZero
+    data: [0xC2, 0x85]
+    want: true
+
+- char-predicate:
+    name: Is space or zero - invalid UTF-8 sequence starting with 0xC2 (like NEL) should not panic
+    func: isSpaceOrZero
+    data: [0xC2] # should have been 0xC2 0x85
     want: false
 
 # isBlankOrZero tests
@@ -897,6 +939,18 @@
     name: Is blank or zero - letter
     func: isBlankOrZero
     data: a
+    want: false
+
+- char-predicate:
+    name: Is blank or zero - U+2028 LINE SEPARATOR
+    func: isBlankOrZero
+    data: [0xE2, 0x80, 0xA8]
+    want: true
+
+- char-predicate:
+    name: Is blank or zero - invalid UTF-8 sequence starting with 0xE2 (like U+2028) should not panic
+    func: isBlankOrZero
+    data: [0xE2] # should have been 0xE2 0x80 0xA8
     want: false
 
 # Converter functions - asDigit tests

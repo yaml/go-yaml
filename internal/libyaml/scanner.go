@@ -617,17 +617,30 @@ func isASCII(b []byte, i int) bool {
 	return b[i] <= 0x7F
 }
 
+// byteAt returns the byte at index i, or 0x00 if i is out of bounds.
+func byteAt(b []byte, i int) byte {
+	if i >= 0 && i < len(b) {
+		return b[i]
+	}
+	return 0x00
+}
+
 // Check if the character at the start of the buffer can be printed unescaped.
 func isPrintable(b []byte, i int) bool {
-	return ((b[i] == 0x0A) || // . == #x0A
-		(b[i] >= 0x20 && b[i] <= 0x7E) || // #x20 <= . <= #x7E
-		(b[i] == 0xC2 && b[i+1] >= 0xA0) || // #0xA0 <= . <= #xD7FF
-		(b[i] > 0xC2 && b[i] < 0xED) ||
-		(b[i] == 0xED && b[i+1] < 0xA0) ||
-		(b[i] == 0xEE) ||
-		(b[i] == 0xEF && // #xE000 <= . <= #xFFFD
-			!(b[i+1] == 0xBB && b[i+2] == 0xBF) && // && . != #xFEFF
-			!(b[i+1] == 0xBF && (b[i+2] == 0xBE || b[i+2] == 0xBF))))
+	c0 := b[i]
+	c1 := byteAt(b, i+1)
+	c2 := byteAt(b, i+2)
+	return ((c0 == 0x0A) || // . == #x0A
+		(c0 >= 0x20 && c0 <= 0x7E) || // #x20 <= . <= #x7E
+		(c0 == 0xC2 && c1 >= 0xA0) || // #0xA0 <= . <= #xD7FF
+		(c0 > 0xC2 && c0 < 0xED) ||
+		(c0 == 0xED && c1 > 0 && c1 < 0xA0) ||
+		(c0 == 0xEE) ||
+		(c0 == 0xEF && // #xE000 <= . <= #xFFFD
+			c1 > 0 &&
+			c2 > 0 &&
+			!(c1 == 0xBB && c2 == 0xBF) && // && . != #xFEFF
+			!(c1 == 0xBF && (c2 == 0xBE || c2 == 0xBF))))
 }
 
 // Check if the character at the specified position is NUL.
@@ -637,6 +650,10 @@ func isZeroChar(b []byte, i int) bool {
 
 // Check if the beginning of the buffer is a BOM.
 func isBOM(b []byte, i int) bool {
+	if len(b) < 3 {
+		// BOM cannot be present if there are less than 3 bytes, avoid panic
+		return false
+	}
 	return b[0] == 0xEF && b[1] == 0xBB && b[2] == 0xBF
 }
 
@@ -658,60 +675,72 @@ func isBlank(b []byte, i int) bool {
 
 // Check if the character at the specified position is a line break.
 func isLineBreak(b []byte, i int) bool {
-	return (b[i] == '\r' || // CR (#xD)
-		b[i] == '\n' || // LF (#xA)
-		b[i] == 0xC2 && b[i+1] == 0x85 || // NEL (#x85)
-		b[i] == 0xE2 && b[i+1] == 0x80 && b[i+2] == 0xA8 || // LS (#x2028)
-		b[i] == 0xE2 && b[i+1] == 0x80 && b[i+2] == 0xA9) // PS (#x2029)
+	c0 := b[i]
+	c1 := byteAt(b, i+1)
+	c2 := byteAt(b, i+2)
+	return (c0 == '\r' || // CR (#xD)
+		c0 == '\n' || // LF (#xA)
+		c0 == 0xC2 && c1 == 0x85 || // NEL (#x85)
+		c0 == 0xE2 && c1 == 0x80 && c2 == 0xA8 || // LS (#x2028)
+		c0 == 0xE2 && c1 == 0x80 && c2 == 0xA9) // PS (#x2029)
 }
 
 // isCRLF checks if the position contains a CR LF sequence.
 func isCRLF(b []byte, i int) bool {
-	return b[i] == '\r' && b[i+1] == '\n'
+	return b[i] == '\r' && byteAt(b, i+1) == '\n'
 }
 
 // Check if the character is a line break or NUL.
 func isBreakOrZero(b []byte, i int) bool {
 	// return isLineBreak(b, i) || isZeroChar(b, i)
+	c0 := b[i]
+	c1 := byteAt(b, i+1)
+	c2 := byteAt(b, i+2)
 	return (
 	// isBreak:
-	b[i] == '\r' || // CR (#xD)
-		b[i] == '\n' || // LF (#xA)
-		b[i] == 0xC2 && b[i+1] == 0x85 || // NEL (#x85)
-		b[i] == 0xE2 && b[i+1] == 0x80 && b[i+2] == 0xA8 || // LS (#x2028)
-		b[i] == 0xE2 && b[i+1] == 0x80 && b[i+2] == 0xA9 || // PS (#x2029)
+	c0 == '\r' || // CR (#xD)
+		c0 == '\n' || // LF (#xA)
+		c0 == 0xC2 && c1 == 0x85 || // NEL (#x85)
+		c0 == 0xE2 && c1 == 0x80 && c2 == 0xA8 || // LS (#x2028)
+		c0 == 0xE2 && c1 == 0x80 && c2 == 0xA9 || // PS (#x2029)
 		// isZeroChar:
-		b[i] == 0)
+		c0 == 0)
 }
 
 // Check if the character is a line break, space, or NUL.
 func isSpaceOrZero(b []byte, i int) bool {
 	// return isSpace(b, i) || isBreakOrZero(b, i)
+	c0 := b[i]
+	c1 := byteAt(b, i+1)
+	c2 := byteAt(b, i+2)
 	return (
 	// isSpace:
-	b[i] == ' ' ||
+	c0 == ' ' ||
 		// isBreakOrZero:
-		b[i] == '\r' || // CR (#xD)
-		b[i] == '\n' || // LF (#xA)
-		b[i] == 0xC2 && b[i+1] == 0x85 || // NEL (#x85)
-		b[i] == 0xE2 && b[i+1] == 0x80 && b[i+2] == 0xA8 || // LS (#x2028)
-		b[i] == 0xE2 && b[i+1] == 0x80 && b[i+2] == 0xA9 || // PS (#x2029)
-		b[i] == 0)
+		c0 == '\r' || // CR (#xD)
+		c0 == '\n' || // LF (#xA)
+		c0 == 0xC2 && c1 == 0x85 || // NEL (#x85)
+		c0 == 0xE2 && c1 == 0x80 && c2 == 0xA8 || // LS (#x2028)
+		c0 == 0xE2 && c1 == 0x80 && c2 == 0xA9 || // PS (#x2029)
+		c0 == 0)
 }
 
 // Check if the character is a line break, space, tab, or NUL.
 func isBlankOrZero(b []byte, i int) bool {
 	// return isBlank(b, i) || isBreakOrZero(b, i)
+	c0 := b[i]
+	c1 := byteAt(b, i+1)
+	c2 := byteAt(b, i+2)
 	return (
 	// isBlank:
-	b[i] == ' ' || b[i] == '\t' ||
+	c0 == ' ' || c0 == '\t' ||
 		// isBreakOrZero:
-		b[i] == '\r' || // CR (#xD)
-		b[i] == '\n' || // LF (#xA)
-		b[i] == 0xC2 && b[i+1] == 0x85 || // NEL (#x85)
-		b[i] == 0xE2 && b[i+1] == 0x80 && b[i+2] == 0xA8 || // LS (#x2028)
-		b[i] == 0xE2 && b[i+1] == 0x80 && b[i+2] == 0xA9 || // PS (#x2029)
-		b[i] == 0)
+		c0 == '\r' || // CR (#xD)
+		c0 == '\n' || // LF (#xA)
+		c0 == 0xC2 && c1 == 0x85 || // NEL (#x85)
+		c0 == 0xE2 && c1 == 0x80 && c2 == 0xA8 || // LS (#x2028)
+		c0 == 0xE2 && c1 == 0x80 && c2 == 0xA9 || // PS (#x2029)
+		c0 == 0)
 }
 
 func isEndOfScalarInFlowContentChar(b []byte, i int) bool {
@@ -724,8 +753,8 @@ func isEndOfScalarInFlowContentChar(b []byte, i int) bool {
 		return isBlankOrZero(b, i+1)
 	// ": ", ":,", ":]" and ":}"
 	case ':':
-		return b[i+1] == ' ' || b[i+1] == ',' ||
-			b[i+1] == ']' || b[i+1] == '}'
+		nextChar := byteAt(b, i+1)
+		return nextChar == ' ' || nextChar == ',' || nextChar == ']' || nextChar == '}'
 	default:
 		return false
 	}
