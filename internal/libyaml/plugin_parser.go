@@ -21,6 +21,90 @@ type JSONCommentsPlugin interface {
 	Sanitize(input []byte) ([]byte, error)
 }
 
+// TabIndentMode supplies loading and dumping defaults.
+type TabIndentMode string
+
+const (
+	TabIndentModeAuto TabIndentMode = "auto"
+	TabIndentModeTabs TabIndentMode = "tabs"
+)
+
+// TabIndentLoad controls accepted structural indentation.
+type TabIndentLoad string
+
+const (
+	TabIndentLoadTabs   TabIndentLoad = "tabs"
+	TabIndentLoadSpaces TabIndentLoad = "spaces"
+	TabIndentLoadAuto   TabIndentLoad = "auto"
+)
+
+// TabIndentDump controls emitted structural indentation.
+type TabIndentDump string
+
+const (
+	TabIndentDumpTabs   TabIndentDump = "tabs"
+	TabIndentDumpSpaces TabIndentDump = "spaces"
+)
+
+// TabIndentAuto controls how long an auto-detected style remains active.
+type TabIndentAuto string
+
+const (
+	TabIndentAutoDocument TabIndentAuto = "document"
+	TabIndentAutoStream   TabIndentAuto = "stream"
+)
+
+// TabIndentConfig configures tab-indentation loading and dumping.
+type TabIndentConfig struct {
+	Mode TabIndentMode
+	Load TabIndentLoad
+	Dump TabIndentDump
+	Auto TabIndentAuto
+}
+
+// Normalize fills defaults and validates a tab-indentation configuration.
+func (c TabIndentConfig) Normalize() (TabIndentConfig, error) {
+	if c.Mode == "" {
+		c.Mode = TabIndentModeAuto
+	}
+	if c.Mode != TabIndentModeAuto && c.Mode != TabIndentModeTabs {
+		return c, fmt.Errorf(
+			"yaml: tab-indent mode must be auto or tabs")
+	}
+	if c.Load == "" {
+		if c.Mode == TabIndentModeTabs {
+			c.Load = TabIndentLoadTabs
+		} else {
+			c.Load = TabIndentLoadAuto
+		}
+	}
+	if c.Dump == "" {
+		c.Dump = TabIndentDumpTabs
+	}
+	if c.Auto == "" {
+		c.Auto = TabIndentAutoDocument
+	}
+	if c.Load != TabIndentLoadTabs && c.Load != TabIndentLoadSpaces &&
+		c.Load != TabIndentLoadAuto {
+		return c, fmt.Errorf(
+			"yaml: tab-indent load must be auto, spaces, or tabs")
+	}
+	if c.Dump != TabIndentDumpTabs && c.Dump != TabIndentDumpSpaces {
+		return c, fmt.Errorf(
+			"yaml: tab-indent dump must be spaces or tabs")
+	}
+	if c.Auto != TabIndentAutoDocument && c.Auto != TabIndentAutoStream {
+		return c, fmt.Errorf(
+			"yaml: tab-indent auto must be document or stream")
+	}
+	return c, nil
+}
+
+// TabIndentPlugin enables tab-aware structural indentation.
+type TabIndentPlugin interface {
+	TabIndentConfig() TabIndentConfig
+}
+
 // hasInputPlugins reports whether input must pass through EventReader.
 // Parser plugins replace native parsing, while JSON-comments plugins sanitize
 // the complete input before native parsing.
@@ -101,6 +185,7 @@ func (e *EventReader) initialize() {
 		e.reader = nil
 		if e.opts != nil {
 			e.parser.depthCheck = e.opts.DepthCheck
+			e.parser.tabIndent = e.opts.TabIndent
 		}
 		return
 	}
@@ -132,6 +217,7 @@ func (e *EventReader) initialize() {
 	e.parser = NewParser()
 	e.parser.SetInputString(input)
 	e.parser.depthCheck = e.opts.DepthCheck
+	e.parser.tabIndent = e.opts.TabIndent
 }
 
 // validatePluginEvents checks structure before the recursive composer sees it.

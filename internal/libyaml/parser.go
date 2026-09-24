@@ -240,6 +240,9 @@ type Parser struct {
 
 	depthCheck func(int, *DepthContext) error // Depth limit check function
 
+	tabIndent      *TabIndentConfig
+	tabIndentStyle byte
+
 	// Parser stuff
 
 	state          ParserState    // The current parser state.
@@ -257,6 +260,11 @@ type Parser struct {
 	event_input bool
 	events      []Event
 	events_head int
+}
+
+// SetTabIndent configures tab-aware indentation scanning.
+func (parser *Parser) SetTabIndent(config *TabIndentConfig) {
+	parser.tabIndent = config
 }
 
 // NewParser creates a new parser object.

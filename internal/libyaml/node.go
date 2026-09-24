@@ -375,7 +375,10 @@ func (n *Node) Dump(v any, opts ...Option) (err error) {
 	s.Serialize(node)
 	s.Finish()
 	// Parse back to get styles
-	p := NewComposer(out, nil)
+	p := NewComposer(out, &Options{
+		TabIndent:  o.TabIndent,
+		DepthCheck: o.DepthCheck,
+	})
 	p.Textless = true
 	defer p.Destroy()
 	doc := p.Compose()

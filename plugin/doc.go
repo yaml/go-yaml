@@ -12,6 +12,9 @@
 // Limit plugin (plugin/limit):
 //   - Configurable depth and alias expansion limits
 //
+// Tab indentation plugin (plugin/tab-indent):
+//   - Tab-aware structural indentation for loading and dumping
+//
 // # Usage
 //
 // Import the plugin you need and register it with WithPlugin:

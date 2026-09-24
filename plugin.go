@@ -38,6 +38,45 @@ type ParserPlugin = libyaml.ParserPlugin
 // JSONCommentsPlugin sanitizes JSON-style comments before parsing.
 type JSONCommentsPlugin = libyaml.JSONCommentsPlugin
 
+// TabIndentMode supplies loading and dumping defaults.
+type TabIndentMode = libyaml.TabIndentMode
+
+const (
+	TabIndentModeAuto = libyaml.TabIndentModeAuto
+	TabIndentModeTabs = libyaml.TabIndentModeTabs
+)
+
+// TabIndentLoad controls accepted structural indentation.
+type TabIndentLoad = libyaml.TabIndentLoad
+
+const (
+	TabIndentLoadTabs   = libyaml.TabIndentLoadTabs
+	TabIndentLoadSpaces = libyaml.TabIndentLoadSpaces
+	TabIndentLoadAuto   = libyaml.TabIndentLoadAuto
+)
+
+// TabIndentDump controls emitted structural indentation.
+type TabIndentDump = libyaml.TabIndentDump
+
+const (
+	TabIndentDumpTabs   = libyaml.TabIndentDumpTabs
+	TabIndentDumpSpaces = libyaml.TabIndentDumpSpaces
+)
+
+// TabIndentAuto controls how long an auto-detected style remains active.
+type TabIndentAuto = libyaml.TabIndentAuto
+
+const (
+	TabIndentAutoDocument = libyaml.TabIndentAutoDocument
+	TabIndentAutoStream   = libyaml.TabIndentAutoStream
+)
+
+// TabIndentConfig configures tab-indentation loading and dumping.
+type TabIndentConfig = libyaml.TabIndentConfig
+
+// TabIndentPlugin enables tab-aware structural indentation.
+type TabIndentPlugin = libyaml.TabIndentPlugin
+
 // PluginEvent carries source-independent YAML syntax information.
 type PluginEvent = libyaml.PluginEvent
 

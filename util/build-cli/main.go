@@ -14,10 +14,12 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 
 	"go.yaml.in/yaml/v4"
 	"go.yaml.in/yaml/v4/internal/libyaml"
 	pluginreg "go.yaml.in/yaml/v4/internal/plugin"
+	tabindent "go.yaml.in/yaml/v4/plugin/tab-indent"
 )
 
 func main() {
@@ -45,6 +47,18 @@ type buildConfig struct {
 }
 
 var pluginVersion = regexp.MustCompile(`^v?[0-9]+\.[0-9]+\.[0-9]+$`)
+
+var (
+	registerBuildPluginsOnce sync.Once
+	registerBuildPluginsErr  error
+)
+
+func registerBuildPlugins() error {
+	registerBuildPluginsOnce.Do(func() {
+		registerBuildPluginsErr = tabindent.Register()
+	})
+	return registerBuildPluginsErr
+}
 
 func canonicalVersion(value any, api string) (string, error) {
 	version, ok := value.(string)
@@ -90,6 +104,9 @@ func pluginConfig(api string, value any) (map[string]any, bool, error) {
 // The completed binary validates embedded defaults against the real factories.
 func inspectConfig(data []byte) (buildConfig, error) {
 	selection := buildConfig{embedded: data}
+	if err := registerBuildPlugins(); err != nil {
+		return selection, err
+	}
 	var config map[string]any
 	if err := yaml.Load(data, &config); err != nil {
 		return selection, err
@@ -163,6 +180,12 @@ func inspectConfig(data []byte) (buildConfig, error) {
 					}
 				}
 				delete(plugins, api)
+			case "tab-indent":
+				if name != "" && name != "tab-indent" {
+					return selection, fmt.Errorf(
+						"no CLI build provider for plugin %q implementation %q",
+						api, name)
+				}
 			default:
 				return selection, fmt.Errorf(
 					"no CLI build provider for plugin %q", api)

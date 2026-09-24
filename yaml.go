@@ -280,6 +280,7 @@ type DepthContext = libyaml.DepthContext
 //   - LimitPlugin: Controls depth and alias expansion limits
 //   - ParserPlugin: Supplies a complete YAML event stream
 //   - JSONCommentsPlugin: Sanitizes JSON-style comments before parsing
+//   - TabIndentPlugin: Enables tab-aware loading and tab-indented dumping
 //
 // Example:
 //
@@ -312,6 +313,18 @@ func WithPlugin(plugins ...any) Option {
 						"yaml: multiple json-comments plugins")
 				}
 				o.JSONComments = comments
+				registered = true
+			}
+			if tabs, ok := p.(TabIndentPlugin); ok {
+				if o.TabIndent != nil {
+					return errors.New(
+						"yaml: multiple tab-indent plugins")
+				}
+				config, err := tabs.TabIndentConfig().Normalize()
+				if err != nil {
+					return err
+				}
+				o.TabIndent = &config
 				registered = true
 			}
 			if !registered {

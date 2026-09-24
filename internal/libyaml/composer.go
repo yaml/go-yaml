@@ -61,6 +61,7 @@ func (c *Composer) configureInput(r io.Reader) {
 	}
 	if c.opts != nil {
 		c.Parser.depthCheck = c.opts.DepthCheck
+		c.Parser.tabIndent = c.opts.TabIndent
 	}
 }
 
