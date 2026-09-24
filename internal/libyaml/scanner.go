@@ -1827,6 +1827,10 @@ func (parser *Parser) scanComments(scan_mark Mark) error {
 	if next_indent < 0 {
 		next_indent = 0
 	}
+	// --- / ... delimit documents; comments after them belong to the
+	// following document, not as a foot of the separator token.
+	priorIsDocDelim := token.Type == DOCUMENT_START_TOKEN ||
+		token.Type == DOCUMENT_END_TOKEN
 
 	recent_empty := false
 	first_empty := parser.newlines <= 1
@@ -1864,7 +1868,10 @@ func (parser *Parser) scanComments(scan_mark Mark) error {
 		if close_flow || isBreakOrZero(parser.buffer, parser.buffer_pos+peek) {
 			// Got line break or terminator.
 			if close_flow || !recent_empty {
-				if close_flow || first_empty && (start_mark.Line == foot_line && token.Type != VALUE_TOKEN || start_mark.Column-1 < next_indent) {
+				if close_flow || first_empty && !priorIsDocDelim &&
+					(start_mark.Line == foot_line &&
+						token.Type != VALUE_TOKEN ||
+						start_mark.Column-1 < next_indent) {
 					// This is the first empty line and there were no empty lines before,
 					// so this initial part of the comment is a foot of the prior token
 					// instead of being a head for the following one. Split it up.
@@ -1902,7 +1909,10 @@ func (parser *Parser) scanComments(scan_mark Mark) error {
 			continue
 		}
 
-		if len(text) > 0 && (close_flow || column-1 < next_indent && column != start_mark.Column) {
+		if len(text) > 0 && (close_flow ||
+			!priorIsDocDelim &&
+				column-1 < next_indent &&
+				column != start_mark.Column) {
 			// The comment at the different indentation is a foot of the
 			// preceding data rather than a head of the upcoming one.
 			parser.comments = append(parser.comments, Comment{

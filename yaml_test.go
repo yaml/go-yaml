@@ -874,6 +874,90 @@ func TestUnmarshalZeroDocumentStreams(t *testing.T) {
 	}
 }
 
+func TestDocumentSeparatorComments(t *testing.T) {
+	// https://github.com/yaml/go-yaml/issues/416
+	decodeDocs := func(t *testing.T, src string) []*yaml.Node {
+		t.Helper()
+		dec := yaml.NewDecoder(strings.NewReader(src))
+		var docs []*yaml.Node
+		for {
+			var n yaml.Node
+			err := dec.Decode(&n)
+			if err == io.EOF {
+				break
+			}
+			assert.NoError(t, err)
+			docs = append(docs, &n)
+		}
+		return docs
+	}
+	firstKeyHead := func(n *yaml.Node) string {
+		if n.Kind == yaml.DocumentNode && len(n.Content) > 0 {
+			m := n.Content[0]
+			if m.Kind == yaml.MappingNode && len(m.Content) > 0 {
+				return m.Content[0].HeadComment
+			}
+		}
+		return ""
+	}
+
+	t.Run("two comment blocks after separator", func(t *testing.T) {
+		src := "a: 1\n---\n# block-one\n\n# block-two\nb: 2\n"
+		docs := decodeDocs(t, src)
+		assert.Equal(t, 2, len(docs))
+		assert.Equal(t, "", docs[0].FootComment)
+		head := firstKeyHead(docs[1])
+		assert.Truef(t, strings.Contains(head, "# block-one"), "%s", head)
+		assert.Truef(t, strings.Contains(head, "# block-two"), "%s", head)
+
+		var buf bytes.Buffer
+		enc := yaml.NewEncoder(&buf)
+		for _, d := range docs {
+			assert.NoError(t, enc.Encode(d))
+		}
+		assert.NoError(t, enc.Close())
+		out := buf.String()
+		assert.Truef(t, strings.Contains(out, "# block-one"), "%s", out)
+		assert.Truef(t, strings.Contains(out, "# block-two"), "%s", out)
+		assert.Truef(t, strings.Index(out, "---") <
+			strings.Index(out, "# block-one"), "%s", out)
+	})
+
+	t.Run("comment before separator is kept", func(t *testing.T) {
+		src := "a: 1\n\n# before-separator\n---\n# block-one\n\n# block-two\nb: 2\n"
+		docs := decodeDocs(t, src)
+		assert.Equal(t, 2, len(docs))
+		assert.Truef(t,
+			strings.Contains(docs[0].FootComment, "# before-separator"),
+			"%s", docs[0].FootComment)
+		head := firstKeyHead(docs[1])
+		assert.Truef(t, strings.Contains(head, "# block-one"), "%s", head)
+		assert.Truef(t, strings.Contains(head, "# block-two"), "%s", head)
+
+		var buf bytes.Buffer
+		enc := yaml.NewEncoder(&buf)
+		for _, d := range docs {
+			assert.NoError(t, enc.Encode(d))
+		}
+		assert.NoError(t, enc.Close())
+		out := buf.String()
+		assert.Truef(t, strings.Contains(out, "# before-separator"), "%s", out)
+		assert.Truef(t, strings.Contains(out, "# block-one"), "%s", out)
+	})
+
+	t.Run("single comment block after separator", func(t *testing.T) {
+		src := "a: 1\n\n# before-separator\n---\n# block-one\nb: 2\n"
+		docs := decodeDocs(t, src)
+		assert.Equal(t, 2, len(docs))
+		assert.Truef(t,
+			strings.Contains(docs[0].FootComment, "# before-separator"),
+			"%s", docs[0].FootComment)
+		assert.Truef(t,
+			strings.Contains(firstKeyHead(docs[1]), "# block-one"),
+			"%s", firstKeyHead(docs[1]))
+	})
+}
+
 func TestDecoderZeroDocumentStreams(t *testing.T) {
 	inputs := []string{
 		"",
