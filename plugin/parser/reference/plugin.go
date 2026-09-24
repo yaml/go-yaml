@@ -15,7 +15,7 @@ import (
 // Plugin parses YAML with the YAMLStar reference parser.
 type Plugin struct{}
 
-var _ yaml.YAMLParserPlugin = (*Plugin)(nil)
+var _ yaml.ParserPlugin = (*Plugin)(nil)
 
 // Version is the linked reference parser release version.
 const Version = referenceparser.Version
@@ -37,7 +37,7 @@ func Register() error {
 	})
 }
 
-// Parse implements yaml.YAMLParserPlugin.
+// Parse implements yaml.ParserPlugin.
 func (p *Plugin) Parse(input []byte) ([]yaml.PluginEvent, error) {
 	source, err := referenceparser.Parse(input)
 	if err != nil {

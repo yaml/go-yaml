@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"go.yaml.in/yaml/v4"
-	jsoncomments "go.yaml.in/yaml/v4/plugin/json-comments"
+	"go.yaml.in/yaml/v4/plugin/jsoncomments"
 	"go.yaml.in/yaml/v4/plugin/loaderlimits"
 )
 

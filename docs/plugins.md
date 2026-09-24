@@ -12,7 +12,7 @@ The current implementations are:
 |---|---|---|---|
 | `yaml-parser` | `go-yaml` | core | yes |
 | `yaml-parser` | `reference` | `plugin/parser/reference` | no |
-| `json-comments` | `sanitizer` | `plugin/json-comments` | yes |
+| `json-comments` | `sanitizer` | `plugin/jsoncomments` | yes |
 | `loader-limits` | `loader-limits` | `plugin/loaderlimits` | yes |
 
 The optional packages are separate Go modules.
@@ -27,7 +27,7 @@ directly.
 ```go
 import (
     "go.yaml.in/yaml/v4"
-    jsoncomments "go.yaml.in/yaml/v4/plugin/json-comments"
+    "go.yaml.in/yaml/v4/plugin/jsoncomments"
     "go.yaml.in/yaml/v4/plugin/loaderlimits"
 )
 
@@ -40,7 +40,7 @@ err := yaml.Load(input, &value,
 The public plugin interfaces are:
 
 ```go
-type YAMLParserPlugin interface {
+type ParserPlugin interface {
     Parse(input []byte) ([]PluginEvent, error)
 }
 
@@ -157,7 +157,7 @@ err := yaml.Load(input, &value, yaml.WithPlugin(reference.New()))
 
 ### JSON comments
 
-`go.yaml.in/yaml/v4/plugin/json-comments` adapts the sanitizer from
+`go.yaml.in/yaml/v4/plugin/jsoncomments` adapts the sanitizer from
 `github.com/yamlstar/yamlstar-plugin-json-comments`.
 It accepts UTF-8 YAML containing `//` and non-nesting `/* */` comments.
 Comment markers inside quoted scalars, block scalars, and URLs are preserved.

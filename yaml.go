@@ -278,7 +278,7 @@ type DepthContext = libyaml.DepthContext
 // Each plugin implements one or more plugin interfaces.
 // Currently supported plugin types:
 //   - LoaderLimitsPlugin: Controls depth and alias expansion limits
-//   - YAMLParserPlugin: Supplies a complete YAML event stream
+//   - ParserPlugin: Supplies a complete YAML event stream
 //   - JSONCommentsPlugin: Sanitizes JSON-style comments before parsing
 //
 // Example:
@@ -300,7 +300,7 @@ func WithPlugin(plugins ...any) Option {
 				o.AliasCheck = lp.CheckAlias
 				registered = true
 			}
-			if source, ok := p.(YAMLParserPlugin); ok {
+			if source, ok := p.(ParserPlugin); ok {
 				if o.Parser != nil {
 					return errors.New("yaml: multiple yaml-parser plugins")
 				}

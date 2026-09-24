@@ -4,7 +4,7 @@ go 1.24
 
 require (
 	go.yaml.in/yaml/v4 v4.0.0-rc.6
-	go.yaml.in/yaml/v4/plugin/json-comments v0.0.0
+	go.yaml.in/yaml/v4/plugin/jsoncomments v0.0.0
 )
 
 require (
@@ -22,4 +22,4 @@ require (
 
 replace go.yaml.in/yaml/v4 => ../..
 
-replace go.yaml.in/yaml/v4/plugin/json-comments => ../../plugin/json-comments
+replace go.yaml.in/yaml/v4/plugin/jsoncomments => ../../plugin/jsoncomments
