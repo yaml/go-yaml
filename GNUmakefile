@@ -252,7 +252,7 @@ test-json-comments-race: prepare-json-comments
 
 test-reference-parser: prepare-reference-parser
 	GOWORK=$(PLUGIN-WORK) CGO_ENABLED=0 \
-	  go test ./plugin/parser/reference/... \
+	  go test ./plugin/yamlparser/reference/... \
 	  ./.cache/cli-plugins/...$(TEST-OPTS)
 	GO_YAML_TEST_REFERENCE_PARSER=1 \
 	GO_YAML_REFERENCE_PARSER_LOCAL=1 \

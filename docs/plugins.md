@@ -11,7 +11,7 @@ The current implementations are:
 | API | Implementation | Package | Default |
 |---|---|---|---|
 | `yaml-parser` | `go-yaml` | core | yes |
-| `yaml-parser` | `reference` | `plugin/parser/reference` | no |
+| `yaml-parser` | `reference` | `plugin/yamlparser/reference` | no |
 | `json-comments` | `sanitizer` | `plugin/jsoncomments` | yes |
 | `loader-limits` | `loader-limits` | `plugin/loaderlimits` | yes |
 
@@ -142,14 +142,14 @@ A null setting disables that one check.
 
 ### Reference YAML-parser implementation
 
-`go.yaml.in/yaml/v4/plugin/parser/reference` adapts the generated Go parser
+`go.yaml.in/yaml/v4/plugin/yamlparser/reference` adapts the generated Go parser
 from `github.com/yamlstar/yamlstar-plugin-parser-reference`.
 The canonical parser source remains in `yaml/yaml-reference-parser-clj`.
 It requires Go 1.24 or newer and does not need Clojure, Gloat, CGO, or a shared
 library at runtime.
 
 ```go
-import reference "go.yaml.in/yaml/v4/plugin/parser/reference"
+import reference "go.yaml.in/yaml/v4/plugin/yamlparser/reference"
 
 var value any
 err := yaml.Load(input, &value, yaml.WithPlugin(reference.New()))
