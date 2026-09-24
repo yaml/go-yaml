@@ -8,7 +8,7 @@ import (
 
 	"go.yaml.in/yaml/v4/internal/libyaml"
 	pluginreg "go.yaml.in/yaml/v4/internal/plugin"
-	loaderlimits "go.yaml.in/yaml/v4/plugin/loader-limits"
+	"go.yaml.in/yaml/v4/plugin/loaderlimits"
 )
 
 // LoaderLimitsPlugin configures safety limits for YAML loading.
@@ -19,7 +19,7 @@ import (
 //
 // Example usage:
 //
-//	import loaderlimits "go.yaml.in/yaml/v4/plugin/loader-limits"
+//	import "go.yaml.in/yaml/v4/plugin/loaderlimits"
 //	loader := yaml.NewLoader(data,
 //	    yaml.WithPlugin(loaderlimits.New(loaderlimits.AliasNone())))
 type LoaderLimitsPlugin interface {
@@ -34,7 +34,7 @@ type LoaderLimitsPlugin interface {
 }
 
 // YAMLParserPlugin supplies a complete event stream in place of native parsing.
-type YAMLParserPlugin = libyaml.YAMLParserPlugin
+type YAMLParserPlugin = libyaml.ParserPlugin
 
 // JSONCommentsPlugin sanitizes JSON-style comments before parsing.
 type JSONCommentsPlugin = libyaml.JSONCommentsPlugin
@@ -50,7 +50,7 @@ type PluginFactory = pluginreg.Factory
 // Default selects the implementation used by boolean configuration.
 type PluginRegistration = pluginreg.Registration
 
-type nativeYAMLParserPlugin struct{}
+type nativeParserPlugin struct{}
 
 var pluginRegistry = pluginreg.NewRegistry(
 	PluginRegistration{
@@ -68,7 +68,7 @@ var pluginRegistry = pluginreg.NewRegistry(
 				return nil, errors.New(
 					"yaml: go-yaml parser configuration must be empty")
 			}
-			return nativeYAMLParserPlugin{}, nil
+			return nativeParserPlugin{}, nil
 		},
 	},
 )

@@ -25,7 +25,7 @@ import (
 
 	"go.yaml.in/yaml/v4/internal/libyaml"
 	pluginreg "go.yaml.in/yaml/v4/internal/plugin"
-	loaderlimits "go.yaml.in/yaml/v4/plugin/loader-limits"
+	"go.yaml.in/yaml/v4/plugin/loaderlimits"
 )
 
 //-----------------------------------------------------------------------------
@@ -283,7 +283,7 @@ type DepthContext = libyaml.DepthContext
 //
 // Example:
 //
-//	import loaderlimits "go.yaml.in/yaml/v4/plugin/loader-limits"
+//	import "go.yaml.in/yaml/v4/plugin/loaderlimits"
 //	loader := yaml.NewLoader(data,
 //	    yaml.WithPlugin(loaderlimits.New(loaderlimits.AliasNone())))
 //
@@ -292,7 +292,7 @@ func WithPlugin(plugins ...any) Option {
 	return func(o *libyaml.Options) error {
 		for _, p := range plugins {
 			registered := false
-			if _, ok := p.(nativeYAMLParserPlugin); ok {
+			if _, ok := p.(nativeParserPlugin); ok {
 				registered = true
 			}
 			if lp, ok := p.(LoaderLimitsPlugin); ok {
@@ -301,10 +301,10 @@ func WithPlugin(plugins ...any) Option {
 				registered = true
 			}
 			if source, ok := p.(YAMLParserPlugin); ok {
-				if o.YAMLParser != nil {
+				if o.Parser != nil {
 					return errors.New("yaml: multiple yaml-parser plugins")
 				}
-				o.YAMLParser = source
+				o.Parser = source
 				registered = true
 			}
 			if comments, ok := p.(JSONCommentsPlugin); ok {

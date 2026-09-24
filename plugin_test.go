@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"go.yaml.in/yaml/v4"
-	loaderlimits "go.yaml.in/yaml/v4/plugin/loader-limits"
+	"go.yaml.in/yaml/v4/plugin/loaderlimits"
 )
 
 // generateAliases builds YAML with n aliases referencing a large anchor.

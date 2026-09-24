@@ -505,7 +505,7 @@ func main() {
 	if optionErr != nil {
 		log.Fatal(optionErr)
 	}
-	if configured.YAMLParser != nil &&
+	if configured.Parser != nil &&
 		(*tokenMode || *tokenProfuseMode || unmarshalMode || decodeMode) {
 		log.Fatal("yaml-parser plugins are not supported with token output " +
 			"or legacy loading modes")

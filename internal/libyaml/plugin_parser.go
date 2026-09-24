@@ -8,10 +8,10 @@ import (
 	"io"
 )
 
-// YAMLParserPlugin supplies a complete event stream for a load operation.
+// ParserPlugin supplies a complete event stream for a load operation.
 // Parse returns a complete stream, including stream and document boundaries.
 // Implementations must support concurrent calls with independent input.
-type YAMLParserPlugin interface {
+type ParserPlugin interface {
 	Parse(input []byte) ([]PluginEvent, error)
 }
 
@@ -22,10 +22,10 @@ type JSONCommentsPlugin interface {
 }
 
 // hasInputPlugins reports whether input must pass through EventReader.
-// YAML-parser plugins replace native parsing, while JSON-comments plugins
-// sanitize the complete input before native parsing.
+// Parser plugins replace native parsing, while JSON-comments plugins sanitize
+// the complete input before native parsing.
 func hasInputPlugins(opts *Options) bool {
-	return opts != nil && (opts.YAMLParser != nil || opts.JSONComments != nil)
+	return opts != nil && (opts.Parser != nil || opts.JSONComments != nil)
 }
 
 // PluginEvent is a portable YAML event supplied by a plugin.
@@ -118,9 +118,9 @@ func (e *EventReader) initialize() {
 			return
 		}
 	}
-	if e.opts.YAMLParser != nil {
+	if e.opts.Parser != nil {
 		e.pluginEvents = true
-		e.events, err = e.opts.YAMLParser.Parse(input)
+		e.events, err = e.opts.Parser.Parse(input)
 		if err == nil {
 			err = validatePluginEvents(e.events, e.opts.DepthCheck)
 		}
