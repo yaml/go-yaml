@@ -15,41 +15,33 @@ import (
 )
 
 // Mode supplies loading and dumping defaults.
-type Mode = yaml.TabIndentMode
+type Mode = yaml.IndentMode
 
 const (
-	ModeAuto = yaml.TabIndentModeAuto
-	ModeTabs = yaml.TabIndentModeTabs
+	ModeAuto = yaml.IndentModeAuto
+	ModeTabs = yaml.IndentModeTabs
 )
 
-// Load controls accepted structural indentation.
-type Load = yaml.TabIndentLoad
+// Style identifies the characters used for structural indentation.
+type Style = yaml.IndentStyle
 
 const (
-	LoadTabs   = yaml.TabIndentLoadTabs
-	LoadSpaces = yaml.TabIndentLoadSpaces
-	LoadAuto   = yaml.TabIndentLoadAuto
+	StyleAuto   = yaml.IndentStyleAuto
+	StyleSpaces = yaml.IndentStyleSpaces
+	StyleTabs   = yaml.IndentStyleTabs
 )
 
-// Dump controls emitted structural indentation.
-type Dump = yaml.TabIndentDump
+// Scope controls how long an auto-detected style remains active.
+type Scope = yaml.IndentScope
 
 const (
-	DumpTabs   = yaml.TabIndentDumpTabs
-	DumpSpaces = yaml.TabIndentDumpSpaces
-)
-
-// Auto controls how long auto-detected indentation remains active.
-type Auto = yaml.TabIndentAuto
-
-const (
-	AutoDocument = yaml.TabIndentAutoDocument
-	AutoStream   = yaml.TabIndentAutoStream
+	ScopeDocument = yaml.IndentScopeDocument
+	ScopeStream   = yaml.IndentScopeStream
 )
 
 // Plugin configures tab-aware YAML loading and dumping.
 type Plugin struct {
-	config yaml.TabIndentConfig
+	config yaml.IndentConfig
 }
 
 var _ yaml.TabIndentPlugin = (*Plugin)(nil)
@@ -59,9 +51,9 @@ type Option func(*Plugin)
 
 // New creates a tab-indentation plugin.
 func New(opts ...Option) *Plugin {
-	p := &Plugin{config: yaml.TabIndentConfig{
-		Mode: ModeAuto,
-		Auto: AutoDocument,
+	p := &Plugin{config: yaml.IndentConfig{
+		Mode:  ModeAuto,
+		Scope: ScopeDocument,
 	}}
 	for _, opt := range opts {
 		opt(p)
@@ -75,22 +67,22 @@ func WithMode(mode Mode) Option {
 }
 
 // WithLoad sets accepted structural indentation.
-func WithLoad(load Load) Option {
-	return func(p *Plugin) { p.config.Load = load }
+func WithLoad(style Style) Option {
+	return func(p *Plugin) { p.config.LoadStyle = style }
 }
 
 // WithDump sets emitted structural indentation.
-func WithDump(dump Dump) Option {
-	return func(p *Plugin) { p.config.Dump = dump }
+func WithDump(style Style) Option {
+	return func(p *Plugin) { p.config.DumpStyle = style }
 }
 
 // WithAuto sets the auto-detection scope.
-func WithAuto(auto Auto) Option {
-	return func(p *Plugin) { p.config.Auto = auto }
+func WithAuto(scope Scope) Option {
+	return func(p *Plugin) { p.config.Scope = scope }
 }
 
 // TabIndentConfig implements [yaml.TabIndentPlugin].
-func (p *Plugin) TabIndentConfig() yaml.TabIndentConfig {
+func (p *Plugin) TabIndentConfig() yaml.IndentConfig {
 	return p.config
 }
 
@@ -107,11 +99,11 @@ func NewFromYAML(cfg map[string]any) (*Plugin, error) {
 		case "mode":
 			p.config.Mode = Mode(text)
 		case "load":
-			p.config.Load = Load(text)
+			p.config.LoadStyle = Style(text)
 		case "dump":
-			p.config.Dump = Dump(text)
+			p.config.DumpStyle = Style(text)
 		case "auto":
-			p.config.Auto = Auto(text)
+			p.config.Scope = Scope(text)
 		default:
 			return nil, fmt.Errorf("tab-indent: unknown key %q", key)
 		}

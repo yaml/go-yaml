@@ -31,7 +31,7 @@ type Serializer struct {
 func NewSerializer(w io.Writer, opts *Options) *Serializer {
 	emitter := NewEmitter()
 	tabs := opts.TabIndent != nil &&
-		opts.TabIndent.Dump == TabIndentDumpTabs
+		opts.TabIndent.DumpStyle == IndentStyleTabs
 	emitter.CompactSequenceIndent = opts.CompactSeqIndent
 	emitter.quotePreference = opts.QuotePreference
 	emitter.SetWidth(opts.LineWidth)
@@ -42,9 +42,7 @@ func NewSerializer(w io.Writer, opts *Options) *Serializer {
 
 	// Set indentation (defaults to 2 if not specified)
 	indent := opts.Indent
-	if tabs {
-		indent = 2
-	} else if indent == 0 {
+	if tabs || indent == 0 {
 		indent = 2
 	}
 	emitter.BestIndent = indent

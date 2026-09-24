@@ -1150,9 +1150,9 @@ func (parser *Parser) fetchDirective() error {
 // Produce the DOCUMENT-START or DOCUMENT-END token.
 func (parser *Parser) fetchDocumentIndicator(typ TokenType) error {
 	if typ == DOCUMENT_START_TOKEN && parser.tabIndent != nil &&
-		parser.tabIndent.Load == TabIndentLoadAuto &&
-		parser.tabIndent.Auto == TabIndentAutoDocument {
-		parser.tabIndentStyle = 0
+		parser.tabIndent.LoadStyle == IndentStyleAuto &&
+		parser.tabIndent.Scope == IndentScopeDocument {
+		parser.tabIndentStyle = indentStyleUnknown
 	}
 
 	// Reset the indentation level.
@@ -1766,7 +1766,7 @@ func (parser *Parser) scanBlockScalarBreaks(indent *int, breaks *[]byte, start_m
 	// Eat the indentation spaces and line breaks.
 	max_indent := 0
 	for {
-		style := byte(0)
+		style := indentStyleUnknown
 		indentMark := parser.mark
 		mixedMark := Mark{}
 		mixed := false
@@ -1781,7 +1781,7 @@ func (parser *Parser) scanBlockScalarBreaks(indent *int, breaks *[]byte, start_m
 				(parser.tabIndent != nil &&
 					isTab(parser.buffer, parser.buffer_pos))) {
 			char := parser.buffer[parser.buffer_pos]
-			if style == 0 {
+			if style == indentStyleUnknown {
 				style = char
 			} else if style != char && !mixed {
 				mixedMark = parser.mark
@@ -1809,7 +1809,7 @@ func (parser *Parser) scanBlockScalarBreaks(indent *int, breaks *[]byte, start_m
 			return formatScannerError(
 				"found mixed spaces and tabs in indentation", mixedMark)
 		}
-		if style != 0 && !blankLine {
+		if style != indentStyleUnknown && !blankLine {
 			if err := parser.validateTabIndentStyle(style, indentMark); err != nil {
 				return err
 			}
@@ -2571,7 +2571,7 @@ func (parser *Parser) scanPlainScalar(token *Token) error {
 			}
 		}
 
-		indentStyle := byte(0)
+		indentStyle := indentStyleUnknown
 		indentMark := Mark{}
 		mixedIndent := false
 		mixedMark := Mark{}
@@ -2582,7 +2582,7 @@ func (parser *Parser) scanPlainScalar(token *Token) error {
 				if leading_blanks && parser.mark.Column < indent {
 					if parser.tabIndent != nil {
 						char := parser.buffer[parser.buffer_pos]
-						if indentStyle == 0 {
+						if indentStyle == indentStyleUnknown {
 							indentStyle = char
 							indentMark = parser.mark
 						} else if indentStyle != char && !mixedIndent {
@@ -2618,7 +2618,7 @@ func (parser *Parser) scanPlainScalar(token *Token) error {
 				} else {
 					trailing_breaks = parser.readLine(trailing_breaks)
 				}
-				indentStyle = 0
+				indentStyle = indentStyleUnknown
 				mixedIndent = false
 			}
 			if parser.unread < 1 {
@@ -2627,7 +2627,8 @@ func (parser *Parser) scanPlainScalar(token *Token) error {
 				}
 			}
 		}
-		if parser.tabIndent != nil && indentStyle != 0 &&
+		if parser.tabIndent != nil &&
+			indentStyle != indentStyleUnknown &&
 			!isZeroChar(parser.buffer, parser.buffer_pos) &&
 			parser.buffer[parser.buffer_pos] != '#' {
 			if mixedIndent {
@@ -3043,7 +3044,7 @@ func (parser *Parser) scanToNextToken() error {
 
 // scanTabIndentation consumes and validates structural line indentation.
 func (parser *Parser) scanTabIndentation() error {
-	style := byte(0)
+	style := indentStyleUnknown
 	start := parser.mark
 	mixedMark := Mark{}
 	mixed := false
@@ -3057,7 +3058,7 @@ func (parser *Parser) scanTabIndentation() error {
 		if char != ' ' && char != '\t' {
 			break
 		}
-		if style == 0 {
+		if style == indentStyleUnknown {
 			style = char
 		} else if style != char && !mixed {
 			mixedMark = parser.mark
@@ -3065,7 +3066,8 @@ func (parser *Parser) scanTabIndentation() error {
 		}
 		parser.skip()
 	}
-	if style == 0 || isLineBreak(parser.buffer, parser.buffer_pos) ||
+	if style == indentStyleUnknown ||
+		isLineBreak(parser.buffer, parser.buffer_pos) ||
 		isZeroChar(parser.buffer, parser.buffer_pos) ||
 		parser.buffer[parser.buffer_pos] == '#' {
 		return nil
@@ -3078,19 +3080,19 @@ func (parser *Parser) scanTabIndentation() error {
 }
 
 func (parser *Parser) validateTabIndentStyle(style byte, start Mark) error {
-	if parser.tabIndent == nil || style == 0 {
+	if parser.tabIndent == nil || style == indentStyleUnknown {
 		return nil
 	}
-	if parser.tabIndent.Load == TabIndentLoadTabs && style != '\t' {
+	if parser.tabIndent.LoadStyle == IndentStyleTabs && style != '\t' {
 		return formatScannerError(
 			"found spaces where tab indentation is required", start)
 	}
-	if parser.tabIndent.Load == TabIndentLoadSpaces && style != ' ' {
+	if parser.tabIndent.LoadStyle == IndentStyleSpaces && style != ' ' {
 		return formatScannerError(
 			"found tabs where space indentation is required", start)
 	}
-	if parser.tabIndent.Load == TabIndentLoadAuto {
-		if parser.tabIndentStyle == 0 {
+	if parser.tabIndent.LoadStyle == IndentStyleAuto {
+		if parser.tabIndentStyle == indentStyleUnknown {
 			parser.tabIndentStyle = style
 		} else if parser.tabIndentStyle != style {
 			return formatScannerError(

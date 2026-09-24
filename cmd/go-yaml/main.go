@@ -20,7 +20,7 @@ import (
 	"go.yaml.in/yaml/v4"
 	"go.yaml.in/yaml/v4/internal/libyaml"
 	pluginreg "go.yaml.in/yaml/v4/internal/plugin"
-	tabindent "go.yaml.in/yaml/v4/plugin/tab-indent"
+	"go.yaml.in/yaml/v4/plugin/tabindent"
 )
 
 // version is the current version of the go-yaml CLI tool.

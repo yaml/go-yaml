@@ -40,7 +40,7 @@ type Options struct {
 	JSONComments JSONCommentsPlugin
 
 	// TabIndent enables tab-aware structural indentation.
-	TabIndent *TabIndentConfig
+	TabIndent *IndentConfig
 
 	// Safety limit checks (set by ApplyOptions or WithPlugin(limit.New(...)))
 	DepthCheck func(depth int, ctx *DepthContext) error

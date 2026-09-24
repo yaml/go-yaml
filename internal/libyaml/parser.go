@@ -176,6 +176,8 @@ type Comment struct {
 	Foot []byte
 }
 
+const indentStyleUnknown byte = 0
+
 // Parser structure holds all information about the current
 // state of the parser.
 type Parser struct {
@@ -240,7 +242,7 @@ type Parser struct {
 
 	depthCheck func(int, *DepthContext) error // Depth limit check function
 
-	tabIndent      *TabIndentConfig
+	tabIndent      *IndentConfig
 	tabIndentStyle byte
 
 	// Parser stuff
@@ -263,7 +265,7 @@ type Parser struct {
 }
 
 // SetTabIndent configures tab-aware indentation scanning.
-func (parser *Parser) SetTabIndent(config *TabIndentConfig) {
+func (parser *Parser) SetTabIndent(config *IndentConfig) {
 	parser.tabIndent = config
 }
 

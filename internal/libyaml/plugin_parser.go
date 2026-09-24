@@ -21,79 +21,77 @@ type JSONCommentsPlugin interface {
 	Sanitize(input []byte) ([]byte, error)
 }
 
-// TabIndentMode supplies loading and dumping defaults.
-type TabIndentMode string
+// IndentMode supplies loading and dumping defaults.
+type IndentMode string
 
 const (
-	TabIndentModeAuto TabIndentMode = "auto"
-	TabIndentModeTabs TabIndentMode = "tabs"
+	IndentModeAuto IndentMode = "auto"
+	IndentModeTabs IndentMode = "tabs"
 )
 
-// TabIndentLoad controls accepted structural indentation.
-type TabIndentLoad string
+// IndentStyle identifies the characters used for structural indentation.
+type IndentStyle string
 
 const (
-	TabIndentLoadTabs   TabIndentLoad = "tabs"
-	TabIndentLoadSpaces TabIndentLoad = "spaces"
-	TabIndentLoadAuto   TabIndentLoad = "auto"
+	IndentStyleAuto   IndentStyle = "auto"
+	IndentStyleSpaces IndentStyle = "spaces"
+	IndentStyleTabs   IndentStyle = "tabs"
 )
 
-// TabIndentDump controls emitted structural indentation.
-type TabIndentDump string
+// IndentScope controls how long an auto-detected style remains active.
+type IndentScope string
 
 const (
-	TabIndentDumpTabs   TabIndentDump = "tabs"
-	TabIndentDumpSpaces TabIndentDump = "spaces"
+	IndentScopeDocument IndentScope = "document"
+	IndentScopeStream   IndentScope = "stream"
 )
 
-// TabIndentAuto controls how long an auto-detected style remains active.
-type TabIndentAuto string
-
-const (
-	TabIndentAutoDocument TabIndentAuto = "document"
-	TabIndentAutoStream   TabIndentAuto = "stream"
-)
-
-// TabIndentConfig configures tab-indentation loading and dumping.
-type TabIndentConfig struct {
-	Mode TabIndentMode
-	Load TabIndentLoad
-	Dump TabIndentDump
-	Auto TabIndentAuto
+// IndentConfig configures tab-indentation loading and dumping.
+type IndentConfig struct {
+	Mode      IndentMode
+	LoadStyle IndentStyle
+	DumpStyle IndentStyle
+	Scope     IndentScope
 }
 
 // Normalize fills defaults and validates a tab-indentation configuration.
-func (c TabIndentConfig) Normalize() (TabIndentConfig, error) {
-	if c.Mode == "" {
-		c.Mode = TabIndentModeAuto
-	}
-	if c.Mode != TabIndentModeAuto && c.Mode != TabIndentModeTabs {
+func (c IndentConfig) Normalize() (IndentConfig, error) {
+	switch c.Mode {
+	case "":
+		c.Mode = IndentModeAuto
+	case IndentModeAuto, IndentModeTabs:
+	default:
 		return c, fmt.Errorf(
 			"yaml: tab-indent mode must be auto or tabs")
 	}
-	if c.Load == "" {
-		if c.Mode == TabIndentModeTabs {
-			c.Load = TabIndentLoadTabs
+	if c.LoadStyle == "" {
+		if c.Mode == IndentModeTabs {
+			c.LoadStyle = IndentStyleTabs
 		} else {
-			c.Load = TabIndentLoadAuto
+			c.LoadStyle = IndentStyleAuto
 		}
 	}
-	if c.Dump == "" {
-		c.Dump = TabIndentDumpTabs
+	if c.DumpStyle == "" {
+		c.DumpStyle = IndentStyleTabs
 	}
-	if c.Auto == "" {
-		c.Auto = TabIndentAutoDocument
+	if c.Scope == "" {
+		c.Scope = IndentScopeDocument
 	}
-	if c.Load != TabIndentLoadTabs && c.Load != TabIndentLoadSpaces &&
-		c.Load != TabIndentLoadAuto {
+	switch c.LoadStyle {
+	case IndentStyleAuto, IndentStyleSpaces, IndentStyleTabs:
+	default:
 		return c, fmt.Errorf(
 			"yaml: tab-indent load must be auto, spaces, or tabs")
 	}
-	if c.Dump != TabIndentDumpTabs && c.Dump != TabIndentDumpSpaces {
+	switch c.DumpStyle {
+	case IndentStyleSpaces, IndentStyleTabs:
+	default:
 		return c, fmt.Errorf(
 			"yaml: tab-indent dump must be spaces or tabs")
 	}
-	if c.Auto != TabIndentAutoDocument && c.Auto != TabIndentAutoStream {
+	switch c.Scope {
+	case IndentScopeDocument, IndentScopeStream:
+	default:
 		return c, fmt.Errorf(
 			"yaml: tab-indent auto must be document or stream")
 	}
@@ -102,7 +100,7 @@ func (c TabIndentConfig) Normalize() (TabIndentConfig, error) {
 
 // TabIndentPlugin enables tab-aware structural indentation.
 type TabIndentPlugin interface {
-	TabIndentConfig() TabIndentConfig
+	TabIndentConfig() IndentConfig
 }
 
 // hasInputPlugins reports whether input must pass through EventReader.
