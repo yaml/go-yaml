@@ -33,8 +33,8 @@ type LoaderLimitsPlugin interface {
 	CheckAlias(aliasCount, constructCount int) error
 }
 
-// YAMLParserPlugin supplies a complete event stream in place of native parsing.
-type YAMLParserPlugin = libyaml.ParserPlugin
+// ParserPlugin supplies a complete event stream in place of native parsing.
+type ParserPlugin = libyaml.ParserPlugin
 
 // JSONCommentsPlugin sanitizes JSON-style comments before parsing.
 type JSONCommentsPlugin = libyaml.JSONCommentsPlugin

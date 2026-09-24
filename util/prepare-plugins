@@ -110,8 +110,8 @@ if ($json_enabled) {
     push @plugins, {
         api => 'json-comments',
         module => 'github.com/yamlstar/yamlstar-plugin-json-comments',
-        wrapper => 'go.yaml.in/yaml/v4/plugin/json-comments',
-        wrapper_path => "$root/plugin/json-comments",
+        wrapper => 'go.yaml.in/yaml/v4/plugin/jsoncomments',
+        wrapper_path => "$root/plugin/jsoncomments",
         upstream => $upstream,
         local => $local,
         version => resolve_version(
@@ -120,7 +120,7 @@ if ($json_enabled) {
         source => <<'GO',
 package main
 
-import jsoncomments "go.yaml.in/yaml/v4/plugin/json-comments"
+import jsoncomments "go.yaml.in/yaml/v4/plugin/jsoncomments"
 
 func init() {
 	compiledPluginRegistrations = append(

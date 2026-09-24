@@ -234,7 +234,7 @@ prepare-reference-parser: $(PERL) $(GO-DEPS)
 
 test-json-comments: prepare-json-comments
 	GOWORK=$(PLUGIN-WORK) CGO_ENABLED=0 \
-	  go test ./plugin/json-comments/... ./.cache/cli-plugins/...$(TEST-OPTS)
+	  go test ./plugin/jsoncomments/... ./.cache/cli-plugins/...$(TEST-OPTS)
 	GO_YAML_TEST_JSON_COMMENTS=1 \
 	GO_YAML_JSON_COMMENTS_LOCAL=1 \
 	go test ./util/build-cli \
@@ -242,12 +242,12 @@ test-json-comments: prepare-json-comments
 
 lint-json-comments: prepare-json-comments $(GOLANGCI-LINT-VERSIONED)
 	GOWORK=$(PLUGIN-WORK) $(GOLANGCI-LINT-VERSIONED) run \
-	  ./plugin/json-comments/...
+	  ./plugin/jsoncomments/...
 
 # The generated parser shares state; exercise concurrent Go and EDN callers.
 test-json-comments-race: prepare-json-comments
 	GOWORK=$(PLUGIN-WORK) go test -race -count=3 \
-	  ./plugin/json-comments/... \
+	  ./plugin/jsoncomments/... \
 	  github.com/yamlstar/yamlstar-plugin-json-comments/parser
 
 test-reference-parser: prepare-reference-parser
