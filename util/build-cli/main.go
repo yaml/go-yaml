@@ -120,13 +120,13 @@ func inspectConfig(data []byte) (buildConfig, error) {
 				}
 			}
 			switch api {
-			case "limit":
-				if name != "" && name != "limit" {
+			case pluginreg.LoaderLimitsAPI:
+				if name != "" && name != pluginreg.LoaderLimitsAPI {
 					return selection, fmt.Errorf(
 						"no CLI build provider for plugin %q implementation %q",
 						api, name)
 				}
-			case "parser":
+			case pluginreg.YAMLParserAPI:
 				if name == "" {
 					name = "go-yaml"
 				}

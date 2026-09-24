@@ -37,7 +37,7 @@ func TestRegisterCompiledPlugins(t *testing.T) {
 func TestEmbeddedOptions(t *testing.T) {
 	saved := defaultConfig
 	t.Cleanup(func() { defaultConfig = saved })
-	defaultConfig = "indent: 4\nplugin:\n  limit:\n    depth: 1\n"
+	defaultConfig = "indent: 4\nplugin:\n  loader-limits:\n    depth: 1\n"
 	initOptionRegistry()
 	opts, err := buildOptions("", nil)
 	if err != nil {
@@ -52,7 +52,7 @@ func TestEmbeddedOptions(t *testing.T) {
 		t.Fatal("embedded limit not applied")
 	}
 
-	opts, err = buildOptions("", []string{"indent=2"}, "limit")
+	opts, err = buildOptions("", []string{"indent=2"}, "loader-limits")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,19 +63,24 @@ func TestEmbeddedOptions(t *testing.T) {
 	if err := yaml.Load([]byte("[[]]"), &value, opts...); err != nil {
 		t.Fatalf("explicit limit should use defaults: %v", err)
 	}
-	opts, err = buildOptions("", nil, "limit=limit")
+	opts, err = buildOptions("", nil, "loader-limits=loader-limits")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := yaml.Load([]byte("[[]]"), &value, opts...); err != nil {
 		t.Fatalf("explicit implementation should use defaults: %v", err)
 	}
-	for _, selector := range []string{"", "=limit", "limit=", "a=b=c"} {
+	if _, err := buildOptions("", nil, "limit=limit"); err == nil {
+		t.Fatal("old limit selector accepted")
+	}
+	if _, err := buildOptions("", nil, "parser=go-yaml"); err == nil {
+		t.Fatal("old parser selector accepted")
+	}
+	for _, selector := range []string{"", "=loader-limits", "loader-limits=", "a=b=c"} {
 		if _, err := buildOptions("", nil, selector); err == nil {
 			t.Fatalf("invalid selector %q accepted", selector)
 		}
 	}
-
 	config := filepath.Join(t.TempDir(), "runtime.yaml")
 	if err := os.WriteFile(config, []byte("indent: 6\n"), 0o600); err != nil {
 		t.Fatal(err)

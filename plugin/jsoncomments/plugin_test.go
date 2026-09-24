@@ -11,8 +11,8 @@ import (
 	"testing"
 
 	"go.yaml.in/yaml/v4"
-	jsoncomments "go.yaml.in/yaml/v4/plugin/json-comments"
-	"go.yaml.in/yaml/v4/plugin/limit"
+	"go.yaml.in/yaml/v4/plugin/jsoncomments"
+	"go.yaml.in/yaml/v4/plugin/loaderlimits"
 )
 
 func TestFixtures(t *testing.T) {
@@ -146,8 +146,10 @@ func TestLimitsAndErrors(t *testing.T) {
 		input string
 		limit yaml.Option
 	}{
-		{"[[[0]]] // depth", yaml.WithPlugin(limit.New(limit.DepthValue(2)))},
-		{"[&a 1, *a] // aliases", yaml.WithPlugin(limit.New(limit.AliasValue(0)))},
+		{"[[[0]]] // depth", yaml.WithPlugin(
+			loaderlimits.New(loaderlimits.DepthValue(2)))},
+		{"[&a 1, *a] // aliases", yaml.WithPlugin(
+			loaderlimits.New(loaderlimits.AliasValue(0)))},
 	} {
 		var got any
 		if err := yaml.Load([]byte(tc.input), &got, plugin, tc.limit); err == nil {

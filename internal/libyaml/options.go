@@ -39,7 +39,7 @@ type Options struct {
 	// JSONComments sanitizes JSON-style comments before parsing.
 	JSONComments JSONCommentsPlugin
 
-	// Safety limit checks (set by ApplyOptions or WithPlugin(limit.New(...)))
+	// Loader limit checks (set by ApplyOptions or a loader-limits plugin).
 	DepthCheck func(depth int, ctx *DepthContext) error
 	AliasCheck func(aliasCount, constructCount int) error
 

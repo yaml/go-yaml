@@ -10,12 +10,12 @@ import (
 
 func TestParseSelectors(t *testing.T) {
 	got, err := ParseSelectors(
-		"parser=reference@v0.2.5,json-comments")
+		"yaml-parser=reference@v0.2.5,json-comments")
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := []Selection{
-		{API: "parser", Name: "reference", Version: "v0.2.5"},
+		{API: "yaml-parser", Name: "reference", Version: "v0.2.5"},
 		{API: "json-comments"},
 	}
 	if !reflect.DeepEqual(got, want) {
@@ -29,20 +29,21 @@ func TestParseSelectors(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %#v, want %#v", got, want)
 	}
-	got, err = ParseSelectors("parser=reference@0.2.5")
+	got, err = ParseSelectors("yaml-parser=reference@0.2.5")
 	if err != nil {
 		t.Fatal(err)
 	}
 	want = []Selection{
-		{API: "parser", Name: "reference", Version: "0.2.5"},
+		{API: "yaml-parser", Name: "reference", Version: "0.2.5"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %#v, want %#v", got, want)
 	}
 	for _, text := range []string{
-		"", ",", "parser=", "@v0.2.5", "parser=@v0.2.5",
-		"parser=reference@", "parser=reference@latest",
-		"parser==reference", "parser=reference@@v0.2.5",
+		"", ",", "yaml-parser=", "@v0.2.5",
+		"yaml-parser=@v0.2.5", "yaml-parser=reference@",
+		"yaml-parser=reference@latest", "yaml-parser==reference",
+		"yaml-parser=reference@@v0.2.5",
 	} {
 		if _, err := ParseSelectors(text); err == nil {
 			t.Fatalf("accepted %q", text)
@@ -51,7 +52,7 @@ func TestParseSelectors(t *testing.T) {
 }
 
 func TestConfigValue(t *testing.T) {
-	got, err := ConfigValue("parser", "reference@v0.2.5")
+	got, err := ConfigValue("yaml-parser", "reference@v0.2.5")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,10 +64,10 @@ func TestConfigValue(t *testing.T) {
 		api, value string
 	}{
 		{"", "reference"},
-		{"parser", ""},
-		{"parser", "reference@"},
-		{"parser", "reference@latest"},
-		{"parser=other", "reference"},
+		{"yaml-parser", ""},
+		{"yaml-parser", "reference@"},
+		{"yaml-parser", "reference@latest"},
+		{"yaml-parser=other", "reference"},
 	} {
 		if _, err := ConfigValue(tc.api, tc.value); err == nil {
 			t.Fatalf("accepted API %q with value %q", tc.api, tc.value)

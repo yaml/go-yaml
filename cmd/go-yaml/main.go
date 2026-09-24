@@ -321,7 +321,7 @@ func buildOptions(configFile string, optionFlags []string, pluginSpecs ...string
 	}
 	if len(pluginSpecs) > 0 {
 		// Replace each explicitly selected plugin's configuration with defaults.
-		// This also avoids selecting a configured parser plugin twice.
+		// This also avoids selecting a configured YAML-parser plugin twice.
 		config := map[string]any{}
 		if len(configData) > 0 {
 			if err := yaml.Load(configData, &config); err != nil {
@@ -507,7 +507,8 @@ func main() {
 	}
 	if configured.Parser != nil &&
 		(*tokenMode || *tokenProfuseMode || unmarshalMode || decodeMode) {
-		log.Fatal("parser plugins are not supported with token output or legacy loading modes")
+		log.Fatal("yaml-parser plugins are not supported with token output " +
+			"or legacy loading modes")
 	}
 
 	// Show help and exit

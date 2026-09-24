@@ -23,10 +23,10 @@ const Version = referenceparser.Version
 // New creates a reference parser plugin.
 func New() *Plugin { return &Plugin{} }
 
-// Register enables parser=reference in yaml.OptsYAML.
+// Register enables yaml-parser=reference in yaml.OptsYAML.
 func Register() error {
 	return yaml.RegisterPlugin(yaml.PluginRegistration{
-		API: "parser", Name: "reference", Version: Version,
+		API: "yaml-parser", Name: "reference", Version: Version,
 		Factory: func(cfg map[string]any) (any, error) {
 			if len(cfg) != 0 {
 				return nil, errors.New(

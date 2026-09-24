@@ -8,6 +8,13 @@ import (
 	"strings"
 )
 
+const (
+	// LoaderLimitsAPI is the loader-limits plugin API name.
+	LoaderLimitsAPI = "loader-limits"
+	// YAMLParserAPI is the YAML-parser plugin API name.
+	YAMLParserAPI = "yaml-parser"
+)
+
 // Selection identifies one plugin API, implementation, and optional version.
 type Selection struct {
 	API, Name, Version string

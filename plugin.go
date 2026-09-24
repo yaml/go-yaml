@@ -8,10 +8,10 @@ import (
 
 	"go.yaml.in/yaml/v4/internal/libyaml"
 	pluginreg "go.yaml.in/yaml/v4/internal/plugin"
-	"go.yaml.in/yaml/v4/plugin/limit"
+	"go.yaml.in/yaml/v4/plugin/loaderlimits"
 )
 
-// LimitPlugin configures safety limits for YAML parsing.
+// LoaderLimitsPlugin configures safety limits for YAML loading.
 //
 // When registered, CheckDepth is called on each nesting depth increase,
 // and CheckAlias is called on each alias expansion to detect excessive
@@ -19,9 +19,10 @@ import (
 //
 // Example usage:
 //
-//	import "go.yaml.in/yaml/v4/plugin/limit"
-//	loader := yaml.NewLoader(data, yaml.WithPlugin(limit.New(limit.AliasNone())))
-type LimitPlugin interface {
+//	import "go.yaml.in/yaml/v4/plugin/loaderlimits"
+//	loader := yaml.NewLoader(data,
+//	    yaml.WithPlugin(loaderlimits.New(loaderlimits.AliasNone())))
+type LoaderLimitsPlugin interface {
 	// CheckDepth is called when the parser increases nesting depth.
 	// depth is the current nesting level; ctx.Kind is "flow" or "block".
 	// Return an error to abort parsing.
@@ -53,13 +54,15 @@ type nativeParserPlugin struct{}
 
 var pluginRegistry = pluginreg.NewRegistry(
 	PluginRegistration{
-		API: "limit", Name: "limit", Default: true,
+		API:     pluginreg.LoaderLimitsAPI,
+		Name:    pluginreg.LoaderLimitsAPI,
+		Default: true,
 		Factory: func(cfg map[string]any) (any, error) {
-			return limit.NewFromYAML(cfg)
+			return loaderlimits.NewFromYAML(cfg)
 		},
 	},
 	PluginRegistration{
-		API: "parser", Name: "go-yaml", Default: true,
+		API: pluginreg.YAMLParserAPI, Name: "go-yaml", Default: true,
 		Factory: func(cfg map[string]any) (any, error) {
 			if len(cfg) != 0 {
 				return nil, errors.New(

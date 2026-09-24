@@ -3244,29 +3244,29 @@ func TestOptsYAML(t *testing.T) {
 		},
 		{
 			name:    "plugin defaults",
-			yamlStr: "plugin: {limit: true}",
+			yamlStr: "plugin: {loader-limits: true}",
 		},
 		{
 			name:    "plugin disabled",
-			yamlStr: "plugin: {limit: false}",
+			yamlStr: "plugin: {loader-limits: false}",
 		},
 		{
 			name:    "plugin disabled in mapping",
-			yamlStr: "plugin: {limit: {depth: 3, disable: true}}",
+			yamlStr: "plugin: {loader-limits: {depth: 3, disable: true}}",
 		},
 		{
 			name:    "plugin enabled in mapping",
-			yamlStr: "plugin: {limit: {depth: 3, disable: false}}",
+			yamlStr: "plugin: {loader-limits: {depth: 3, disable: false}}",
 		},
 		{
 			name:      "invalid disable setting",
-			yamlStr:   "plugin: {limit: {disable: null}}",
+			yamlStr:   "plugin: {loader-limits: {disable: null}}",
 			expectErr: true,
 			errMatch:  "disable must be a boolean",
 		},
 		{
 			name:      "null plugin value",
-			yamlStr:   "plugin: {limit: null}",
+			yamlStr:   "plugin: {loader-limits: null}",
 			expectErr: true,
 			errMatch:  "mapping, string, or boolean",
 		},
