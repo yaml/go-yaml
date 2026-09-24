@@ -151,8 +151,8 @@ func TestDumpTabIndentation(t *testing.T) {
 		t.Fatalf("found space indentation:\n%s", data)
 	}
 	if !strings.Contains(string(data), "\n\tchild:") ||
-		!strings.Contains(string(data), "\n\t\t-") ||
-		!strings.Contains(string(data), "\n\t\t\tvalue:") {
+		!strings.Contains(string(data), "\n\t-") ||
+		!strings.Contains(string(data), "\n\t\tvalue:") {
 		t.Fatalf("unexpected tab indentation:\n%s", data)
 	}
 	var roundTrip any
@@ -160,6 +160,18 @@ func TestDumpTabIndentation(t *testing.T) {
 		data, &roundTrip,
 		yaml.WithPlugin(tabindent.New())); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestDumpCompactSequenceUnderMapping(t *testing.T) {
+	data, err := yaml.Dump(
+		map[string]any{"foo": []string{"bar"}},
+		yaml.WithPlugin(tabindent.New()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "foo:\n- bar\n" {
+		t.Fatalf("unexpected compact sequence indentation:\n%s", data)
 	}
 }
 
