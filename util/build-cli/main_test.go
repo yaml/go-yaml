@@ -23,6 +23,13 @@ func TestInspectConfig(t *testing.T) {
 			"limit", "plugin: {limit: {depth: 50, alias: null}}",
 			false, false, "",
 		},
+		{"tab indent", "plugin: {tab-indent: true}", false, false, ""},
+		{
+			"tab indent details",
+			"plugin: {tab-indent: " +
+				"{load: spaces, dump: spaces, auto: stream}}",
+			false, false, "",
+		},
 		{"JSON comments", "plugin: {json-comments: true}", true, false, ""},
 		{
 			"JSON comments disabled", "plugin: {json-comments: false}",
@@ -61,6 +68,14 @@ func TestInspectConfig(t *testing.T) {
 		{"unknown option", "indnet: 4", false, true, ""},
 		{"bad indent", "indent: 100", false, true, ""},
 		{"bad limit", "plugin: {limit: {depth: nope}}", false, true, ""},
+		{
+			"bad tab indent", "plugin: {tab-indent: {mode: spaces}}",
+			false, true, "",
+		},
+		{
+			"removed tab scope", "plugin: {tab-indent: {scope: document}}",
+			false, true, "",
+		},
 		{"bad plugins", "plugin: [limit]", false, true, ""},
 		{"syntax", "[", false, true, ""},
 		{"multiple documents", "--- {}\n--- {}", false, true, ""},
@@ -116,6 +131,28 @@ func TestInspectConfig(t *testing.T) {
 				t.Fatalf("build version missing from defaults: %s", got.embedded)
 			}
 		})
+	}
+}
+
+func TestConfiguredTabIndentCLI(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	goTool, err := exec.LookPath("go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	binary := filepath.Join(t.TempDir(), "go-yaml")
+	if err := buildCLIWithPlugins(
+		root, "", "tab-indent", binary, goTool, ""); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(binary, "-y")
+	cmd.Stdin = strings.NewReader("root:\n\tvalue: true\n")
+	out, err := cmd.CombinedOutput()
+	if err != nil || string(out) != "root:\n\tvalue: true\n" {
+		t.Fatalf("got %q, %v", out, err)
 	}
 }
 

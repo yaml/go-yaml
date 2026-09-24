@@ -39,6 +39,9 @@ type Options struct {
 	// JSONComments sanitizes JSON-style comments before parsing.
 	JSONComments JSONCommentsPlugin
 
+	// TabIndent enables tab-aware structural indentation.
+	TabIndent *TabIndentConfig
+
 	// Safety limit checks (set by ApplyOptions or WithPlugin(limit.New(...)))
 	DepthCheck func(depth int, ctx *DepthContext) error
 	AliasCheck func(aliasCount, constructCount int) error

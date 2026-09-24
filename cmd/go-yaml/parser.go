@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 
+	"go.yaml.in/yaml/v4"
 	"go.yaml.in/yaml/v4/internal/libyaml"
 )
 
@@ -23,11 +24,16 @@ type Parser struct {
 }
 
 // NewParser creates a new YAML parser reading from the given reader for CLI use
-func NewParser(reader io.Reader) (*Parser, error) {
+func NewParser(reader io.Reader, opts ...yaml.Option) (*Parser, error) {
+	options, err := libyaml.ApplyOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
 	p := &Parser{
 		parser: libyaml.NewParser(),
 	}
 	p.parser.SetInputReader(reader)
+	p.parser.SetTabIndent(options.TabIndent)
 	return p, nil
 }
 

@@ -92,6 +92,7 @@ type Emitter struct {
 	indent int // The current indentation level.
 
 	CompactSequenceIndent bool // Is '- ' is considered part of the indentation for sequence elements?
+	tabIndent             bool
 
 	flow_level int // The current flow level.
 
@@ -1000,6 +1001,14 @@ func (emitter *Emitter) emitSequenceStart(event *Event) error {
 	if err := emitter.processTag(); err != nil {
 		return err
 	}
+	if emitter.tabIndent && emitter.sequence_context &&
+		emitter.flow_level == 0 && !emitter.canonical &&
+		event.SequenceStyle() != FLOW_SEQUENCE_STYLE &&
+		!emitter.checkEmptySequence() && emitter.column > 0 {
+		if err := emitter.putLineBreak(); err != nil {
+			return err
+		}
+	}
 	if emitter.flow_level > 0 || emitter.canonical ||
 		event.SequenceStyle() == FLOW_SEQUENCE_STYLE ||
 		emitter.checkEmptySequence() {
@@ -1017,6 +1026,14 @@ func (emitter *Emitter) emitMappingStart(event *Event) error {
 	}
 	if err := emitter.processTag(); err != nil {
 		return err
+	}
+	if emitter.tabIndent && emitter.sequence_context &&
+		emitter.flow_level == 0 && !emitter.canonical &&
+		event.MappingStyle() != FLOW_MAPPING_STYLE &&
+		!emitter.checkEmptyMapping() && emitter.column > 0 {
+		if err := emitter.putLineBreak(); err != nil {
+			return err
+		}
 	}
 	if emitter.flow_level > 0 || emitter.canonical ||
 		event.MappingStyle() == FLOW_MAPPING_STYLE ||
@@ -1627,14 +1644,34 @@ func (emitter *Emitter) writeIndent() error {
 			return err
 		}
 	}
+	atLineStart := emitter.column == 0
 	for emitter.column < indent {
-		if err := emitter.put(' '); err != nil {
+		value := byte(' ')
+		width := 1
+		if emitter.tabIndent && atLineStart &&
+			emitter.column+emitter.BestIndent <= indent {
+			value = '\t'
+			width = emitter.BestIndent
+		}
+		if err := emitter.putIndent(value, width); err != nil {
 			return err
 		}
 	}
 	emitter.whitespace = true
 	emitter.space_above = false
 	emitter.foot_indent = -1
+	return nil
+}
+
+func (emitter *Emitter) putIndent(value byte, width int) error {
+	if emitter.buffer_pos+5 >= len(emitter.buffer) {
+		if err := emitter.flush(); err != nil {
+			return err
+		}
+	}
+	emitter.buffer[emitter.buffer_pos] = value
+	emitter.buffer_pos++
+	emitter.column += width
 	return nil
 }
 

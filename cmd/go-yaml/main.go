@@ -20,6 +20,7 @@ import (
 	"go.yaml.in/yaml/v4"
 	"go.yaml.in/yaml/v4/internal/libyaml"
 	pluginreg "go.yaml.in/yaml/v4/internal/plugin"
+	tabindent "go.yaml.in/yaml/v4/plugin/tab-indent"
 )
 
 // version is the current version of the go-yaml CLI tool.
@@ -28,8 +29,8 @@ const version = "4.0.0.1"
 // defaultConfig is populated only in a configured CLI build.
 var defaultConfig string
 
-// compiledPluginRegistrations is populated only in a configured CLI build.
-var compiledPluginRegistrations []func() error
+// compiledPluginRegistrations contains built-in and configured CLI plugins.
+var compiledPluginRegistrations = []func() error{tabindent.Register}
 
 func registerCompiledPlugins() error {
 	for _, register := range compiledPluginRegistrations {
@@ -509,6 +510,10 @@ func main() {
 		(*tokenMode || *tokenProfuseMode || unmarshalMode || decodeMode) {
 		log.Fatal("parser plugins are not supported with token output or legacy loading modes")
 	}
+	if configured.TabIndent != nil &&
+		(unmarshalMode || decodeMode || marshalMode || encodeMode) {
+		log.Fatal("tab-indent is not supported with legacy loading or dumping modes")
+	}
 
 	// Show help and exit
 	if *showHelp {
@@ -612,12 +617,14 @@ func main() {
 		}
 	} else if *tokenMode {
 		// Use token formatting mode (compact by default)
-		if err := ProcessTokens(input, false, compact, unmarshalMode); err != nil {
+		if err := ProcessTokens(
+			input, false, compact, unmarshalMode, opts...); err != nil {
 			log.Fatal("Failed to process tokens:", err)
 		}
 	} else if *tokenProfuseMode {
 		// Use token formatting mode with profuse output
-		if err := ProcessTokens(input, true, compact, unmarshalMode); err != nil {
+		if err := ProcessTokens(
+			input, true, compact, unmarshalMode, opts...); err != nil {
 			log.Fatal("Failed to process tokens:", err)
 		}
 	} else if *jsonMode {

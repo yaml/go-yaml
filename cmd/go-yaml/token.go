@@ -52,11 +52,14 @@ type TokenInfo struct {
 }
 
 // ProcessTokens reads YAML from reader and outputs token information using the internal scanner
-func ProcessTokens(reader io.Reader, profuse, compact, unmarshal bool) error {
+func ProcessTokens(
+	reader io.Reader, profuse, compact, unmarshal bool,
+	opts ...yaml.Option,
+) error {
 	if unmarshal {
 		return processTokensUnmarshal(reader, profuse, compact)
 	}
-	return processTokensWithParser(reader, profuse, compact)
+	return processTokensWithParser(reader, profuse, compact, opts...)
 }
 
 // processTokensDecode uses Loader.Load for YAML processing
@@ -174,8 +177,10 @@ func processTokensDecode(profuse, compact bool) error {
 }
 
 // processTokensWithParser uses the internal parser for token processing
-func processTokensWithParser(reader io.Reader, profuse, compact bool) error {
-	p, err := NewParser(reader)
+func processTokensWithParser(
+	reader io.Reader, profuse, compact bool, opts ...yaml.Option,
+) error {
+	p, err := NewParser(reader, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to create parser: %w", err)
 	}
