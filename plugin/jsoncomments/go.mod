@@ -1,4 +1,4 @@
-module go.yaml.in/yaml/v4/plugin/json-comments
+module go.yaml.in/yaml/v4/plugin/jsoncomments
 
 go 1.24
 

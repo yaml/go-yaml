@@ -15,7 +15,7 @@
 // Tab indentation plugin (plugin/tabindent):
 //   - Tab-aware structural indentation for loading and dumping
 //
-// JSON-comments plugin (plugin/json-comments), API json-comments:
+// JSON-comments plugin (plugin/jsoncomments), API json-comments:
 //   - Optional JSON-style comment sanitizing
 //
 // Reference YAML-parser plugin (plugin/parser/reference), API yaml-parser:
