@@ -9,8 +9,17 @@
 //
 // # Available Plugins
 //
-// Loader-limits plugin (plugin/loader-limits):
+// Loader-limits plugin (plugin/loader-limits), API loader-limits:
 //   - Configurable depth and alias expansion limits
+//
+// JSON-comments plugin (plugin/json-comments), API json-comments:
+//   - Optional JSON-style comment sanitizing
+//
+// Reference YAML-parser plugin (plugin/yaml-parser/reference), API yaml-parser:
+//   - Optional YAMLStar reference parser implementation
+//
+// The JSON-comments and reference YAML-parser packages are separate Go modules
+// so their dependencies remain optional.
 //
 // # Usage
 //

@@ -394,10 +394,6 @@ func OptsYAML(yamlStr string) (Option, error) {
 	default:
 		return nil, errors.New("yaml: plugin configuration must be a mapping")
 	}
-	if err := pluginreg.NormalizeConfig(plugins); err != nil {
-		return nil, fmt.Errorf("yaml: %w", err)
-	}
-
 	// Build options only for fields that were set
 	var optList []Option
 	if cfg.Indent != nil {

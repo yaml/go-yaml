@@ -6,6 +6,7 @@
 |----------|-------------|
 | [v3 to v4 Migration](v3-to-v4-migration.md) | Complete guide for upgrading from v3 |
 | [Options Reference](options.md) | All configuration options explained |
+| [Plugin System](plugins.md) | Plugin APIs, implementations, configuration, and CLI builds |
 
 ## Developer Documentation
 

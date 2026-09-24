@@ -140,7 +140,7 @@ A null setting disables that one check.
 
 ## Optional implementations
 
-### Reference parser
+### Reference YAML-parser implementation
 
 `go.yaml.in/yaml/v4/plugin/yaml-parser/reference` adapts the generated Go parser
 from `github.com/yamlstar/yamlstar-plugin-parser-reference`.

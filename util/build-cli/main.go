@@ -103,9 +103,6 @@ func inspectConfig(data []byte) (buildConfig, error) {
 			return selection, fmt.Errorf(
 				"plugin configuration must be a mapping")
 		}
-		if err := pluginreg.NormalizeConfig(plugins); err != nil {
-			return selection, err
-		}
 		for api, value := range plugins {
 			setting, disabled, err := pluginConfig(api, value)
 			if err != nil {
@@ -121,7 +118,6 @@ func inspectConfig(data []byte) (buildConfig, error) {
 					return selection, fmt.Errorf(
 						"plugin %q name must be a non-empty string", api)
 				}
-				name = pluginreg.CanonicalName(api, name)
 			}
 			switch api {
 			case pluginreg.LoaderLimitsAPI:
@@ -204,9 +200,6 @@ func mergePluginDSL(data []byte, specs string) ([]byte, error) {
 		plugins, ok = value.(map[string]any)
 		if !ok {
 			return nil, fmt.Errorf("plugin configuration must be a mapping")
-		}
-		if err := pluginreg.NormalizeConfig(plugins); err != nil {
-			return nil, err
 		}
 	}
 	selections, err := pluginreg.ParseSelectors(specs)

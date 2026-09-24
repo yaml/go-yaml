@@ -23,16 +23,12 @@ func TestInspectConfig(t *testing.T) {
 			"limit", "plugin: {loader-limits: {depth: 50, alias: null}}",
 			false, false, "",
 		},
-		{"legacy limit", "plugin: {limit: true}", false, false, ""},
-		{
-			"limit API conflict",
-			"plugin: {limit: true, loader-limits: true}", false, true, "",
-		},
+		{"old limit API", "plugin: {limit: true}", false, true, ""},
 		{
 			"YAML parser", "plugin: {yaml-parser: go-yaml}",
 			false, false, "",
 		},
-		{"legacy parser", "plugin: {parser: go-yaml}", false, true, ""},
+		{"old parser API", "plugin: {parser: go-yaml}", false, true, ""},
 		{"JSON comments", "plugin: {json-comments: true}", true, false, ""},
 		{
 			"JSON comments disabled", "plugin: {json-comments: false}",
