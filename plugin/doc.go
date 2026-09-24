@@ -15,7 +15,7 @@
 // JSON-comments plugin (plugin/jsoncomments), API json-comments:
 //   - Optional JSON-style comment sanitizing
 //
-// Reference YAML-parser plugin (plugin/parser/reference), API yaml-parser:
+// Reference YAML-parser plugin (plugin/yamlparser/reference), API yaml-parser:
 //   - Optional YAMLStar reference parser implementation
 //
 // The JSON-comments and reference YAML-parser packages are separate Go modules
