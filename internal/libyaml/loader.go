@@ -262,30 +262,10 @@ func loadSingle(in []byte, out any, opts *Options) error {
 
 // SetLegacyLoaderKnownFields allows changing the known fields setting from the legacy Decoder API.
 //
-// Note: This is not a method on Loader to avoid exposing it; callers should use [WithKnownFields] instead.
-func SetLegacyLoaderKnownFields(l *Loader, enable bool) {
+// This method is only provided for backward compatibility with the legacy Decoder API.
+// Do not use in libyaml, use [WithKnownFields] instead.
+func (l *Loader) SetLegacyLoaderKnownFields(enable bool) {
 	l.constructor.KnownFields = enable
-}
-
-// ComposeAndResolve composes and resolves the next document from the input
-// and returns the node without constructing Go values. This is used by
-// Unmarshal() to support the Unmarshaler interface.
-func (l *Loader) ComposeAndResolve() *Node {
-	if l.options.SingleDocument && l.docCount > 0 {
-		return nil
-	}
-
-	// Stage 1: Compose - parse events into node tree (unresolved tags)
-	node := l.composer.Compose()
-	if node == nil {
-		return nil
-	}
-	l.docCount++
-
-	// Stage 2: Resolve - determine implicit types for untagged scalars
-	l.resolver.Resolve(node)
-
-	return node
 }
 
 // LoadAny parses YAML data into generic Go structures (map[string]any, []any).
