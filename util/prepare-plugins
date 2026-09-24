@@ -142,10 +142,10 @@ if ($reference_enabled) {
             'reference parser')
         : '';
     push @plugins, {
-        api => 'parser-reference',
+        api => 'yaml-parser-reference',
         module => 'github.com/yamlstar/yamlstar-plugin-parser-reference',
-        wrapper => 'go.yaml.in/yaml/v4/plugin/parser/reference',
-        wrapper_path => "$root/plugin/parser/reference",
+        wrapper => 'go.yaml.in/yaml/v4/plugin/yaml-parser/reference',
+        wrapper_path => "$root/plugin/yaml-parser/reference",
         upstream => $upstream,
         local => $local,
         version => resolve_version(
@@ -154,7 +154,7 @@ if ($reference_enabled) {
         source => <<'GO',
 package main
 
-import reference "go.yaml.in/yaml/v4/plugin/parser/reference"
+import reference "go.yaml.in/yaml/v4/plugin/yaml-parser/reference"
 
 func init() {
 	compiledPluginRegistrations = append(

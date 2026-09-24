@@ -3,16 +3,17 @@
 The go-yaml v4 plugin system lets applications replace selected processing
 stages without adding optional dependencies to the core module.
 
-A plugin API defines a role such as `parser`, `json-comments`, or `limit`.
+A plugin API defines a role such as `yaml-parser`, `json-comments`, or
+`loader-limits`.
 Each API can have several named implementations.
 The current implementations are:
 
 | API | Implementation | Package | Default |
 |---|---|---|---|
-| `parser` | `go-yaml` | core | yes |
-| `parser` | `reference` | `plugin/parser/reference` | no |
+| `yaml-parser` | `go-yaml` | core | yes |
+| `yaml-parser` | `reference` | `plugin/yaml-parser/reference` | no |
 | `json-comments` | `sanitizer` | `plugin/json-comments` | yes |
-| `limit` | `limit` | `plugin/limit` | yes |
+| `loader-limits` | `loader-limits` | `plugin/loader-limits` | yes |
 
 The optional packages are separate Go modules.
 Importing the core `go.yaml.in/yaml/v4` module does not acquire Glojure or the
@@ -27,19 +28,19 @@ directly.
 import (
     "go.yaml.in/yaml/v4"
     jsoncomments "go.yaml.in/yaml/v4/plugin/json-comments"
-    "go.yaml.in/yaml/v4/plugin/limit"
+    loaderlimits "go.yaml.in/yaml/v4/plugin/loader-limits"
 )
 
 var value any
 err := yaml.Load(input, &value,
     yaml.WithPlugin(jsoncomments.New()),
-    yaml.WithPlugin(limit.New(limit.DepthValue(50))))
+    yaml.WithPlugin(loaderlimits.New(loaderlimits.DepthValue(50))))
 ```
 
 The public plugin interfaces are:
 
 ```go
-type ParserPlugin interface {
+type YAMLParserPlugin interface {
     Parse(input []byte) ([]PluginEvent, error)
 }
 
@@ -47,7 +48,7 @@ type JSONCommentsPlugin interface {
     Sanitize(input []byte) ([]byte, error)
 }
 
-type LimitPlugin interface {
+type LoaderLimitsPlugin interface {
     CheckDepth(depth int, ctx *DepthContext) error
     CheckAlias(aliasCount, constructCount int) error
 }
@@ -55,31 +56,31 @@ type LimitPlugin interface {
 
 A JSON-comments plugin transforms the input first.
 The selected parser then parses the transformed UTF-8 text.
-The built-in `go-yaml` parser remains the default unless a parser plugin is
+The built-in `go-yaml` parser remains the default unless a YAML-parser plugin is
 selected.
 
 `PluginEvent` represents stream and document boundaries, mappings, sequences,
 scalars, and aliases with ordinary Go fields.
-The loader validates a parser plugin's complete event stream before composing
-nodes.
+The loader validates a YAML-parser plugin's complete event stream before
+composing nodes.
 Depth limits apply to that stream and cannot limit work already performed by
 an external parser.
 
-Input is buffered when a parser or JSON-comments plugin is active.
+Input is buffered when a YAML-parser or JSON-comments plugin is active.
 Plugin implementations must support independent concurrent calls.
 
-## Limit plugin
+## Loader-limits plugin
 
-The limit plugin controls maximum nesting depth and alias expansion.
-The built-in defaults remain active unless another limit implementation is
-selected.
+The loader-limits plugin controls maximum nesting depth and alias expansion.
+The built-in defaults remain active unless another loader-limits implementation
+is selected.
 
 ```go
-loader := yaml.NewLoader(data, yaml.WithPlugin(limit.New()))
+loader := yaml.NewLoader(data, yaml.WithPlugin(loaderlimits.New()))
 loader = yaml.NewLoader(data,
-    yaml.WithPlugin(limit.New(limit.AliasNone())))
+    yaml.WithPlugin(loaderlimits.New(loaderlimits.AliasNone())))
 loader = yaml.NewLoader(data,
-    yaml.WithPlugin(limit.New(limit.DepthValue(50))))
+    yaml.WithPlugin(loaderlimits.New(loaderlimits.DepthValue(50))))
 ```
 
 | Option | Effect |
@@ -110,9 +111,9 @@ Configuration can use mappings, strings, or booleans:
 
 ```yaml
 plugin:
-  parser: reference@v0.2.5
+  yaml-parser: reference@v0.2.5
   json-comments: sanitizer@v0.1.9
-  limit:
+  loader-limits:
     depth: 50
     alias: 1000
 ```
@@ -133,22 +134,22 @@ The host removes `name`, `version`, and `disable` before calling the
 implementation factory.
 A requested version must match the linked implementation exactly.
 
-Disabling `limit` leaves the core safety limits active.
-The limit implementation accepts integer `depth` and `alias` settings.
+Disabling `loader-limits` leaves the core safety limits active.
+The loader-limits implementation accepts integer `depth` and `alias` settings.
 A null setting disables that one check.
 
 ## Optional implementations
 
 ### Reference parser
 
-`go.yaml.in/yaml/v4/plugin/parser/reference` adapts the generated Go parser
+`go.yaml.in/yaml/v4/plugin/yaml-parser/reference` adapts the generated Go parser
 from `github.com/yamlstar/yamlstar-plugin-parser-reference`.
 The canonical parser source remains in `yaml/yaml-reference-parser-clj`.
 It requires Go 1.24 or newer and does not need Clojure, Gloat, CGO, or a shared
 library at runtime.
 
 ```go
-import reference "go.yaml.in/yaml/v4/plugin/parser/reference"
+import reference "go.yaml.in/yaml/v4/plugin/yaml-parser/reference"
 
 var value any
 err := yaml.Load(input, &value, yaml.WithPlugin(reference.New()))
@@ -186,7 +187,7 @@ make cli CONFIG=example/json-comments/options.yaml
 It never names a file and never contains YAML.
 
 ```bash
-make cli PLUGIN=parser=reference@v0.2.5,json-comments
+make cli PLUGIN=yaml-parser=reference@v0.2.5,json-comments
 ```
 
 Selectors have these forms:
@@ -209,14 +210,14 @@ For local development, place the related checkouts under `repos/` and set the
 matching override:
 
 ```bash
-make cli PLUGIN=parser=reference@v0.2.5,json-comments \
+make cli PLUGIN=yaml-parser=reference@v0.2.5,json-comments \
   REFERENCE-PARSER-LOCAL=1 JSON-COMMENTS-LOCAL=1
 ```
 
 The compiled command uses the same selector DSL at runtime:
 
 ```bash
-./go-yaml --plugin=parser=reference@0.2.5,json-comments -j data.yaml
+./go-yaml --plugin=yaml-parser=reference@0.2.5,json-comments -j data.yaml
 ```
 
 A runtime selector can choose only implementations already linked into the
@@ -225,11 +226,11 @@ It cannot download or add Go code.
 `-C FILE` and `--config=FILE` continue to load YAML configuration files.
 A runtime configuration replaces embedded defaults.
 
-JSON, YAML, node, and event modes support parser and JSON-comments plugins.
+JSON, YAML, node, and event modes support YAML-parser and JSON-comments plugins.
 Token and legacy modes support the JSON-comments sanitizer with the built-in
 `go-yaml` parser.
-They reject an external parser because those modes do not consume parser event
-plugins.
+They reject an external parser because those modes do not consume YAML-parser
+plugin events.
 
 Run the optional module checks with:
 

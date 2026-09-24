@@ -25,7 +25,7 @@ import (
 
 	"go.yaml.in/yaml/v4/internal/libyaml"
 	pluginreg "go.yaml.in/yaml/v4/internal/plugin"
-	"go.yaml.in/yaml/v4/plugin/limit"
+	loaderlimits "go.yaml.in/yaml/v4/plugin/loader-limits"
 )
 
 //-----------------------------------------------------------------------------
@@ -45,7 +45,7 @@ func WithV2Defaults() Option {
 		WithUnicode(true),
 		WithUniqueKeys(true),
 		WithQuotePreference(QuoteLegacy),
-		WithPlugin(limit.New()),
+		WithPlugin(loaderlimits.New()),
 	)
 }
 
@@ -58,7 +58,7 @@ func WithV3Defaults() Option {
 		WithUnicode(true),
 		WithUniqueKeys(true),
 		WithQuotePreference(QuoteLegacy),
-		WithPlugin(limit.New()),
+		WithPlugin(loaderlimits.New()),
 	)
 }
 
@@ -71,7 +71,7 @@ func WithV4Defaults() Option {
 		WithUnicode(true),
 		WithUniqueKeys(true),
 		WithQuotePreference(QuoteSingle),
-		WithPlugin(limit.New()),
+		WithPlugin(loaderlimits.New()),
 	)
 }
 
@@ -277,33 +277,34 @@ type DepthContext = libyaml.DepthContext
 // Plugins extend the YAML library with custom processing logic.
 // Each plugin implements one or more plugin interfaces.
 // Currently supported plugin types:
-//   - LimitPlugin: Controls depth and alias expansion limits
-//   - ParserPlugin: Supplies a complete YAML event stream
+//   - LoaderLimitsPlugin: Controls depth and alias expansion limits
+//   - YAMLParserPlugin: Supplies a complete YAML event stream
 //   - JSONCommentsPlugin: Sanitizes JSON-style comments before parsing
 //
 // Example:
 //
-//	import "go.yaml.in/yaml/v4/plugin/limit"
-//	loader := yaml.NewLoader(data, yaml.WithPlugin(limit.New(limit.AliasNone())))
+//	import loaderlimits "go.yaml.in/yaml/v4/plugin/loader-limits"
+//	loader := yaml.NewLoader(data,
+//	    yaml.WithPlugin(loaderlimits.New(loaderlimits.AliasNone())))
 //
 // Plugins use public types and can be implemented by external packages.
 func WithPlugin(plugins ...any) Option {
 	return func(o *libyaml.Options) error {
 		for _, p := range plugins {
 			registered := false
-			if _, ok := p.(nativeParserPlugin); ok {
+			if _, ok := p.(nativeYAMLParserPlugin); ok {
 				registered = true
 			}
-			if lp, ok := p.(LimitPlugin); ok {
+			if lp, ok := p.(LoaderLimitsPlugin); ok {
 				o.DepthCheck = lp.CheckDepth
 				o.AliasCheck = lp.CheckAlias
 				registered = true
 			}
-			if source, ok := p.(ParserPlugin); ok {
-				if o.Parser != nil {
-					return errors.New("yaml: multiple parser plugins")
+			if source, ok := p.(YAMLParserPlugin); ok {
+				if o.YAMLParser != nil {
+					return errors.New("yaml: multiple yaml-parser plugins")
 				}
-				o.Parser = source
+				o.YAMLParser = source
 				registered = true
 			}
 			if comments, ok := p.(JSONCommentsPlugin); ok {
@@ -348,7 +349,7 @@ func WithPlugin(plugins ...any) Option {
 // The "name", "version", and "disable" host fields are not passed to the
 // plugin factory. "disable": false keeps the plugin enabled.
 // Null plugin values are invalid.
-// Currently supported: "limit" with keys "depth" and "alias" (int
+// Currently supported: "loader-limits" with keys "depth" and "alias" (int
 // or null to disable).
 //
 // Only fields specified in the YAML will override other options when
@@ -360,7 +361,7 @@ func WithPlugin(plugins ...any) Option {
 //	  indent: 3
 //	  known-fields: true
 //	  plugin:
-//	    limit:
+//	    loader-limits:
 //	      depth: 50
 //	`)
 //	yaml.Dump(&data, yaml.Options(V4, opts))
@@ -392,6 +393,9 @@ func OptsYAML(yamlStr string) (Option, error) {
 		}
 	default:
 		return nil, errors.New("yaml: plugin configuration must be a mapping")
+	}
+	if err := pluginreg.NormalizeConfig(plugins); err != nil {
+		return nil, fmt.Errorf("yaml: %w", err)
 	}
 
 	// Build options only for fields that were set

@@ -103,6 +103,9 @@ func inspectConfig(data []byte) (buildConfig, error) {
 			return selection, fmt.Errorf(
 				"plugin configuration must be a mapping")
 		}
+		if err := pluginreg.NormalizeConfig(plugins); err != nil {
+			return selection, err
+		}
 		for api, value := range plugins {
 			setting, disabled, err := pluginConfig(api, value)
 			if err != nil {
@@ -118,15 +121,16 @@ func inspectConfig(data []byte) (buildConfig, error) {
 					return selection, fmt.Errorf(
 						"plugin %q name must be a non-empty string", api)
 				}
+				name = pluginreg.CanonicalName(api, name)
 			}
 			switch api {
-			case "limit":
-				if name != "" && name != "limit" {
+			case pluginreg.LoaderLimitsAPI:
+				if name != "" && name != pluginreg.LoaderLimitsAPI {
 					return selection, fmt.Errorf(
 						"no CLI build provider for plugin %q implementation %q",
 						api, name)
 				}
-			case "parser":
+			case pluginreg.YAMLParserAPI:
 				if name == "" {
 					name = "go-yaml"
 				}
@@ -200,6 +204,9 @@ func mergePluginDSL(data []byte, specs string) ([]byte, error) {
 		plugins, ok = value.(map[string]any)
 		if !ok {
 			return nil, fmt.Errorf("plugin configuration must be a mapping")
+		}
+		if err := pluginreg.NormalizeConfig(plugins); err != nil {
+			return nil, err
 		}
 	}
 	selections, err := pluginreg.ParseSelectors(specs)

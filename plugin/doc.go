@@ -9,7 +9,7 @@
 //
 // # Available Plugins
 //
-// Limit plugin (plugin/limit):
+// Loader-limits plugin (plugin/loader-limits):
 //   - Configurable depth and alias expansion limits
 //
 // # Usage
@@ -17,15 +17,16 @@
 // Import the plugin you need and register it with WithPlugin:
 //
 //	import "go.yaml.in/yaml/v4"
-//	import "go.yaml.in/yaml/v4/plugin/limit"
+//	import loaderlimits "go.yaml.in/yaml/v4/plugin/loader-limits"
 //
 //	// Disable alias checking for documents with many aliases
-//	loader := yaml.NewLoader(data, yaml.WithPlugin(limit.New(limit.AliasNone())))
+//	loader := yaml.NewLoader(data,
+//	    yaml.WithPlugin(loaderlimits.New(loaderlimits.AliasNone())))
 //
 // # Third-Party Plugins
 //
 // Plugin interfaces use public types and can be implemented by external
 // packages.
-// Implement the relevant plugin interface (e.g., LimitPlugin) and register
-// with WithPlugin.
+// Implement the relevant plugin interface (e.g., LoaderLimitsPlugin) and
+// register with WithPlugin.
 package plugin

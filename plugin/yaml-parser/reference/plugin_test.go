@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"go.yaml.in/yaml/v4"
-	"go.yaml.in/yaml/v4/plugin/parser/reference"
+	"go.yaml.in/yaml/v4/plugin/yaml-parser/reference"
 )
 
 func TestPlugin(t *testing.T) {
