@@ -535,7 +535,10 @@
 
           indented tail
 # Regression tests for block scalars whose first non-empty line is indented.
-# Without an explicit indentation indicator the output does not parse back.
+# These pin the emitted text: the explicit indentation indicator must be
+# kept so the output stays parseable. Parse-back of such output is covered
+# by the encode fixtures in testdata/encode.yaml and by the round-trip
+# tests in yaml_test.go.
 - roundtrip:
     name: Literal scalar with leading empty lines and indented content
     yaml: |
