@@ -2799,6 +2799,33 @@ func TestBlockScalarIndentIndicatorClampRoundTrip(t *testing.T) {
 	}
 }
 
+// The encode fixtures reach the serializer through the representer, which
+// sets explicit style bits for multiline strings, so the serializer's own
+// style selection only runs for nodes without preset styles. Such nodes
+// must still pick literal style for eligible multiline values and
+// double-quoted for tab-leading ones.
+// See https://github.com/yaml/go-yaml/issues/383
+func TestNodeScalarStyleFallback(t *testing.T) {
+	for _, tc := range []struct {
+		value string
+		want  string
+	}{
+		{"hello\nworld", `|-
+    hello
+    world` + "\n"},
+		{"\tthis\nis\nmultiline", `"\tthis\nis\nmultiline"` + "\n"},
+	} {
+		node := yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: tc.value}
+		out, err := yaml.Marshal(&node)
+		assert.NoError(t, err)
+		assert.Equalf(t, tc.want, string(out), "value %q", tc.value)
+
+		var back string
+		assert.NoErrorf(t, yaml.Unmarshal(out, &back), "value %q", tc.value)
+		assert.Equalf(t, tc.value, back, "value %q", tc.value)
+	}
+}
+
 func TestSortedOutput(t *testing.T) {
 	order := []any{
 		false,
