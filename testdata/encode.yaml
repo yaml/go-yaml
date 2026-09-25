@@ -632,17 +632,15 @@
     want: |
       text: "\n\tindented by tab\nregular"
 
+# A tab on a later line stays literal; data and want are double-quoted so
+# the block content's leading tab stays an escape sequence instead of a
+# literal space-before-tab in the patch.
 - encode:
     name: tab-leading text - tab on later line (literal)
     data:
-      text: |
-          first
-          	second
+      text: "first\n\tsecond\n"
     type: map[string]string
-    want: |
-      text: |
-          first
-          	second
+    want: "text: |\n    first\n    \tsecond\n"
 
 # A block scalar whose first non-empty line is indented needs an explicit
 # indentation indicator, relative to the parent node's indentation. A block
