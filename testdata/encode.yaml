@@ -777,6 +777,54 @@
               b
 
 - encode-opts:
+    name: block scalar indicator - indent 5 in sequence
+    data:
+      parameters:
+          - description: |2-
+                a
+              b
+    type: map[string][]map[string]any
+    opts:
+      indent: 5
+    want: |
+      parameters:
+         - description: |5-
+                  a
+                b
+
+- encode-opts:
+    name: block scalar indicator - indent 6 in sequence
+    data:
+      parameters:
+          - description: |2-
+                a
+              b
+    type: map[string][]map[string]any
+    opts:
+      indent: 6
+    want: |
+      parameters:
+          - description: |6-
+                    a
+                  b
+
+- encode-opts:
+    name: block scalar indicator - indent 7 in sequence
+    data:
+      parameters:
+          - description: |2-
+                a
+              b
+    type: map[string][]map[string]any
+    opts:
+      indent: 7
+    want: |
+      parameters:
+           - description: |7-
+                      a
+                    b
+
+- encode-opts:
     name: block scalar indicator - indent 8 in sequence
     data:
       parameters:
