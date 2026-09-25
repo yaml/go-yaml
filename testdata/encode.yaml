@@ -912,6 +912,34 @@
     want: |
       "hello\n  "
 
+# Scalar style selection priority: a multiline value that is eligible for
+# literal style stays literal even when quoting is preferred, and a
+# multiline value that is not eligible (first content line starts with a
+# tab) is double-quoted rather than following the preference. A single
+# line value that must be quoted still uses the preferred quotes (see the
+# QuoteSingle cases below).
+- encode-opts:
+    name: style priority - literal wins over quote preference
+    data:
+      v: "hello\nworld"
+    type: map[string]string
+    opts:
+      required-quotes: single
+    want: |
+      v: |-
+        hello
+        world
+
+- encode-opts:
+    name: style priority - tab-leading multiline wins over preference
+    data:
+      v: "\tthis\nis\nmultiline"
+    type: map[string]string
+    opts:
+      required-quotes: single
+    want: |
+      v: "\tthis\nis\nmultiline"
+
 # WithQuotePreference tests - QuoteSingle (v4 default)
 - encode-opts:
     name: QuoteSingle - string "true"
