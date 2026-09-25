@@ -2553,6 +2553,13 @@ func runEncodeOptsTest(t *testing.T, tc map[string]any) {
 				t.Fatalf("Unknown required-quotes value: %s", rq)
 			}
 		}
+		if indRaw, exists := optsMap["indent"]; exists {
+			ind, ok := indRaw.(int)
+			if !ok {
+				t.Fatalf("indent must be an int, got %T", indRaw)
+			}
+			opts = append(opts, yaml.WithIndent(ind))
+		}
 	}
 
 	// Create pointer target of the specified type (for addressability)
@@ -2748,15 +2755,14 @@ func TestSetIndent(t *testing.T) {
 	assert.Equal(t, "a:\n        b:\n                c: d\n", buf.String())
 }
 
-// A block scalar whose first non-empty line is indented needs an explicit
-// indentation indicator, and that indicator is relative to the parent node's
-// indentation, not BestIndent.
-// This covers both the missing-indicator case (a leading empty line followed
-// by indented content) and the wrong-value case (a scalar nested in a block
-// sequence item, which only adds two columns of indentation).
+// SetIndent is the legacy Encoder API and, unlike WithIndent, accepts any
+// non-negative width. Widths beyond the 1..9 range an indentation indicator
+// can express are therefore only covered here: the indicator must be
+// clamped so the output still parses back to the same value.
+// The remaining indentation-indicator cases live in testdata/encode.yaml.
 // See https://github.com/yaml/go-yaml/issues/76
 // and https://github.com/go-yaml/yaml/issues/1071
-func TestBlockScalarIndentIndicatorRoundTrip(t *testing.T) {
+func TestBlockScalarIndentIndicatorClampRoundTrip(t *testing.T) {
 	type params struct {
 		Description string `yaml:"description"`
 	}
@@ -2764,59 +2770,21 @@ func TestBlockScalarIndentIndicatorRoundTrip(t *testing.T) {
 		Parameters []params `yaml:"parameters"`
 	}
 
-	// Includes indents at and beyond the 1..9 indicator range (9, 10) to
-	// cover clamping of the indentation indicator.
-	for _, indent := range []int{0, 1, 2, 3, 4, 8, 9, 10} {
-		for _, description := range []string{
-			"  a\nb",
-			"     a\nb",
-			" a\n      b",
-			"\n  indented\nregular",
-			"\n\n  more indented\nregular",
-		} {
-			in := spec{Parameters: []params{{Description: description}}}
+	for _, indent := range []int{10, 16} {
+		in := spec{Parameters: []params{{Description: "  a\nb"}}}
 
-			var buf bytes.Buffer
-			enc := yaml.NewEncoder(&buf)
-			if indent > 0 {
-				enc.SetIndent(indent)
-			}
-			assert.NoError(t, enc.Encode(&in))
-			assert.NoError(t, enc.Close())
+		var buf bytes.Buffer
+		enc := yaml.NewEncoder(&buf)
+		enc.SetIndent(indent)
+		assert.NoError(t, enc.Encode(&in))
+		assert.NoError(t, enc.Close())
 
-			var out spec
-			err := yaml.Unmarshal(buf.Bytes(), &out)
-			assert.NoErrorf(
-				t, err, "indent %d, encoded as:\n%s", indent, buf.String())
-			assert.DeepEqualf(
-				t, in, out, "indent %d, encoded as:\n%s", indent, buf.String())
-		}
-	}
-}
-
-// A multiline scalar whose first content line begins with a tab cannot be
-// expressed as a block scalar (block indentation is spaces only), so it must
-// be emitted double-quoted and still round-trip exactly.
-// See https://github.com/yaml/go-yaml/issues/383
-func TestTabLeadingScalarRoundTrip(t *testing.T) {
-	type doc struct {
-		Text string `yaml:"text"`
-	}
-
-	for _, text := range []string{
-		"\tthis\nis\nmultiline",
-		"\tB\n\tC\n",
-		"\n\tindented by tab\nregular",
-		"first\n\tsecond\n", // tab on a later line: stays literal
-	} {
-		in := doc{Text: text}
-		out, err := yaml.Marshal(&in)
-		assert.NoError(t, err)
-
-		var back doc
-		assert.NoErrorf(t, yaml.Unmarshal(out, &back),
-			"encoded as:\n%s", out)
-		assert.DeepEqualf(t, in, back, "encoded as:\n%s", out)
+		var out spec
+		err := yaml.Unmarshal(buf.Bytes(), &out)
+		assert.NoErrorf(
+			t, err, "indent %d, encoded as:\n%s", indent, buf.String())
+		assert.DeepEqualf(
+			t, in, out, "indent %d, encoded as:\n%s", indent, buf.String())
 	}
 }
 
