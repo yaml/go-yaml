@@ -3050,42 +3050,42 @@ func TestScalarStyleWithTabs(t *testing.T) {
 	}{
 		{
 			"\t\n",
-			"\"\\t\\n\"\n",
+			`"\t\n"` + "\n",
 			"Tab + newline",
 		},
 		{
 			"\t",
-			"\"\\t\"\n",
+			`"\t"` + "\n",
 			"Just tab",
 		},
 		{
 			"hello\tworld",
-			"\"hello\\tworld\"\n",
+			`"hello\tworld"` + "\n",
 			"Text with tab",
 		},
 		{
 			"\tThis starts with tab\nand is long enough\nfor literal style",
-			"\"\\tThis starts with tab\\nand is long enough\\nfor literal style\"\n",
+			`"\tThis starts with tab\nand is long enough\nfor literal style"` + "\n",
 			"Multiline starting with tab",
 		},
 		{
 			"\tB\n\tC\n",
-			"\"\\tB\\n\\tC\\n\"\n",
+			`"\tB\n\tC\n"` + "\n",
 			"Tab B newline tab C newline",
 		},
 		{
 			"\ta\n",
-			"\"\\ta\\n\"\n",
+			`"\ta\n"` + "\n",
 			"Tab + char + newline",
 		},
 		{
 			"\thello\n",
-			"\"\\thello\\n\"\n",
+			`"\thello\n"` + "\n",
 			"Tab + text + newline",
 		},
 		{
 			"\t\nhello",
-			"\"\\t\\nhello\"\n",
+			`"\t\nhello"` + "\n",
 			"Tab + newline + text",
 		},
 	}
