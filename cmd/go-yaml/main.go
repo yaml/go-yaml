@@ -510,7 +510,7 @@ func main() {
 		(*tokenMode || *tokenProfuseMode || unmarshalMode || decodeMode) {
 		log.Fatal("parser plugins are not supported with token output or legacy loading modes")
 	}
-	if configured.TabIndent != nil &&
+	if configured.IndentConfig != nil &&
 		(unmarshalMode || decodeMode || marshalMode || encodeMode) {
 		log.Fatal("tab-indent is not supported with legacy loading or dumping modes")
 	}

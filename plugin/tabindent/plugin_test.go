@@ -109,6 +109,51 @@ func TestLoadSpaces(t *testing.T) {
 	}
 }
 
+func TestFlowWhitespaceDoesNotSetIndentStyle(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  string
+		plugin *tabindent.Plugin
+	}{
+		{
+			name: "spaces with tab mode",
+			input: "items: [\n  one,\n  two\n]\n" +
+				"root:\n\tvalue: true\n",
+			plugin: tabindent.New(
+				tabindent.WithMode(tabindent.ModeTabs)),
+		},
+		{
+			name: "tabs with space loading",
+			input: "items: [\n\tone,\n\ttwo\n]\n" +
+				"root:\n  value: true\n",
+			plugin: tabindent.New(
+				tabindent.WithLoad(tabindent.StyleSpaces)),
+		},
+		{
+			name: "spaces before automatic tabs",
+			input: "items: [\n  one,\n  two\n]\n" +
+				"root:\n\tvalue: true\n",
+			plugin: tabindent.New(),
+		},
+		{
+			name: "tabs before automatic spaces",
+			input: "items: [\n\tone,\n\ttwo\n]\n" +
+				"root:\n  value: true\n",
+			plugin: tabindent.New(),
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var got any
+			if err := yaml.Load(
+				[]byte(test.input), &got,
+				yaml.WithPlugin(test.plugin)); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
 func TestBlockScalar(t *testing.T) {
 	input := "text: |1\n\tline one\n\t\tline two\n"
 	var got map[string]string

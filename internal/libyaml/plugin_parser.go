@@ -183,7 +183,7 @@ func (e *EventReader) initialize() {
 		e.reader = nil
 		if e.opts != nil {
 			e.parser.depthCheck = e.opts.DepthCheck
-			e.parser.tabIndent = e.opts.TabIndent
+			e.parser.indentConfig = e.opts.IndentConfig
 		}
 		return
 	}
@@ -215,7 +215,7 @@ func (e *EventReader) initialize() {
 	e.parser = NewParser()
 	e.parser.SetInputString(input)
 	e.parser.depthCheck = e.opts.DepthCheck
-	e.parser.tabIndent = e.opts.TabIndent
+	e.parser.indentConfig = e.opts.IndentConfig
 }
 
 // validatePluginEvents checks structure before the recursive composer sees it.
