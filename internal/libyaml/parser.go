@@ -242,8 +242,10 @@ type Parser struct {
 
 	depthCheck func(int, *DepthContext) error // Depth limit check function
 
-	tabIndent      *IndentConfig
-	tabIndentStyle byte
+	indentConfig *IndentConfig
+	// indentStyle is parser-local auto-detection state.
+	// Keeping it here leaves reusable indentation configuration immutable.
+	indentStyle byte
 
 	// Parser stuff
 
@@ -264,9 +266,9 @@ type Parser struct {
 	events_head int
 }
 
-// SetTabIndent configures tab-aware indentation scanning.
-func (parser *Parser) SetTabIndent(config *IndentConfig) {
-	parser.tabIndent = config
+// SetIndentConfig configures tab-aware indentation scanning.
+func (parser *Parser) SetIndentConfig(config *IndentConfig) {
+	parser.indentConfig = config
 }
 
 // NewParser creates a new parser object.

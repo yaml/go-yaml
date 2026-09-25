@@ -316,7 +316,7 @@ func WithPlugin(plugins ...any) Option {
 				registered = true
 			}
 			if tabs, ok := p.(TabIndentPlugin); ok {
-				if o.TabIndent != nil {
+				if o.IndentConfig != nil {
 					return errors.New(
 						"yaml: multiple tab-indent plugins")
 				}
@@ -324,7 +324,7 @@ func WithPlugin(plugins ...any) Option {
 				if err != nil {
 					return err
 				}
-				o.TabIndent = &config
+				o.IndentConfig = &config
 				registered = true
 			}
 			if !registered {

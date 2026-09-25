@@ -30,8 +30,8 @@ type Serializer struct {
 // NewSerializer creates a new Serializer with the given options.
 func NewSerializer(w io.Writer, opts *Options) *Serializer {
 	emitter := NewEmitter()
-	tabs := opts.TabIndent != nil &&
-		opts.TabIndent.DumpStyle == IndentStyleTabs
+	tabs := opts.IndentConfig != nil &&
+		opts.IndentConfig.DumpStyle == IndentStyleTabs
 	emitter.CompactSequenceIndent = opts.CompactSeqIndent
 	emitter.quotePreference = opts.QuotePreference
 	emitter.SetWidth(opts.LineWidth)

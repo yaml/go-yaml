@@ -33,7 +33,7 @@ func NewParser(reader io.Reader, opts ...yaml.Option) (*Parser, error) {
 		parser: libyaml.NewParser(),
 	}
 	p.parser.SetInputReader(reader)
-	p.parser.SetTabIndent(options.TabIndent)
+	p.parser.SetIndentConfig(options.IndentConfig)
 	return p, nil
 }
 

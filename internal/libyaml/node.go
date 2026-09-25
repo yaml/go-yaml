@@ -376,8 +376,8 @@ func (n *Node) Dump(v any, opts ...Option) (err error) {
 	s.Finish()
 	// Parse back to get styles
 	p := NewComposer(out, &Options{
-		TabIndent:  o.TabIndent,
-		DepthCheck: o.DepthCheck,
+		IndentConfig: o.IndentConfig,
+		DepthCheck:   o.DepthCheck,
 	})
 	p.Textless = true
 	defer p.Destroy()
