@@ -604,6 +604,198 @@
       |4
            a
 
+# Multiline text whose first content line begins with a tab cannot be a
+# block scalar (block indentation is spaces only), so it must be emitted
+# double-quoted and still round-trip exactly.
+# https://github.com/yaml/go-yaml/issues/383
+- encode:
+    name: tab-leading text - multiline (double quoted)
+    data:
+      text: "\tthis\nis\nmultiline"
+    type: map[string]string
+    want: |
+      text: "\tthis\nis\nmultiline"
+
+- encode:
+    name: tab-leading text - each line tabbed (double quoted)
+    data:
+      text: "\tB\n\tC\n"
+    type: map[string]string
+    want: |
+      text: "\tB\n\tC\n"
+
+- encode:
+    name: tab-leading text - after leading break (double quoted)
+    data:
+      text: "\n\tindented by tab\nregular"
+    type: map[string]string
+    want: |
+      text: "\n\tindented by tab\nregular"
+
+- encode:
+    name: tab-leading text - tab on later line (literal)
+    data:
+      text: |
+          first
+          	second
+    type: map[string]string
+    want: |
+      text: |
+          first
+          	second
+
+# A block scalar whose first non-empty line is indented needs an explicit
+# indentation indicator, relative to the parent node's indentation. A block
+# sequence item only adds two columns, so the indicator must not use the
+# configured indent width here. The same nesting is checked under explicit
+# indent widths, including the top of the 1..9 range an indentation
+# indicator can express.
+# https://github.com/yaml/go-yaml/issues/76
+# https://github.com/go-yaml/yaml/issues/1071
+- encode:
+    name: block scalar indicator - indented first line in sequence
+    data:
+      parameters:
+          - description: |2-
+                a
+              b
+    type: map[string][]map[string]any
+    want: |
+      parameters:
+          - description: |2-
+                a
+              b
+
+- encode:
+    name: block scalar indicator - deeply indented first line
+    data:
+      parameters:
+          - description: |2-
+                   a
+              b
+    type: map[string][]map[string]any
+    want: |
+      parameters:
+          - description: |2-
+                   a
+              b
+
+- encode:
+    name: block scalar indicator - mixed line indentation
+    data:
+      parameters:
+          - description: |2-
+               a
+                    b
+    type: map[string][]map[string]any
+    want: |
+      parameters:
+          - description: |2-
+               a
+                    b
+
+- encode:
+    name: block scalar indicator - leading break then indented
+    data:
+      parameters:
+          - description: |2-
+
+                indented
+              regular
+    type: map[string][]map[string]any
+    want: |
+      parameters:
+          - description: |2-
+
+                indented
+              regular
+
+- encode:
+    name: block scalar indicator - two leading breaks then indented
+    data:
+      parameters:
+          - description: |2-
+
+
+                more indented
+              regular
+    type: map[string][]map[string]any
+    want: |
+      parameters:
+          - description: |2-
+
+
+                more indented
+              regular
+
+- encode-opts:
+    name: block scalar indicator - indent 2 in sequence
+    data:
+      parameters:
+          - description: |2-
+                a
+              b
+    type: map[string][]map[string]any
+    opts:
+      indent: 2
+    want: |
+      parameters:
+      - description: |2-
+            a
+          b
+
+- encode-opts:
+    name: block scalar indicator - indent 3 in sequence
+    data:
+      parameters:
+          - description: |2-
+                a
+              b
+    type: map[string][]map[string]any
+    opts:
+      indent: 3
+    want: |
+      parameters:
+       - description: |3-
+              a
+            b
+
+- encode-opts:
+    name: block scalar indicator - indent 9 in sequence
+    data:
+      parameters:
+          - description: |2-
+                a
+              b
+    type: map[string][]map[string]any
+    opts:
+      indent: 9
+    want: |
+      parameters:
+             - description: |9-
+                          a
+                        b
+
+- encode-opts:
+    name: block scalar indicator - indent 9 with leading breaks
+    data:
+      parameters:
+          - description: |2-
+
+
+                more indented
+              regular
+    type: map[string][]map[string]any
+    opts:
+      indent: 9
+    want: |
+      parameters:
+             - description: |9-
+
+
+                          more indented
+                        regular
+
 # Whitespace-only strings (all simple cases)
 - encode:
     name: whitespace only - just newline (double quoted)
