@@ -2755,11 +2755,15 @@ func TestSetIndent(t *testing.T) {
 	assert.Equal(t, "a:\n        b:\n                c: d\n", buf.String())
 }
 
-// SetIndent is the legacy Encoder API and, unlike WithIndent, accepts any
-// non-negative width. Widths beyond the 1..9 range an indentation indicator
-// can express are therefore only covered here: the indicator must be
-// clamped so the output still parses back to the same value.
-// The remaining indentation-indicator cases live in testdata/encode.yaml.
+// The emitter's stream-start handling resets BestIndent to 2 when it lies
+// outside 2..9, so an Encoder configured with a wider SetIndent before the
+// first Encode never carries that width into block scalars. A SetIndent
+// between documents leaves BestIndent above 9 for the next document, which
+// is the only way the indentation indicator would exceed the 1..9 range it
+// can express: the indicator must be clamped to 9 and the content
+// indentation realigned for the document to stay parseable.
+// WithIndent, the options API, already rejects widths outside 2..9, so this
+// cannot be expressed in testdata/encode.yaml.
 // See https://github.com/yaml/go-yaml/issues/76
 // and https://github.com/go-yaml/yaml/issues/1071
 func TestBlockScalarIndentIndicatorClampRoundTrip(t *testing.T) {
@@ -2770,17 +2774,24 @@ func TestBlockScalarIndentIndicatorClampRoundTrip(t *testing.T) {
 		Parameters []params `yaml:"parameters"`
 	}
 
-	for _, indent := range []int{10, 16} {
-		in := spec{Parameters: []params{{Description: "  a\nb"}}}
-
+	for _, indent := range []int{12, 16} {
 		var buf bytes.Buffer
 		enc := yaml.NewEncoder(&buf)
+		assert.NoError(t, enc.Encode("warmup"))
 		enc.SetIndent(indent)
+		in := spec{Parameters: []params{{Description: "  a\nb"}}}
 		assert.NoError(t, enc.Encode(&in))
 		assert.NoError(t, enc.Close())
 
+		assert.Truef(
+			t, strings.Contains(buf.String(), "|9-"),
+			"indent %d, encoded as:\n%s", indent, buf.String())
+
+		var warmup string
 		var out spec
-		err := yaml.Unmarshal(buf.Bytes(), &out)
+		dec := yaml.NewDecoder(&buf)
+		assert.NoError(t, dec.Decode(&warmup))
+		err := dec.Decode(&out)
 		assert.NoErrorf(
 			t, err, "indent %d, encoded as:\n%s", indent, buf.String())
 		assert.DeepEqualf(

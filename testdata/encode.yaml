@@ -761,6 +761,38 @@
             b
 
 - encode-opts:
+    name: block scalar indicator - indent 4 in sequence
+    data:
+      parameters:
+          - description: |2-
+                a
+              b
+    type: map[string][]map[string]any
+    opts:
+      indent: 4
+    want: |
+      parameters:
+        - description: |4-
+                a
+              b
+
+- encode-opts:
+    name: block scalar indicator - indent 8 in sequence
+    data:
+      parameters:
+          - description: |2-
+                a
+              b
+    type: map[string][]map[string]any
+    opts:
+      indent: 8
+    want: |
+      parameters:
+            - description: |8-
+                        a
+                      b
+
+- encode-opts:
     name: block scalar indicator - indent 9 in sequence
     data:
       parameters:
