@@ -2046,8 +2046,8 @@ func (emitter *Emitter) writeBlockScalarHints(value []byte) error {
 		// (e.g. SetIndent(10)).
 		// https://github.com/go-yaml/yaml/issues/1071
 		parent_indent := 0
-		if len(emitter.indents) > 0 && emitter.indents[len(emitter.indents)-1] > 0 {
-			parent_indent = emitter.indents[len(emitter.indents)-1]
+		if n := len(emitter.indents); n > 0 && emitter.indents[n-1] > 0 {
+			parent_indent = emitter.indents[n-1]
 		}
 		indent := emitter.indent - parent_indent
 		if indent < 1 {
