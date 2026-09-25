@@ -250,6 +250,14 @@ func shouldUseLiteralStyle(s string) bool {
 	if !strings.Contains(s, "\n") || len(s) < 2 {
 		return false
 	}
+	// A block scalar cannot express leading-tab indentation, so a value whose
+	// first content character (after any leading line breaks) is a tab must
+	// not use literal style; it is emitted double-quoted instead.
+	// https://github.com/yaml/go-yaml/issues/383
+	if strings.HasPrefix(
+		strings.TrimLeft(s, "\r\n\u0085\u2028\u2029"), "\t") {
+		return false
+	}
 	// Must contain at least one non-whitespace character
 	for _, r := range s {
 		if !unicode.IsSpace(r) {

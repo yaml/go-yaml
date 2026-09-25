@@ -534,6 +534,53 @@
         intro
 
           indented tail
+# Regression tests for block scalars whose first non-empty line is indented.
+# These pin the emitted text: the explicit indentation indicator must be
+# kept so the output stays parseable — the harness parses this same text
+# as its input, and the Go round-trip tests decode the encoder's output
+# directly.
+- roundtrip:
+    name: Literal scalar with leading empty lines and indented content
+    yaml: |
+      key: |2
+
+
+           more indented
+          regular
+    want: |
+      key: |2
+
+
+           more indented
+          regular
+
+- roundtrip:
+    name: Folded scalar with leading empty lines and indented content
+    yaml: |
+      key: >2
+
+
+           more indented
+          regular
+    want: |
+      key: >2
+
+
+           more indented
+          regular
+
+- roundtrip:
+    name: Literal scalar with a leading empty line and indented content
+    yaml: |
+      key: |2
+
+          indented
+        regular
+    want: |
+      key: |2
+
+          indented
+        regular
 
 # Writer test
 - emit-writer:

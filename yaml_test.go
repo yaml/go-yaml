@@ -2553,6 +2553,13 @@ func runEncodeOptsTest(t *testing.T, tc map[string]any) {
 				t.Fatalf("Unknown required-quotes value: %s", rq)
 			}
 		}
+		if indRaw, exists := optsMap["indent"]; exists {
+			ind, ok := indRaw.(int)
+			if !ok {
+				t.Fatalf("indent must be an int, got %T", indRaw)
+			}
+			opts = append(opts, yaml.WithIndent(ind))
+		}
 	}
 
 	// Create pointer target of the specified type (for addressability)
@@ -2746,6 +2753,77 @@ func TestSetIndent(t *testing.T) {
 	err = enc.Close()
 	assert.NoError(t, err)
 	assert.Equal(t, "a:\n        b:\n                c: d\n", buf.String())
+}
+
+// The emitter's stream-start handling resets BestIndent to 2 when it lies
+// outside 2..9, so an Encoder configured with a wider SetIndent before the
+// first Encode never carries that width into block scalars. A SetIndent
+// between documents leaves BestIndent above 9 for the next document, which
+// is the only way the indentation indicator would exceed the 1..9 range it
+// can express: the indicator must be clamped to 9 and the content
+// indentation realigned for the document to stay parseable.
+// WithIndent, the options API, already rejects widths outside 2..9, so this
+// cannot be expressed in testdata/encode.yaml.
+// See https://github.com/yaml/go-yaml/issues/76
+// and https://github.com/go-yaml/yaml/issues/1071
+func TestBlockScalarIndentIndicatorClampRoundTrip(t *testing.T) {
+	type params struct {
+		Description string `yaml:"description"`
+	}
+	type spec struct {
+		Parameters []params `yaml:"parameters"`
+	}
+
+	for _, indent := range []int{12, 16} {
+		var buf bytes.Buffer
+		enc := yaml.NewEncoder(&buf)
+		assert.NoError(t, enc.Encode("warmup"))
+		enc.SetIndent(indent)
+		in := spec{Parameters: []params{{Description: "  a\nb"}}}
+		assert.NoError(t, enc.Encode(&in))
+		assert.NoError(t, enc.Close())
+
+		assert.Truef(
+			t, strings.Contains(buf.String(), "|9-"),
+			"indent %d, encoded as:\n%s", indent, buf.String())
+
+		var warmup string
+		var out spec
+		dec := yaml.NewDecoder(&buf)
+		assert.NoError(t, dec.Decode(&warmup))
+		err := dec.Decode(&out)
+		assert.NoErrorf(
+			t, err, "indent %d, encoded as:\n%s", indent, buf.String())
+		assert.DeepEqualf(
+			t, in, out, "indent %d, encoded as:\n%s", indent, buf.String())
+	}
+}
+
+// The encode fixtures reach the serializer through the representer, which
+// sets explicit style bits for multiline strings, so the serializer's own
+// style selection only runs for nodes without preset styles. Such nodes
+// must still pick literal style for eligible multiline values and
+// double-quoted for tab-leading ones.
+// See https://github.com/yaml/go-yaml/issues/383
+func TestNodeScalarStyleFallback(t *testing.T) {
+	for _, tc := range []struct {
+		value string
+		want  string
+	}{
+		{"hello\nworld", `|-
+    hello
+    world` + "\n"},
+		{"\tthis\nis\nmultiline", `"\tthis\nis\nmultiline"` + "\n"},
+	} {
+		node := yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: tc.value}
+		out, err := yaml.Marshal(&node)
+		assert.NoError(t, err)
+		assert.Equalf(t, tc.want, string(out), "value %q", tc.value)
+
+		var back string
+		assert.NoErrorf(t, yaml.Unmarshal(out, &back), "value %q", tc.value)
+		assert.Equalf(t, tc.value, back, "value %q", tc.value)
+	}
 }
 
 func TestSortedOutput(t *testing.T) {
@@ -2978,42 +3056,42 @@ func TestScalarStyleWithTabs(t *testing.T) {
 	}{
 		{
 			"\t\n",
-			"\"\\t\\n\"\n",
+			`"\t\n"` + "\n",
 			"Tab + newline",
 		},
 		{
 			"\t",
-			"\"\\t\"\n",
+			`"\t"` + "\n",
 			"Just tab",
 		},
 		{
 			"hello\tworld",
-			"\"hello\\tworld\"\n",
+			`"hello\tworld"` + "\n",
 			"Text with tab",
 		},
 		{
 			"\tThis starts with tab\nand is long enough\nfor literal style",
-			"|-\n    \tThis starts with tab\n    and is long enough\n    for literal style\n",
+			`"\tThis starts with tab\nand is long enough\nfor literal style"` + "\n",
 			"Multiline starting with tab",
 		},
 		{
 			"\tB\n\tC\n",
-			"|\n    \tB\n    \tC\n",
+			`"\tB\n\tC\n"` + "\n",
 			"Tab B newline tab C newline",
 		},
 		{
 			"\ta\n",
-			"|\n    \ta\n",
+			`"\ta\n"` + "\n",
 			"Tab + char + newline",
 		},
 		{
 			"\thello\n",
-			"|\n    \thello\n",
+			`"\thello\n"` + "\n",
 			"Tab + text + newline",
 		},
 		{
 			"\t\nhello",
-			"|-\n    \t\n    hello\n",
+			`"\t\nhello"` + "\n",
 			"Tab + newline + text",
 		},
 	}
