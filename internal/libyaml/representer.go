@@ -55,8 +55,10 @@ func (r *Representer) Represent(tag string, in reflect.Value) *Node {
 		node, _ = in.Interface().(*Node)
 	}
 	if node != nil && node.Kind == DocumentNode {
-		// Already a document node, return as-is
-		return node
+		// Deep-copy the user-supplied document so downstream stages (the
+		// desolver in particular) never mutate the caller's node tree.
+		// Marshal must treat its input as read-only.
+		return deepCopyNode(node, map[*Node]*Node{})
 	} else {
 		// Wrap the represented value in a document node
 		contentNode := r.represent(tag, in)
@@ -65,6 +67,52 @@ func (r *Representer) Represent(tag string, in reflect.Value) *Node {
 			Content: []*Node{contentNode},
 		}
 	}
+}
+
+// deepCopyNode returns a deep copy of n so that a caller passing a *Node to
+// Marshal is not mutated by later pipeline stages. The seen map preserves
+// shared node identity and prevents infinite recursion on cyclic anchor and
+// alias graphs.
+func deepCopyNode(n *Node, seen map[*Node]*Node) *Node {
+	if n == nil {
+		return nil
+	}
+	if c, ok := seen[n]; ok {
+		return c
+	}
+	c := &Node{
+		Kind:        n.Kind,
+		Style:       n.Style,
+		Tag:         n.Tag,
+		Value:       n.Value,
+		Anchor:      n.Anchor,
+		HeadComment: n.HeadComment,
+		LineComment: n.LineComment,
+		FootComment: n.FootComment,
+		Line:        n.Line,
+		Column:      n.Column,
+	}
+	seen[n] = c
+	c.Alias = deepCopyNode(n.Alias, seen)
+	if n.Content != nil {
+		c.Content = make([]*Node, len(n.Content))
+		for i, child := range n.Content {
+			c.Content[i] = deepCopyNode(child, seen)
+		}
+	}
+	if n.Stream != nil {
+		s := &Stream{Encoding: n.Stream.Encoding}
+		if n.Stream.Version != nil {
+			v := *n.Stream.Version
+			s.Version = &v
+		}
+		if n.Stream.TagDirectives != nil {
+			s.TagDirectives = make([]StreamTagDirective, len(n.Stream.TagDirectives))
+			copy(s.TagDirectives, n.Stream.TagDirectives)
+		}
+		c.Stream = s
+	}
+	return c
 }
 
 // From http://yaml.org/type/float.html, except the regular expression there
@@ -397,10 +445,11 @@ func (r *Representer) nilv() *Node {
 	}
 }
 
-// nodev returns a node value as-is without conversion.
+// nodev returns a deep copy of a node value. Copying ensures the caller's
+// node tree is never mutated by later pipeline stages, whether the *Node is
+// passed to Marshal directly or nested inside a struct, map, or slice.
 func (r *Representer) nodev(in reflect.Value) *Node {
-	// Return the node as-is - no conversion needed
-	return in.Interface().(*Node)
+	return deepCopyNode(in.Interface().(*Node), map[*Node]*Node{})
 }
 
 // Len returns the number of keys in the list.
