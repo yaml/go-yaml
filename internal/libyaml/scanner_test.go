@@ -24,6 +24,56 @@ func TestScanner(t *testing.T) {
 	})
 }
 
+// TestTrailingUTF8LeadByte ensures a truncated multi-byte UTF-8 sequence at EOF
+// reports a reader error and does not panic.
+func TestTrailingUTF8LeadByte(t *testing.T) {
+	parser := NewParser()
+	parser.SetInputString([]byte{0xEF, 0xBB}) // Incomplete 3-byte UTF-8 sequence (missing third byte)
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("Scan panicked: %v", r)
+		}
+	}()
+
+	var token Token
+	err := parser.Scan(&token)
+	assert.ErrorMatchesf(t, "incomplete UTF-8 octet sequence", err, "trailing UTF-8 lead byte must fail cleanly")
+}
+
+// TestPredicateMissingLookahead verifies that predicates handle truncated UTF-8
+// safely when called without scanner buffer lookahead guarantees.
+func TestPredicateMissingLookahead(t *testing.T) {
+	// Helper to check that a function doesn't panic
+	notPanic := func(name string, f func()) {
+		t.Helper()
+		defer func() {
+			if r := recover(); r != nil {
+				t.Errorf("%s panicked: %v", name, r)
+			}
+		}()
+		f()
+	}
+
+	// isPrintable should not panic on truncated UTF-8 sequences
+	notPanic("isPrintable with 0xF0", func() {
+		_ = isPrintable([]byte{0xF0}, 0)
+	})
+
+	// Test other predicates with truncated sequences
+	notPanic("isLineBreak with 0xC2", func() {
+		_ = isLineBreak([]byte{0xC2}, 0)
+	})
+
+	notPanic("isBOM with truncated", func() {
+		_ = isBOM([]byte{0xEF, 0xBB}, 0)
+	})
+
+	notPanic("isEndOfScalarInFlowContentChar", func() {
+		_ = isEndOfScalarInFlowContentChar([]byte{':'}, 0)
+	})
+}
+
 // runScanTokensTest tests the scanTokens function.
 //
 //nolint:thelper // because this function is the real test
