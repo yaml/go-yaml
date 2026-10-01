@@ -250,6 +250,10 @@ func shouldUseLiteralStyle(s string) bool {
 	if !strings.Contains(s, "\n") || len(s) < 2 {
 		return false
 	}
+	withoutLeadingBreaks := strings.TrimLeft(s, "\r\n\u0085\u2028\u2029")
+	if strings.HasPrefix(withoutLeadingBreaks, "\t") {
+		return false
+	}
 	// Must contain at least one non-whitespace character
 	for _, r := range s {
 		if !unicode.IsSpace(r) {
