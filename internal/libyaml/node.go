@@ -187,6 +187,15 @@ type Node struct {
 	Line   int
 	Column int
 
+	// EndLine and EndColumn hold the position just past the end of the node in
+	// the source, so Line/Column and these bound its full extent. A collection
+	// spans to the end of its last child rather than to its END token, which
+	// after a block dedent already sits on the following line.
+	//
+	// Both are zero when the node did not come from parsing text.
+	EndLine   int
+	EndColumn int
+
 	// Stream holds stream metadata (non-nil only when Kind == StreamNode).
 	Stream *Stream
 }
