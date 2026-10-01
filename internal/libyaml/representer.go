@@ -289,6 +289,10 @@ func (r *Representer) stringv(tag string, in reflect.Value) *Node {
 	case needsQuoting:
 		// Force quoting for YAML 1.1 compatibility values
 		style = SingleQuotedStyle
+		// and honor the configured quote preference.
+		if r.quotePreference.ScalarStyle() == DOUBLE_QUOTED_SCALAR_STYLE {
+			style = DoubleQuotedStyle
+		}
 	default:
 		// Plain style by default - Desolver will add quotes if type mismatch
 		style = 0
