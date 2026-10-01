@@ -686,6 +686,33 @@
     data: [0x19]
     want: false
 
+- char-predicate:
+    # U+1F6A7 CONSTRUCTION SIGN (in the supplementary planes, #x10000-#x10FFFF),
+    # encoded as 4-byte UTF-8. Regression test: isPrintable used to only
+    # recognize 1-3 byte UTF-8 lead bytes, so every character outside the
+    # Basic Multilingual Plane (including most emoji) was misclassified as
+    # a "special character", disabling literal/folded block style for any
+    # scalar containing one.
+    name: Is printable - supplementary plane (emoji, 4-byte UTF-8)
+    func: isPrintable
+    data: [0xF0, 0x9F, 0x9A, 0xA7]
+
+- char-predicate:
+    # U+10FFFF, the highest valid Unicode code point, encoded as 4-byte UTF-8
+    # with the highest valid lead byte (0xF4).
+    name: Is printable - highest valid code point (U+10FFFF)
+    func: isPrintable
+    data: [0xF4, 0x8F, 0xBF, 0xBF]
+
+- char-predicate:
+    # 0xF5 is not a valid UTF-8 lead byte (4-byte sequences top out at 0xF4
+    # for U+10FFFF); must not be swept in by a lead-byte range that is too
+    # wide.
+    name: Is printable - invalid lead byte above valid 4-byte range
+    func: isPrintable
+    data: [0xF5, 0x80, 0x80, 0x80]
+    want: false
+
 # isZeroChar tests
 - char-predicate:
     name: Is zero char - null
