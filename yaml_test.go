@@ -1904,6 +1904,18 @@ func TestUnmarshalNull(t *testing.T) {
 	}
 }
 
+func TestUnmarshalOmitZero(t *testing.T) {
+	// encoding/json's omitzero must not panic yaml (issue #235).
+	var v struct {
+		A int `yaml:"a,omitzero"`
+		B int `yaml:"b,omitzero"`
+	}
+	err := yaml.Unmarshal([]byte("a: 1\nb: 0\n"), &v)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, v.A)
+	assert.Equal(t, 0, v.B)
+}
+
 func TestUnmarshalPreservesData(t *testing.T) {
 	var v struct {
 		A, B int
@@ -2227,6 +2239,21 @@ var marshalTests = []struct {
 			T4: newTime(time.Date(2098, 1, 9, 10, 40, 47, 0, time.UTC)),
 		},
 		"t2: 2018-01-09T10:40:47Z\nt4: 2098-01-09T10:40:47Z\n",
+	},
+	// omitzero is accepted as an alias of omitempty (encoding/json Go 1.24).
+	{
+		&struct {
+			A int `yaml:"a,omitzero"`
+			B int `yaml:"b,omitzero"`
+		}{1, 0},
+		"a: 1\n",
+	},
+	{
+		&struct {
+			A int `yaml:"a,omitzero"`
+			B int `yaml:"b,omitzero"`
+		}{0, 0},
+		"{}\n",
 	},
 	// Nil interface that implements Marshaler.
 	{
