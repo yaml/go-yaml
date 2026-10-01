@@ -376,6 +376,51 @@
     - DOCUMENT_END_EVENT
     - STREAM_END_EVENT
 
+- parse-events-detailed:
+    name: Emojis sequence
+    yaml: |
+      - 😀
+      - 👍🏽
+      - 🇺🇸
+      - 🏳️‍🌈
+      - 👩🏼‍❤️‍💋‍👨🏾
+    want:
+    - STREAM_START_EVENT
+    - DOCUMENT_START_EVENT:
+        implicit: true
+    - SEQUENCE_START_EVENT
+    - SCALAR_EVENT:
+        value: 😀
+    - SCALAR_EVENT:
+        value: 👍🏽
+    - SCALAR_EVENT:
+        value: 🇺🇸
+    - SCALAR_EVENT:
+        value: 🏳️‍🌈
+    - SCALAR_EVENT:
+        value: 👩🏼‍❤️‍💋‍👨🏾
+    - SEQUENCE_END_EVENT
+    - DOCUMENT_END_EVENT
+    - STREAM_END_EVENT
+
+- parse-events-detailed:
+    name: Supplementary non-emoji and mixed scalar sequence
+    yaml: |
+      - 𐀀
+      - A😀𐀀Z
+    want:
+    - STREAM_START_EVENT
+    - DOCUMENT_START_EVENT:
+        implicit: true
+    - SEQUENCE_START_EVENT
+    - SCALAR_EVENT:
+        value: 𐀀
+    - SCALAR_EVENT:
+        value: A😀𐀀Z
+    - SEQUENCE_END_EVENT
+    - DOCUMENT_END_EVENT
+    - STREAM_END_EVENT
+
 # Error tests
 - parse-error:
     name: Error state

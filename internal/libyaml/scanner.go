@@ -627,7 +627,11 @@ func isPrintable(b []byte, i int) bool {
 		(b[i] == 0xEE) ||
 		(b[i] == 0xEF && // #xE000 <= . <= #xFFFD
 			!(b[i+1] == 0xBB && b[i+2] == 0xBF) && // && . != #xFEFF
-			!(b[i+1] == 0xBF && (b[i+2] == 0xBE || b[i+2] == 0xBF))))
+			!(b[i+1] == 0xBF && (b[i+2] == 0xBE || b[i+2] == 0xBF))) ||
+		// 4-byte UTF-8 range for valid Unicode scalars: U+10000..U+10FFFF.
+		(b[i] == 0xF0 && b[i+1] >= 0x90 && b[i+1] <= 0xBF) ||
+		(b[i] > 0xF0 && b[i] < 0xF4 && b[i+1] >= 0x80 && b[i+1] <= 0xBF) ||
+		(b[i] == 0xF4 && b[i+1] >= 0x80 && b[i+1] <= 0x8F))
 }
 
 // Check if the character at the specified position is NUL.
