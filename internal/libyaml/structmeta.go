@@ -157,7 +157,11 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 		if len(fields) > 1 {
 			for _, flag := range fields[1:] {
 				switch flag {
-				case "omitempty":
+				case "omitempty", "omitzero":
+					// omitzero is Go 1.24's encoding/json flag. yaml's
+					// omitempty already drops zero values (including structs),
+					// so treat omitzero as the same to avoid panicking on
+					// structs that share tags with json.
 					info.OmitEmpty = true
 				case "flow":
 					info.Flow = true
