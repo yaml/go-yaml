@@ -493,6 +493,112 @@
       - {foo: bar}
       # comment
 
+# Regression tests for https://github.com/yaml/go-yaml/issues/406: a comment
+# inside an otherwise-empty flow mapping/sequence is attached as a FootComment
+# on the START event. The emitter must keep it inside the brackets instead of
+# flushing it before the opening indicator is written.
+- roundtrip:
+    name: Comment in empty flow mapping as sequence item stays inside
+    yaml: |
+      ---
+      - {
+      # comment
+      }
+    want: |-
+      {
+        # comment
+      }
+
+- roundtrip:
+    name: Comment in empty flow sequence as sequence item stays inside
+    yaml: |
+      ---
+      - [
+      # comment
+      ]
+    want: |-
+      [
+        # comment
+      ]
+
+- roundtrip:
+    name: Comment in empty top-level flow mapping stays inside
+    yaml: |
+      ---
+      {
+      # comment
+      }
+    want: |-
+      {
+        # comment
+      }
+
+- roundtrip:
+    name: Comment in empty flow mapping as block value stays inside
+    yaml: |
+      ---
+      key:
+        {
+      # comment
+        }
+    want: |-
+      {
+        # comment
+      }
+
+# Empty flow collections with head and foot comments (roundtrip).
+- roundtrip:
+    name: Empty flow sequence with head and foot comments
+    yaml: |
+      # head comment
+      []
+      # foot comment
+    want: |-
+      # head comment
+      []
+      # foot comment
+
+- roundtrip:
+    name: Empty flow sequence with head, inner, and foot comments
+    yaml: |
+      # head comment
+      [
+        # inner comment
+      ]
+      # foot comment
+    want: |-
+      # head comment
+      [
+        # inner comment
+      ]
+      # foot comment
+
+- roundtrip:
+    name: Empty flow mapping with head and foot comments
+    yaml: |
+      # head comment
+      {}
+      # foot comment
+    want: |-
+      # head comment
+      {}
+      # foot comment
+
+- roundtrip:
+    name: Empty flow mapping with head, inner, and foot comments
+    yaml: |
+      # head comment
+      {
+        # inner comment
+      }
+      # foot comment
+    want: |-
+      # head comment
+      {
+        # inner comment
+      }
+      # foot comment
+
 # Regression tests for https://github.com/yaml/go-yaml/issues/337
 - roundtrip:
     name: Folded scalar preserves newlines
