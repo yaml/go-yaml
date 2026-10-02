@@ -51,14 +51,14 @@ func (ms MapSlice) MarshalYAML() (any, error) {
 
 // NodeInfo represents the information about a YAML node
 type NodeInfo struct {
-	Kind          string             `yaml:"kind"`
+	Kind          string             `yaml:"node"`
 	Style         string             `yaml:"style,omitempty"`
 	Anchor        string             `yaml:"anchor,omitempty"`
 	Tag           string             `yaml:"tag,omitempty"`
 	Head          string             `yaml:"head,omitempty"`
 	Line          string             `yaml:"line,omitempty"`
 	Foot          string             `yaml:"foot,omitempty"`
-	Text          string             `yaml:"text,omitempty"`
+	Value         string             `yaml:"value,omitempty"`
 	Content       []*NodeInfo        `yaml:"content,omitempty"`
 	Encoding      string             `yaml:"encoding,omitempty"`
 	Version       string             `yaml:"version,omitempty"`
@@ -71,8 +71,8 @@ func FormatNode(n yaml.Node, profuse bool) *NodeInfo {
 		Kind: formatKind(n.Kind),
 	}
 
-	// Don't set style for Document or Stream nodes
-	if n.Kind != yaml.DocumentNode && n.Kind != yaml.StreamNode {
+	// Don't set style for Document, Stream, or Alias nodes
+	if n.Kind != yaml.DocumentNode && n.Kind != yaml.StreamNode && n.Kind != yaml.AliasNode {
 		if style := formatStyle(n.Style, profuse); style != "" {
 			info.Style = style
 		}
@@ -93,8 +93,8 @@ func FormatNode(n yaml.Node, profuse bool) *NodeInfo {
 		info.Foot = n.FootComment
 	}
 
-	if info.Kind == "Scalar" {
-		info.Text = n.Value
+	if info.Kind == "Scalar" || info.Kind == "Alias" {
+		info.Value = n.Value
 	} else if n.Content != nil {
 		info.Content = make([]*NodeInfo, len(n.Content))
 		for i, node := range n.Content {
@@ -103,16 +103,16 @@ func FormatNode(n yaml.Node, profuse bool) *NodeInfo {
 	}
 
 	// Handle StreamNode-specific fields
-	if info.Kind == "Stream" {
-		if n.Encoding != 0 {
-			info.Encoding = formatEncoding(n.Encoding)
+	if info.Kind == "Stream" && n.Stream != nil {
+		if n.Stream.Encoding != 0 {
+			info.Encoding = formatEncoding(n.Stream.Encoding)
 		}
-		if n.Version != nil {
-			info.Version = formatVersion(n.Version)
+		if n.Stream.Version != nil {
+			info.Version = formatVersion(n.Stream.Version)
 		}
-		if len(n.TagDirectives) > 0 {
-			info.TagDirectives = make([]TagDirectiveInfo, len(n.TagDirectives))
-			for i, td := range n.TagDirectives {
+		if len(n.Stream.TagDirectives) > 0 {
+			info.TagDirectives = make([]TagDirectiveInfo, len(n.Stream.TagDirectives))
+			for i, td := range n.Stream.TagDirectives {
 				info.TagDirectives[i] = TagDirectiveInfo{
 					Handle: td.Handle,
 					Prefix: td.Prefix,
@@ -384,26 +384,28 @@ func FormatNodeCompact(n yaml.Node) any {
 		// Build stream content
 		content := MapSlice{}
 
-		// Add encoding if present
-		if n.Encoding != 0 {
-			content = append(content, MapItem{Key: "encoding", Value: formatEncoding(n.Encoding)})
-		}
-
-		// Add version if present
-		if n.Version != nil {
-			content = append(content, MapItem{Key: "version", Value: formatVersion(n.Version)})
-		}
-
-		// Add tag directives if present
-		if len(n.TagDirectives) > 0 {
-			var directives []TagDirectiveInfo
-			for _, td := range n.TagDirectives {
-				directives = append(directives, TagDirectiveInfo{
-					Handle: td.Handle,
-					Prefix: td.Prefix,
-				})
+		if n.Stream != nil {
+			// Add encoding if present
+			if n.Stream.Encoding != 0 {
+				content = append(content, MapItem{Key: "encoding", Value: formatEncoding(n.Stream.Encoding)})
 			}
-			content = append(content, MapItem{Key: "tag-directives", Value: directives})
+
+			// Add version if present
+			if n.Stream.Version != nil {
+				content = append(content, MapItem{Key: "version", Value: formatVersion(n.Stream.Version)})
+			}
+
+			// Add tag directives if present
+			if len(n.Stream.TagDirectives) > 0 {
+				var directives []TagDirectiveInfo
+				for _, td := range n.Stream.TagDirectives {
+					directives = append(directives, TagDirectiveInfo{
+						Handle: td.Handle,
+						Prefix: td.Prefix,
+					})
+				}
+				content = append(content, MapItem{Key: "tag-directives", Value: directives})
+			}
 		}
 
 		// Use content as value, or null if empty

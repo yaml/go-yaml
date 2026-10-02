@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 
+	"go.yaml.in/yaml/v4"
 	"go.yaml.in/yaml/v4/internal/libyaml"
 )
 
@@ -23,11 +24,16 @@ type Parser struct {
 }
 
 // NewParser creates a new YAML parser reading from the given reader for CLI use
-func NewParser(reader io.Reader) (*Parser, error) {
+func NewParser(reader io.Reader, opts ...yaml.Option) (*Parser, error) {
+	options, err := libyaml.ApplyOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
 	p := &Parser{
 		parser: libyaml.NewParser(),
 	}
 	p.parser.SetInputReader(reader)
+	p.parser.SetIndentConfig(options.IndentConfig)
 	return p, nil
 }
 
@@ -54,15 +60,16 @@ func (p *Parser) Next() (*Token, error) {
 	}
 
 	token := &Token{
-		StartLine:   yamlToken.StartMark.Line + 1,
+		StartLine:   yamlToken.StartMark.Line,
 		StartColumn: yamlToken.StartMark.Column,
-		EndLine:     yamlToken.EndMark.Line + 1,
+		EndLine:     yamlToken.EndMark.Line,
 		EndColumn:   yamlToken.EndMark.Column,
 	}
 
 	switch yamlToken.Type {
 	case libyaml.STREAM_START_TOKEN:
 		token.Type = "STREAM-START"
+		token.Encoding = formatTokenEncoding(yamlToken.GetEncoding())
 	case libyaml.STREAM_END_TOKEN:
 		token.Type = "STREAM-END"
 		p.done = true
@@ -100,15 +107,20 @@ func (p *Parser) Next() (*Token, error) {
 		token.Value = string(yamlToken.Value)
 	case libyaml.TAG_TOKEN:
 		token.Type = "TAG"
-		token.Value = string(yamlToken.Value)
+		token.Handle = string(yamlToken.Value)
+		token.Suffix = yamlToken.GetSuffix()
 	case libyaml.SCALAR_TOKEN:
 		token.Type = "SCALAR"
 		token.Value = string(yamlToken.Value)
 		token.Style = yamlToken.Style.String()
 	case libyaml.VERSION_DIRECTIVE_TOKEN:
 		token.Type = "VERSION-DIRECTIVE"
+		major, minor := yamlToken.GetVersion()
+		token.Version = fmt.Sprintf("%d.%d", major, minor)
 	case libyaml.TAG_DIRECTIVE_TOKEN:
 		token.Type = "TAG-DIRECTIVE"
+		token.Handle = string(yamlToken.Value)
+		token.Prefix = yamlToken.GetPrefix()
 	default:
 		token.Type = "UNKNOWN"
 	}
@@ -127,6 +139,19 @@ func (p *Parser) Next() (*Token, error) {
 	}
 
 	return token, nil
+}
+
+func formatTokenEncoding(encoding libyaml.Encoding) string {
+	switch encoding {
+	case libyaml.UTF8_ENCODING:
+		return "UTF-8"
+	case libyaml.UTF16LE_ENCODING:
+		return "UTF-16LE"
+	case libyaml.UTF16BE_ENCODING:
+		return "UTF-16BE"
+	default:
+		return "Any"
+	}
 }
 
 // processComments extracts comments from the parser and creates COMMENT tokens
@@ -159,10 +184,10 @@ func (p *Parser) appendCommentTokenIfNotEmpty(value []byte, commentType string, 
 			Type:        "COMMENT",
 			Value:       string(value),
 			CommentType: commentType,
-			StartLine:   comment.StartMark.Line + 1,
-			StartColumn: comment.StartMark.Column + 1,
-			EndLine:     comment.EndMark.Line + 1,
-			EndColumn:   comment.EndMark.Column + 1,
+			StartLine:   comment.StartMark.Line,
+			StartColumn: comment.StartMark.Column,
+			EndLine:     comment.EndMark.Line,
+			EndColumn:   comment.EndMark.Column,
 		}
 		p.pendingTokens = append(p.pendingTokens, commentToken)
 	}

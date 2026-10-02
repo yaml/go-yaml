@@ -1,0 +1,22 @@
+// Sample YAML with JSON-style comments
+name: JSON-comments demo
+enabled: true // A line comment after a value
+retries: 3/* An adjacent block comment after a number */
+
+/* Block comments can
+   span multiple lines. */
+server:
+  host: localhost
+  port: 8080
+
+features:
+- parsing // Comments also work in sequences
+- [nodes, /* Between flow entries */ events]
+
+// These comment markers remain part of the values.
+url: https://example.com/docs
+quoted: "Keep // and /* inside quotes */"
+plain: text//without-separation
+literal: |
+  // This is literal text.
+  /* So is this. */

@@ -30,7 +30,7 @@ func HexToBytes(t *testing.T, s string) []byte {
 func GetField(t *testing.T, obj any, fieldName string) any {
 	t.Helper()
 	v := reflect.ValueOf(obj)
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
 	}
 	field := v.FieldByName(fieldName)
@@ -42,7 +42,7 @@ func GetField(t *testing.T, obj any, fieldName string) any {
 
 // CallMethod calls a method on an object using reflection.
 // This is useful for test cases that need to call methods dynamically.
-// Returns the slice of return values from the method call as reflect.Value wrappers.
+// Returns the slice of return values from the method call as [reflect.Value] wrappers.
 // Callers must extract the actual values using methods like .Interface(), .Int(), .String(), etc.
 func CallMethod(t *testing.T, obj any, methodName string, args []any) []reflect.Value {
 	t.Helper()
@@ -122,7 +122,7 @@ func WantSlice(t *testing.T, want any) []any {
 func SetFieldValue(t *testing.T, obj any, fieldName string, value any) {
 	t.Helper()
 	v := reflect.ValueOf(obj)
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
 	}
 	field := v.FieldByName(fieldName)
@@ -191,6 +191,7 @@ func GenerateData(spec any) ([]byte, error) {
 	return nil, fmt.Errorf("data spec must have 'loop' or 'join' field")
 }
 
+// generateSimpleLoop generates test data by repeating a string value n times.
 func generateSimpleLoop(loopVal any) ([]byte, error) {
 	loopArr, ok := loopVal.([]any)
 	if !ok {
@@ -214,6 +215,7 @@ func generateSimpleLoop(loopVal any) ([]byte, error) {
 	return []byte(strings.Repeat(value, count)), nil
 }
 
+// generateJoin generates test data by joining multiple strings.
 func generateJoin(joinVal any) ([]byte, error) {
 	joinList, ok := joinVal.([]any)
 	if !ok {

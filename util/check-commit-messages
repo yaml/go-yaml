@@ -93,8 +93,15 @@ validate-commit-message() (
 	while IFS= read -r line; do
 		if [[ $line == *' ' ]]; then
 			errors+=("Line $i: Body should not have trailing space(s)")
-			# If we add more checks in this loop, we need this for multiple errors:
-			[[ ${error_lines[0]} == "$i" ]] || error_lines+=("$i")
+			(( ${#error_lines[@]} )) && [[ ${error_lines[-1]} == "$i" ]] ||
+				error_lines+=("$i")
+		fi
+
+		lower=${line,,}
+		if [[ $lower =~ co-authored-by:.*(claude|anthropic|copilot|codex|openai|aider|gemini) ]]; then
+			errors+=("Line $i: Co-authored-by AI attribution is not currently allowed in commit messages")
+			(( ${#error_lines[@]} )) && [[ ${error_lines[-1]} == "$i" ]] ||
+				error_lines+=("$i")
 		fi
 
 		((i++))

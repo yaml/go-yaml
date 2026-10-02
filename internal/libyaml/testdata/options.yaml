@@ -1,0 +1,373 @@
+# Tests for options.go
+# Testing Option functions, ApplyOptions, and CombineOptions
+
+# WithIndent tests
+- name: WithIndent with valid value 2
+  type: with-indent
+  from: 2
+  want:
+    indent: 2
+
+- name: WithIndent with valid value 4
+  type: with-indent
+  from: 4
+  want:
+    indent: 4
+
+- name: WithIndent with valid value 9
+  type: with-indent
+  from: 9
+  want:
+    indent: 9
+
+- name: WithIndent with invalid value 1
+  type: with-indent
+  from: 1
+  like: "indent must be between 2 and 9"
+
+- name: WithIndent with invalid value 10
+  type: with-indent
+  from: 10
+  like: "indent must be between 2 and 9"
+
+- name: WithIndent with invalid value 0
+  type: with-indent
+  from: 0
+  like: "indent must be between 2 and 9"
+
+# WithCompactSeqIndent tests
+- name: WithCompactSeqIndent with no args (default true)
+  type: with-compact-seq-indent
+  from: []
+  want:
+    compact_seq_indent: true
+
+- name: WithCompactSeqIndent with true
+  type: with-compact-seq-indent
+  from: [true]
+  want:
+    compact_seq_indent: true
+
+- name: WithCompactSeqIndent with false
+  type: with-compact-seq-indent
+  from: [false]
+  want:
+    compact_seq_indent: false
+
+- name: WithCompactSeqIndent with too many args
+  type: with-compact-seq-indent
+  from: [true, false]
+  like: "accepts at most one argument"
+
+# WithKnownFields tests
+- name: WithKnownFields with no args (default true)
+  type: with-known-fields
+  from: []
+  want:
+    known_fields: true
+
+- name: WithKnownFields with true
+  type: with-known-fields
+  from: [true]
+  want:
+    known_fields: true
+
+- name: WithKnownFields with false
+  type: with-known-fields
+  from: [false]
+  want:
+    known_fields: false
+
+- name: WithKnownFields with too many args
+  type: with-known-fields
+  from: [true, false]
+  like: "accepts at most one argument"
+
+# WithSingleDocument tests
+- name: WithSingleDocument with no args (default true)
+  type: with-single-document
+  from: []
+  want:
+    single_document: true
+
+- name: WithSingleDocument with true
+  type: with-single-document
+  from: [true]
+  want:
+    single_document: true
+
+- name: WithSingleDocument with false
+  type: with-single-document
+  from: [false]
+  want:
+    single_document: false
+
+- name: WithSingleDocument with too many args
+  type: with-single-document
+  from: [true, false]
+  like: "accepts at most one argument"
+
+# WithStreamNodes tests
+- name: WithStreamNodes with no args (default true)
+  type: with-stream-nodes
+  from: []
+  want:
+    stream_nodes: true
+
+- name: WithStreamNodes with true
+  type: with-stream-nodes
+  from: [true]
+  want:
+    stream_nodes: true
+
+- name: WithStreamNodes with false
+  type: with-stream-nodes
+  from: [false]
+  want:
+    stream_nodes: false
+
+- name: WithStreamNodes with too many args
+  type: with-stream-nodes
+  from: [true, false]
+  like: "accepts at most one argument"
+
+# WithAllDocuments tests
+- name: WithAllDocuments with no args (default true)
+  type: with-all-documents
+  from: []
+  want:
+    all_documents: true
+
+- name: WithAllDocuments with true
+  type: with-all-documents
+  from: [true]
+  want:
+    all_documents: true
+
+- name: WithAllDocuments with false
+  type: with-all-documents
+  from: [false]
+  want:
+    all_documents: false
+
+- name: WithAllDocuments with too many args
+  type: with-all-documents
+  from: [true, false]
+  like: "accepts at most one argument"
+
+# WithLineWidth tests
+- name: WithLineWidth with positive value
+  type: with-line-width
+  from: 100
+  want:
+    line_width: 100
+
+- name: WithLineWidth with zero
+  type: with-line-width
+  from: 0
+  want:
+    line_width: 0
+
+- name: WithLineWidth with negative (unlimited)
+  type: with-line-width
+  from: -5
+  want:
+    line_width: -1
+
+# WithUnicode tests
+- name: WithUnicode with no args (default true)
+  type: with-unicode
+  from: []
+  want:
+    unicode: true
+
+- name: WithUnicode with true
+  type: with-unicode
+  from: [true]
+  want:
+    unicode: true
+
+- name: WithUnicode with false
+  type: with-unicode
+  from: [false]
+  want:
+    unicode: false
+
+- name: WithUnicode with too many args
+  type: with-unicode
+  from: [true, false]
+  like: "accepts at most one argument"
+
+# WithUniqueKeys tests
+- name: WithUniqueKeys with no args (default true)
+  type: with-unique-keys
+  from: []
+  want:
+    unique_keys: true
+
+- name: WithUniqueKeys with true
+  type: with-unique-keys
+  from: [true]
+  want:
+    unique_keys: true
+
+- name: WithUniqueKeys with false
+  type: with-unique-keys
+  from: [false]
+  want:
+    unique_keys: false
+
+- name: WithUniqueKeys with too many args
+  type: with-unique-keys
+  from: [true, false]
+  like: "accepts at most one argument"
+
+# WithCanonical tests
+- name: WithCanonical with no args (default true)
+  type: with-canonical
+  from: []
+  want:
+    canonical: true
+
+- name: WithCanonical with true
+  type: with-canonical
+  from: [true]
+  want:
+    canonical: true
+
+- name: WithCanonical with false
+  type: with-canonical
+  from: [false]
+  want:
+    canonical: false
+
+- name: WithCanonical with too many args
+  type: with-canonical
+  from: [true, false]
+  like: "accepts at most one argument"
+
+# WithLineBreak tests
+- name: WithLineBreak with LN
+  type: with-line-break
+  from: LN_BREAK
+  want:
+    line_break: LN_BREAK
+
+- name: WithLineBreak with CR
+  type: with-line-break
+  from: CR_BREAK
+  want:
+    line_break: CR_BREAK
+
+- name: WithLineBreak with CRLN
+  type: with-line-break
+  from: CRLN_BREAK
+  want:
+    line_break: CRLN_BREAK
+
+# WithExplicitStart tests
+- name: WithExplicitStart with no args (default true)
+  type: with-explicit-start
+  from: []
+  want:
+    explicit_start: true
+
+- name: WithExplicitStart with true
+  type: with-explicit-start
+  from: [true]
+  want:
+    explicit_start: true
+
+- name: WithExplicitStart with false
+  type: with-explicit-start
+  from: [false]
+  want:
+    explicit_start: false
+
+- name: WithExplicitStart with too many args
+  type: with-explicit-start
+  from: [true, false]
+  like: "accepts at most one argument"
+
+# WithExplicitEnd tests
+- name: WithExplicitEnd with no args (default true)
+  type: with-explicit-end
+  from: []
+  want:
+    explicit_end: true
+
+- name: WithExplicitEnd with true
+  type: with-explicit-end
+  from: [true]
+  want:
+    explicit_end: true
+
+- name: WithExplicitEnd with false
+  type: with-explicit-end
+  from: [false]
+  want:
+    explicit_end: false
+
+- name: WithExplicitEnd with too many args
+  type: with-explicit-end
+  from: [true, false]
+  like: "accepts at most one argument"
+
+# WithFlowSimpleCollections tests
+- name: WithFlowSimpleCollections with no args (default true)
+  type: with-flow-simple-collections
+  from: []
+  want:
+    flow_simple_collections: true
+
+- name: WithFlowSimpleCollections with true
+  type: with-flow-simple-collections
+  from: [true]
+  want:
+    flow_simple_collections: true
+
+- name: WithFlowSimpleCollections with false
+  type: with-flow-simple-collections
+  from: [false]
+  want:
+    flow_simple_collections: false
+
+- name: WithFlowSimpleCollections with too many args
+  type: with-flow-simple-collections
+  from: [true, false]
+  like: "accepts at most one argument"
+
+# WithQuotePreference tests
+- name: WithQuotePreference with QuoteSingle
+  type: with-quote-preference
+  from: QuoteSingle
+  want:
+    quote_preference: QuoteSingle
+
+- name: WithQuotePreference with QuoteDouble
+  type: with-quote-preference
+  from: QuoteDouble
+  want:
+    quote_preference: QuoteDouble
+
+- name: WithQuotePreference with QuoteLegacy
+  type: with-quote-preference
+  from: QuoteLegacy
+  want:
+    quote_preference: QuoteLegacy
+
+- name: WithQuotePreference with invalid value
+  type: with-quote-preference
+  from: 99
+  like: "invalid QuoteStyle value"
+
+# ApplyOptions tests
+- name: ApplyOptions with no options (v4 defaults)
+  type: apply-options
+  want:
+    indent: 2
+    compact_seq_indent: true
+    line_width: 80
+    unicode: true
+    unique_keys: true
+    canonical: false

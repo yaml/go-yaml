@@ -94,7 +94,7 @@ func (r *TypeRegistry) NewPointerInstance(name string) (any, error) {
 	return reflect.New(typ).Interface(), nil
 }
 
-// GetType returns the reflect.Type for a registered type name.
+// GetType returns the [reflect.Type] for a registered type name.
 func (r *TypeRegistry) GetType(name string) (reflect.Type, bool) {
 	typ, ok := r.types[name]
 	return typ, ok

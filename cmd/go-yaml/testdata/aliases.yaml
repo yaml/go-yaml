@@ -1,0 +1,171 @@
+- name: Simple alias reference
+  text: |
+    - &a foo
+    - *a
+  node: |
+    sequence:
+    - anchor: a
+      plain: foo
+    - alias: a
+  NODE: |
+    node: Document
+    content:
+    - node: Sequence
+      style: Plain
+      tag: '!!seq'
+      content:
+      - node: Scalar
+        style: Plain
+        anchor: a
+        tag: '!!str'
+        value: foo
+      - node: Alias
+        value: a
+
+- name: Multiple aliases to same anchor
+  text: |
+    - &x value
+    - *x
+    - *x
+  node: |
+    sequence:
+    - anchor: x
+      plain: value
+    - alias: x
+    - alias: x
+  NODE: |
+    node: Document
+    content:
+    - node: Sequence
+      style: Plain
+      tag: '!!seq'
+      content:
+      - node: Scalar
+        style: Plain
+        anchor: x
+        tag: '!!str'
+        value: value
+      - node: Alias
+        value: x
+      - node: Alias
+        value: x
+
+- name: Alias in sequence
+  text: |
+    - &item first
+    - *item
+    - second
+  node: |
+    sequence:
+    - anchor: item
+      plain: first
+    - alias: item
+    - plain: second
+  NODE: |
+    node: Document
+    content:
+    - node: Sequence
+      style: Plain
+      tag: '!!seq'
+      content:
+      - node: Scalar
+        style: Plain
+        anchor: item
+        tag: '!!str'
+        value: first
+      - node: Alias
+        value: item
+      - node: Scalar
+        style: Plain
+        tag: '!!str'
+        value: second
+
+- name: Alias in mapping
+  text: |
+    key: &val value
+    ref: *val
+  node: |
+    mapping:
+    - plain: key
+    - anchor: val
+      plain: value
+    - plain: ref
+    - alias: val
+  NODE: |
+    node: Document
+    content:
+    - node: Mapping
+      style: Plain
+      tag: '!!map'
+      content:
+      - node: Scalar
+        style: Plain
+        tag: '!!str'
+        value: key
+      - node: Scalar
+        style: Plain
+        anchor: val
+        tag: '!!str'
+        value: value
+      - node: Scalar
+        style: Plain
+        tag: '!!str'
+        value: ref
+      - node: Alias
+        value: val
+
+- name: Alias to complex structure
+  text: |
+    - &data
+      x: 1
+      y: 2
+    - alias: *data
+  node: |
+    sequence:
+    - anchor: data
+      mapping:
+      - plain: x
+      - plain: '1'
+      - plain: 'y'
+      - plain: '2'
+    - mapping:
+      - plain: alias
+      - alias: data
+  NODE: |
+    node: Document
+    content:
+    - node: Sequence
+      style: Plain
+      tag: '!!seq'
+      content:
+      - node: Mapping
+        style: Plain
+        anchor: data
+        tag: '!!map'
+        content:
+        - node: Scalar
+          style: Plain
+          tag: '!!str'
+          value: x
+        - node: Scalar
+          style: Plain
+          tag: '!!int'
+          value: '1'
+        - node: Scalar
+          style: Plain
+          tag: '!!str'
+          value: 'y'
+        - node: Scalar
+          style: Plain
+          tag: '!!int'
+          value: '2'
+      - node: Mapping
+        style: Plain
+        tag: '!!map'
+        content:
+        - node: Scalar
+          style: Plain
+          tag: '!!str'
+          value: alias
+        - node: Alias
+          value: data

@@ -1350,3 +1350,15 @@
     type: testStructA_TextUnmarshalerPtrPtr
     want:
       a: null
+
+- decode:
+    name: Aliases and TextUnmarshaler
+    yaml: |
+      a: &foo hello world
+      b: *foo
+    type: testStructAB_TextUnmarshaler
+    want:
+      a:
+        value: hello world
+      b:
+        value: hello world

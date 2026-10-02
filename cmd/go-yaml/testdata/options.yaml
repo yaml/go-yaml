@@ -30,9 +30,9 @@
 
 - name: Line width wrapping
   text: |
-    text: "This is a very long line of text that should wrap at a specific width"
+    value: "This is a very long line of text that should wrap at a specific width"
   width40-yaml: |
-    text: This is a very long line of text that
+    value: This is a very long line of text that
       should wrap at a specific width
 
 - name: Compact sequence indentation
@@ -190,23 +190,23 @@
     - stream:
         encoding: UTF-8
   stream-NODE: |
-    - kind: Stream
+    - node: Stream
       encoding: UTF-8
-    - kind: Document
+    - node: Document
       content:
-      - kind: Mapping
+      - node: Mapping
         style: Plain
         tag: '!!map'
         content:
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
-          text: a
-        - kind: Scalar
+          value: a
+        - node: Scalar
           style: Plain
           tag: '!!str'
-          text: b
-    - kind: Stream
+          value: b
+    - node: Stream
       encoding: UTF-8
 
 - name: Stream option with scalar

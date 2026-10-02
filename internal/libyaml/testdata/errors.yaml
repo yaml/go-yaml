@@ -1,0 +1,274 @@
+# Copyright 2025 The go-yaml Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+# Error type tests
+#
+# Purpose: Tests YAML error types and their formatting
+#
+# Format: Test cases use type-as-key format:
+#   - test-type:
+#       name: Test case name
+#       from: input error data
+#       want: expected error string output
+#       also: unwrap  # (optional) test that Unwrap() returns underlying error
+#
+# Test Types:
+#   load-error       - Tests LoadError formatting with different stages
+#   emitter-error    - Tests EmitterError formatting (dump stack)
+#   writer-error     - Tests WriterError formatting and Unwrap (dump stack)
+#   load-errors      - Tests LoadErrors formatting
+#   load-errors-as   - Tests LoadErrors.As method
+#   load-errors-is   - Tests LoadErrors.Is method
+#   type-error       - Tests deprecated TypeError formatting
+
+# LoadError tests - different stages
+
+- load-error:
+    name: Reader stage error
+    from:
+      stage: reader
+      mark:
+        line: 1
+        column: 3
+        index: 2
+      message: 'invalid UTF-8 octet (value: 255)'
+      err: invalid UTF-8 octet
+    want: 'go-yaml load error in reader at L1.C3: invalid UTF-8 octet (value: 255)'
+    also: unwrap
+
+- load-error:
+    name: Scanner stage error
+    from:
+      stage: scanner
+      mark:
+        line: 2
+        column: 6
+        index: 42
+      message: unexpected token
+    want: 'go-yaml load error in scanner at L2.C6: unexpected token'
+
+- load-error:
+    name: Scanner stage error with context
+    from:
+      stage: scanner
+      context_mark:
+        line: 2
+        column: 0
+        index: 20
+      context_message: while scanning a block scalar
+      mark:
+        line: 4
+        column: 9
+        index: 60
+      message: found unexpected end of stream
+    want: 'go-yaml load error in scanner (while scanning a block scalar) at L2-L4.C9: found unexpected end of stream'
+
+- load-error:
+    name: Parser stage error
+    from:
+      stage: parser
+      mark:
+        line: 3
+        column: 11
+        index: 50
+      message: did not find expected key
+    want: 'go-yaml load error in parser at L3.C11: did not find expected key'
+
+- load-error:
+    name: Parser stage error with context
+    from:
+      stage: parser
+      context_mark:
+        line: 1
+        column: 0
+        index: 0
+      context_message: while parsing a block mapping
+      mark:
+        line: 4
+        column: 6
+        index: 80
+      message: did not find expected key
+    want: 'go-yaml load error in parser (while parsing a block mapping) at L1-L4.C6: did not find expected key'
+
+- load-error:
+    name: Composer stage error
+    from:
+      stage: composer
+      mark:
+        line: 1
+        column: 5
+        index: 4
+      message: unknown anchor 'foo' referenced
+    want: "go-yaml load error in composer at L1.C5: unknown anchor 'foo' referenced"
+
+- load-error:
+    name: Resolver stage error
+    from:
+      stage: resolver
+      mark:
+        line: 1
+        column: 0
+        index: 0
+      message: cannot construct !!str `error` as a !!float
+    want: 'go-yaml load error in resolver at L1: cannot construct !!str `error` as a !!float'
+
+- load-error:
+    name: Constructor stage error
+    from:
+      stage: constructor
+      mark:
+        line: 1
+        column: 0
+        index: 0
+      message: cannot construct !!map into string
+      err: cannot construct !!map into string
+    want: 'go-yaml load error in constructor at L1: cannot construct !!map into string'
+    also: unwrap
+
+- load-error:
+    name: Constructor stage error at unknown position
+    from:
+      stage: constructor
+      message: cannot construct value
+      err: cannot construct value
+    want: 'go-yaml load error in constructor at <unknown position>: cannot construct value'
+    also: unwrap
+
+# DumpError tests - dump stages
+
+- dump-error:
+    name: Representer stage error
+    from:
+      stage: representer
+      message: cannot represent type chan int
+    want: 'go-yaml dump error in representer: cannot represent type chan int'
+
+- dump-error:
+    name: Representer stage error with cause
+    from:
+      stage: representer
+      message: 'MarshalYAML failed: some error'
+      err: 'some error'
+    want: "go-yaml dump error in representer: MarshalYAML failed: some error"
+    also: unwrap
+
+- dump-error:
+    name: Serializer stage error
+    from:
+      stage: serializer
+      message: cannot represent node with unknown kind 99
+    want: 'go-yaml dump error in serializer: cannot represent node with unknown kind 99'
+
+- dump-error:
+    name: Emitter stage error
+    from:
+      stage: emitter
+      message: expected STREAM-START
+    want: 'go-yaml dump error in emitter: expected STREAM-START'
+
+- dump-error:
+    name: Writer stage error with cause
+    from:
+      stage: writer
+      message: write error
+      err: write error
+    want: 'go-yaml dump error in writer: write error'
+    also: unwrap
+
+# EmitterError tests (dump stack)
+
+- emitter-error:
+    name: Basic emitter error
+    from:
+      message: expected STREAM-START
+    want: 'yaml: expected STREAM-START'
+
+# WriterError tests (dump stack)
+
+- writer-error:
+    name: Writer error with unwrap
+    from:
+      message: write error
+    want: 'yaml: write error'
+    also: unwrap
+
+# LoadErrors tests
+
+- load-errors:
+    name: Single error
+    from:
+      errors:
+      - line: 3
+        message: field not found
+    want: 'yaml: construct errors: line 3: field not found'
+
+- load-errors:
+    name: Multiple errors
+    from:
+      errors:
+      - line: 5
+        message: field 'foo' not found in type struct
+      - line: 8
+        message: field 'bar' not found in type struct
+    want: "yaml: construct errors: line 5: field 'foo' not found in type struct; line 8: field 'bar' not found in type struct"
+
+- load-errors:
+    name: Error at unknown position
+    from:
+      errors:
+      - line: 0
+        message: unknown field
+    want: 'yaml: construct errors: <unknown position>: unknown field'
+
+# LoadErrors.As tests
+
+- load-errors-as:
+    name: As TypeError
+    from:
+      errors:
+      - line: 3
+        message: first error
+      - line: 7
+        message: second error
+    as: TypeError
+    want_as: true
+    want_messages:
+    - 'line 3: first error'
+    - 'line 7: second error'
+
+# LoadErrors.Is tests
+
+- load-errors-is:
+    name: Contains error
+    from:
+      errors:
+      - line: 5
+        message: target error
+    is: target error
+    want_is: true
+
+- load-errors-is:
+    name: Does not contain error
+    from:
+      errors:
+      - line: 5
+        message: different error
+    is: target error
+    want_is: false
+
+# TypeError tests (backward compatibility)
+
+- type-error:
+    name: Single type error
+    from:
+      errors:
+      - field not found
+    want: 'yaml: unmarshal errors: field not found'
+
+- type-error:
+    name: Multiple type errors
+    from:
+      errors:
+      - 'line 3: first error'
+      - 'line 5: second error'
+    want: 'yaml: unmarshal errors: line 3: first error; line 5: second error'

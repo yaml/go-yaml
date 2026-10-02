@@ -19,7 +19,7 @@ type Config struct {
 }
 
 func main() {
-	fmt.Println("Example: Overriding yaml.V4 options")
+	fmt.Println("Example: Overriding yaml.WithV4Defaults() options")
 
 	cfg := Config{
 		Name: "myapp",
@@ -31,9 +31,9 @@ func main() {
 	}
 
 	// Test 1: v4 options - should use 2-space indent
-	fmt.Println("1. yaml.V4 - 2-space indent:")
+	fmt.Println("1. yaml.WithV4Defaults() - 2-space indent:")
 	var buf bytes.Buffer
-	dumper, err := yaml.NewDumper(&buf, yaml.V4)
+	dumper, err := yaml.NewDumper(&buf, yaml.WithV4Defaults())
 	if err != nil {
 		panic(err)
 	}
@@ -46,9 +46,9 @@ func main() {
 	fmt.Print(buf.String())
 
 	// Test 2: v4 options then WithIndent(3) - WithIndent(3) overrides
-	fmt.Println("\n2. v4 options, then WithIndent(3) - should use 3-space indent:")
+	fmt.Println("\n2. WithV4Defaults(), then WithIndent(3) - should use 3-space indent:")
 	buf.Reset()
-	dumper2, err := yaml.NewDumper(&buf, yaml.V4, yaml.WithIndent(3))
+	dumper2, err := yaml.NewDumper(&buf, yaml.WithV4Defaults(), yaml.WithIndent(3))
 	if err != nil {
 		panic(err)
 	}
@@ -61,9 +61,9 @@ func main() {
 	fmt.Print(buf.String())
 
 	// Test 3: WithIndent(5) then v4 options - v4 options override to 2
-	fmt.Println("\n3. WithIndent(5), then v4 options - should use 2-space indent (v4 wins):")
+	fmt.Println("\n3. WithIndent(5), then WithV4Defaults() - should use 2-space indent (v4 wins):")
 	buf.Reset()
-	dumper3, err := yaml.NewDumper(&buf, yaml.WithIndent(5), yaml.V4)
+	dumper3, err := yaml.NewDumper(&buf, yaml.WithIndent(5), yaml.WithV4Defaults())
 	if err != nil {
 		panic(err)
 	}

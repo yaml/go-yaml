@@ -18,13 +18,33 @@ import (
 	"strings"
 
 	"go.yaml.in/yaml/v4"
+	"go.yaml.in/yaml/v4/internal/libyaml"
+	pluginreg "go.yaml.in/yaml/v4/internal/plugin"
+	"go.yaml.in/yaml/v4/plugin/tabindent"
 )
 
+// version is the current version of the go-yaml CLI tool.
 const version = "4.0.0.1"
+
+// defaultConfig is populated only in a configured CLI build.
+var defaultConfig string
+
+// compiledPluginRegistrations contains built-in and configured CLI plugins.
+var compiledPluginRegistrations = []func() error{tabindent.Register}
+
+func registerCompiledPlugins() error {
+	for _, register := range compiledPluginRegistrations {
+		if err := register(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // stringSlice is a custom flag type for collecting multiple -o flags
 type stringSlice []string
 
+// String returns the string representation of the slice for [flag.Value] interface.
 func (s *stringSlice) String() string {
 	if s == nil {
 		return ""
@@ -32,6 +52,7 @@ func (s *stringSlice) String() string {
 	return fmt.Sprint(*s)
 }
 
+// Set appends a value to the slice for [flag.Value] interface.
 func (s *stringSlice) Set(value string) error {
 	// Special case: empty value or explicit help request
 	if value == "" || value == "help" || value == "?" {
@@ -56,13 +77,13 @@ func initOptionRegistry() {
 	optionRegistry = map[string]optionSpec{
 		// Version presets
 		"v2": {typ: "preset", handler: func(string) ([]yaml.Option, error) {
-			return []yaml.Option{yaml.V2}, nil
+			return []yaml.Option{yaml.WithV2Defaults()}, nil
 		}},
 		"v3": {typ: "preset", handler: func(string) ([]yaml.Option, error) {
-			return []yaml.Option{yaml.V3}, nil
+			return []yaml.Option{yaml.WithV3Defaults()}, nil
 		}},
 		"v4": {typ: "preset", handler: func(string) ([]yaml.Option, error) {
-			return []yaml.Option{yaml.V4}, nil
+			return []yaml.Option{yaml.WithV4Defaults()}, nil
 		}},
 
 		// Formatting options
@@ -287,27 +308,72 @@ Examples:
 `)
 }
 
-// buildOptions creates the yaml.Option slice based on config file and -o flags
-func buildOptions(configFile string, optionFlags []string) ([]yaml.Option, error) {
-	var opts []yaml.Option
-
-	// Default to V4 preset
-	opts = append(opts, yaml.V4)
-
-	// Load config file if specified
+// buildOptions combines the selected configuration with runtime flags.
+// A runtime configuration replaces embedded defaults in their entirety.
+func buildOptions(configFile string, optionFlags []string, pluginSpecs ...string) ([]yaml.Option, error) {
+	opts := []yaml.Option{yaml.WithV4Defaults()}
+	configData := []byte(defaultConfig)
 	if configFile != "" {
-		configData, err := os.ReadFile(configFile)
+		var err error
+		configData, err = os.ReadFile(configFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read config file: %w", err)
 		}
+	}
+	if len(pluginSpecs) > 0 {
+		// Replace each explicitly selected plugin's configuration with defaults.
+		// This also avoids selecting a configured parser plugin twice.
+		config := map[string]any{}
+		if len(configData) > 0 {
+			if err := yaml.Load(configData, &config); err != nil {
+				return nil, fmt.Errorf("failed to parse config: %w", err)
+			}
+		}
+		if config == nil {
+			config = map[string]any{}
+		}
+		plugins := map[string]any{}
+		if value, present := config["plugin"]; present {
+			var ok bool
+			plugins, ok = value.(map[string]any)
+			if !ok {
+				return nil, fmt.Errorf("plugin configuration must be a mapping")
+			}
+		}
+		for _, spec := range pluginSpecs {
+			selections, err := pluginreg.ParseSelectors(spec)
+			if err != nil {
+				return nil, err
+			}
+			for _, selection := range selections {
+				if selection.Name == "" && selection.Version == "" {
+					plugins[selection.API] = true
+					continue
+				}
+				config := map[string]any{}
+				if selection.Name != "" {
+					config["name"] = selection.Name
+				}
+				if selection.Version != "" {
+					config["version"] = selection.Version
+				}
+				plugins[selection.API] = config
+			}
+		}
+		config["plugin"] = plugins
+		var err error
+		configData, err = yaml.Dump(config)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if len(configData) > 0 {
 		configOpts, err := yaml.OptsYAML(string(configData))
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse config file: %w", err)
+			return nil, fmt.Errorf("failed to parse config: %w", err)
 		}
 		opts = append(opts, configOpts)
 	}
-
-	// Process -o flags (can override default preset and config)
 	for _, optStr := range optionFlags {
 		parsedOpts, err := parseOptionFlags(optStr)
 		if err != nil {
@@ -315,7 +381,6 @@ func buildOptions(configFile string, optionFlags []string) ([]yaml.Option, error
 		}
 		opts = append(opts, parsedOpts...)
 	}
-
 	return opts, nil
 }
 
@@ -323,6 +388,9 @@ func buildOptions(configFile string, optionFlags []string) ([]yaml.Option, error
 func main() {
 	// Initialize option registry
 	initOptionRegistry()
+	if err := registerCompiledPlugins(); err != nil {
+		log.Fatal(err)
+	}
 
 	// Parse command line flags
 	showHelp := flag.Bool("h", false, "Show this help information")
@@ -349,9 +417,14 @@ func main() {
 
 	// Shared flags
 	longMode := flag.Bool("l", false, "Long (block) formatted output")
+	fromStage := flag.String("f", "", "Force input stage: t, e, n, or y")
 
 	// Config file flag
-	configFile := flag.String("C", "", "Load options from YAML config file")
+	configFile := flag.String("C", "", "Load options from YAML config file (replaces embedded defaults)")
+
+	var pluginSpecs stringSlice
+	flag.Var(&pluginSpecs, "plugin",
+		"Select plugins with API[=NAME][@VERSION] syntax")
 
 	// Option flags (-o/--option)
 	var optionFlags stringSlice
@@ -377,7 +450,8 @@ func main() {
 	flag.BoolVar(nodeMode, "node", false, "Node representation output")
 	flag.BoolVar(nodeProfuseMode, "NODE", false, "Node with tag and style for all scalars")
 	flag.BoolVar(longMode, "long", false, "Long (block) formatted output")
-	flag.StringVar(configFile, "config", "", "Load options from YAML config file")
+	flag.StringVar(fromStage, "from", "", "Force input stage: token, event, node, or yaml")
+	flag.StringVar(configFile, "config", "", "Load options from YAML config file (replaces embedded defaults)")
 
 	// API selection flags (long form only)
 	flag.BoolVar(&unmarshalMode, "unmarshal", false, "Use Unmarshal API for input")
@@ -404,6 +478,7 @@ func main() {
 	}
 
 	flag.Parse()
+	compact := !*longMode // compact is default, long mode negates it
 
 	// Validate flag combinations
 
@@ -419,16 +494,25 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Build options for Load API (only when not using explicit old APIs)
-	var opts []yaml.Option
-	if !unmarshalMode && !decodeMode {
-		var err error
-		opts, err = buildOptions(*configFile, optionFlags)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n\n", err)
-			printAvailableOptions()
-			os.Exit(1)
-		}
+	// Build options before checking modes so plugins cannot be silently ignored.
+	opts, err := buildOptions(*configFile, optionFlags, pluginSpecs...)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n\n", err)
+		printAvailableOptions()
+		os.Exit(1)
+	}
+
+	configured, optionErr := libyaml.ApplyOptions(opts...)
+	if optionErr != nil {
+		log.Fatal(optionErr)
+	}
+	if configured.Parser != nil &&
+		(*tokenMode || *tokenProfuseMode || unmarshalMode || decodeMode) {
+		log.Fatal("parser plugins are not supported with token output or legacy loading modes")
+	}
+	if configured.IndentConfig != nil &&
+		(unmarshalMode || decodeMode || marshalMode || encodeMode) {
+		log.Fatal("tab-indent is not supported with legacy loading or dumping modes")
 	}
 
 	// Show help and exit
@@ -478,29 +562,69 @@ func main() {
 		os.Exit(1)
 	}
 
+	inputData, err := io.ReadAll(input)
+	if err != nil {
+		log.Fatal("Failed to read input:", err)
+	}
+	structured, err := detectStructuredInput(inputData, *fromStage)
+	if err != nil {
+		log.Fatal("Failed to read input stage:", err)
+	}
+	if structured.stage != stageYAML {
+		var target stageKind
+		var profuse bool
+		switch {
+		case *tokenMode, *tokenProfuseMode:
+			target, profuse = stageToken, *tokenProfuseMode
+		case *eventMode, *eventProfuseMode:
+			target, profuse = stageEvent, *eventProfuseMode
+		case *nodeMode, *nodeProfuseMode:
+			target, profuse = stageNode, *nodeProfuseMode
+		case *yamlMode, *yamlPreserveMode:
+			target = stageYAML
+		case *jsonMode, *jsonPrettyMode:
+			log.Fatal("JSON output is only supported for YAML text input")
+		case *longMode:
+			target = stageNode
+		default:
+			log.Fatal("No output stage specified")
+		}
+		if err := processStructuredInput(structured, target, profuse,
+			compact, *yamlPreserveMode, opts); err != nil {
+			log.Fatal("Failed to process structured input:", err)
+		}
+		return
+	}
+	if configured.JSONComments != nil &&
+		(*tokenMode || *tokenProfuseMode || unmarshalMode || decodeMode) {
+		inputData, err = configured.JSONComments.Sanitize(inputData)
+		if err != nil {
+			log.Fatal("Failed to sanitize JSON comments:", err)
+		}
+	}
+	input = bytes.NewReader(inputData)
+
 	// Process YAML input
 	if *eventMode {
 		// Use event formatting mode (compact by default)
-		compact := !*longMode // compact is default, long mode negates it
-		if err := ProcessEvents(input, false, compact, unmarshalMode); err != nil {
+		if err := ProcessEvents(input, false, compact, unmarshalMode, opts...); err != nil {
 			log.Fatal("Failed to process events:", err)
 		}
 	} else if *eventProfuseMode {
 		// Use event formatting mode with profuse output
-		compact := !*longMode // compact is default, long mode negates it
-		if err := ProcessEvents(input, true, compact, unmarshalMode); err != nil {
+		if err := ProcessEvents(input, true, compact, unmarshalMode, opts...); err != nil {
 			log.Fatal("Failed to process events:", err)
 		}
 	} else if *tokenMode {
 		// Use token formatting mode (compact by default)
-		compact := !*longMode // compact is default, long mode negates it
-		if err := ProcessTokens(input, false, compact, unmarshalMode); err != nil {
+		if err := ProcessTokens(
+			input, false, compact, unmarshalMode, opts...); err != nil {
 			log.Fatal("Failed to process tokens:", err)
 		}
 	} else if *tokenProfuseMode {
 		// Use token formatting mode with profuse output
-		compact := !*longMode // compact is default, long mode negates it
-		if err := ProcessTokens(input, true, compact, unmarshalMode); err != nil {
+		if err := ProcessTokens(
+			input, true, compact, unmarshalMode, opts...); err != nil {
 			log.Fatal("Failed to process tokens:", err)
 		}
 	} else if *jsonMode {
@@ -670,6 +794,10 @@ The go-yaml API has three sets of functions for reading/writing YAML:
 Usage:
   go-yaml [options] [file]
 
+Input Options:
+  -f, --from STAGE  Force input stage when auto-detection is ambiguous
+                    Values: token (t), event (e), node (n), yaml (y)
+
 Output Mode Options:
   -y, --yaml       YAML encoding output
   -Y, --YAML       YAML w/ style and comments preserved
@@ -695,6 +823,7 @@ Formatting Options:
                    Presets: v2, v3, v4 (default: v4)
 
 API Selection Options:
+  --plugin=SPEC    Select plugins with API[=NAME][@VERSION] syntax
   --unmarshal      Use Unmarshal API for input (deprecated, v3 defaults)
   --decode         Use Decode API for input (deprecated)
   --marshal        Use Marshal API for output (deprecated)

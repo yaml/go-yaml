@@ -1,6 +1,7 @@
 # go-yaml Examples
 
-This directory contains examples demonstrating various features of the go-yaml library.
+This directory contains examples demonstrating various features of the
+go-yaml library.
 
 ## Running Examples
 
@@ -58,7 +59,7 @@ go run basic_loader.go
 ## Options System Examples
 
 **`with_v4_option.go`** - Using v4 option presets
-- Demonstrates yaml.V4
+- Demonstrates yaml.WithV4Defaults()
 - Shows v4 defaults (2-space indent)
 - Compares with default (v3) output
 
@@ -74,7 +75,8 @@ go run basic_loader.go
 
 ## Node-Level API Examples
 
-**`node_load_strict_unmarshaler/main.go`** - Strict field checking in custom unmarshalers
+**`node_load_strict_unmarshaler/main.go`** - Strict field checking in custom
+unmarshalers
 - Solves Issue #460 - preserving options in custom UnmarshalYAML
 - Uses node.Load() with WithKnownFields()
 - Demonstrates proper error handling for unknown fields
@@ -138,12 +140,13 @@ dumper.Close()
 
 ```go
 dumper, _ := yaml.NewDumper(writer,
-    yaml.V4,
+    yaml.WithV4Defaults(),
 )
 ```
 
 ## Learn More
 
-- See the [main package documentation](https://pkg.go.dev/go.yaml.in/yaml/v4) for API reference
+- See the [main package documentation](https://pkg.go.dev/go.yaml.in/yaml/v4)
+  for API reference
 - Run `make doc-serve` from the project root to view local documentation
 - Check individual example source code for detailed comments

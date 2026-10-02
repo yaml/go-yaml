@@ -62,31 +62,34 @@ func TestYAMLSuite(t *testing.T) {
 	testDir := "./testdata/data-2022-01-17"
 	if _, err := os.Stat(testDir + "/229Q"); os.IsNotExist(err) {
 		t.Fatalf(`YTS tests require data files to be present at '%s'.
-Run 'make test-data' to download them first,
+Run 'make get-test-data' to download them first,
 or just run the tests with 'make test'.`, testDir)
 	}
-	runTestsInDir(t, testDir)
+	runTestsInDir(t, testDir, "")
 }
 
-func runTestsInDir(t *testing.T, dirPath string) {
+func runTestsInDir(t *testing.T, rootDir string, relPath string) {
 	t.Helper()
 
-	entries, err := os.ReadDir(dirPath)
+	fullPath := filepath.Join(rootDir, relPath)
+	entries, err := os.ReadDir(fullPath)
 	if err != nil {
-		t.Fatalf("Failed to read directory %s: %v", dirPath, err)
+		t.Fatalf("Failed to read directory %s: %v", fullPath, err)
 	}
 
 	for _, entry := range entries {
-		entryPath := filepath.Join(dirPath, entry.Name())
+		entryRelPath := filepath.Join(relPath, entry.Name())
+		entryFullPath := filepath.Join(rootDir, entryRelPath)
+
 		if entry.IsDir() {
 			// Check if it's a test case directory (contains in.yaml)
-			if _, err := os.Stat(filepath.Join(entryPath, "in.yaml")); err == nil {
-				t.Run(entry.Name(), func(t *testing.T) {
-					runTest(t, entryPath)
+			if _, err := os.Stat(filepath.Join(entryFullPath, "in.yaml")); err == nil {
+				t.Run(strings.ReplaceAll(entryRelPath, string(filepath.Separator), "-"), func(t *testing.T) {
+					runTest(t, entryFullPath)
 				})
 			} else {
 				// Otherwise, recurse into the subdirectory
-				runTestsInDir(t, entryPath)
+				runTestsInDir(t, rootDir, entryRelPath)
 			}
 		}
 	}
@@ -145,7 +148,7 @@ func runTest(t *testing.T, testPath string) {
 	var unmarshaledValue any
 	var unmarshalErr error
 
-	t.Run("UnmarshalTest", func(t *testing.T) {
+	t.Run("LoadTest", func(t *testing.T) {
 		shouldSkipTest(t)
 		unmarshalErr = loadFirstDocument(inYAML, &unmarshaledValue)
 

@@ -315,7 +315,7 @@
       a: '1:1'
     type: map[string]string
     want: |
-      a: "1:1"
+      a: '1:1'
 
 - encode:
     name: null byte in string
@@ -396,7 +396,7 @@
       '<<': []
     type: map[string]any
     want: |
-      "<<": []
+      '<<': []
 
 - encode:
     name: merge key as value
@@ -404,7 +404,7 @@
       foo: '<<'
     type: map[string]any
     want: |
-      foo: "<<"
+      foo: '<<'
 
 # Long strings
 - encode:
@@ -509,7 +509,7 @@
       a: off
     type: testStructA_String
     want: |
-      a: "off"
+      a: 'off'
 
 # Struct tests with yaml tags
 - encode:

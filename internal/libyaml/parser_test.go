@@ -19,6 +19,10 @@ func TestParser(t *testing.T) {
 		"parse-events":          runParseEventsTest,
 		"parse-events-detailed": runParseEventsDetailedTest,
 		"parse-error":           runParseErrorTest,
+		"api-new":               runAPINewTest,
+		"api-method":            runAPIMethodTest,
+		"api-panic":             runAPIPanicTest,
+		"api-delete":            runAPIDeleteTest,
 	})
 }
 

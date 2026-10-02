@@ -25,23 +25,23 @@ func main() {
 	fmt.Println("Example: Comparing v2, v3, and v4 option presets")
 
 	// v2 options - 2-space indent, non-compact sequences
-	fmt.Println("=== yaml.V2 - 2-space indent, non-compact sequences ===")
-	out, _ := yaml.Dump(&cfg, yaml.V2)
+	fmt.Println("=== yaml.WithV2Defaults() - 2-space indent, non-compact sequences ===")
+	out, _ := yaml.Dump(&cfg, yaml.WithV2Defaults())
 	fmt.Print(string(out))
 
 	// v3 options - 4-space indent (default), non-compact sequences
-	fmt.Println("=== yaml.V3 - 4-space indent, non-compact sequences ===")
-	out, _ = yaml.Dump(&cfg, yaml.V3)
+	fmt.Println("=== yaml.WithV3Defaults() - 4-space indent, non-compact sequences ===")
+	out, _ = yaml.Dump(&cfg, yaml.WithV3Defaults())
 	fmt.Print(string(out))
 
 	// v4 options - 2-space indent, compact sequences
-	fmt.Println("=== yaml.V4 - 2-space indent, compact sequences ===")
-	out, _ = yaml.Dump(&cfg, yaml.V4)
+	fmt.Println("=== yaml.WithV4Defaults() - 2-space indent, compact sequences ===")
+	out, _ = yaml.Dump(&cfg, yaml.WithV4Defaults())
 	fmt.Print(string(out))
 
 	// Override v4 options
-	fmt.Println("=== yaml.V4 with WithIndent(3) override ===")
-	out, _ = yaml.Dump(&cfg, yaml.V4, yaml.WithIndent(3))
+	fmt.Println("=== yaml.WithV4Defaults() with WithIndent(3) override ===")
+	out, _ = yaml.Dump(&cfg, yaml.WithV4Defaults(), yaml.WithIndent(3))
 	fmt.Print(string(out))
 
 	fmt.Println("\nNotice how:")

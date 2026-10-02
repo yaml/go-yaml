@@ -4,15 +4,19 @@ title: go-yaml Call Hierarchy
 flowchart TB
     subgraph LOAD ["LOAD: Pull-Based"]
         direction TB
-        L_entry["Entry Point<br/>Decoder.Decode / Node.Decode"]
-        L_constructor["Constructor<br/>constructor.go"]
+        L_entry["Entry Points<br/>Loader.Load / Load"]
+        L_loader["Loader.Load<br/>loader.go"]
+        L_constructor["Constructor.Construct<br/>constructor.go"]
+        L_resolver["Resolver.Resolve<br/>resolver.go"]
         L_composer["Composer.Parse<br/>composer.go"]
         L_parser["Parser.Parse<br/>parser.go"]
         L_scanner["Scanner.Scan<br/>scanner.go"]
         L_reader["Reader.updateBuffer<br/>reader.go"]
 
-        L_entry -->|calls| L_constructor
-        L_constructor -->|calls| L_composer
+        L_entry -->|calls| L_loader
+        L_loader -->|1. compose| L_composer
+        L_loader -->|2. resolve| L_resolver
+        L_loader -->|3. construct| L_constructor
         L_composer -->|calls| L_parser
         L_parser -->|calls via peekToken| L_scanner
         L_scanner -->|calls| L_reader
@@ -20,15 +24,18 @@ flowchart TB
 
     subgraph DUMP ["DUMP: Push-Based"]
         direction TB
-        D_entry["Entry Point<br/>Encoder.Encode / Node.Encode"]
-        D_representer["Representer.MarshalDoc<br/>representer.go"]
-        D_serializer["Serializer.node<br/>serializer.go"]
+        D_entry["Entry Points<br/>Dumper.Dump / Dump"]
+        D_dumper["Dumper.Dump<br/>dumper.go"]
+        D_representer["Representer.Represent<br/>representer.go"]
+        D_desolver["Desolver.Desolve<br/>desolver.go"]
+        D_serializer["Serializer.Serialize<br/>serializer.go"]
         D_emitter["Emitter.Emit<br/>emitter.go"]
         D_writer["Writer.flush<br/>writer.go"]
 
-        D_entry -->|calls| D_representer
-        D_representer -->|for Go values| D_emitter
-        D_representer -->|for Node| D_serializer
+        D_entry -->|calls| D_dumper
+        D_dumper -->|1. represent| D_representer
+        D_dumper -->|2. desolve| D_desolver
+        D_dumper -->|3. serialize| D_serializer
         D_serializer -->|calls emit| D_emitter
         D_emitter -->|calls| D_writer
     end

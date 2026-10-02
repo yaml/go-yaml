@@ -96,7 +96,7 @@ type (
 	}
 )
 
-// simpleTextUnmarshaler is a simple type implementing encoding.TextUnmarshaler
+// simpleTextUnmarshaler is a simple type implementing [encoding.TextUnmarshaler]
 // for testing TextUnmarshaler validation.
 type simpleTextUnmarshaler struct {
 	Value string
@@ -118,7 +118,39 @@ type (
 	testStructA_TextUnmarshalerPtrPtr struct {
 		A **simpleTextUnmarshaler
 	}
+	testStructAB_TextUnmarshaler struct {
+		A simpleTextUnmarshaler
+		B simpleTextUnmarshaler
+	}
 )
+
+type textUnmarshalerWithYAMLUnmarshaler []string
+
+var _ interface {
+	encoding.TextUnmarshaler
+	yaml.Unmarshaler
+} = &textUnmarshalerWithYAMLUnmarshaler{}
+
+func (ty *textUnmarshalerWithYAMLUnmarshaler) UnmarshalText(text []byte) error {
+	panic("UnmarshalText called on type with UnmarshalYAML")
+}
+
+func (ty *textUnmarshalerWithYAMLUnmarshaler) UnmarshalYAML(node *yaml.Node) error {
+	return node.Decode((*[]string)(ty))
+}
+
+func TestTextUnmarshalerWithYAMLUnmarshaler(t *testing.T) {
+	var target textUnmarshalerWithYAMLUnmarshaler
+	const input = `[foo, bar]`
+
+	// NOTE: also verified with [yaml.Unmarshal]; no shortcut bypasses
+	// Constructor since PR #310, so this is a regression test for
+	// [libyaml.Constructor.Construct] via both paths.
+	err := yaml.NewDecoder(strings.NewReader(input)).Decode(&target)
+
+	assert.NoError(t, err)
+	assert.DeepEqual(t, textUnmarshalerWithYAMLUnmarshaler{"foo", "bar"}, target)
+}
 
 // Type and value registries for data-driven tests
 var (
@@ -228,6 +260,7 @@ func init() {
 	decodeTypes.Register("testStructA_TextUnmarshaler", testStructA_TextUnmarshaler{})
 	decodeTypes.Register("testStructA_TextUnmarshalerPtr", testStructA_TextUnmarshalerPtr{})
 	decodeTypes.Register("testStructA_TextUnmarshalerPtrPtr", testStructA_TextUnmarshalerPtrPtr{})
+	decodeTypes.Register("testStructAB_TextUnmarshaler", testStructAB_TextUnmarshaler{})
 
 	// Register math constants
 	decodeValues.Register("+Inf", math.Inf(+1))
@@ -385,6 +418,59 @@ var unmarshalTests = []struct {
 		map[string]string{"a": strings.Repeat("\x00", 52)},
 	},
 
+	// Scalar to string conversions.
+	// Float to string (regression test for constructFloat missing reflect.String case).
+	{
+		"a: 55.7351",
+		map[string]string{"a": "55.7351"},
+	},
+	{
+		"a: -3.14159",
+		map[string]string{"a": "-3.14159"},
+	},
+	{
+		"a: 1.23e10",
+		map[string]string{"a": "1.23e10"},
+	},
+	{
+		"a: .inf",
+		map[string]string{"a": ".inf"},
+	},
+	{
+		"a: -.inf",
+		map[string]string{"a": "-.inf"},
+	},
+	{
+		"a: .nan",
+		map[string]string{"a": ".nan"},
+	},
+	// Int to string (verify existing constructInt string case).
+	{
+		"a: 42",
+		map[string]string{"a": "42"},
+	},
+	{
+		"a: -100",
+		map[string]string{"a": "-100"},
+	},
+	{
+		"a: 0x1A",
+		map[string]string{"a": "0x1A"},
+	},
+	{
+		"a: 0o755",
+		map[string]string{"a": "0o755"},
+	},
+	// Bool to string (verify existing constructBool string case).
+	{
+		"a: true",
+		map[string]string{"a": "true"},
+	},
+	{
+		"a: false",
+		map[string]string{"a": "false"},
+	},
+
 	// Issue #39.
 	{
 		"a:\n b:\n  c: d\n",
@@ -469,6 +555,46 @@ var unmarshalTests = []struct {
 		// implicit timestamp tag into interface.
 		"a: 2015-01-01",
 		map[string]any{"a": time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC)},
+	},
+	{
+		// implicit timestamp tag into string.
+		"a: 2015-01-01",
+		map[string]string{"a": "2015-01-01"},
+	},
+	{
+		// implicit timestamp tag on quoted string into string.
+		"a: \"2015-01-01\"",
+		map[string]string{"a": "2015-01-01"},
+	},
+	{
+		// implicit timestamp tag with time and fraction into string.
+		"a: 2015-02-24T18:19:39.12Z",
+		map[string]string{"a": "2015-02-24T18:19:39.12Z"},
+	},
+	{
+		// implicit timestamp tag with time and fraction on quoted string into string.
+		"a: \"2015-02-24T18:19:39.12Z\"",
+		map[string]string{"a": "2015-02-24T18:19:39.12Z"},
+	},
+	{
+		// explicit timestamp tag on unquoted string into string.
+		"a: !!timestamp 2015-01-01",
+		map[string]string{"a": "2015-01-01"},
+	},
+	{
+		// explicit timestamp tag into string.
+		"a: !!timestamp \"2015-01-01\"",
+		map[string]string{"a": "2015-01-01"},
+	},
+	{
+		// explicit timestamp tag with time and fraction on unquoted string into string.
+		"a: !!timestamp 2015-02-24T18:19:39.12Z",
+		map[string]string{"a": "2015-02-24T18:19:39.12Z"},
+	},
+	{
+		// explicit timestamp tag with time and fraction into string.
+		"a: !!timestamp \"2015-02-24T18:19:39.12Z\"",
+		map[string]string{"a": "2015-02-24T18:19:39.12Z"},
 	},
 
 	// UTF-16-LE
@@ -561,7 +687,7 @@ func TestUnmarshal(t *testing.T) {
 
 func TestDecodeFromYAML(t *testing.T) {
 	datatest.RunTestCases(t, func() ([]map[string]any, error) {
-		return datatest.LoadTestCasesFromFile("testdata/decode.yaml", libyaml.LoadYAML)
+		return datatest.LoadTestCasesFromFile("testdata/decode.yaml", libyaml.LoadAny)
 	}, map[string]datatest.TestHandler{
 		"decode": runDecodeTest,
 	})
@@ -659,45 +785,109 @@ func TestDecoderSingleDocument(t *testing.T) {
 	}
 }
 
-var decoderTests = []struct {
-	data   string
-	values []any
-}{{
-	"",
-	nil,
-}, {
-	"a: b",
-	[]any{
-		map[string]any{"a": "b"},
-	},
-}, {
-	"---\na: b\n...\n",
-	[]any{
-		map[string]any{"a": "b"},
-	},
-}, {
-	"---\n'hello'\n...\n---\ngoodbye\n...\n",
-	[]any{
-		"hello",
-		"goodbye",
-	},
-}}
-
 func TestDecoder(t *testing.T) {
-	for i, item := range decoderTests {
-		t.Run(fmt.Sprintf("test %d: %q", i, item.data), func(t *testing.T) {
-			var values []any
-			dec := yaml.NewDecoder(strings.NewReader(item.data))
-			for {
-				var value any
-				err := dec.Decode(&value)
-				if err == io.EOF {
-					break
-				}
-				assert.NoError(t, err)
-				values = append(values, value)
+	datatest.RunTestCases(t, func() ([]map[string]any, error) {
+		return datatest.LoadTestCasesFromFile("testdata/decoder.yaml", libyaml.LoadAny)
+	}, map[string]datatest.TestHandler{
+		"decoder":       runDecoderTest,
+		"decoder-error": runDecoderErrorTest,
+	})
+}
+
+func runDecoderTest(t *testing.T, tc map[string]any) {
+	t.Helper()
+
+	yamlInput := datatest.RequireString(t, tc, "yaml")
+	want := datatest.RequireSlice(t, tc, "want")
+
+	var values []any
+	dec := yaml.NewDecoder(strings.NewReader(yamlInput))
+	for {
+		var value any
+		err := dec.Decode(&value)
+		if err == io.EOF {
+			break
+		}
+		assert.NoError(t, err)
+		values = append(values, value)
+	}
+	if values == nil {
+		values = []any{}
+	}
+	assert.DeepEqual(t, want, values)
+}
+
+func runDecoderErrorTest(t *testing.T, tc map[string]any) {
+	t.Helper()
+
+	yamlInput := datatest.RequireString(t, tc, "yaml")
+	want := datatest.RequireString(t, tc, "want")
+
+	dec := yaml.NewDecoder(strings.NewReader(yamlInput))
+	for {
+		var value any
+		err := dec.Decode(&value)
+		if err == io.EOF {
+			t.Fatalf("got EOF; want error %q", want)
+		}
+		if err != nil {
+			assert.Equal(t, want, err.Error())
+			return
+		}
+	}
+}
+
+func TestUnmarshalZeroDocumentStreams(t *testing.T) {
+	inputs := []string{
+		"",
+		"   \n\n",
+		"# comment\n",
+		"# head\n\n# after blank\n",
+	}
+
+	for _, input := range inputs {
+		t.Run(fmt.Sprintf("%q", input), func(t *testing.T) {
+			target := struct {
+				A string `yaml:"a"`
+			}{A: "keep"}
+			err := yaml.Unmarshal([]byte(input), &target)
+			assert.NoError(t, err)
+			assert.Equal(t, "keep", target.A)
+
+			m := map[string]any{"keep": "yes"}
+			err = yaml.Unmarshal([]byte(input), &m)
+			assert.NoError(t, err)
+			assert.DeepEqual(t, map[string]any{"keep": "yes"}, m)
+
+			node := yaml.Node{
+				Kind:  yaml.ScalarNode,
+				Tag:   "!!str",
+				Value: "keep",
 			}
-			assert.DeepEqual(t, item.values, values)
+			err = yaml.Unmarshal([]byte(input), &node)
+			assert.NoError(t, err)
+			assert.Equal(t, yaml.ScalarNode, node.Kind)
+			assert.Equal(t, "!!str", node.Tag)
+			assert.Equal(t, "keep", node.Value)
+			assert.Equal(t, "", node.HeadComment)
+		})
+	}
+}
+
+func TestDecoderZeroDocumentStreams(t *testing.T) {
+	inputs := []string{
+		"",
+		"   \n\n",
+		"# comment\n",
+		"# head\n\n# after blank\n",
+	}
+
+	for _, input := range inputs {
+		t.Run(fmt.Sprintf("%q", input), func(t *testing.T) {
+			value := any("keep")
+			err := yaml.NewDecoder(strings.NewReader(input)).Decode(&value)
+			assert.ErrorIs(t, err, io.EOF)
+			assert.Equal(t, "keep", value)
 		})
 	}
 }
@@ -710,7 +900,7 @@ func (errReader) Read([]byte) (int, error) {
 
 func TestDecoderReadError(t *testing.T) {
 	err := yaml.NewDecoder(errReader{}).Decode(&struct{}{})
-	assert.ErrorMatches(t, `yaml: offset 0: input error: some read error`, err)
+	assert.ErrorMatches(t, `go-yaml load error in reader at <unknown position>: input error: some read error`, err)
 }
 
 func TestUnmarshalNaN(t *testing.T) {
@@ -724,12 +914,12 @@ func TestUnmarshalDurationInt(t *testing.T) {
 	// Don't accept plain ints as durations as it's unclear (issue #200).
 	var d time.Duration
 	err := yaml.Unmarshal([]byte("123"), &d)
-	assert.ErrorMatches(t, "line 1: cannot construct !!int `123` into time.Duration", err)
+	assert.ErrorMatches(t, "yaml: construct errors: line 1: cannot construct !!int `123` into time.Duration", err)
 }
 
 func TestUnmarshalErrorsFromYAML(t *testing.T) {
 	datatest.RunTestCases(t, func() ([]map[string]any, error) {
-		return datatest.LoadTestCasesFromFile("testdata/unmarshal_errors.yaml", libyaml.LoadYAML)
+		return datatest.LoadTestCasesFromFile("testdata/unmarshal_errors.yaml", libyaml.LoadAny)
 	}, map[string]datatest.TestHandler{
 		"unmarshal-error": runUnmarshalErrorTest,
 	})
@@ -763,7 +953,7 @@ func runUnmarshalErrorTest(t *testing.T, tc map[string]any) {
 
 func TestDecoderErrors(t *testing.T) {
 	datatest.RunTestCases(t, func() ([]map[string]any, error) {
-		return datatest.LoadTestCasesFromFile("testdata/unmarshal_errors.yaml", libyaml.LoadYAML)
+		return datatest.LoadTestCasesFromFile("testdata/unmarshal_errors.yaml", libyaml.LoadAny)
 	}, map[string]datatest.TestHandler{
 		"unmarshal-error": func(t *testing.T, tc map[string]any) {
 			t.Helper()
@@ -798,20 +988,21 @@ func TestParserErrorUnmarshal(t *testing.T) {
 	}
 	data := "a: 1\n=\nb: 2"
 	err := yaml.Unmarshal([]byte(data), &v)
-	var asErr libyaml.ScannerError
+	var asErr *libyaml.LoadError
 	assert.ErrorAs(t, err, &asErr)
-	expectedErr := libyaml.ScannerError{
+	expectedErr := &libyaml.LoadError{
+		Stage: libyaml.ScannerStage,
 		ContextMark: libyaml.Mark{
 			Index:  5,
 			Line:   2,
-			Column: 0,
+			Column: 1,
 		},
-		ContextMessage: "while scanning a simple key",
+		ContextMsg: "while scanning a simple key",
 
 		Mark: libyaml.Mark{
 			Index:  7,
 			Line:   3,
-			Column: 0,
+			Column: 1,
 		},
 		Message: "could not find expected ':'",
 	}
@@ -822,13 +1013,14 @@ func TestParserErrorDecoder(t *testing.T) {
 	var v any
 	data := "value: -"
 	err := yaml.NewDecoder(strings.NewReader(data)).Decode(&v)
-	var asErr libyaml.ScannerError
+	var asErr *libyaml.LoadError
 	assert.ErrorAs(t, err, &asErr)
-	expectedErr := libyaml.ScannerError{
+	expectedErr := &libyaml.LoadError{
+		Stage: libyaml.ScannerStage,
 		Mark: libyaml.Mark{
 			Index:  7,
 			Line:   1,
-			Column: 7,
+			Column: 8,
 		},
 		Message: "block sequence entries are not allowed in this context",
 	}
@@ -880,11 +1072,11 @@ type unmarshalerInlinedTwice struct {
 	InlinedTwice unmarshalerInlined `yaml:",inline"`
 }
 
-type obsoleteUnmarshalerType struct {
+type legacyUnmarshalerType struct {
 	value any
 }
 
-func (o *obsoleteUnmarshalerType) UnmarshalYAML(unmarshal func(v any) error) error {
+func (o *legacyUnmarshalerType) UnmarshalYAML(unmarshal func(v any) error) error {
 	if err := unmarshal(&o.value); err != nil {
 		return err
 	}
@@ -896,12 +1088,12 @@ func (o *obsoleteUnmarshalerType) UnmarshalYAML(unmarshal func(v any) error) err
 	return nil
 }
 
-type obsoleteUnmarshalerPointer struct {
-	Field *obsoleteUnmarshalerType `yaml:"_"`
+type legacyUnmarshalerPointer struct {
+	Field *legacyUnmarshalerType `yaml:"_"`
 }
 
-type obsoleteUnmarshalerValue struct {
-	Field obsoleteUnmarshalerType `yaml:"_"`
+type legacyUnmarshalerValue struct {
+	Field legacyUnmarshalerType `yaml:"_"`
 }
 
 func TestUnmarshalerPointerField(t *testing.T) {
@@ -917,7 +1109,7 @@ func TestUnmarshalerPointerField(t *testing.T) {
 		}
 	}
 	for _, item := range unmarshalerTests {
-		obj := &obsoleteUnmarshalerPointer{}
+		obj := &legacyUnmarshalerPointer{}
 		err := yaml.Unmarshal([]byte(item.data), obj)
 		assert.NoError(t, err)
 		if item.value == nil {
@@ -931,7 +1123,7 @@ func TestUnmarshalerPointerField(t *testing.T) {
 
 func TestUnmarshalerValueField(t *testing.T) {
 	for _, item := range unmarshalerTests {
-		obj := &obsoleteUnmarshalerValue{}
+		obj := &legacyUnmarshalerValue{}
 		err := yaml.Unmarshal([]byte(item.data), obj)
 		assert.NoError(t, err)
 		assert.NotNilf(t, obj.Field, "Pointer not initialized (%#v)", item.value)
@@ -954,7 +1146,7 @@ func TestUnmarshalerInlinedField(t *testing.T) {
 }
 
 func TestUnmarshalerWholeDocument(t *testing.T) {
-	obj := &obsoleteUnmarshalerType{}
+	obj := &legacyUnmarshalerType{}
 	err := yaml.Unmarshal([]byte(unmarshalerTests[0].data), obj)
 	assert.NoError(t, err)
 	value, ok := obj.value.(map[string]any)
@@ -962,9 +1154,25 @@ func TestUnmarshalerWholeDocument(t *testing.T) {
 	assert.DeepEqual(t, unmarshalerTests[0].value, value["_"])
 }
 
+func TestUnmarshalerWholeDocumentModern(t *testing.T) {
+	obj := &unmarshalerType{}
+	err := yaml.Unmarshal([]byte(unmarshalerTests[0].data), obj)
+	assert.NoError(t, err)
+	value, ok := obj.value.(map[string]any)
+	assert.Truef(t, ok, "value: %#v", obj.value)
+	assert.DeepEqual(t, unmarshalerTests[0].value, value["_"])
+}
+
+func TestUnmarshalerWholeDocumentNull(t *testing.T) {
+	obj := &unmarshalerType{}
+	err := yaml.Unmarshal([]byte("null"), obj)
+	assert.NoError(t, err)
+	assert.DeepEqual(t, unmarshalerType{}, *obj)
+}
+
 func TestUnmarshalerLoadErrors(t *testing.T) {
-	unmarshalerResult[2] = &yaml.LoadErrors{Errors: []*yaml.LoadError{{Err: errors.New("foo"), Line: 1, Column: 1}}}
-	unmarshalerResult[4] = &yaml.LoadErrors{Errors: []*yaml.LoadError{{Err: errors.New("bar"), Line: 1, Column: 1}}}
+	unmarshalerResult[2] = &yaml.LoadErrors{Errors: []*yaml.LoadError{{Stage: yaml.ConstructorStage, Message: "foo", Mark: yaml.Mark{Line: 1, Column: 1}}}}
+	unmarshalerResult[4] = &yaml.LoadErrors{Errors: []*yaml.LoadError{{Stage: yaml.ConstructorStage, Message: "bar", Mark: yaml.Mark{Line: 1, Column: 1}}}}
 	defer func() {
 		delete(unmarshalerResult, 2)
 		delete(unmarshalerResult, 4)
@@ -979,11 +1187,11 @@ func TestUnmarshalerLoadErrors(t *testing.T) {
 	data := `{before: A, m: {abc: 1, def: 2, ghi: 3, jkl: 4}, after: B}`
 	err := yaml.Unmarshal([]byte(data), &v)
 	expectedError := "" +
-		"yaml: construct errors:\n" +
-		"  line 1: cannot construct !!str `A` into int\n" +
-		"  line 1: foo\n" +
-		"  line 1: bar\n" +
-		"  line 1: cannot construct !!str `B` into int"
+		"yaml: construct errors: " +
+		"line 1: cannot construct !!str `A` into int; " +
+		"line 1: foo; " +
+		"line 1: bar; " +
+		"line 1: cannot construct !!str `B` into int"
 	assert.ErrorMatches(t, expectedError, err)
 	assert.NotNil(t, v.M["abc"])
 	assert.IsNil(t, v.M["def"])
@@ -994,9 +1202,9 @@ func TestUnmarshalerLoadErrors(t *testing.T) {
 	assert.Equal(t, 3, v.M["ghi"].value)
 }
 
-func TestObsoleteUnmarshalerLoadErrors(t *testing.T) {
-	unmarshalerResult[2] = &yaml.LoadErrors{Errors: []*yaml.LoadError{{Err: errors.New("foo"), Line: 1, Column: 1}}}
-	unmarshalerResult[4] = &yaml.LoadErrors{Errors: []*yaml.LoadError{{Err: errors.New("bar"), Line: 1, Column: 1}}}
+func TestLegacyUnmarshalerLoadErrors(t *testing.T) {
+	unmarshalerResult[2] = &yaml.LoadErrors{Errors: []*yaml.LoadError{{Stage: yaml.ConstructorStage, Message: "foo", Mark: yaml.Mark{Line: 1, Column: 1}}}}
+	unmarshalerResult[4] = &yaml.LoadErrors{Errors: []*yaml.LoadError{{Stage: yaml.ConstructorStage, Message: "bar", Mark: yaml.Mark{Line: 1, Column: 1}}}}
 	defer func() {
 		delete(unmarshalerResult, 2)
 		delete(unmarshalerResult, 4)
@@ -1005,17 +1213,17 @@ func TestObsoleteUnmarshalerLoadErrors(t *testing.T) {
 	type T struct {
 		Before int
 		After  int
-		M      map[string]*obsoleteUnmarshalerType
+		M      map[string]*legacyUnmarshalerType
 	}
 	var v T
 	data := `{before: A, m: {abc: 1, def: 2, ghi: 3, jkl: 4}, after: B}`
 	err := yaml.Unmarshal([]byte(data), &v)
 	expectedError := "" +
-		"yaml: construct errors:\n" +
-		"  line 1: cannot construct !!str `A` into int\n" +
-		"  line 1: foo\n" +
-		"  line 1: bar\n" +
-		"  line 1: cannot construct !!str `B` into int"
+		"yaml: construct errors: " +
+		"line 1: cannot construct !!str `A` into int; " +
+		"line 1: foo; " +
+		"line 1: bar; " +
+		"line 1: cannot construct !!str `B` into int"
 	assert.ErrorMatches(t, expectedError, err)
 
 	assert.NotNil(t, v.M["abc"])
@@ -1031,17 +1239,8 @@ func TestLoadErrors_Unwrapping(t *testing.T) {
 	errSentinel := errors.New("foo")
 	errSentinel2 := errors.New("bar")
 
-	errUnmarshal := &yaml.LoadError{
-		Line:   1,
-		Column: 2,
-		Err:    errSentinel,
-	}
-
-	errUnmarshal2 := &yaml.LoadError{
-		Line:   2,
-		Column: 2,
-		Err:    errSentinel2,
-	}
+	errUnmarshal := yaml.NewLoadError(yaml.ConstructorStage, "foo", yaml.Mark{Line: 1, Column: 2}, errSentinel)
+	errUnmarshal2 := yaml.NewLoadError(yaml.ConstructorStage, "bar", yaml.Mark{Line: 2, Column: 2}, errSentinel2)
 
 	// Simulate a LoadErrors
 	err := &yaml.LoadErrors{
@@ -1070,17 +1269,8 @@ func TestLoadErrors_Unwrapping(t *testing.T) {
 func TestLoadErrors_Unwrapping_Failures(t *testing.T) {
 	errSentinel := errors.New("foo")
 
-	errUnmarshal := &yaml.LoadError{
-		Line:   1,
-		Column: 2,
-		Err:    errSentinel,
-	}
-
-	errUnmarshal2 := &yaml.LoadError{
-		Line:   2,
-		Column: 2,
-		Err:    errors.New("bar"),
-	}
+	errUnmarshal := yaml.NewLoadError(yaml.ConstructorStage, "foo", yaml.Mark{Line: 1, Column: 2}, errSentinel)
+	errUnmarshal2 := yaml.NewLoadError(yaml.ConstructorStage, "bar", yaml.Mark{Line: 2, Column: 2}, errors.New("bar"))
 
 	// Simulate a LoadErrors
 	err := &yaml.LoadErrors{
@@ -1132,17 +1322,17 @@ func TestUnmarshalerLoadErrorsProxying(t *testing.T) {
 	data := `{before: A, m: {abc: a, def: b}, after: B}`
 	err := yaml.Unmarshal([]byte(data), &v)
 	expectedError := "" +
-		"yaml: construct errors:\n" +
-		"  line 1: cannot construct !!str `A` into int\n" +
-		"  line 1: cannot construct !!str `a` into int32\n" +
-		"  line 1: cannot construct !!str `b` into int64\n" +
-		"  line 1: cannot construct !!str `B` into int"
+		"yaml: construct errors: " +
+		"line 1: cannot construct !!str `A` into int; " +
+		"line 1: cannot construct !!str `a` into int32; " +
+		"line 1: cannot construct !!str `b` into int64; " +
+		"line 1: cannot construct !!str `B` into int"
 	assert.ErrorMatches(t, expectedError, err)
 }
 
-type obsoleteProxyTypeError struct{}
+type legacyProxyTypeError struct{}
 
-func (v *obsoleteProxyTypeError) UnmarshalYAML(unmarshal func(any) error) error {
+func (v *legacyProxyTypeError) UnmarshalYAML(unmarshal func(any) error) error {
 	var s string
 	var a int32
 	var b int64
@@ -1161,22 +1351,90 @@ func (v *obsoleteProxyTypeError) UnmarshalYAML(unmarshal func(any) error) error 
 	return unmarshal(&b)
 }
 
-func TestObsoleteUnmarshalerLoadErrorsProxying(t *testing.T) {
+func TestLegacyUnmarshalerLoadErrorsProxying(t *testing.T) {
 	type T struct {
 		Before int
 		After  int
-		M      map[string]*obsoleteProxyTypeError
+		M      map[string]*legacyProxyTypeError
 	}
 	var v T
 	data := `{before: A, m: {abc: a, def: b}, after: B}`
 	err := yaml.Unmarshal([]byte(data), &v)
 	expectedError := "" +
-		"yaml: construct errors:\n" +
-		"  line 1: cannot construct !!str `A` into int\n" +
-		"  line 1: cannot construct !!str `a` into int32\n" +
-		"  line 1: cannot construct !!str `b` into int64\n" +
-		"  line 1: cannot construct !!str `B` into int"
+		"yaml: construct errors: " +
+		"line 1: cannot construct !!str `A` into int; " +
+		"line 1: cannot construct !!str `a` into int32; " +
+		"line 1: cannot construct !!str `b` into int64; " +
+		"line 1: cannot construct !!str `B` into int"
 	assert.ErrorMatches(t, expectedError, err)
+}
+
+type legacyWrappingUnmarshaler struct {
+	Value string `yaml:"value"`
+}
+
+func (w *legacyWrappingUnmarshaler) UnmarshalYAML(unmarshal func(any) error) error {
+	type plain legacyWrappingUnmarshaler
+	var p plain
+	if err := unmarshal(&p); err != nil {
+		return fmt.Errorf("wrapper failed: %w", err)
+	}
+	*w = legacyWrappingUnmarshaler(p)
+	return nil
+}
+
+func errorChainFinite(err error, limit int) bool {
+	count := 0
+	var walk func(error) bool
+	walk = func(e error) bool {
+		for e != nil {
+			count++
+			if count > limit {
+				return false
+			}
+			if le, ok := e.(*yaml.LoadErrors); ok {
+				for _, child := range le.Errors {
+					if !walk(child) {
+						return false
+					}
+				}
+				return true
+			}
+			switch x := e.(type) {
+			case interface{ Unwrap() []error }:
+				for _, child := range x.Unwrap() {
+					if !walk(child) {
+						return false
+					}
+				}
+				return true
+			case interface{ Unwrap() error }:
+				e = x.Unwrap()
+			default:
+				return true
+			}
+		}
+		return true
+	}
+	return walk(err)
+}
+
+func TestLegacyUnmarshalerWrappedErrorNoCycle(t *testing.T) {
+	type Root struct {
+		Items []legacyWrappingUnmarshaler `yaml:"items"`
+	}
+	var r Root
+	err := yaml.Unmarshal([]byte("items:\n  - not-an-object\n"), &r)
+	assert.NotNil(t, err)
+
+	assert.Truef(t, errorChainFinite(err, 1000),
+		"error chain is cyclic (issue #345 regression): %v", err)
+
+	assert.False(t, errors.Is(err, errFailing))
+
+	var loadErr *yaml.LoadError
+	assert.Truef(t, errors.As(err, &loadErr),
+		"expected to extract *yaml.LoadError from %v", err)
 }
 
 var errFailing = errors.New("failingErr")
@@ -1197,7 +1455,7 @@ func TestUnmarshalerError(t *testing.T) {
 	err := yaml.Unmarshal([]byte(data), &dst)
 	expectedErr := &yaml.LoadErrors{
 		Errors: []*yaml.LoadError{
-			{Line: 1, Column: 17, Err: errFailing},
+			yaml.NewLoadError(yaml.ConstructorStage, errFailing.Error(), yaml.Mark{Line: 1, Column: 17}, errFailing),
 		},
 	}
 	assert.DeepEqual(t, expectedErr, err)
@@ -1207,29 +1465,29 @@ func TestUnmarshalerError(t *testing.T) {
 	assert.Equal(t, "test", dst.Spam)
 }
 
-type obsoleteFailingUnmarshaler struct{}
+type legacyFailingUnmarshaler struct{}
 
-func (ft *obsoleteFailingUnmarshaler) UnmarshalYAML(unmarshal func(any) error) error {
+func (ft *legacyFailingUnmarshaler) UnmarshalYAML(unmarshal func(any) error) error {
 	return errFailing
 }
 
-func TestObsoleteUnmarshalerError(t *testing.T) {
+func TestLegacyUnmarshalerError(t *testing.T) {
 	data := `{foo: 123, bar: {}, spam: "test"}`
 	dst := struct {
 		Foo  int
-		Bar  *obsoleteFailingUnmarshaler
+		Bar  *legacyFailingUnmarshaler
 		Spam string
 	}{}
 	err := yaml.Unmarshal([]byte(data), &dst)
 	expectedErr := &yaml.LoadErrors{
 		Errors: []*yaml.LoadError{
-			{Line: 1, Column: 17, Err: errFailing},
+			yaml.NewLoadError(yaml.ConstructorStage, errFailing.Error(), yaml.Mark{Line: 1, Column: 17}, errFailing),
 		},
 	}
 	assert.DeepEqual(t, expectedErr, err)
 	// whatever could be unmarshaled must be unmarshaled
 	assert.Equal(t, 123, dst.Foo)
-	assert.DeepEqual(t, &obsoleteFailingUnmarshaler{}, dst.Bar)
+	assert.DeepEqual(t, &legacyFailingUnmarshaler{}, dst.Bar)
 	assert.Equal(t, "test", dst.Spam)
 }
 
@@ -1251,7 +1509,7 @@ func TestTextUnmarshalerError(t *testing.T) {
 	err := yaml.Unmarshal([]byte(data), &dst)
 	expectedErr := &yaml.LoadErrors{
 		Errors: []*yaml.LoadError{
-			{Line: 1, Column: 17, Err: errFailing},
+			yaml.NewLoadError(yaml.ConstructorStage, errFailing.Error(), yaml.Mark{Line: 1, Column: 17}, errFailing),
 		},
 	}
 	assert.DeepEqual(t, expectedErr, err)
@@ -1263,13 +1521,7 @@ func TestTextUnmarshalerError(t *testing.T) {
 
 func TestUnmarshalError_Unwrapping(t *testing.T) {
 	errSentinel := errors.New("foo")
-
-	errUnmarshal := &yaml.LoadError{
-		Line:   1,
-		Column: 2,
-		Err:    errSentinel,
-	}
-
+	errUnmarshal := yaml.NewLoadError(yaml.ConstructorStage, "foo", yaml.Mark{Line: 1, Column: 2}, errSentinel)
 	assert.ErrorIs(t, errUnmarshal, errSentinel)
 }
 
@@ -1323,9 +1575,9 @@ func TestUnmarshalerRetry(t *testing.T) {
 	assert.DeepEqual(t, sliceUnmarshaler([]int{1}), su)
 }
 
-type obsoleteSliceUnmarshaler []int
+type legacySliceUnmarshaler []int
 
-func (su *obsoleteSliceUnmarshaler) UnmarshalYAML(unmarshal func(any) error) error {
+func (su *legacySliceUnmarshaler) UnmarshalYAML(unmarshal func(any) error) error {
 	var slice []int
 	err := unmarshal(&slice)
 	if err == nil {
@@ -1343,15 +1595,67 @@ func (su *obsoleteSliceUnmarshaler) UnmarshalYAML(unmarshal func(any) error) err
 	return err
 }
 
-func TestObsoleteUnmarshalerRetry(t *testing.T) {
-	var su obsoleteSliceUnmarshaler
+func TestLegacyUnmarshalerRetry(t *testing.T) {
+	var su legacySliceUnmarshaler
 	err := yaml.Unmarshal([]byte("[1, 2, 3]"), &su)
 	assert.NoError(t, err)
-	assert.DeepEqual(t, obsoleteSliceUnmarshaler([]int{1, 2, 3}), su)
+	assert.DeepEqual(t, legacySliceUnmarshaler([]int{1, 2, 3}), su)
 
 	err = yaml.Unmarshal([]byte("1"), &su)
 	assert.NoError(t, err)
-	assert.DeepEqual(t, obsoleteSliceUnmarshaler([]int{1}), su)
+	assert.DeepEqual(t, legacySliceUnmarshaler([]int{1}), su)
+}
+
+// nodeKindRecorder records the Kind of the node passed to UnmarshalYAML
+type nodeKindRecorder struct {
+	Kind libyaml.Kind
+	Data any
+}
+
+func (n *nodeKindRecorder) UnmarshalYAML(node *yaml.Node) error {
+	n.Kind = node.Kind
+	return node.Decode(&n.Data)
+}
+
+// TestUnmarshalerNodeKind verifies that custom unmarshalers receive the
+// correct node kind (SequenceNode, ScalarNode, MappingNode) rather than
+// DocumentNode. This is a regression test for issue #274.
+func TestUnmarshalerNodeKind(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		wantKind libyaml.Kind
+		wantData any
+	}{
+		{
+			name:     "sequence",
+			input:    "[1, 2, 3]",
+			wantKind: libyaml.SequenceNode,
+			wantData: []any{1, 2, 3},
+		},
+		{
+			name:     "mapping",
+			input:    "foo: bar",
+			wantKind: libyaml.MappingNode,
+			wantData: map[string]any{"foo": "bar"},
+		},
+		{
+			name:     "scalar",
+			input:    "hello",
+			wantKind: libyaml.ScalarNode,
+			wantData: "hello",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var recorder nodeKindRecorder
+			err := yaml.Unmarshal([]byte(tt.input), &recorder)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantKind, recorder.Kind)
+			assert.DeepEqual(t, tt.wantData, recorder.Data)
+		})
+	}
 }
 
 // From http://yaml.org/type/merge.html
@@ -1638,12 +1942,12 @@ var unmarshalStrictTests = []struct {
 	known: true,
 	data:  "a: 1\nc: 2\n",
 	value: struct{ A, B int }{A: 1},
-	error: `yaml: construct errors:\n  line 2: field c not found in type struct { A int; B int }`,
+	error: `yaml: construct errors: line 2: field c not found in type struct { A int; B int }`,
 }, {
 	unique: true,
 	data:   "a: 1\nb: 2\na: 3\n",
 	value:  struct{ A, B int }{A: 3, B: 2},
-	error:  `yaml: construct errors:\n  line 3: mapping key "a" already defined at line 1`,
+	error:  `yaml: construct errors: line 3: mapping key "a" already defined at line 1`,
 }, {
 	unique: true,
 	data:   "c: 3\na: 1\nb: 2\nc: 4\n",
@@ -1659,7 +1963,7 @@ var unmarshalStrictTests = []struct {
 			},
 		},
 	},
-	error: `yaml: construct errors:\n  line 4: mapping key "c" already defined at line 1`,
+	error: `yaml: construct errors: line 4: mapping key "c" already defined at line 1`,
 }, {
 	unique: true,
 	data:   "c: 0\na: 1\nb: 2\nc: 1\n",
@@ -1675,7 +1979,7 @@ var unmarshalStrictTests = []struct {
 			},
 		},
 	},
-	error: `yaml: construct errors:\n  line 4: mapping key "c" already defined at line 1`,
+	error: `yaml: construct errors: line 4: mapping key "c" already defined at line 1`,
 }, {
 	unique: true,
 	data:   "c: 1\na: 1\nb: 2\nc: 3\n",
@@ -1689,7 +1993,7 @@ var unmarshalStrictTests = []struct {
 			"c": 3,
 		},
 	},
-	error: `yaml: construct errors:\n  line 4: mapping key "c" already defined at line 1`,
+	error: `yaml: construct errors: line 4: mapping key "c" already defined at line 1`,
 }, {
 	unique: true,
 	data:   "a: 1\n9: 2\nnull: 3\n9: 4",
@@ -1698,7 +2002,7 @@ var unmarshalStrictTests = []struct {
 		nil: 3,
 		9:   4,
 	},
-	error: `yaml: construct errors:\n  line 4: mapping key "9" already defined at line 2`,
+	error: `yaml: construct errors: line 4: mapping key "9" already defined at line 2`,
 }}
 
 func TestUnmarshalKnownFields(t *testing.T) {
@@ -1734,7 +2038,7 @@ func (t *textUnmarshaler) UnmarshalText(s []byte) error {
 
 func TestFuzzCrashersFromYAML(t *testing.T) {
 	datatest.RunTestCases(t, func() ([]map[string]any, error) {
-		return datatest.LoadTestCasesFromFile("testdata/fuzz_crashers.yaml", libyaml.LoadYAML)
+		return datatest.LoadTestCasesFromFile("testdata/fuzz_crashers.yaml", libyaml.LoadAny)
 	}, map[string]datatest.TestHandler{
 		"fuzz-crasher": runFuzzCrasherTest,
 	})
@@ -1780,9 +2084,10 @@ func TestParserErrorUnknownAnchorPosition(t *testing.T) {
 	for _, test := range tests {
 		var n yaml.Node
 		err := yaml.Unmarshal([]byte(test.data), &n)
-		asErr := new(libyaml.ParserError)
+		asErr := new(libyaml.LoadError)
 		assert.ErrorAs(t, err, &asErr)
-		expected := &libyaml.ParserError{
+		expected := &libyaml.LoadError{
+			Stage:   libyaml.ComposerStage,
 			Message: "unknown anchor 'x' referenced",
 			Mark: libyaml.Mark{
 				Line:   test.line,
@@ -2160,7 +2465,7 @@ func TestMarshal(t *testing.T) {
 
 func TestEncodeToYAML(t *testing.T) {
 	datatest.RunTestCases(t, func() ([]map[string]any, error) {
-		return datatest.LoadTestCasesFromFile("testdata/encode.yaml", libyaml.LoadYAML)
+		return datatest.LoadTestCasesFromFile("testdata/encode.yaml", libyaml.LoadAny)
 	}, map[string]datatest.TestHandler{
 		"encode":      runEncodeTest,
 		"encode-opts": runEncodeOptsTest,
@@ -2313,7 +2618,10 @@ func TestEncoderMultipleDocuments(t *testing.T) {
 func TestEncoderWriteError(t *testing.T) {
 	enc := yaml.NewEncoder(errorWriter{})
 	err := enc.Encode(map[string]string{"a": "b"})
-	assert.ErrorMatches(t, `yaml: write error: some write error`, err) // Data not flushed yet
+	assert.ErrorMatches(t, `go-yaml dump error in writer: some write error`, err)
+	var dumpErr *yaml.DumpError
+	assert.True(t, errors.As(err, &dumpErr))
+	assert.Equal(t, yaml.WriterStage, dumpErr.Stage)
 }
 
 type errorWriter struct{}
@@ -2325,31 +2633,32 @@ func (errorWriter) Write([]byte) (int, error) {
 var marshalErrorTests = []struct {
 	value any
 	error string
-	panic string
+	stage yaml.Stage
 }{{
 	value: &struct {
 		B       int
 		inlineB `yaml:",inline"`
 	}{1, inlineB{2, inlineC{3}}},
 	//nolint:dupword // struct is duplicated here as the first one is the struct and the second is the name of the inline struct
-	panic: `duplicated key 'b' in struct struct \{ B int; .*`,
+	error: `go-yaml dump error in representer: duplicated key 'b' in struct struct \{ B int; .*`,
+	stage: yaml.RepresenterStage,
 }, {
 	value: &struct {
 		A int
 		B map[string]int `yaml:",inline"`
 	}{1, map[string]int{"a": 2}},
-	panic: `cannot have key "a" in inlined map: conflicts with struct field`,
+	error: `go-yaml dump error in representer: cannot have key "a" in inlined map: conflicts with struct field`,
+	stage: yaml.RepresenterStage,
 }}
 
 func TestMarshalErrors(t *testing.T) {
 	for _, item := range marshalErrorTests {
-		t.Run(item.panic, func(t *testing.T) {
-			if item.panic != "" {
-				assert.PanicMatches(t, item.panic, func() { yaml.Marshal(item.value) })
-			} else {
-				_, err := yaml.Marshal(item.value)
-				assert.ErrorMatches(t, item.error, err)
-			}
+		t.Run(item.error, func(t *testing.T) {
+			_, err := yaml.Marshal(item.value)
+			assert.ErrorMatches(t, item.error, err)
+			var dumpErr *yaml.DumpError
+			assert.True(t, errors.As(err, &dumpErr))
+			assert.Equal(t, item.stage, dumpErr.Stage)
 		})
 	}
 }
@@ -2425,7 +2734,7 @@ func (ft *failingMarshaler) MarshalYAML() (any, error) {
 
 func TestMarshalerError(t *testing.T) {
 	_, err := yaml.Marshal(&failingMarshaler{})
-	assert.ErrorIs(t, errFailing, err)
+	assert.ErrorIs(t, err, errFailing)
 }
 
 func TestSetIndent(t *testing.T) {
@@ -2934,6 +3243,40 @@ func TestOptsYAML(t *testing.T) {
 			expectErr: false,
 		},
 		{
+			name:    "plugin defaults",
+			yamlStr: "plugin: {limit: true}",
+		},
+		{
+			name:    "plugin disabled",
+			yamlStr: "plugin: {limit: false}",
+		},
+		{
+			name:    "plugin disabled in mapping",
+			yamlStr: "plugin: {limit: {depth: 3, disable: true}}",
+		},
+		{
+			name:    "plugin enabled in mapping",
+			yamlStr: "plugin: {limit: {depth: 3, disable: false}}",
+		},
+		{
+			name:      "invalid disable setting",
+			yamlStr:   "plugin: {limit: {disable: null}}",
+			expectErr: true,
+			errMatch:  "disable must be a boolean",
+		},
+		{
+			name:      "null plugin value",
+			yamlStr:   "plugin: {limit: null}",
+			expectErr: true,
+			errMatch:  "mapping, string, or boolean",
+		},
+		{
+			name:      "null plugin field",
+			yamlStr:   "plugin: null",
+			expectErr: true,
+			errMatch:  "plugin configuration must be a mapping",
+		},
+		{
 			name:      "typo in field name",
 			yamlStr:   "knnown-fields: true",
 			expectErr: true,
@@ -2996,7 +3339,7 @@ unique-keys: true
 // FuzzEncodeFromJSON checks that any JSON encoded value can also be encoded as YAML... and decoded.
 func FuzzEncodeFromJSON(f *testing.F) {
 	// Load seed corpus from testdata YAML file
-	cases, err := datatest.LoadTestCasesFromFile("testdata/fuzz_json_roundtrip.yaml", libyaml.LoadYAML)
+	cases, err := datatest.LoadTestCasesFromFile("testdata/fuzz_json_roundtrip.yaml", libyaml.LoadAny)
 	if err != nil {
 		f.Fatalf("Failed to load seed corpus: %v", err)
 	}
@@ -3044,9 +3387,61 @@ func FuzzEncodeFromJSON(f *testing.F) {
 	})
 }
 
-func TestLimits(t *testing.T) {
+func TestPlugins(t *testing.T) {
 	datatest.RunTestCases(t, func() ([]map[string]any, error) {
-		return datatest.LoadTestCasesFromFile("testdata/limit.yaml", libyaml.LoadYAML)
+		return datatest.LoadTestCasesFromFile("testdata/plugin.yaml", libyaml.LoadAny)
+	}, map[string]datatest.TestHandler{
+		"plugin-pass":  runPluginTest,
+		"plugin-error": runPluginTest,
+	})
+}
+
+func runPluginTest(t *testing.T, tc map[string]any) {
+	t.Helper()
+
+	// Build YAML string from plugin config for OptsYAML
+	pluginCfg := tc["plugin"]
+	pluginYAML, err := yaml.Dump(map[string]any{"plugin": pluginCfg})
+	if err != nil {
+		t.Fatalf("Failed to marshal plugin config: %v", err)
+	}
+
+	opts, err := yaml.OptsYAML(string(pluginYAML))
+	if err != nil {
+		t.Fatalf("OptsYAML failed: %v", err)
+	}
+
+	// Generate data from spec
+	data, err := datatest.GenerateData(tc["data"])
+	if err != nil {
+		t.Fatalf("Failed to generate data: %v", err)
+	}
+
+	// Load with plugin options
+	var result any
+	err = yaml.Load(data, &result, opts)
+
+	// Check result
+	expectedError := ""
+	if wantVal, hasWant := tc["want"]; hasWant {
+		if s, ok := wantVal.(string); ok {
+			expectedError = s
+		}
+	}
+
+	if expectedError != "" {
+		if err == nil {
+			t.Fatalf("expected error %q, got nil", expectedError)
+		}
+		assert.Equal(t, expectedError, err.Error())
+		return
+	}
+	assert.NoError(t, err)
+}
+
+func TestLimit(t *testing.T) {
+	datatest.RunTestCases(t, func() ([]map[string]any, error) {
+		return datatest.LoadTestCasesFromFile("testdata/limit.yaml", libyaml.LoadAny)
 	}, map[string]datatest.TestHandler{
 		"limit":       runLimitTest,
 		"limit-error": runLimitTest,
@@ -3086,7 +3481,7 @@ func runLimitTest(t *testing.T, tc map[string]any) {
 		if err == nil {
 			t.Fatalf("expected error %q, got nil", expectedError)
 		}
-		assert.Equal(t, expectedError, err.Error())
+		assert.ErrorMatches(t, expectedError, err)
 		return
 	}
 	assert.NoError(t, err)
@@ -3131,7 +3526,7 @@ var limitTests = []struct {
 	{name: "1000kb of 10000-nested lines", data: []byte(strings.Repeat(`- `+strings.Repeat(`[`, 10000)+strings.Repeat(`]`, 10000)+"\n", 1000*1024/20000))},
 }
 
-func BenchmarkLimits(b *testing.B) {
+func BenchmarkLimit(b *testing.B) {
 	for _, tc := range limitTests {
 		tc := tc
 		b.Run(tc.name, func(b *testing.B) {
@@ -3150,7 +3545,7 @@ func BenchmarkLimits(b *testing.B) {
 
 func TestParserGetEvents(t *testing.T) {
 	datatest.RunTestCases(t, func() ([]map[string]any, error) {
-		return datatest.LoadTestCasesFromFile("testdata/parser_events.yaml", libyaml.LoadYAML)
+		return datatest.LoadTestCasesFromFile("testdata/parser_events.yaml", libyaml.LoadAny)
 	}, map[string]datatest.TestHandler{
 		"parser-events": runParserEventsTest,
 	})

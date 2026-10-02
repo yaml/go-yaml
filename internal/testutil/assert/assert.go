@@ -15,6 +15,7 @@ import (
 	"regexp"
 )
 
+// miniTB defines the minimal interface required for test assertions.
 type miniTB interface {
 	Helper()
 	Fatalf(string, ...any)
@@ -253,6 +254,7 @@ func PanicMatchesf(tb miniTB, pattern string, f func(), msgFormat string, args .
 	}
 }
 
+// isNil checks if a value is nil, handling both direct nil and typed nil values.
 func isNil(v any) bool {
 	if v == nil {
 		return true

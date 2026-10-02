@@ -20,23 +20,23 @@
     a: b
     ' go-yaml -o stream -N
   out: |
-    - kind: Stream
+    - node: Stream
       encoding: UTF-8
-    - kind: Document
+    - node: Document
       content:
-      - kind: Mapping
+      - node: Mapping
         style: Plain
         tag: '!!map'
         content:
-        - kind: Scalar
+        - node: Scalar
           style: Plain
           tag: '!!str'
-          text: a
-        - kind: Scalar
+          value: a
+        - node: Scalar
           style: Plain
           tag: '!!str'
-          text: b
-    - kind: Stream
+          value: b
+    - node: Stream
       encoding: UTF-8
 
 - name: Without stream option no stream nodes
