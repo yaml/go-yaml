@@ -787,6 +787,43 @@ func TestSortedOutput(t *testing.T) {
 	}
 }
 
+// A literal map key "<<" must round-trip as the plain string key it is,
+// not be reinterpreted as the YAML merge-key directive on decode.
+// resolveTable previously had no hint byte for '<', so resolve() never
+// consulted resolveMap's mergeTag entry for "<<" at marshal time, and
+// stringv's canUsePlain check marshaled it unquoted; decode.go's parser
+// then treated the unquoted "<<" as a merge directive regardless of what
+// the encoder intended, splicing the value's keys into the parent map.
+func TestMergeKeyStringRoundTrips(t *testing.T) {
+	original := map[string]interface{}{
+		"<<":   map[string]interface{}{"injected": "value"},
+		"name": "alice",
+	}
+
+	out, err := yaml.Marshal(original)
+	if err != nil {
+		t.Fatalf("Marshal() returned error: %v", err)
+	}
+	if !strings.Contains(string(out), `"<<":`) {
+		t.Fatalf("Marshal() did not quote the literal \"<<\" key, got:\n%s", out)
+	}
+
+	var back map[string]interface{}
+	if err := yaml.Unmarshal(out, &back); err != nil {
+		t.Fatalf("Unmarshal() returned error: %v", err)
+	}
+
+	if _, ok := back["<<"]; !ok {
+		t.Fatalf("expected literal key \"<<\" to survive the round trip, got: %#v", back)
+	}
+	if _, ok := back["injected"]; ok {
+		t.Fatalf("\"injected\" should not have been spliced into the top-level map, got: %#v", back)
+	}
+	if back["name"] != "alice" {
+		t.Fatalf("expected name to be \"alice\", got: %#v", back["name"])
+	}
+}
+
 func newTime(t time.Time) *time.Time {
 	return &t
 }
