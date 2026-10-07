@@ -193,8 +193,6 @@ TestYAMLSuite/W4TN/EventComparisonTest
 TestYAMLSuite/W4TN/LoadTest
 TestYAMLSuite/W5VH/EventComparisonTest
 TestYAMLSuite/W5VH/LoadTest
-TestYAMLSuite/WZ62/EventComparisonTest
-TestYAMLSuite/WZ62/LoadTest
 TestYAMLSuite/X38W/EventComparisonTest
 TestYAMLSuite/X38W/LoadTest
 TestYAMLSuite/X4QW/EventComparisonTest
