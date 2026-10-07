@@ -2734,7 +2734,11 @@ func (parser *Parser) scanTag(token *Token) error {
 			return err
 		}
 	}
-	if !isBlankOrZero(parser.buffer, parser.buffer_pos) {
+	// In flow content the tagged node may be empty, so ',', ']' and '}' can
+	// end the tag directly.
+	c := parser.buffer[parser.buffer_pos]
+	if !isBlankOrZero(parser.buffer, parser.buffer_pos) &&
+		!(parser.flow_level > 0 && (c == ',' || c == ']' || c == '}')) {
 		return formatScannerErrorContext("while scanning a tag", start_mark,
 			"did not find expected whitespace or line break", parser.mark)
 	}
@@ -2919,11 +2923,14 @@ func (parser *Parser) scanTagURI(directive bool, verbatim bool, head []byte, sta
 	// For non-verbatim tags, if we stopped at a printable character that
 	// isn't whitespace, it's an invalid tag character - give a specific
 	// error.
+	// Inside flow content, a flow indicator ends the tag instead.
 	// For verbatim tags, the caller will check for the expected '>'
 	// delimiter.
 	if !verbatim {
 		c := parser.buffer[parser.buffer_pos]
-		if !isBlankOrZero(parser.buffer, parser.buffer_pos) &&
+		flowEnd := parser.flow_level > 0 &&
+			isFlowIndicator(parser.buffer, parser.buffer_pos)
+		if !isBlankOrZero(parser.buffer, parser.buffer_pos) && !flowEnd &&
 			c >= 0x20 && c <= 0x7E {
 			return parser.setScannerTagError(directive, start_mark,
 				fmt.Sprintf("found character '%c' that is not allowed in a YAML tag", c))
