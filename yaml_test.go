@@ -2826,6 +2826,27 @@ func TestNodeScalarStyleFallback(t *testing.T) {
 	}
 }
 
+// The reproducer of https://github.com/yaml/go-yaml/issues/399: a multiline
+// scalar inside a block sequence item must round-trip. The emitter once
+// computed the indentation indicator from BestIndent, which does not match
+// the two columns a sequence item actually adds. The encode fixtures cover
+// the emitted indicator; this checks the direct Marshal to Unmarshal path.
+func TestBlockSequenceScalarRoundTrip(t *testing.T) {
+	for _, value := range []string{
+		"  a\nb\n",
+		"     a\nb\n",
+		"\n  indented\nregular",
+	} {
+		in := []any{value}
+		out, err := yaml.Marshal(&in)
+		assert.NoError(t, err)
+
+		var back []any
+		assert.NoErrorf(t, yaml.Unmarshal(out, &back), "encoded as:\n%s", out)
+		assert.DeepEqualf(t, in, back, "encoded as:\n%s", out)
+	}
+}
+
 func TestSortedOutput(t *testing.T) {
 	order := []any{
 		false,
