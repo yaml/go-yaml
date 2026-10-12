@@ -2039,7 +2039,7 @@ func (emitter *Emitter) writeBlockScalarHints(value []byte) error {
 	if i < len(value) && isSpace(value, i) {
 		// The indicator is the content's indentation relative to the parent
 		// node, not BestIndent: a block sequence item only adds 2 columns, so
-		// emitting BestIndent produces an unparseable document. It must also be
+		// emitting BestIndent produces an unparsable document. It must also be
 		// a single digit 1..9, so clamp it to that range and align the actual
 		// content indentation to the clamped value; that keeps the document
 		// valid and round-trippable even when a caller requests a wider indent
