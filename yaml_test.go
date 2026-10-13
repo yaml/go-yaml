@@ -2837,18 +2837,16 @@ func TestTabIndentBlockScalarRoundTrip(t *testing.T) {
 // The encode fixtures reach the serializer through the representer, which
 // sets explicit style bits for multiline strings, so the serializer's own
 // style selection only runs for nodes without preset styles. Such nodes
-// must still pick literal style for eligible multiline values and
-// double-quoted for tab-leading ones.
+// must still pick literal style for multiline values, with the emitter
+// adding the explicit indentation indicator for tab-leading content.
 // See https://github.com/yaml/go-yaml/issues/383
 func TestNodeScalarStyleFallback(t *testing.T) {
 	for _, tc := range []struct {
 		value string
 		want  string
 	}{
-		{"hello\nworld", `|-
-    hello
-    world` + "\n"},
-		{"\tthis\nis\nmultiline", `"\tthis\nis\nmultiline"` + "\n"},
+		{"hello\nworld", "|-\n    hello\n    world\n"},
+		{"\tthis\nis\nmultiline", "|4-\n    \tthis\n    is\n    multiline\n"},
 	} {
 		node := yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: tc.value}
 		out, err := yaml.Marshal(&node)
@@ -3127,27 +3125,27 @@ func TestScalarStyleWithTabs(t *testing.T) {
 		},
 		{
 			"\tThis starts with tab\nand is long enough\nfor literal style",
-			`"\tThis starts with tab\nand is long enough\nfor literal style"` + "\n",
+			"|4-\n    \tThis starts with tab\n    and is long enough\n    for literal style\n",
 			"Multiline starting with tab",
 		},
 		{
 			"\tB\n\tC\n",
-			`"\tB\n\tC\n"` + "\n",
+			"|4\n    \tB\n    \tC\n",
 			"Tab B newline tab C newline",
 		},
 		{
 			"\ta\n",
-			`"\ta\n"` + "\n",
+			"|4\n    \ta\n",
 			"Tab + char + newline",
 		},
 		{
 			"\thello\n",
-			`"\thello\n"` + "\n",
+			"|4\n    \thello\n",
 			"Tab + text + newline",
 		},
 		{
 			"\t\nhello",
-			`"\t\nhello"` + "\n",
+			"|4-\n    \t\n    hello\n",
 			"Tab + newline + text",
 		},
 	}
