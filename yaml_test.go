@@ -2799,6 +2799,41 @@ func TestBlockScalarIndentIndicatorClampRoundTrip(t *testing.T) {
 	}
 }
 
+// A block scalar whose content starts with a tab needs the explicit
+// indentation indicator even when the style is preset on the node. The
+// emitter used to only check for a space there, so re-dumping a document
+// that was parsed from an indicator'd literal dropped the indicator and
+// produced output the scanner rejects.
+// See https://github.com/yaml/go-yaml/issues/383
+func TestTabIndentBlockScalarRoundTrip(t *testing.T) {
+	// Parsed nodes keep the style from the source document.
+	var doc yaml.Node
+	assert.NoError(t, yaml.Unmarshal([]byte("k: |2\n  \tfoo\n"), &doc))
+	out, err := yaml.Marshal(&doc)
+	assert.NoError(t, err)
+	assert.Equal(t, "k: |4\n    \tfoo\n", string(out))
+
+	var back map[string]any
+	assert.NoErrorf(t, yaml.Unmarshal(out, &back), "encoded as:\n%s", out)
+	assert.Equal(t, "\tfoo\n", back["k"])
+
+	// Explicit styles hit the same emitter path.
+	for _, style := range []yaml.Style{yaml.LiteralStyle, yaml.FoldedStyle} {
+		node := yaml.Node{
+			Kind:  yaml.ScalarNode,
+			Tag:   "!!str",
+			Value: "\tfoo\nbar",
+			Style: style,
+		}
+		out, err := yaml.Marshal(&node)
+		assert.NoError(t, err)
+
+		var v string
+		assert.NoErrorf(t, yaml.Unmarshal(out, &v), "style %d, encoded as:\n%s", style, out)
+		assert.Equal(t, "\tfoo\nbar", v)
+	}
+}
+
 // The encode fixtures reach the serializer through the representer, which
 // sets explicit style bits for multiline strings, so the serializer's own
 // style selection only runs for nodes without preset styles. Such nodes

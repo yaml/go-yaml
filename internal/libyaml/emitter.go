@@ -2026,17 +2026,20 @@ func (emitter *Emitter) writeDoubleQuotedScalar(value []byte, allow_breaks bool)
 func (emitter *Emitter) writeBlockScalarHints(value []byte) error {
 	// A parser infers a block scalar's indentation from its first non-empty
 	// line, so an explicit indentation indicator is needed whenever that line
-	// begins with a space. Leading line breaks only produce empty lines, which
-	// carry no indentation of their own, so skip past them first: this keeps
-	// the #65 behavior (no indicator when the first content line is not
-	// indented) while covering leading-blank-then-indented scalars.
+	// begins with a space or a tab: the scanner accepts a tab in the
+	// indentation only once it is explicit. Leading line breaks only produce
+	// empty lines, which carry no indentation of their own, so skip past them
+	// first: this keeps the #65 behavior (no indicator when the first content
+	// line is not indented) while covering leading-blank-then-indented
+	// scalars.
 	// https://github.com/yaml/go-yaml/issues/65
 	// https://github.com/yaml/go-yaml/issues/76
+	// https://github.com/yaml/go-yaml/issues/383
 	i := 0
 	for i < len(value) && isLineBreak(value, i) {
 		i += width(value[i])
 	}
-	if i < len(value) && isSpace(value, i) {
+	if i < len(value) && isBlank(value, i) {
 		// The indicator is the content's indentation relative to the parent
 		// node, not BestIndent: a block sequence item only adds 2 columns, so
 		// emitting BestIndent produces an unparsable document. It must also be
