@@ -22,7 +22,7 @@ include $(MAKES)/perl.mk
 ifdef GO_YAML_PATH
 override export PATH := $(GO_YAML_PATH):$(PATH)
 else
-GO-VERSION ?= 1.27.0
+GO-VERSION ?= 1.27.2
 endif
 GO-VERSION-NEEDED := $(GO-VERSION)
 
@@ -51,7 +51,7 @@ endif
 include $(MAKES)/go.mk
 
 # Set this from the `make` command to override:
-GOLANGCI-LINT-VERSION ?= v2.13.2
+GOLANGCI-LINT-VERSION ?= v2.14.0
 GOLANGCI-LINT-INSTALLER := \
   https://github.com/golangci/golangci-lint/raw/main/install.sh
 GOLANGCI-LINT := $(LOCAL-BIN)/golangci-lint
