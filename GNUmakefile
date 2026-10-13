@@ -2,29 +2,26 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Auto-install https://github.com/makeplus/makes at specific commit:
-MAKES := .cache/makes
-MAKES-LOCAL := .cache/local
-MAKES-COMMIT ?= a5085e7f78210be125307728e8cd5665f383c9ad
-$(shell [ -d $(MAKES) ] || ( \
-  git clone -q https://github.com/makeplus/makes $(MAKES) && \
-  git -C $(MAKES) reset -q --hard $(MAKES-COMMIT)))
-ifneq ($(shell git -C $(MAKES) rev-parse HEAD), \
-       $(shell git -C $(MAKES) rev-parse $(MAKES-COMMIT)))
-$(error $(MAKES) is not at the correct commit: $(MAKES-COMMIT). \
-	Remove $(MAKES) and try again.)
+M := .cache/makes
+C ?= f19e84cef267358211671dc8c9cf7eccd7263a54
+$(shell [ -d $M ] || ( \
+  git clone -q https://github.com/makeplus/makes $M && \
+  git -C $M reset -q --hard $C))
+ifneq ($(shell git -C $M rev-parse HEAD), \
+       $(shell git -C $M rev-parse $C))
+$(error $M is not at the correct commit: $C. \
+	Remove $M and try again)
 endif
 
-include $(MAKES)/init.mk
-include $(MAKES)/shellcheck.mk
-include $(MAKES)/perl.mk
+include $M/init.mk
+include $M/shellcheck.mk
+include $M/perl.mk
 
 # Auto-install go unless GO_YAML_PATH is set:
 ifdef GO_YAML_PATH
 override export PATH := $(GO_YAML_PATH):$(PATH)
-else
-GO-VERSION ?= 1.27.2
+GO-FROM-USER := true
 endif
-GO-VERSION-NEEDED := $(GO-VERSION)
 
 # yaml-test-suite info:
 YTS-URL ?= https://github.com/yaml/yaml-test-suite
@@ -44,32 +41,26 @@ REPO-DIRS := $(shell find * -maxdepth 0 -type d ! -name repos \
 	       ! -exec test -f {}/.git \; -print)
 GO-FILES := $(wildcard *.go) $(shell find $(REPO-DIRS) -name '*.go')
 
-ifndef GO-VERSION-NEEDED
+ifdef GO-FROM-USER
 GO-NO-DEP-GO := true
 endif
 
-include $(MAKES)/go.mk
+include $M/go.mk
 
-# Set this from the `make` command to override:
-GOLANGCI-LINT-VERSION ?= v2.14.0
-GOLANGCI-LINT-INSTALLER := \
-  https://github.com/golangci/golangci-lint/raw/main/install.sh
-GOLANGCI-LINT := $(LOCAL-BIN)/golangci-lint
-GOLANGCI-LINT-VERSIONED := $(GOLANGCI-LINT)-$(GOLANGCI-LINT-VERSION)
+GOLANGCI-LINT-VERSION ?= 2.14.0
+include $M/golangci-lint.mk
 
-SHELL-DEPS += $(GOLANGCI-LINT-VERSIONED)
-
-ifdef GO-VERSION-NEEDED
-GO-DEPS += $(GO)
-else
+ifdef GO-FROM-USER
 SHELL-DEPS := $(filter-out $(GO),$(SHELL-DEPS))
+else
+GO-DEPS += $(GO)
 endif
 
 SHELL-NAME := makes go-yaml
-include $(MAKES)/clean.mk
-include $(MAKES)/shell.mk
+include $M/clean.mk
+include $M/shell.mk
 
-MAKES-CLEAN := $(CLI-BINARY) $(GOLANGCI-LINT)
+MAKES-CLEAN := $(CLI-BINARY)
 MAKES-REALCLEAN := $(dir $(YTS-DIR))
 
 SHELL-SCRIPTS = \
@@ -144,18 +135,15 @@ yts-dir: $(YTS-DIR)
 
 get-test-data: $(YTS-DIR)
 
-# Install golangci-lint for GitHub Actions:
-golangci-lint-install: $(GOLANGCI-LINT)
-
 # Keep related checkouts and their fixtures outside core checks.
 GO-PACKAGES := . ./cmd/... ./internal/... ./plugin/... ./yts/... ./example/... \
   ./util/build-cli/...
 export GOLANGCI_LINT_CACHE := $(CURDIR)/.cache/golangci-lint
 
-fmt: $(GOLANGCI-LINT-VERSIONED)
+fmt: $(GOLANGCI-LINT) $(GO-DEPS)
 	$< fmt $(GO-FILES)
 
-lint: $(GOLANGCI-LINT-VERSIONED)
+lint: $(GOLANGCI-LINT) $(GO-DEPS)
 	$< run $(GO-PACKAGES)
 
 tidy: $(GO-DEPS)
@@ -206,17 +194,6 @@ $(YTS-DIR):
 	git clone -q $(YTS-URL) $@
 	git -C $@ checkout -q $(YTS-TAG)
 
-# Downloads golangci-lint binary and moves to versioned path
-# (.cache/local/bin/golangci-lint-<version>).
-$(GOLANGCI-LINT-VERSIONED): $(GO-DEPS)
-	curl -sSfL $(GOLANGCI-LINT-INSTALLER) | \
-	  bash -s -- -b $(LOCAL-BIN) $(GOLANGCI-LINT-VERSION)
-	mv $(GOLANGCI-LINT) $@
-
-# Moves golangci-lint-<version> to golangci-lint for CI requirement
-$(GOLANGCI-LINT): $(GOLANGCI-LINT-VERSIONED)
-	cp $< $@
-
 # Optional plugin dependencies stay outside the core module.
 PLUGIN-WORK = $(CURDIR)/.cache/plugin-work/go.work
 
@@ -240,8 +217,8 @@ test-json-comments: prepare-json-comments
 	go test ./util/build-cli \
 	  -run TestConfiguredJSONCLI$(TEST-OPTS)
 
-lint-json-comments: prepare-json-comments $(GOLANGCI-LINT-VERSIONED)
-	GOWORK=$(PLUGIN-WORK) $(GOLANGCI-LINT-VERSIONED) run \
+lint-json-comments: $(GOLANGCI-LINT) prepare-json-comments
+	GOWORK=$(PLUGIN-WORK) $< run \
 	  ./plugin/json-comments/...
 
 # The generated parser shares state; exercise concurrent Go and EDN callers.
