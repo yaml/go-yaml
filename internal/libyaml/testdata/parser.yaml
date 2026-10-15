@@ -376,6 +376,28 @@
     - DOCUMENT_END_EVENT
     - STREAM_END_EVENT
 
+- parse-events-detailed:
+    name: Multiline collection key in flow mapping
+    yaml: |
+      {[foo,
+      bar]
+      : 42}
+    want:
+    - STREAM_START_EVENT
+    - DOCUMENT_START_EVENT
+    - MAPPING_START_EVENT
+    - SEQUENCE_START_EVENT
+    - SCALAR_EVENT:
+        value: foo
+    - SCALAR_EVENT:
+        value: bar
+    - SEQUENCE_END_EVENT
+    - SCALAR_EVENT:
+        value: '42'
+    - MAPPING_END_EVENT
+    - DOCUMENT_END_EVENT
+    - STREAM_END_EVENT
+
 # Error tests
 - parse-error:
     name: Error state

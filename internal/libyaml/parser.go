@@ -1466,7 +1466,9 @@ func (parser *Parser) parseFlowMappingValue(event *Event, empty bool) error {
 	if err := parser.peekToken(&token); err != nil {
 		return err
 	}
-	if empty {
+	// A key without a KEY token may still have a value when the ':' is on
+	// a later line, or the key itself spans multiple lines.
+	if empty && token.Type != VALUE_TOKEN {
 		parser.state = PARSE_FLOW_MAPPING_KEY_STATE
 		return parser.processEmptyScalar(event, token.StartMark)
 	}
