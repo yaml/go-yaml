@@ -143,7 +143,7 @@ func TestTextUnmarshalerWithYAMLUnmarshaler(t *testing.T) {
 	var target textUnmarshalerWithYAMLUnmarshaler
 	const input = `[foo, bar]`
 
-	// NOTE: also verified with [yaml.Unmarshal] — no shortcut bypasses
+	// NOTE: also verified with [yaml.Unmarshal]; no shortcut bypasses
 	// Constructor since PR #310, so this is a regression test for
 	// [libyaml.Constructor.Construct] via both paths.
 	err := yaml.NewDecoder(strings.NewReader(input)).Decode(&target)
@@ -556,6 +556,46 @@ var unmarshalTests = []struct {
 		"a: 2015-01-01",
 		map[string]any{"a": time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC)},
 	},
+	{
+		// implicit timestamp tag into string.
+		"a: 2015-01-01",
+		map[string]string{"a": "2015-01-01"},
+	},
+	{
+		// implicit timestamp tag on quoted string into string.
+		"a: \"2015-01-01\"",
+		map[string]string{"a": "2015-01-01"},
+	},
+	{
+		// implicit timestamp tag with time and fraction into string.
+		"a: 2015-02-24T18:19:39.12Z",
+		map[string]string{"a": "2015-02-24T18:19:39.12Z"},
+	},
+	{
+		// implicit timestamp tag with time and fraction on quoted string into string.
+		"a: \"2015-02-24T18:19:39.12Z\"",
+		map[string]string{"a": "2015-02-24T18:19:39.12Z"},
+	},
+	{
+		// explicit timestamp tag on unquoted string into string.
+		"a: !!timestamp 2015-01-01",
+		map[string]string{"a": "2015-01-01"},
+	},
+	{
+		// explicit timestamp tag into string.
+		"a: !!timestamp \"2015-01-01\"",
+		map[string]string{"a": "2015-01-01"},
+	},
+	{
+		// explicit timestamp tag with time and fraction on unquoted string into string.
+		"a: !!timestamp 2015-02-24T18:19:39.12Z",
+		map[string]string{"a": "2015-02-24T18:19:39.12Z"},
+	},
+	{
+		// explicit timestamp tag with time and fraction into string.
+		"a: !!timestamp \"2015-02-24T18:19:39.12Z\"",
+		map[string]string{"a": "2015-02-24T18:19:39.12Z"},
+	},
 
 	// UTF-16-LE
 	{
@@ -745,46 +785,55 @@ func TestDecoderSingleDocument(t *testing.T) {
 	}
 }
 
-var decoderTests = []struct {
-	data   string
-	values []any
-}{{
-	"",
-	nil,
-}, {
-	"a: b",
-	[]any{
-		map[string]any{"a": "b"},
-	},
-}, {
-	"---\na: b\n...\n",
-	[]any{
-		map[string]any{"a": "b"},
-	},
-}, {
-	"---\n'hello'\n...\n---\ngoodbye\n...\n",
-	[]any{
-		"hello",
-		"goodbye",
-	},
-}}
-
 func TestDecoder(t *testing.T) {
-	for i, item := range decoderTests {
-		t.Run(fmt.Sprintf("test %d: %q", i, item.data), func(t *testing.T) {
-			var values []any
-			dec := yaml.NewDecoder(strings.NewReader(item.data))
-			for {
-				var value any
-				err := dec.Decode(&value)
-				if err == io.EOF {
-					break
-				}
-				assert.NoError(t, err)
-				values = append(values, value)
-			}
-			assert.DeepEqual(t, item.values, values)
-		})
+	datatest.RunTestCases(t, func() ([]map[string]any, error) {
+		return datatest.LoadTestCasesFromFile("testdata/decoder.yaml", libyaml.LoadAny)
+	}, map[string]datatest.TestHandler{
+		"decoder":       runDecoderTest,
+		"decoder-error": runDecoderErrorTest,
+	})
+}
+
+func runDecoderTest(t *testing.T, tc map[string]any) {
+	t.Helper()
+
+	yamlInput := datatest.RequireString(t, tc, "yaml")
+	want := datatest.RequireSlice(t, tc, "want")
+
+	var values []any
+	dec := yaml.NewDecoder(strings.NewReader(yamlInput))
+	for {
+		var value any
+		err := dec.Decode(&value)
+		if err == io.EOF {
+			break
+		}
+		assert.NoError(t, err)
+		values = append(values, value)
+	}
+	if values == nil {
+		values = []any{}
+	}
+	assert.DeepEqual(t, want, values)
+}
+
+func runDecoderErrorTest(t *testing.T, tc map[string]any) {
+	t.Helper()
+
+	yamlInput := datatest.RequireString(t, tc, "yaml")
+	want := datatest.RequireString(t, tc, "want")
+
+	dec := yaml.NewDecoder(strings.NewReader(yamlInput))
+	for {
+		var value any
+		err := dec.Decode(&value)
+		if err == io.EOF {
+			t.Fatalf("got EOF; want error %q", want)
+		}
+		if err != nil {
+			assert.Equal(t, want, err.Error())
+			return
+		}
 	}
 }
 
@@ -1318,6 +1367,74 @@ func TestLegacyUnmarshalerLoadErrorsProxying(t *testing.T) {
 		"line 1: cannot construct !!str `b` into int64; " +
 		"line 1: cannot construct !!str `B` into int"
 	assert.ErrorMatches(t, expectedError, err)
+}
+
+type legacyWrappingUnmarshaler struct {
+	Value string `yaml:"value"`
+}
+
+func (w *legacyWrappingUnmarshaler) UnmarshalYAML(unmarshal func(any) error) error {
+	type plain legacyWrappingUnmarshaler
+	var p plain
+	if err := unmarshal(&p); err != nil {
+		return fmt.Errorf("wrapper failed: %w", err)
+	}
+	*w = legacyWrappingUnmarshaler(p)
+	return nil
+}
+
+func errorChainFinite(err error, limit int) bool {
+	count := 0
+	var walk func(error) bool
+	walk = func(e error) bool {
+		for e != nil {
+			count++
+			if count > limit {
+				return false
+			}
+			if le, ok := e.(*yaml.LoadErrors); ok {
+				for _, child := range le.Errors {
+					if !walk(child) {
+						return false
+					}
+				}
+				return true
+			}
+			switch x := e.(type) {
+			case interface{ Unwrap() []error }:
+				for _, child := range x.Unwrap() {
+					if !walk(child) {
+						return false
+					}
+				}
+				return true
+			case interface{ Unwrap() error }:
+				e = x.Unwrap()
+			default:
+				return true
+			}
+		}
+		return true
+	}
+	return walk(err)
+}
+
+func TestLegacyUnmarshalerWrappedErrorNoCycle(t *testing.T) {
+	type Root struct {
+		Items []legacyWrappingUnmarshaler `yaml:"items"`
+	}
+	var r Root
+	err := yaml.Unmarshal([]byte("items:\n  - not-an-object\n"), &r)
+	assert.NotNil(t, err)
+
+	assert.Truef(t, errorChainFinite(err, 1000),
+		"error chain is cyclic (issue #345 regression): %v", err)
+
+	assert.False(t, errors.Is(err, errFailing))
+
+	var loadErr *yaml.LoadError
+	assert.Truef(t, errors.As(err, &loadErr),
+		"expected to extract *yaml.LoadError from %v", err)
 }
 
 var errFailing = errors.New("failingErr")
@@ -2436,6 +2553,13 @@ func runEncodeOptsTest(t *testing.T, tc map[string]any) {
 				t.Fatalf("Unknown required-quotes value: %s", rq)
 			}
 		}
+		if indRaw, exists := optsMap["indent"]; exists {
+			ind, ok := indRaw.(int)
+			if !ok {
+				t.Fatalf("indent must be an int, got %T", indRaw)
+			}
+			opts = append(opts, yaml.WithIndent(ind))
+		}
 	}
 
 	// Create pointer target of the specified type (for addressability)
@@ -2629,6 +2753,131 @@ func TestSetIndent(t *testing.T) {
 	err = enc.Close()
 	assert.NoError(t, err)
 	assert.Equal(t, "a:\n        b:\n                c: d\n", buf.String())
+}
+
+// The emitter's stream-start handling resets BestIndent to 2 when it lies
+// outside 2..9, so an Encoder configured with a wider SetIndent before the
+// first Encode never carries that width into block scalars. A SetIndent
+// between documents leaves BestIndent above 9 for the next document, which
+// is the only way the indentation indicator would exceed the 1..9 range it
+// can express: the indicator must be clamped to 9 and the content
+// indentation realigned for the document to stay parseable.
+// WithIndent, the options API, already rejects widths outside 2..9, so this
+// cannot be expressed in testdata/encode.yaml.
+// See https://github.com/yaml/go-yaml/issues/76
+// and https://github.com/go-yaml/yaml/issues/1071
+func TestBlockScalarIndentIndicatorClampRoundTrip(t *testing.T) {
+	type params struct {
+		Description string `yaml:"description"`
+	}
+	type spec struct {
+		Parameters []params `yaml:"parameters"`
+	}
+
+	for _, indent := range []int{12, 16} {
+		var buf bytes.Buffer
+		enc := yaml.NewEncoder(&buf)
+		assert.NoError(t, enc.Encode("warmup"))
+		enc.SetIndent(indent)
+		in := spec{Parameters: []params{{Description: "  a\nb"}}}
+		assert.NoError(t, enc.Encode(&in))
+		assert.NoError(t, enc.Close())
+
+		assert.Truef(
+			t, strings.Contains(buf.String(), "|9-"),
+			"indent %d, encoded as:\n%s", indent, buf.String())
+
+		var warmup string
+		var out spec
+		dec := yaml.NewDecoder(&buf)
+		assert.NoError(t, dec.Decode(&warmup))
+		err := dec.Decode(&out)
+		assert.NoErrorf(
+			t, err, "indent %d, encoded as:\n%s", indent, buf.String())
+		assert.DeepEqualf(
+			t, in, out, "indent %d, encoded as:\n%s", indent, buf.String())
+	}
+}
+
+// A block scalar whose content starts with a tab needs the explicit
+// indentation indicator even when the style is preset on the node. The
+// emitter used to only check for a space there, so re-dumping a document
+// that was parsed from an indicator'd literal dropped the indicator and
+// produced output the scanner rejects.
+// See https://github.com/yaml/go-yaml/issues/383
+func TestTabIndentBlockScalarRoundTrip(t *testing.T) {
+	// Parsed nodes keep the style from the source document.
+	var doc yaml.Node
+	assert.NoError(t, yaml.Unmarshal([]byte("k: |2\n  \tfoo\n"), &doc))
+	out, err := yaml.Marshal(&doc)
+	assert.NoError(t, err)
+	assert.Equal(t, "k: |4\n    \tfoo\n", string(out))
+
+	var back map[string]any
+	assert.NoErrorf(t, yaml.Unmarshal(out, &back), "encoded as:\n%s", out)
+	assert.Equal(t, "\tfoo\n", back["k"])
+
+	// Explicit styles hit the same emitter path.
+	for _, style := range []yaml.Style{yaml.LiteralStyle, yaml.FoldedStyle} {
+		node := yaml.Node{
+			Kind:  yaml.ScalarNode,
+			Tag:   "!!str",
+			Value: "\tfoo\nbar",
+			Style: style,
+		}
+		out, err := yaml.Marshal(&node)
+		assert.NoError(t, err)
+
+		var v string
+		assert.NoErrorf(t, yaml.Unmarshal(out, &v), "style %d, encoded as:\n%s", style, out)
+		assert.Equal(t, "\tfoo\nbar", v)
+	}
+}
+
+// The encode fixtures reach the serializer through the representer, which
+// sets explicit style bits for multiline strings, so the serializer's own
+// style selection only runs for nodes without preset styles. Such nodes
+// must still pick literal style for multiline values, with the emitter
+// adding the explicit indentation indicator for tab-leading content.
+// See https://github.com/yaml/go-yaml/issues/383
+func TestNodeScalarStyleFallback(t *testing.T) {
+	for _, tc := range []struct {
+		value string
+		want  string
+	}{
+		{"hello\nworld", "|-\n    hello\n    world\n"},
+		{"\tthis\nis\nmultiline", "|4-\n    \tthis\n    is\n    multiline\n"},
+	} {
+		node := yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: tc.value}
+		out, err := yaml.Marshal(&node)
+		assert.NoError(t, err)
+		assert.Equalf(t, tc.want, string(out), "value %q", tc.value)
+
+		var back string
+		assert.NoErrorf(t, yaml.Unmarshal(out, &back), "value %q", tc.value)
+		assert.Equalf(t, tc.value, back, "value %q", tc.value)
+	}
+}
+
+// The reproducer of https://github.com/yaml/go-yaml/issues/399: a multiline
+// scalar inside a block sequence item must round-trip. The emitter once
+// computed the indentation indicator from BestIndent, which does not match
+// the two columns a sequence item actually adds. The encode fixtures cover
+// the emitted indicator; this checks the direct Marshal to Unmarshal path.
+func TestBlockSequenceScalarRoundTrip(t *testing.T) {
+	for _, value := range []string{
+		"  a\nb\n",
+		"     a\nb\n",
+		"\n  indented\nregular",
+	} {
+		in := []any{value}
+		out, err := yaml.Marshal(&in)
+		assert.NoError(t, err)
+
+		var back []any
+		assert.NoErrorf(t, yaml.Unmarshal(out, &back), "encoded as:\n%s", out)
+		assert.DeepEqualf(t, in, back, "encoded as:\n%s", out)
+	}
 }
 
 func TestSortedOutput(t *testing.T) {
@@ -2861,42 +3110,42 @@ func TestScalarStyleWithTabs(t *testing.T) {
 	}{
 		{
 			"\t\n",
-			"\"\\t\\n\"\n",
+			`"\t\n"` + "\n",
 			"Tab + newline",
 		},
 		{
 			"\t",
-			"\"\\t\"\n",
+			`"\t"` + "\n",
 			"Just tab",
 		},
 		{
 			"hello\tworld",
-			"\"hello\\tworld\"\n",
+			`"hello\tworld"` + "\n",
 			"Text with tab",
 		},
 		{
 			"\tThis starts with tab\nand is long enough\nfor literal style",
-			"|-\n    \tThis starts with tab\n    and is long enough\n    for literal style\n",
+			"|4-\n    \tThis starts with tab\n    and is long enough\n    for literal style\n",
 			"Multiline starting with tab",
 		},
 		{
 			"\tB\n\tC\n",
-			"|\n    \tB\n    \tC\n",
+			"|4\n    \tB\n    \tC\n",
 			"Tab B newline tab C newline",
 		},
 		{
 			"\ta\n",
-			"|\n    \ta\n",
+			"|4\n    \ta\n",
 			"Tab + char + newline",
 		},
 		{
 			"\thello\n",
-			"|\n    \thello\n",
+			"|4\n    \thello\n",
 			"Tab + text + newline",
 		},
 		{
 			"\t\nhello",
-			"|-\n    \t\n    hello\n",
+			"|4-\n    \t\n    hello\n",
 			"Tab + newline + text",
 		},
 	}
@@ -3124,6 +3373,40 @@ func TestOptsYAML(t *testing.T) {
 			name:      "valid options",
 			yamlStr:   "indent: 4\nknown-fields: true",
 			expectErr: false,
+		},
+		{
+			name:    "plugin defaults",
+			yamlStr: "plugin: {limit: true}",
+		},
+		{
+			name:    "plugin disabled",
+			yamlStr: "plugin: {limit: false}",
+		},
+		{
+			name:    "plugin disabled in mapping",
+			yamlStr: "plugin: {limit: {depth: 3, disable: true}}",
+		},
+		{
+			name:    "plugin enabled in mapping",
+			yamlStr: "plugin: {limit: {depth: 3, disable: false}}",
+		},
+		{
+			name:      "invalid disable setting",
+			yamlStr:   "plugin: {limit: {disable: null}}",
+			expectErr: true,
+			errMatch:  "disable must be a boolean",
+		},
+		{
+			name:      "null plugin value",
+			yamlStr:   "plugin: {limit: null}",
+			expectErr: true,
+			errMatch:  "mapping, string, or boolean",
+		},
+		{
+			name:      "null plugin field",
+			yamlStr:   "plugin: null",
+			expectErr: true,
+			errMatch:  "plugin configuration must be a mapping",
 		},
 		{
 			name:      "typo in field name",

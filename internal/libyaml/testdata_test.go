@@ -1194,7 +1194,7 @@ func callMethodFromList(t *testing.T, obj any, methodList []any, useBytes bool) 
 	args := methodList[1:]
 
 	v := reflect.ValueOf(obj)
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
 	}
 
@@ -1347,7 +1347,7 @@ func runFieldChecks(t *testing.T, obj any, checks []FieldCheck) {
 	t.Helper()
 
 	v := reflect.ValueOf(obj)
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
 	}
 

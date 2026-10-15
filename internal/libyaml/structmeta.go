@@ -95,7 +95,7 @@ func hasConstructYAMLMethod(t reflect.Type) bool {
 	// First param is receiver (already checked by MethodByName)
 	// Second param should be a pointer to a Node-like struct
 	paramType := mtype.In(1)
-	if paramType.Kind() != reflect.Ptr {
+	if paramType.Kind() != reflect.Pointer {
 		return false
 	}
 

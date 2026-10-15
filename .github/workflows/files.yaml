@@ -16,19 +16,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: checkout-action
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         persist-credentials: false
 
     - name: actionlint
       # yamllint disable-line rule:line-length
-      uses: raven-actions/actionlint@205b530c5d9fa8f44ae9ed59f341a0db994aa6f8  # v2.1.2
+      uses: raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7  # v2.2.0
 
   yamllint:
     runs-on: ubuntu-latest
     steps:
     - name: checkout-action
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         persist-credentials: false
 
@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: checkout-action
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         persist-credentials: false
 
@@ -53,9 +53,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: checkout-action
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         persist-credentials: false
 
     - name: typos-action
-      uses: crate-ci/typos@aca895bf05aec0cb7dffa6f94495e923224d9f17  # v1.46.2
+      uses: crate-ci/typos@00f422f3b19c57bc6338715ebfe3316d38768461  # v1.50.3

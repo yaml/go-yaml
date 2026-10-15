@@ -33,12 +33,27 @@ type Options struct {
 	FlowSimpleCollections bool       // Use flow style for simple collections
 	QuotePreference       QuoteStyle // Preferred quote style when quoting is required
 
+	// Parser supplies complete events in place of native parsing.
+	Parser ParserPlugin
+
+	// JSONComments sanitizes JSON-style comments before parsing.
+	JSONComments JSONCommentsPlugin
+
+	// IndentConfig enables tab-aware structural indentation.
+	IndentConfig *IndentConfig
+
 	// Safety limit checks (set by ApplyOptions or WithPlugin(limit.New(...)))
 	DepthCheck func(depth int, ctx *DepthContext) error
 	AliasCheck func(aliasCount, constructCount int) error
 
-	// Private options (not exported, used internally)
-	FromLegacy bool // Indicates legacy Unmarshal()/Decoder path (check Unmarshaler, allow trailing content)
+	// allowLegacyTrailingContent is an unexported flag used internally
+	// to enable the legacy behavior of allowing trailing content after a document.
+	//
+	// [yaml.NewDecoder] and [yaml.Unmarshal] set this flag to true to enable legacy behavior for backward compatibility.
+	//
+	// [NewDecoder]: https://pkg.go.dev/go.yaml.in/yaml/v4#NewDecoder
+	// [Unmarshal]: https://pkg.go.dev/go.yaml.in/yaml/v4#Unmarshal
+	allowLegacyTrailingContent bool
 }
 
 // Option allows configuring YAML loading and dumping operations.
@@ -446,4 +461,16 @@ var DefaultOptions = &Options{
 	Unicode:         true,
 	UniqueKeys:      true,
 	QuotePreference: QuoteLegacy,
+}
+
+// SetLegacyAllowTrailingContent sets the internal allowLegacyTrailingContent flag to true.
+//
+// This function is not exported out of the module and is used in [yaml.NewDecoder] and [yaml.Unmarshal]
+// to indicate that the legacy behavior of allowing trailing content
+// after a document should be enabled for backward compatibility.
+//
+// [NewDecoder]: https://pkg.go.dev/go.yaml.in/yaml/v4#NewDecoder
+// [Unmarshal]: https://pkg.go.dev/go.yaml.in/yaml/v4#Unmarshal
+func SetLegacyAllowTrailingContent(o *Options) {
+	o.allowLegacyTrailingContent = true
 }

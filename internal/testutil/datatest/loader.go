@@ -68,7 +68,7 @@ func LoadTestCasesFromFile(filename string, loadYAML LoadYAMLFunc) ([]map[string
 //	})
 func UnmarshalStruct(target any, data map[string]any) error {
 	v := reflect.ValueOf(target)
-	if v.Kind() != reflect.Ptr || v.Elem().Kind() != reflect.Struct {
+	if v.Kind() != reflect.Pointer || v.Elem().Kind() != reflect.Struct {
 		return fmt.Errorf("target must be pointer to struct, got %T", target)
 	}
 
@@ -242,7 +242,7 @@ func setField(field reflect.Value, value any) error {
 		// Just set the value directly
 		field.Set(valueRefl)
 		return nil
-	case reflect.Ptr:
+	case reflect.Pointer:
 		// Handle pointer types
 		if fieldType.Elem().Kind() == reflect.Struct {
 			m, ok := value.(map[string]any)

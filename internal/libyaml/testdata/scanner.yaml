@@ -337,6 +337,38 @@
     - FLOW_MAPPING_END_TOKEN
     - STREAM_END_TOKEN
 
+- scan-tokens-detailed:
+    name: Tag followed by comma, bracket, or brace in flow content
+    yaml: |-
+        {a: !!str, b: [!!str], c: !x}
+    want:
+    - STREAM_START_TOKEN
+    - FLOW_MAPPING_START_TOKEN
+    - KEY_TOKEN
+    - SCALAR_TOKEN:
+        value: a
+    - VALUE_TOKEN
+    - TAG_TOKEN:
+        value: '!!'
+    - FLOW_ENTRY_TOKEN
+    - KEY_TOKEN
+    - SCALAR_TOKEN:
+        value: b
+    - VALUE_TOKEN
+    - FLOW_SEQUENCE_START_TOKEN
+    - TAG_TOKEN:
+        value: '!!'
+    - FLOW_SEQUENCE_END_TOKEN
+    - FLOW_ENTRY_TOKEN
+    - KEY_TOKEN
+    - SCALAR_TOKEN:
+        value: c
+    - VALUE_TOKEN
+    - TAG_TOKEN:
+        value: '!'
+    - FLOW_MAPPING_END_TOKEN
+    - STREAM_END_TOKEN
+
 # Error test
 - scan-error:
     name: Invalid character

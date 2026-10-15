@@ -92,6 +92,7 @@ type Emitter struct {
 	indent int // The current indentation level.
 
 	CompactSequenceIndent bool // Is '- ' is considered part of the indentation for sequence elements?
+	tabIndent             bool // Use tabs for structural indentation.
 
 	flow_level int // The current flow level.
 
@@ -454,7 +455,9 @@ func (emitter *Emitter) emitDocumentStart(event *Event, first bool) error {
 			if err := emitter.writeIndicator([]byte("%YAML"), true, false, false); err != nil {
 				return err
 			}
-			if err := emitter.writeIndicator([]byte("1.1"), true, false, false); err != nil {
+			version := fmt.Sprintf("%d.%d", event.versionDirective.major,
+				event.versionDirective.minor)
+			if err := emitter.writeIndicator([]byte(version), true, false, false); err != nil {
 				return err
 			}
 			if err := emitter.writeIndent(); err != nil {
@@ -680,9 +683,9 @@ func (emitter *Emitter) emitFlowMappingKey(event *Event, first, trail bool) erro
 	}
 
 	if event.Type == MAPPING_END_EVENT {
-		if (emitter.canonical ||
-			len(emitter.HeadComment)+len(emitter.FootComment)+len(emitter.TailComment) > 0) &&
-			!first && !trail {
+		// Pending comments never require a separator here: foot comments are
+		// written after '}' and head/tail comments always start on a new line.
+		if emitter.canonical && !first && !trail {
 			if err := emitter.writeIndicator([]byte{','}, false, false, false); err != nil {
 				return err
 			}
@@ -998,6 +1001,14 @@ func (emitter *Emitter) emitSequenceStart(event *Event) error {
 	if err := emitter.processTag(); err != nil {
 		return err
 	}
+	if emitter.tabIndent && emitter.sequence_context &&
+		emitter.flow_level == 0 && !emitter.canonical &&
+		event.SequenceStyle() != FLOW_SEQUENCE_STYLE &&
+		!emitter.checkEmptySequence() && emitter.column > 0 {
+		if err := emitter.putLineBreak(); err != nil {
+			return err
+		}
+	}
 	if emitter.flow_level > 0 || emitter.canonical ||
 		event.SequenceStyle() == FLOW_SEQUENCE_STYLE ||
 		emitter.checkEmptySequence() {
@@ -1015,6 +1026,14 @@ func (emitter *Emitter) emitMappingStart(event *Event) error {
 	}
 	if err := emitter.processTag(); err != nil {
 		return err
+	}
+	if emitter.tabIndent && emitter.sequence_context &&
+		emitter.flow_level == 0 && !emitter.canonical &&
+		event.MappingStyle() != FLOW_MAPPING_STYLE &&
+		!emitter.checkEmptyMapping() && emitter.column > 0 {
+		if err := emitter.putLineBreak(); err != nil {
+			return err
+		}
 	}
 	if emitter.flow_level > 0 || emitter.canonical ||
 		event.MappingStyle() == FLOW_MAPPING_STYLE ||
@@ -1625,14 +1644,34 @@ func (emitter *Emitter) writeIndent() error {
 			return err
 		}
 	}
+	atLineStart := emitter.column == 0
 	for emitter.column < indent {
-		if err := emitter.put(' '); err != nil {
+		value := byte(' ')
+		width := 1
+		if emitter.tabIndent && atLineStart &&
+			emitter.column+emitter.BestIndent <= indent {
+			value = '\t'
+			width = emitter.BestIndent
+		}
+		if err := emitter.putIndent(value, width); err != nil {
 			return err
 		}
 	}
 	emitter.whitespace = true
 	emitter.space_above = false
 	emitter.foot_indent = -1
+	return nil
+}
+
+func (emitter *Emitter) putIndent(value byte, width int) error {
+	if emitter.buffer_pos+5 >= len(emitter.buffer) {
+		if err := emitter.flush(); err != nil {
+			return err
+		}
+	}
+	emitter.buffer[emitter.buffer_pos] = value
+	emitter.buffer_pos++
+	emitter.column += width
 	return nil
 }
 
@@ -1985,11 +2024,42 @@ func (emitter *Emitter) writeDoubleQuotedScalar(value []byte, allow_breaks bool)
 // writeBlockScalarHints writes the indentation and chomping indicators for
 // block scalars.
 func (emitter *Emitter) writeBlockScalarHints(value []byte) error {
-	if isSpace(value, 0) {
-		// https://github.com/yaml/go-yaml/issues/65
-		// isLineBreak(value, 0) removed as the linebreak will only
-		// write the indentation value.
-		indent_hint := []byte{'0' + byte(emitter.BestIndent)}
+	// A parser infers a block scalar's indentation from its first non-empty
+	// line, so an explicit indentation indicator is needed whenever that line
+	// begins with a space or a tab: the scanner accepts a tab in the
+	// indentation only once it is explicit. Leading line breaks only produce
+	// empty lines, which carry no indentation of their own, so skip past them
+	// first: this keeps the #65 behavior (no indicator when the first content
+	// line is not indented) while covering leading-blank-then-indented
+	// scalars.
+	// https://github.com/yaml/go-yaml/issues/65
+	// https://github.com/yaml/go-yaml/issues/76
+	// https://github.com/yaml/go-yaml/issues/383
+	i := 0
+	for i < len(value) && isLineBreak(value, i) {
+		i += width(value[i])
+	}
+	if i < len(value) && isBlank(value, i) {
+		// The indicator is the content's indentation relative to the parent
+		// node, not BestIndent: a block sequence item only adds 2 columns, so
+		// emitting BestIndent produces an unparsable document. It must also be
+		// a single digit 1..9, so clamp it to that range and align the actual
+		// content indentation to the clamped value; that keeps the document
+		// valid and round-trippable even when a caller requests a wider indent
+		// (e.g. SetIndent(10)).
+		// https://github.com/go-yaml/yaml/issues/1071
+		parent_indent := 0
+		if n := len(emitter.indents); n > 0 && emitter.indents[n-1] > 0 {
+			parent_indent = emitter.indents[n-1]
+		}
+		indent := emitter.indent - parent_indent
+		if indent < 1 {
+			indent = 1
+		} else if indent > 9 {
+			indent = 9
+		}
+		emitter.indent = parent_indent + indent
+		indent_hint := []byte{'0' + byte(indent)}
 		if err := emitter.writeIndicator(indent_hint, false, false, false); err != nil {
 			return err
 		}
@@ -2086,11 +2156,11 @@ func (emitter *Emitter) writeFoldedScalar(value []byte) error {
 	for i := 0; i < len(value); {
 		if isLineBreak(value, i) {
 			if !breaks && !leading_spaces && value[i] == '\n' {
-				k := 0
-				for isLineBreak(value, k) {
+				k := i
+				for k < len(value) && isLineBreak(value, k) {
 					k += width(value[k])
 				}
-				if !isBlankOrZero(value, k) {
+				if k < len(value) && !isBlankOrZero(value, k) {
 					if err := emitter.putLineBreak(); err != nil {
 						return err
 					}

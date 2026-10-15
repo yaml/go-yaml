@@ -176,6 +176,8 @@ type Comment struct {
 	Foot []byte
 }
 
+const indentStyleUnknown byte = 0
+
 // Parser structure holds all information about the current
 // state of the parser.
 type Parser struct {
@@ -240,6 +242,11 @@ type Parser struct {
 
 	depthCheck func(int, *DepthContext) error // Depth limit check function
 
+	indentConfig *IndentConfig
+	// indentStyle is parser-local auto-detection state.
+	// Keeping it here leaves reusable indentation configuration immutable.
+	indentStyle byte
+
 	// Parser stuff
 
 	state          ParserState    // The current parser state.
@@ -250,6 +257,18 @@ type Parser struct {
 	// Representer stuff
 
 	aliases []AliasData // The alias data.
+
+	// Optional pre-tokenized and pre-parsed input used by stage-oriented
+	// tools. These bypass the reader/scanner or parser respectively.
+	token_input bool
+	event_input bool
+	events      []Event
+	events_head int
+}
+
+// SetIndentConfig configures tab-aware indentation scanning.
+func (parser *Parser) SetIndentConfig(config *IndentConfig) {
+	parser.indentConfig = config
 }
 
 // NewParser creates a new parser object.
@@ -266,6 +285,15 @@ func NewParser() Parser {
 func (parser *Parser) Parse(event *Event) error {
 	// Erase the event object.
 	*event = Event{}
+
+	if parser.event_input {
+		if parser.events_head >= len(parser.events) {
+			return io.EOF
+		}
+		*event = parser.events[parser.events_head]
+		parser.events_head++
+		return nil
+	}
 
 	if parser.lastError != nil {
 		return parser.lastError
@@ -322,6 +350,28 @@ func (parser *Parser) SetInputReader(r io.Reader) {
 	}
 	parser.read_handler = yamlReaderReadHandler
 	parser.input_reader = r
+}
+
+// SetInputTokens sets a pre-tokenized input stream. It is intended for
+// internal pipeline tooling that needs to resume processing at the parser
+// stage.
+func (parser *Parser) SetInputTokens(tokens []Token, comments []Comment) {
+	if parser.read_handler != nil || parser.token_input || parser.event_input {
+		panic("must set the input source only once")
+	}
+	parser.token_input = true
+	parser.tokens = append([]Token(nil), tokens...)
+	parser.comments = append([]Comment(nil), comments...)
+}
+
+// SetInputEvents sets a pre-parsed event stream. It is intended for internal
+// pipeline tooling that needs to resume processing at the composer stage.
+func (parser *Parser) SetInputEvents(events []Event) {
+	if parser.read_handler != nil || parser.token_input || parser.event_input {
+		panic("must set the input source only once")
+	}
+	parser.event_input = true
+	parser.events = append([]Event(nil), events...)
 }
 
 // SetEncoding sets the source encoding.
@@ -595,10 +645,18 @@ func (parser *Parser) parseDocumentEnd(event *Event) error {
 	end_mark := token.StartMark
 
 	implicit := true
-	if token.Type == DOCUMENT_END_TOKEN {
+	switch token.Type {
+	case DOCUMENT_END_TOKEN:
 		end_mark = token.EndMark
 		parser.skipToken()
 		implicit = false
+	case VERSION_DIRECTIVE_TOKEN, TAG_DIRECTIVE_TOKEN,
+		DOCUMENT_START_TOKEN, STREAM_END_TOKEN:
+		// Document ended properly.
+		// https://github.com/yaml/go-yaml/pull/410
+	default:
+		return formatParserError(
+			"did not find expected <document start>", token.StartMark)
 	}
 
 	parser.tag_directives = parser.tag_directives[:0]

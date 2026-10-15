@@ -6,12 +6,12 @@
   node: |
     plain: hello
   NODE: |
-    kind: Document
+    node: Document
     content:
-    - kind: Scalar
+    - node: Scalar
       style: Plain
       tag: '!!str'
-      text: hello
+      value: hello
 
 - name: Double quoted scalar
   text: |
@@ -19,12 +19,12 @@
   node: |
     double: hello
   NODE: |
-    kind: Document
+    node: Document
     content:
-    - kind: Scalar
+    - node: Scalar
       style: Double
       tag: '!!str'
-      text: hello
+      value: hello
 
 - name: Integer scalar
   text: |
@@ -32,12 +32,12 @@
   node: |
     plain: '42'
   NODE: |
-    kind: Document
+    node: Document
     content:
-    - kind: Scalar
+    - node: Scalar
       style: Plain
       tag: '!!int'
-      text: '42'
+      value: '42'
 
 - name: Explicit tag
   text: |
@@ -45,12 +45,12 @@
   node: |
     plain: '42'
   NODE: |
-    kind: Document
+    node: Document
     content:
-    - kind: Scalar
+    - node: Scalar
       style: Plain
       tag: '!!str'
-      text: '42'
+      value: '42'
 
 - name: Mapping with plain scalars
   text: |
@@ -60,17 +60,17 @@
     - plain: key
     - plain: value
   NODE: |
-    kind: Document
+    node: Document
     content:
-    - kind: Mapping
+    - node: Mapping
       style: Plain
       tag: '!!map'
       content:
-      - kind: Scalar
+      - node: Scalar
         style: Plain
         tag: '!!str'
-        text: key
-      - kind: Scalar
+        value: key
+      - node: Scalar
         style: Plain
         tag: '!!str'
-        text: value
+        value: value

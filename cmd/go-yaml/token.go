@@ -18,6 +18,11 @@ import (
 // Token represents a YAML token with comment information
 type Token struct {
 	Type        string
+	Encoding    string
+	Version     string
+	Handle      string
+	Prefix      string
+	Suffix      string
 	Value       string
 	Style       string
 	CommentType string // For COMMENT tokens: "head", "line", or "foot"
@@ -32,21 +37,29 @@ type Token struct {
 
 // TokenInfo represents the information about a YAML token for YAML encoding
 type TokenInfo struct {
-	Token string `yaml:"token"`
-	Value string `yaml:"value,omitempty"`
-	Style string `yaml:"style,omitempty"`
-	Head  string `yaml:"head,omitempty"`
-	Line  string `yaml:"line,omitempty"`
-	Foot  string `yaml:"foot,omitempty"`
-	Pos   string `yaml:"pos,omitempty"`
+	Token    string `yaml:"token"`
+	Encoding string `yaml:"encoding,omitempty"`
+	Version  string `yaml:"version,omitempty"`
+	Handle   string `yaml:"handle,omitempty"`
+	Prefix   string `yaml:"prefix,omitempty"`
+	Suffix   string `yaml:"suffix,omitempty"`
+	Value    string `yaml:"value,omitempty"`
+	Style    string `yaml:"style,omitempty"`
+	Head     string `yaml:"head,omitempty"`
+	Line     string `yaml:"line,omitempty"`
+	Foot     string `yaml:"foot,omitempty"`
+	Pos      string `yaml:"pos,omitempty"`
 }
 
 // ProcessTokens reads YAML from reader and outputs token information using the internal scanner
-func ProcessTokens(reader io.Reader, profuse, compact, unmarshal bool) error {
+func ProcessTokens(
+	reader io.Reader, profuse, compact, unmarshal bool,
+	opts ...yaml.Option,
+) error {
 	if unmarshal {
 		return processTokensUnmarshal(reader, profuse, compact)
 	}
-	return processTokensWithParser(reader, profuse, compact)
+	return processTokensWithParser(reader, profuse, compact, opts...)
 }
 
 // processTokensDecode uses Loader.Load for YAML processing
@@ -92,6 +105,7 @@ func processTokensDecode(profuse, compact bool) error {
 					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Token})
 
 				// Add other fields if they exist
+				appendTokenContractFields(compactNode, info)
 				if info.Value != "" {
 					compactNode.Content = append(compactNode.Content,
 						&yaml.Node{Kind: yaml.ScalarNode, Value: "value"},
@@ -163,8 +177,10 @@ func processTokensDecode(profuse, compact bool) error {
 }
 
 // processTokensWithParser uses the internal parser for token processing
-func processTokensWithParser(reader io.Reader, profuse, compact bool) error {
-	p, err := NewParser(reader)
+func processTokensWithParser(
+	reader io.Reader, profuse, compact bool, opts ...yaml.Option,
+) error {
+	p, err := NewParser(reader, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to create parser: %w", err)
 	}
@@ -194,6 +210,7 @@ func processTokensWithParser(reader io.Reader, profuse, compact bool) error {
 				&yaml.Node{Kind: yaml.ScalarNode, Value: info.Token})
 
 			// Add other fields if they exist
+			appendTokenContractFields(compactNode, info)
 			if info.Value != "" {
 				compactNode.Content = append(compactNode.Content,
 					&yaml.Node{Kind: yaml.ScalarNode, Value: "value"},
@@ -314,6 +331,7 @@ func processTokensUnmarshal(reader io.Reader, profuse, compact bool) error {
 					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Token})
 
 				// Add other fields if they exist
+				appendTokenContractFields(compactNode, info)
 				if info.Value != "" {
 					compactNode.Content = append(compactNode.Content,
 						&yaml.Node{Kind: yaml.ScalarNode, Value: "value"},
@@ -387,7 +405,12 @@ func processTokensUnmarshal(reader io.Reader, profuse, compact bool) error {
 // formatTokenInfo converts a [Token] to a [TokenInfo] struct for YAML encoding
 func formatTokenInfo(token *Token, profuse bool) *TokenInfo {
 	info := &TokenInfo{
-		Token: token.Type,
+		Token:    token.Type,
+		Encoding: token.Encoding,
+		Version:  token.Version,
+		Handle:   token.Handle,
+		Prefix:   token.Prefix,
+		Suffix:   token.Suffix,
 	}
 
 	// For COMMENT tokens, use the CommentType to determine which field to populate
@@ -435,6 +458,27 @@ func formatTokenInfo(token *Token, profuse bool) *TokenInfo {
 	}
 
 	return info
+}
+
+func appendTokenContractFields(node *yaml.Node, info *TokenInfo) {
+	fields := []struct {
+		name  string
+		value string
+	}{
+		{"encoding", info.Encoding},
+		{"version", info.Version},
+		{"handle", info.Handle},
+		{"prefix", info.Prefix},
+		{"suffix", info.Suffix},
+	}
+	for _, field := range fields {
+		if field.value == "" {
+			continue
+		}
+		node.Content = append(node.Content,
+			&yaml.Node{Kind: yaml.ScalarNode, Value: field.name},
+			&yaml.Node{Kind: yaml.ScalarNode, Value: field.value})
+	}
 }
 
 // processNodeToTokens converts a node to a slice of tokens

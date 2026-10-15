@@ -1,0 +1,74 @@
+# Copyright 2026 The go-yaml Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+# Decoder test cases for go-yaml
+#
+# Purpose: Tests yaml.Decoder stream decoding into Go values.
+#
+# Format: Test cases use type-as-key format:
+#   - decoder:
+#       name: Test case name
+#       yaml: YAML input string
+#       want: Expected sequence of decoded document values
+#   - decoder-error:
+#       name: Test case name
+#       yaml: YAML input string
+#       want: Expected error message
+
+- decoder:
+    name: empty stream
+    yaml: ''
+    want: []
+
+- decoder:
+    name: single implicit document
+    yaml: 'a: b'
+    want:
+    - a: b
+
+- decoder:
+    name: single explicit document
+    yaml: |
+      ---
+      a: b
+      ...
+    want:
+    - a: b
+
+- decoder:
+    name: multiple explicit documents
+    yaml: |
+      ---
+      'hello'
+      ...
+      ---
+      goodbye
+      ...
+    want:
+    - hello
+    - goodbye
+
+- decoder:
+    name: anchors reset between documents
+    yaml: |
+      ---
+      a: &anchor 1
+      b: *anchor
+      ---
+      a: &anchor 2
+      b: *anchor
+      ...
+    want:
+    - a: 1
+      b: 1
+    - a: 2
+      b: 2
+
+- decoder-error:
+    name: anchor not shared across documents
+    yaml: |
+      ---
+      &foo 42
+      ---
+      *foo
+    want: "go-yaml load error in composer at L4.C1: unknown anchor 'foo' referenced"

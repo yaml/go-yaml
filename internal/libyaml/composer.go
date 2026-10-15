@@ -8,6 +8,7 @@
 package libyaml
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 )
@@ -15,6 +16,7 @@ import (
 // Composer produces a node tree out of a libyaml event stream.
 type Composer struct {
 	Parser       Parser
+	source       *EventReader
 	event        Event
 	doc          *Node
 	anchors      map[string]*Node
@@ -37,9 +39,7 @@ func NewComposer(b []byte, opts *Options) *Composer {
 		b = []byte{'\n'}
 	}
 	p.Parser.SetInputString(b)
-	if opts != nil {
-		p.Parser.depthCheck = opts.DepthCheck
-	}
+	p.configureInput(bytes.NewReader(b))
 	return &p
 }
 
@@ -50,10 +50,50 @@ func NewComposerFromReader(r io.Reader, opts *Options) *Composer {
 		opts:   opts,
 	}
 	p.Parser.SetInputReader(r)
-	if opts != nil {
-		p.Parser.depthCheck = opts.DepthCheck
-	}
+	p.configureInput(r)
 	return &p
+}
+
+// configureInput applies options that affect the YAML input pipeline.
+func (c *Composer) configureInput(r io.Reader) {
+	if hasInputPlugins(c.opts) {
+		c.source = NewEventReader(r, c.opts)
+	}
+	if c.opts != nil {
+		c.Parser.depthCheck = c.opts.DepthCheck
+		c.Parser.indentConfig = c.opts.IndentConfig
+	}
+}
+
+// NewComposerFromEvents creates a composer that reads an existing event
+// stream instead of parsing YAML text.
+func NewComposerFromEvents(events []Event, opts *Options) *Composer {
+	c := Composer{
+		Parser: NewParser(),
+		opts:   opts,
+	}
+	c.Parser.SetInputEvents(events)
+	if opts != nil {
+		c.Parser.depthCheck = opts.DepthCheck
+	}
+	return &c
+}
+
+// ComposeEvents resolves an event stream into document nodes.
+func ComposeEvents(events []Event, opts *Options) (nodes []*Node, err error) {
+	defer handleErr(&err)
+	c := NewComposerFromEvents(events, opts)
+	defer c.Destroy()
+	r := NewResolver(opts)
+	for {
+		node := c.Compose()
+		if node == nil {
+			break
+		}
+		r.Resolve(node)
+		nodes = append(nodes, node)
+	}
+	return nodes, nil
 }
 
 // Compose composes the next YAML node from the event stream.
@@ -137,6 +177,9 @@ func (c *Composer) node(kind Kind, tag, value string) *Node {
 // document composes a document node by parsing its content between
 // DOCUMENT_START and DOCUMENT_END events.
 func (c *Composer) document() *Node {
+	// Anchors are scoped to a single document.
+	c.resetAnchors()
+
 	n := c.node(DocumentNode, "", "")
 	c.doc = n
 	c.expect(DOCUMENT_START_EVENT)
@@ -276,7 +319,7 @@ func (c *Composer) init() {
 	if c.doneInit {
 		return
 	}
-	c.anchors = make(map[string]*Node)
+	c.resetAnchors()
 	// Peek to get the encoding from STREAM_START_EVENT
 	if c.peek() == STREAM_START_EVENT {
 		c.encoding = c.event.GetEncoding()
@@ -290,6 +333,10 @@ func (c *Composer) init() {
 	}
 }
 
+func (c *Composer) resetAnchors() {
+	c.anchors = make(map[string]*Node)
+}
+
 // Destroy cleans up the composer by deleting any pending event and the
 // underlying parser.
 func (c *Composer) Destroy() {
@@ -297,6 +344,9 @@ func (c *Composer) Destroy() {
 		c.event.Delete()
 	}
 	c.Parser.Delete()
+	if c.source != nil {
+		c.source.Delete()
+	}
 }
 
 // SetStreamNodes enables or disables stream node emission.
@@ -308,7 +358,7 @@ func (c *Composer) SetStreamNodes(enable bool) {
 // checks that it's of the expected type.
 func (c *Composer) expect(e EventType) {
 	if c.event.Type == NO_EVENT {
-		if err := c.Parser.Parse(&c.event); err != nil {
+		if err := c.nextEvent(); err != nil {
 			c.fail(err)
 		}
 	}
@@ -337,7 +387,7 @@ func (c *Composer) peek() EventType {
 	// It's curious choice from the underlying API to generally return a
 	// positive result on success, but on this case return true in an error
 	// scenario. This was the source of bugs in the past (issue #666).
-	if err := c.Parser.Parse(&c.event); err != nil {
+	if err := c.nextEvent(); err != nil {
 		c.fail(err)
 	}
 	return c.event.Type
@@ -415,4 +465,11 @@ func formatComposerErrorContext(context string, contextMark Mark, message string
 		Mark:        mark,
 		Message:     message,
 	}
+}
+
+func (c *Composer) nextEvent() error {
+	if c.source != nil {
+		return c.source.Parse(&c.event)
+	}
+	return c.Parser.Parse(&c.event)
 }

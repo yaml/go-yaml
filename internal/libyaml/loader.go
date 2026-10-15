@@ -208,7 +208,7 @@ func loadAll(in []byte, out any, opts *Options) error {
 
 // loadSingle loads exactly one document from the input.
 // Returns an error if the input contains zero or multiple documents
-// (unless FromLegacy option is set for backward compatibility).
+// (unless [Options.allowLegacyTrailingContent] option is set for backward compatibility).
 func loadSingle(in []byte, out any, opts *Options) error {
 	l, err := NewLoader(bytes.NewReader(in), func(o *Options) error {
 		*o = *opts // Copy options
@@ -221,7 +221,7 @@ func loadSingle(in []byte, out any, opts *Options) error {
 	// Load first document
 	err = l.Load(out)
 	if err == io.EOF {
-		if opts.FromLegacy {
+		if opts.allowLegacyTrailingContent {
 			return nil
 		}
 		msg := "yaml: no documents in stream"
@@ -236,7 +236,7 @@ func loadSingle(in []byte, out any, opts *Options) error {
 	}
 
 	// Skip trailing document check for legacy Unmarshal() compatibility
-	if opts.FromLegacy {
+	if opts.allowLegacyTrailingContent {
 		return nil
 	}
 
@@ -260,32 +260,12 @@ func loadSingle(in []byte, out any, opts *Options) error {
 	return nil
 }
 
-// SetKnownFields enables or disables strict field checking for subsequent Load
-// calls.
-// This is used by the legacy Decoder.KnownFields() method.
-func (l *Loader) SetKnownFields(enable bool) {
+// SetLegacyLoaderKnownFields allows changing the known fields setting from the legacy Decoder API.
+//
+// This method is only provided for backward compatibility with the legacy Decoder API.
+// Do not use in libyaml, use [WithKnownFields] instead.
+func (l *Loader) SetLegacyLoaderKnownFields(enable bool) {
 	l.constructor.KnownFields = enable
-}
-
-// ComposeAndResolve composes and resolves the next document from the input
-// and returns the node without constructing Go values. This is used by
-// Unmarshal() to support the Unmarshaler interface.
-func (l *Loader) ComposeAndResolve() *Node {
-	if l.options.SingleDocument && l.docCount > 0 {
-		return nil
-	}
-
-	// Stage 1: Compose - parse events into node tree (unresolved tags)
-	node := l.composer.Compose()
-	if node == nil {
-		return nil
-	}
-	l.docCount++
-
-	// Stage 2: Resolve - determine implicit types for untagged scalars
-	l.resolver.Resolve(node)
-
-	return node
 }
 
 // LoadAny parses YAML data into generic Go structures (map[string]any, []any).
