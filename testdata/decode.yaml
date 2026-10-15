@@ -372,6 +372,94 @@
     want:
       english: null
 
+# Flow mappings with line breaks in keys or before values
+- decode:
+    name: flow mapping with colon on next line
+    yaml: |
+      {foo
+      : 42}
+    type: map[string]any
+    want:
+      foo: 42
+
+- decode:
+    name: flow mapping with CRLF before colon
+    yaml: "{foo\r\n: 42}\n"
+    type: map[string]any
+    want:
+      foo: 42
+
+- decode:
+    name: flow mapping with quoted keys before line breaks
+    yaml: |
+      {'foo'
+      : 42, "bar"
+      :43}
+    type: map[string]any
+    want:
+      foo: 42
+      bar: 43
+
+- decode:
+    name: flow mapping with multiline keys
+    yaml: |
+      {plain
+      key: 42, 'single
+      quoted': 43, "double
+      quoted": 44}
+    type: map[string]any
+    want:
+      plain key: 42
+      single quoted: 43
+      double quoted: 44
+
+- decode:
+    name: flow mapping with comments before colon
+    yaml: |
+      {foo # key comment
+      # another comment
+      : 42}
+    type: map[string]any
+    want:
+      foo: 42
+
+- decode:
+    name: flow mapping with multiline and omitted values
+    yaml: |
+      {foo
+      : 42, bar
+      : 43, baz
+      , qux:}
+    type: map[string]any
+    want:
+      foo: 42
+      bar: 43
+      baz: null
+      qux: null
+
+- decode:
+    name: nested flow mapping with colon on next line
+    yaml: |
+      outer: {foo
+        : 42, bar: {baz
+        : 43}}
+    type: map[string]any
+    want:
+      outer:
+        foo: 42
+        bar:
+          baz: 43
+
+- decode:
+    name: flow mapping with alias key before line break
+    yaml: |
+      [&key foo, {*key
+      : 42}]
+    type: '[]any'
+    want:
+    - foo
+    - foo: 42
+
 # Flow sequences
 - decode:
     name: flow sequence two items

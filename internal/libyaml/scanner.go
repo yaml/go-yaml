@@ -1428,6 +1428,11 @@ func (parser *Parser) fetchTag() error {
 
 // Produce the SCALAR(...,literal) or SCALAR(...,folded) tokens.
 func (parser *Parser) fetchValue() error {
+	// Flow values must be indented beyond the surrounding block collection.
+	if parser.flow_level > 0 && parser.mark.Column <= parser.indent {
+		return formatScannerError("mapping values are not allowed in this context", parser.mark)
+	}
+
 	simple_key := &parser.simple_key
 
 	// Have we found a simple key?
