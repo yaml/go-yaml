@@ -8,7 +8,6 @@ TestYAMLSuite/2LFX/LoadTest
 TestYAMLSuite/2SXE/EventComparisonTest
 TestYAMLSuite/2SXE/LoadTest
 TestYAMLSuite/33X3/JSONComparisonTest
-TestYAMLSuite/3HFZ/LoadTest
 TestYAMLSuite/4FJ6/LoadTest
 TestYAMLSuite/4RWC/JSONComparisonTest
 TestYAMLSuite/565N/JSONComparisonTest
@@ -26,7 +25,6 @@ TestYAMLSuite/6PBE/LoadTest
 TestYAMLSuite/6SLA/JSONComparisonTest
 TestYAMLSuite/6ZKB/EventComparisonTest
 TestYAMLSuite/74H7/JSONComparisonTest
-TestYAMLSuite/7Z25/EventComparisonTest
 TestYAMLSuite/8XYN/EventComparisonTest
 TestYAMLSuite/8XYN/LoadTest
 TestYAMLSuite/96NN-00/EventComparisonTest
@@ -85,7 +83,6 @@ TestYAMLSuite/M2N8-00/LoadTest
 TestYAMLSuite/M2N8-01/LoadTest
 TestYAMLSuite/M5DY/LoadTest
 TestYAMLSuite/M6YH/JSONComparisonTest
-TestYAMLSuite/M7A3/EventComparisonTest
 TestYAMLSuite/MUS6-00/EventComparisonTest
 TestYAMLSuite/MUS6-00/LoadTest
 TestYAMLSuite/MUS6-05/EventComparisonTest

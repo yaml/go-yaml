@@ -400,6 +400,10 @@
 
 # Error tests
 - parse-error:
+    name: Content after leading document-end marker
+    yaml: "...\tinvalid\n"
+
+- parse-error:
     name: Error state
     yaml: |
       key: : invalid
