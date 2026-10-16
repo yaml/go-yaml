@@ -662,6 +662,9 @@ func (parser *Parser) parseDocumentEnd(event *Event) error {
 	parser.tag_directives = parser.tag_directives[:0]
 
 	parser.state = PARSE_DOCUMENT_START_STATE
+	if !implicit {
+		parser.state = PARSE_IMPLICIT_DOCUMENT_START_STATE
+	}
 	*event = Event{
 		Type:      DOCUMENT_END_EVENT,
 		StartMark: start_mark,

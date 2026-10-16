@@ -1176,6 +1176,27 @@ func (parser *Parser) fetchDocumentIndicator(typ TokenType) error {
 
 	end_mark := parser.mark
 
+	// Only whitespace and a comment may follow a document-end marker.
+	if typ == DOCUMENT_END_TOKEN {
+		for {
+			if parser.unread < 1 {
+				if err := parser.updateBuffer(1); err != nil {
+					return err
+				}
+			}
+			if !isBlank(parser.buffer, parser.buffer_pos) {
+				break
+			}
+			parser.skip()
+		}
+		if !isBreakOrZero(parser.buffer, parser.buffer_pos) &&
+			parser.buffer[parser.buffer_pos] != '#' {
+			return formatScannerErrorContext(
+				"while scanning a document-end marker", start_mark,
+				"found unexpected content after document-end marker", parser.mark)
+		}
+	}
+
 	// Create the DOCUMENT-START or DOCUMENT-END token.
 	token := Token{
 		Type:      typ,
