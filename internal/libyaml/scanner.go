@@ -2109,6 +2109,10 @@ func (parser *Parser) scanDirective(token *Token) error {
 	}
 
 	if parser.buffer[parser.buffer_pos] == '#' {
+		if parser.mark.Index == token.EndMark.Index {
+			return formatScannerErrorContext("while scanning a directive", start_mark,
+				"found a comment without preceding whitespace", parser.mark)
+		}
 		// [Go] Discard this inline comment for the time being.
 		//if !parser.ScanLineComment(start_mark) {
 		//	return false
