@@ -1504,3 +1504,24 @@
         value: hello world
       b:
         value: hello world
+
+- decode:
+    name: Tab-only line before a block mapping
+    yaml: " \t\nfoo: bar\n"
+    type: map[string]string
+    want:
+      foo: bar
+
+- decode:
+    name: Tab-only line inside a block value
+    yaml: "foo:\n\t\n bar\n"
+    type: map[string]string
+    want:
+      foo: bar
+
+- decode:
+    name: Tab-prefixed comment inside a block value
+    yaml: "foo:\n\t# comment\n bar\n"
+    type: map[string]string
+    want:
+      foo: bar

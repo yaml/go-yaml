@@ -3067,9 +3067,8 @@ func (parser *Parser) scanToNextToken() error {
 			}
 		}
 
-		// Tabs before an opening root flow collection are separation.
-		if parser.flow_level == 0 && parser.indent < 0 &&
-			isTab(parser.buffer, parser.buffer_pos) {
+		// Tabs may separate a root flow opener or a blank/comment line.
+		if parser.flow_level == 0 && isTab(parser.buffer, parser.buffer_pos) {
 			tab_mark := parser.mark
 			for isBlank(parser.buffer, parser.buffer_pos) {
 				parser.skip()
@@ -3079,8 +3078,10 @@ func (parser *Parser) scanToNextToken() error {
 					}
 				}
 			}
-			if parser.buffer[parser.buffer_pos] != '[' &&
-				parser.buffer[parser.buffer_pos] != '{' {
+			rootFlow := parser.indent < 0 &&
+				(parser.buffer[parser.buffer_pos] == '[' || parser.buffer[parser.buffer_pos] == '{')
+			if !rootFlow && !isBreakOrZero(parser.buffer, parser.buffer_pos) &&
+				parser.buffer[parser.buffer_pos] != '#' {
 				return formatScannerErrorContext(
 					"while scanning for the next token", tab_mark,
 					"found character that cannot start any token", tab_mark)
