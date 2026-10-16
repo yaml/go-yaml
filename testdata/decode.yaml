@@ -372,6 +372,22 @@
     want:
       english: null
 
+# Flow collection separation
+- decode:
+    name: tab separation before root flow mapping
+    yaml: "\t\t {foo: bar}\n"
+    type: map[string]any
+    want:
+      foo: bar
+
+- decode:
+    name: tab separation before root flow sequence
+    yaml: " \t[foo, bar]\n"
+    type: '[]any'
+    want:
+    - foo
+    - bar
+
 # Flow mappings with line breaks in keys or before values
 - decode:
     name: flow mapping with colon on next line
