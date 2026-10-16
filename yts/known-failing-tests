@@ -81,8 +81,6 @@ TestYAMLSuite/FRK4/LoadTest
 TestYAMLSuite/G5U8/EventComparisonTest
 TestYAMLSuite/G5U8/LoadTest
 TestYAMLSuite/H2RW/JSONComparisonTest
-TestYAMLSuite/HRE5/EventComparisonTest
-TestYAMLSuite/HRE5/LoadTest
 TestYAMLSuite/J7PZ/JSONComparisonTest
 TestYAMLSuite/J7VC/JSONComparisonTest
 TestYAMLSuite/JEF9-02/EventComparisonTest

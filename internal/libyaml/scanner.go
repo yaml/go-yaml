@@ -2251,8 +2251,6 @@ func (parser *Parser) scanFlowScalar(token *Token, single bool) error {
 					s = append(s, '\x20')
 				case '"':
 					s = append(s, '"')
-				case '\'':
-					s = append(s, '\'')
 				case '/':
 					s = append(s, '/')
 				case '\\':
