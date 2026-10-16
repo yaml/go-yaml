@@ -11,10 +11,6 @@ TestYAMLSuite/33X3/JSONComparisonTest
 TestYAMLSuite/4FJ6/LoadTest
 TestYAMLSuite/4RWC/JSONComparisonTest
 TestYAMLSuite/565N/JSONComparisonTest
-TestYAMLSuite/58MP/EventComparisonTest
-TestYAMLSuite/58MP/LoadTest
-TestYAMLSuite/5T43/EventComparisonTest
-TestYAMLSuite/5T43/LoadTest
 TestYAMLSuite/652Z/JSONComparisonTest
 TestYAMLSuite/6BCT/EventComparisonTest
 TestYAMLSuite/6BCT/LoadTest

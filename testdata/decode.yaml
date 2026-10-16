@@ -374,6 +374,14 @@
 
 # Flow collection separation
 - decode:
+    name: colon-prefixed values in flow mappings
+    yaml: '{x: :x, "key"::value}'
+    type: map[string]string
+    want:
+      x: :x
+      key: :value
+
+- decode:
     name: tab separation before root flow mapping
     yaml: "\t\t {foo: bar}\n"
     type: map[string]any
