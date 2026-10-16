@@ -749,3 +749,28 @@
     call: [NewMappingEndEvent]
     test:
     - eq: [Type, MAPPING_END_EVENT]
+
+- emit:
+    name: Interior colons in emitted anchor and alias names
+    data:
+    - STREAM_START_EVENT:
+        encoding: UTF8_ENCODING
+    - DOCUMENT_START_EVENT:
+        implicit: true
+    - SEQUENCE_START_EVENT:
+        implicit: true
+        style: BLOCK_SEQUENCE_STYLE
+    - SCALAR_EVENT:
+        anchor: ::a::b
+        value: cat
+        implicit: true
+        style: PLAIN_SCALAR_STYLE
+    - ALIAS_EVENT:
+        anchor: ::a::b
+    - SEQUENCE_END_EVENT
+    - DOCUMENT_END_EVENT:
+        implicit: true
+    - STREAM_END_EVENT
+    want:
+    - '&::a::b'
+    - '*::a::b'
