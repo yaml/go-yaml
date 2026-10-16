@@ -372,6 +372,14 @@
     want:
       english: null
 
+# Block scalar content
+- decode:
+    name: tab content after implicit block scalar indentation
+    yaml: "foo: |-\n \tbar\n"
+    type: map[string]string
+    want:
+      foo: "\tbar"
+
 # Block sequence separation
 - decode:
     name: tab separation before flow mapping in block sequence
