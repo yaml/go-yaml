@@ -88,8 +88,6 @@ TestYAMLSuite/M2N8-00/LoadTest
 TestYAMLSuite/M2N8-01/LoadTest
 TestYAMLSuite/M5DY/LoadTest
 TestYAMLSuite/M6YH/JSONComparisonTest
-TestYAMLSuite/MUS6-00/EventComparisonTest
-TestYAMLSuite/MUS6-00/LoadTest
 TestYAMLSuite/MUS6-05/EventComparisonTest
 TestYAMLSuite/MUS6-05/LoadTest
 TestYAMLSuite/MUS6-06/EventComparisonTest
