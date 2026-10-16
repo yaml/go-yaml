@@ -1570,3 +1570,31 @@
     type: map[string]string
     want:
       foo: bar
+
+- decode:
+    name: Literal scalar final space-only content line at EOF
+    yaml: "foo: |\n  x\n   "
+    type: map[string]string
+    want:
+      foo: "x\n \n"
+
+- decode:
+    name: Folded scalar final space-only content line at EOF
+    yaml: "foo: >\n  x\n   "
+    type: map[string]string
+    want:
+      foo: "x\n \n"
+
+- decode:
+    name: Explicit indent scalar final space-only content line at EOF
+    yaml: "foo: |2+\n  x\n   "
+    type: map[string]string
+    want:
+      foo: "x\n \n"
+
+- decode:
+    name: Literal scalar final tab-only content line at EOF
+    yaml: "foo: |\n  x\n  \t"
+    type: map[string]string
+    want:
+      foo: "x\n\t\n"

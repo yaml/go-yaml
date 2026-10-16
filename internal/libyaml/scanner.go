@@ -1764,6 +1764,7 @@ func (parser *Parser) scanBlockScalar(token *Token, literal bool) error {
 		leading_blank = isBlank(parser.buffer, parser.buffer_pos)
 
 		// Consume the current line.
+		lineStart := len(s)
 		for !isBreakOrZero(parser.buffer, parser.buffer_pos) {
 			s = parser.read(s)
 			if parser.unread < 1 {
@@ -1780,7 +1781,13 @@ func (parser *Parser) scanBlockScalar(token *Token, literal bool) error {
 			}
 		}
 
-		leading_break = parser.readLine(leading_break)
+		// A final whitespace-only content line retains its line break.
+		if isZeroChar(parser.buffer, parser.buffer_pos) &&
+			len(bytes.Trim(s[lineStart:], " \t")) == 0 {
+			leading_break = append(leading_break, '\n')
+		} else {
+			leading_break = parser.readLine(leading_break)
+		}
 
 		// Eat the following indentation spaces and line breaks.
 		if err := parser.scanBlockScalarBreaks(&indent, &trailing_breaks, start_mark, &end_mark); err != nil {

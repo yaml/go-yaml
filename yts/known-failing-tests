@@ -52,8 +52,6 @@ TestYAMLSuite/JEF9-02/MarshalTest
 TestYAMLSuite/K4SU/JSONComparisonTest
 TestYAMLSuite/KK5P/LoadTest
 TestYAMLSuite/KMK3/JSONComparisonTest
-TestYAMLSuite/L24T-01/EventComparisonTest
-TestYAMLSuite/L24T-01/JSONComparisonTest
 TestYAMLSuite/L94M/JSONComparisonTest
 TestYAMLSuite/LX3P/LoadTest
 TestYAMLSuite/M2N8-00/LoadTest
