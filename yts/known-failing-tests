@@ -47,7 +47,6 @@ TestYAMLSuite/DK95-06/JSONComparisonTest
 TestYAMLSuite/DK95-07/EventComparisonTest
 TestYAMLSuite/DK95-07/LoadTest
 TestYAMLSuite/F2C7/JSONComparisonTest
-TestYAMLSuite/G4RS/EventComparisonTest
 TestYAMLSuite/H2RW/JSONComparisonTest
 TestYAMLSuite/J7PZ/JSONComparisonTest
 TestYAMLSuite/J7VC/JSONComparisonTest

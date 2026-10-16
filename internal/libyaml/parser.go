@@ -1675,6 +1675,8 @@ func formatEvent(e *Event) string {
 			`\`, `\\`,
 			"\n", `\n`,
 			"\t", `\t`,
+			"\r", `\r`,
+			"\b", `\b`,
 		).Replace(string(e.Value))
 		b.WriteString(val)
 
