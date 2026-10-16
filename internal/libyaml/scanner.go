@@ -1893,6 +1893,14 @@ func (parser *Parser) scanBlockScalarBreaks(indent *int, breaks *[]byte, start_m
 		*end_mark = parser.mark
 	}
 
+	// Count a final space-only line, including one shorter than the indent.
+	// An unterminated header and EOF immediately after a break add no line.
+	if isZeroChar(parser.buffer, parser.buffer_pos) &&
+		parser.mark.Line > start_mark.Line && parser.mark.Column > 1 &&
+		(*indent == 0 || parser.mark.Column <= *indent) {
+		*breaks = append(*breaks, '\n')
+	}
+
 	// Determine the indentation level if needed.
 	if *indent == 0 {
 		*indent = max_indent
