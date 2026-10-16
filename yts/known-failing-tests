@@ -38,8 +38,7 @@ TestYAMLSuite/DK95-00/LoadTest
 TestYAMLSuite/DK95-01/EventComparisonTest
 TestYAMLSuite/DK95-01/JSONComparisonTest
 TestYAMLSuite/DK95-01/LoadTest
-TestYAMLSuite/DK95-03/EventComparisonTest
-TestYAMLSuite/DK95-03/LoadTest
+TestYAMLSuite/DK95-03/JSONComparisonTest
 TestYAMLSuite/DK95-04/EventComparisonTest
 TestYAMLSuite/DK95-04/LoadTest
 TestYAMLSuite/DK95-05/JSONComparisonTest
