@@ -3027,8 +3027,9 @@ func (parser *Parser) scanToNextToken() error {
 		// Tabs are allowed:
 		//  - in the flow context
 		//  - before a root flow collection (checked below)
+		//  - after a block sequence indicator (checked below)
 		//  - in the block context, but not at the beginning of the line or
-		//  after '-', '?', or ':' (complex value).
+		//  after '?' or ':' (complex value).
 		if parser.unread < 1 {
 			if err := parser.updateBuffer(1); err != nil {
 				return err
@@ -3040,6 +3041,25 @@ func (parser *Parser) scanToNextToken() error {
 			if parser.unread < 1 {
 				if err := parser.updateBuffer(1); err != nil {
 					return err
+				}
+			}
+		}
+
+		// Tabs after a block sequence indicator may separate scalar or flow
+		// content, but may not indent a compact block collection.
+		if parser.flow_level == 0 && isTab(parser.buffer, parser.buffer_pos) &&
+			len(parser.tokens) > 0 {
+			previous := &parser.tokens[len(parser.tokens)-1]
+			if previous.Type == BLOCK_ENTRY_TOKEN &&
+				previous.EndMark.Line == parser.mark.Line {
+				parser.block_entry_tab = parser.mark
+				for isBlank(parser.buffer, parser.buffer_pos) {
+					parser.skip()
+					if parser.unread < 1 {
+						if err := parser.updateBuffer(1); err != nil {
+							return err
+						}
+					}
 				}
 			}
 		}
@@ -3416,6 +3436,17 @@ func (parser *Parser) rollIndent(column, number int, typ TokenType, mark Mark) e
 	}
 
 	if parser.indent < column {
+		if parser.block_entry_tab.Line != 0 &&
+			parser.block_entry_tab.Line == mark.Line {
+			if parser.indentConfig == nil {
+				return formatScannerError(
+					"found a tab character where an indentation space is expected",
+					parser.block_entry_tab)
+			}
+			if err := parser.validateIndentStyle('\t', parser.block_entry_tab); err != nil {
+				return err
+			}
+		}
 		// Push the current indentation level to the stack and set the new
 		// indentation level.
 		parser.indents = append(parser.indents, parser.indent)
