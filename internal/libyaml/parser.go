@@ -1191,6 +1191,9 @@ func (parser *Parser) parseBlockMappingKey(event *Event, first bool) error {
 			parser.state = PARSE_BLOCK_MAPPING_VALUE_STATE
 			return parser.processEmptyScalar(event, mark)
 		}
+	case VALUE_TOKEN:
+		parser.state = PARSE_BLOCK_MAPPING_VALUE_STATE
+		return parser.processEmptyScalar(event, token.StartMark)
 	case BLOCK_END_TOKEN:
 		parser.state = parser.states[len(parser.states)-1]
 		parser.states = parser.states[:len(parser.states)-1]

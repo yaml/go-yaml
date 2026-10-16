@@ -2,7 +2,6 @@ TestYAMLSuite/229Q/JSONComparisonTest
 TestYAMLSuite/27NA/EventComparisonTest
 TestYAMLSuite/27NA/LoadTest
 TestYAMLSuite/2AUY/JSONComparisonTest
-TestYAMLSuite/2JQS/EventComparisonTest
 TestYAMLSuite/2JQS/LoadTest
 TestYAMLSuite/2LFX/EventComparisonTest
 TestYAMLSuite/2LFX/LoadTest
@@ -26,8 +25,6 @@ TestYAMLSuite/6CA3/EventComparisonTest
 TestYAMLSuite/6CA3/LoadTest
 TestYAMLSuite/6LVF/EventComparisonTest
 TestYAMLSuite/6LVF/LoadTest
-TestYAMLSuite/6M2F/EventComparisonTest
-TestYAMLSuite/6M2F/LoadTest
 TestYAMLSuite/6PBE/LoadTest
 TestYAMLSuite/6SLA/JSONComparisonTest
 TestYAMLSuite/6ZKB/EventComparisonTest
@@ -62,7 +59,6 @@ TestYAMLSuite/CN3R/EventComparisonTest
 TestYAMLSuite/CVW2/EventComparisonTest
 TestYAMLSuite/CVW2/LoadTest
 TestYAMLSuite/DBG4/JSONComparisonTest
-TestYAMLSuite/DFF7/MarshalTest
 TestYAMLSuite/DHP8/JSONComparisonTest
 TestYAMLSuite/DK95-00/EventComparisonTest
 TestYAMLSuite/DK95-00/LoadTest
@@ -96,7 +92,6 @@ TestYAMLSuite/L24T-01/EventComparisonTest
 TestYAMLSuite/L24T-01/JSONComparisonTest
 TestYAMLSuite/L94M/JSONComparisonTest
 TestYAMLSuite/LX3P/LoadTest
-TestYAMLSuite/M2N8-00/EventComparisonTest
 TestYAMLSuite/M2N8-00/LoadTest
 TestYAMLSuite/M2N8-01/LoadTest
 TestYAMLSuite/M5DY/LoadTest
@@ -108,10 +103,7 @@ TestYAMLSuite/MUS6-05/EventComparisonTest
 TestYAMLSuite/MUS6-05/LoadTest
 TestYAMLSuite/MUS6-06/EventComparisonTest
 TestYAMLSuite/MUS6-06/LoadTest
-TestYAMLSuite/NHX8/EventComparisonTest
-TestYAMLSuite/NHX8/LoadTest
 TestYAMLSuite/NKF9/EventComparisonTest
-TestYAMLSuite/NKF9/LoadTest
 TestYAMLSuite/Q5MG/EventComparisonTest
 TestYAMLSuite/Q5MG/LoadTest
 TestYAMLSuite/Q9WF/LoadTest
@@ -126,21 +118,15 @@ TestYAMLSuite/RR7F/JSONComparisonTest
 TestYAMLSuite/RTP8/EventComparisonTest
 TestYAMLSuite/RTP8/LoadTest
 TestYAMLSuite/RZP5/LoadTest
-TestYAMLSuite/S3PD/EventComparisonTest
-TestYAMLSuite/S3PD/LoadTest
 TestYAMLSuite/S4JQ/JSONComparisonTest
 TestYAMLSuite/S98Z/EventComparisonTest
 TestYAMLSuite/S98Z/LoadTest
 TestYAMLSuite/SBG9/LoadTest
-TestYAMLSuite/SM9W-01/EventComparisonTest
-TestYAMLSuite/SM9W-01/LoadTest
 TestYAMLSuite/SU5Z/EventComparisonTest
 TestYAMLSuite/SU5Z/LoadTest
 TestYAMLSuite/SYW4/JSONComparisonTest
 TestYAMLSuite/UGM3/JSONComparisonTest
 TestYAMLSuite/UGM3/MarshalTest
-TestYAMLSuite/UKK6-00/EventComparisonTest
-TestYAMLSuite/UKK6-00/LoadTest
 TestYAMLSuite/UT92/JSONComparisonTest
 TestYAMLSuite/V9D5/LoadTest
 TestYAMLSuite/W4TN/EventComparisonTest
