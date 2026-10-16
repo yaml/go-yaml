@@ -2253,6 +2253,8 @@ func (parser *Parser) scanFlowScalar(token *Token, single bool) error {
 					s = append(s, '"')
 				case '\'':
 					s = append(s, '\'')
+				case '/':
+					s = append(s, '/')
 				case '\\':
 					s = append(s, '\\')
 				case 'N': // NEL (#x85)
