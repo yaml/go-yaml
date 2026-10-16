@@ -335,6 +335,11 @@ func TestNodeFoldedScalarRoundtripStable(t *testing.T) {
 			src:  "key: >\n  just one line\n",
 		},
 		{
+			name: "folded long more-indented line",
+			src: "key: >\n  intro\n    a more-indented line that is longer" +
+				" than the eighty columns of the default line width\n  outro\n",
+		},
+		{
 			name: "literal control",
 			src:  "key: |\n  Heading:\n\n    * first item\n    * second item\n",
 		},

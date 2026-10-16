@@ -2177,7 +2177,7 @@ func (emitter *Emitter) writeFoldedScalar(value []byte) error {
 				}
 				leading_spaces = isBlank(value, i)
 			}
-			if !breaks && isSpace(value, i) &&
+			if !breaks && !leading_spaces && isSpace(value, i) &&
 				!isSpace(value, i+1) &&
 				emitter.column > emitter.best_width {
 				if err := emitter.writeIndent(); err != nil {
