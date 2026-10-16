@@ -650,8 +650,10 @@ func (parser *Parser) parseDocumentEnd(event *Event) error {
 		end_mark = token.EndMark
 		parser.skipToken()
 		implicit = false
-	case VERSION_DIRECTIVE_TOKEN, TAG_DIRECTIVE_TOKEN,
-		DOCUMENT_START_TOKEN, STREAM_END_TOKEN:
+	case VERSION_DIRECTIVE_TOKEN, TAG_DIRECTIVE_TOKEN:
+		return formatParserError(
+			"did not find expected <document end> before directive", token.StartMark)
+	case DOCUMENT_START_TOKEN, STREAM_END_TOKEN:
 		// Document ended properly.
 		// https://github.com/yaml/go-yaml/pull/410
 	default:
