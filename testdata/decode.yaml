@@ -1548,3 +1548,25 @@
     type: map[string]string
     want:
       foo: one
+
+- decode:
+    name: Tab separation before an indented scalar value
+    yaml: "foo:\n \tbar\n"
+    type: map[string]string
+    want:
+      foo: bar
+
+- decode:
+    name: Tab separation before an indented flow value
+    yaml: "foo:\n \t[bar]\n"
+    type: map[string][]string
+    want:
+      foo:
+      - bar
+
+- decode:
+    name: Tab separation before an indented quoted value
+    yaml: "foo:\n \t\"bar\"\n"
+    type: map[string]string
+    want:
+      foo: bar
