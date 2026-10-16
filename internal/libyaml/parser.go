@@ -235,6 +235,8 @@ type Parser struct {
 	indent  int   // The current indentation level.
 	indents []int // The indentation levels stack.
 
+	block_entry_tab Mark // First tab following a block sequence indicator.
+
 	simple_key_allowed  bool        // May a simple key occur at the current position?
 	simple_key_possible bool        // Is the current simple key possible?
 	simple_key          SimpleKey   // The current simple key.
