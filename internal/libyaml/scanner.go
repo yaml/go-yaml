@@ -3053,14 +3053,16 @@ func (parser *Parser) scanToNextToken() error {
 			}
 		}
 
-		// Tabs after a block sequence indicator may separate scalar or flow
-		// content, but may not indent a compact block collection.
+		// Tabs after an indicator or sufficient indentation may separate
+		// scalar or flow content, but may not indent a block collection.
 		if parser.flow_level == 0 && isTab(parser.buffer, parser.buffer_pos) &&
 			len(parser.tokens) > 0 {
 			previous := &parser.tokens[len(parser.tokens)-1]
-			if previous.Type == BLOCK_ENTRY_TOKEN &&
-				previous.EndMark.Line == parser.mark.Line {
-				parser.block_entry_tab = parser.mark
+			if (previous.Type == BLOCK_ENTRY_TOKEN &&
+				previous.EndMark.Line == parser.mark.Line) ||
+				(parser.mark.Line > previous.EndMark.Line &&
+					parser.mark.Column > parser.indent) {
+				parser.block_indent_tab = parser.mark
 				for isBlank(parser.buffer, parser.buffer_pos) {
 					parser.skip()
 					if parser.unread < 1 {
@@ -3445,14 +3447,14 @@ func (parser *Parser) rollIndent(column, number int, typ TokenType, mark Mark) e
 	}
 
 	if parser.indent < column {
-		if parser.block_entry_tab.Line != 0 &&
-			parser.block_entry_tab.Line == mark.Line {
+		if parser.block_indent_tab.Line != 0 &&
+			parser.block_indent_tab.Line == mark.Line {
 			if parser.indentConfig == nil {
 				return formatScannerError(
 					"found a tab character where an indentation space is expected",
-					parser.block_entry_tab)
+					parser.block_indent_tab)
 			}
-			if err := parser.validateIndentStyle('\t', parser.block_entry_tab); err != nil {
+			if err := parser.validateIndentStyle('\t', parser.block_indent_tab); err != nil {
 				return err
 			}
 		}

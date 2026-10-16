@@ -33,8 +33,6 @@ TestYAMLSuite/BEC7/LoadTest
 TestYAMLSuite/C4HZ/JSONComparisonTest
 TestYAMLSuite/DBG4/JSONComparisonTest
 TestYAMLSuite/DHP8/JSONComparisonTest
-TestYAMLSuite/DK95-00/EventComparisonTest
-TestYAMLSuite/DK95-00/LoadTest
 TestYAMLSuite/DK95-01/EventComparisonTest
 TestYAMLSuite/DK95-01/JSONComparisonTest
 TestYAMLSuite/DK95-01/LoadTest
