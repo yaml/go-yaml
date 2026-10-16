@@ -1850,8 +1850,11 @@ func (parser *Parser) scanBlockScalarBreaks(indent *int, breaks *[]byte, start_m
 			max_indent = parser.mark.Column
 		}
 
-		// Check for a tab character messing the indentation.
-		if (*indent == 0 || parser.mark.Column < *indent) && isTab(parser.buffer, parser.buffer_pos) {
+		// Before auto-detection, tabs after the required indentation prefix
+		// are content, not indentation.
+		if isTab(parser.buffer, parser.buffer_pos) &&
+			((*indent == 0 && parser.mark.Column <= parser.indent) ||
+				(*indent > 0 && parser.mark.Column < *indent)) {
 			return formatScannerErrorContext("while scanning a block scalar", start_mark,
 				"found a tab character where an indentation space is expected", parser.mark)
 		}
