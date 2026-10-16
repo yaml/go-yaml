@@ -908,6 +908,20 @@ func (parser *Parser) fetchNextToken() (err error) {
 		if err != nil {
 			return
 		}
+		// Validate separation even when comments are not collected.
+		if parser.newlines == 0 {
+			if parser.unread < 1 {
+				if err = parser.updateBuffer(1); err != nil {
+					return
+				}
+			}
+			if parser.buffer[parser.buffer_pos] == '#' && len(parser.tokens) > 0 &&
+				parser.tokens[len(parser.tokens)-1].EndMark.Index == parser.mark.Index {
+				err = formatScannerError(
+					"found a comment without preceding whitespace", parser.mark)
+				return
+			}
+		}
 		if parser.skip_comments {
 			return
 		}
