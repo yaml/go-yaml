@@ -10,8 +10,6 @@ TestYAMLSuite/2SXE/EventComparisonTest
 TestYAMLSuite/2SXE/LoadTest
 TestYAMLSuite/33X3/JSONComparisonTest
 TestYAMLSuite/3HFZ/LoadTest
-TestYAMLSuite/3UYS/EventComparisonTest
-TestYAMLSuite/3UYS/LoadTest
 TestYAMLSuite/4FJ6/LoadTest
 TestYAMLSuite/4RWC/JSONComparisonTest
 TestYAMLSuite/565N/JSONComparisonTest
