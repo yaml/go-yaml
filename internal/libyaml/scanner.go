@@ -1641,6 +1641,8 @@ func (parser *Parser) scanBlockScalar(token *Token, literal bool) error {
 		}
 	}
 
+	header_end := parser.mark.Index
+
 	// Eat whitespaces and comments to the end of the line.
 	if parser.unread < 1 {
 		if err := parser.updateBuffer(1); err != nil {
@@ -1656,6 +1658,10 @@ func (parser *Parser) scanBlockScalar(token *Token, literal bool) error {
 		}
 	}
 	if parser.buffer[parser.buffer_pos] == '#' {
+		if parser.mark.Index == header_end {
+			return formatScannerErrorContext("while scanning a block scalar", start_mark,
+				"found a comment without preceding whitespace", parser.mark)
+		}
 		if err := parser.scanLineComment(start_mark); err != nil {
 			return err
 		}
