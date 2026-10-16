@@ -1633,3 +1633,81 @@
     type: map[string]string
     want:
       foo: "x\n\n"
+
+- decode:
+    name: Interior colons in anchor and alias names
+    yaml: "[&a:b cat, *a:b]"
+    type: '[]string'
+    want: [cat, cat]
+
+- decode:
+    name: Leading and consecutive colons in anchor names
+    yaml: "[&::a::b cat, *::a::b]"
+    type: '[]string'
+    want: [cat, cat]
+
+- decode:
+    name: Interior colon alias key with adjacent mapping separator
+    yaml: "source: &a:b cat\n*a:b: dog\n"
+    type: map[string]string
+    want:
+      source: cat
+      cat: dog
+
+- decode:
+    name: Interior colon alias key in a flow mapping
+    yaml: "{source: &a:b cat, *a:b: dog}"
+    type: map[string]string
+    want:
+      source: cat
+      cat: dog
+
+- decode:
+    name: Interior colon alias at end of input
+    yaml: "source: &a:b cat\ncopy: *a:b"
+    type: map[string]string
+    want:
+      source: cat
+      copy: cat
+
+- decode:
+    name: Anchor colon at a raw buffer boundary
+    yaml:
+      join:
+      - text: 'source: &'
+      - loop: [a, 502]
+      - text: ":b cat\ncopy: *"
+      - loop: [a, 502]
+      - text: :b
+    type: map[string]string
+    want:
+      source: cat
+      copy: cat
+
+- decode:
+    name: Interior anchor colon run larger than the input buffer
+    yaml:
+      join:
+      - text: 'source: &a'
+      - loop: [':', 4096]
+      - text: "b cat\ncopy: *a"
+      - loop: [':', 4096]
+      - text: b
+    type: map[string]string
+    want:
+      source: cat
+      copy: cat
+
+- decode:
+    name: Mapping separator after a long interior alias colon run
+    yaml:
+      join:
+      - text: 'source: &a'
+      - loop: [':', 4096]
+      - text: "b cat\n*a"
+      - loop: [':', 4096]
+      - text: 'b: dog'
+    type: map[string]string
+    want:
+      source: cat
+      cat: dog

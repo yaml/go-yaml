@@ -588,7 +588,6 @@
     name: Is anchor char - colon
     func: isAnchorChar
     data: ':'
-    want: false
 
 - char-predicate:
     name: Is anchor char - left bracket

@@ -83,8 +83,6 @@ TestYAMLSuite/W5VH/EventComparisonTest
 TestYAMLSuite/W5VH/LoadTest
 TestYAMLSuite/X38W/LoadTest
 TestYAMLSuite/XW4D/LoadTest
-TestYAMLSuite/Y2GN/EventComparisonTest
-TestYAMLSuite/Y2GN/JSONComparisonTest
 TestYAMLSuite/Y79Y-001/JSONComparisonTest
 TestYAMLSuite/Y79Y-003/EventComparisonTest
 TestYAMLSuite/Y79Y-003/LoadTest

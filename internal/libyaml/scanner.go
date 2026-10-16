@@ -533,19 +533,9 @@ func isFlowIndicator(b []byte, i int) bool {
 // ']', '{', '}', ','.
 // We further limit it to ascii chars only, which is a subset of the spec
 // production but is usually what most people expect.
+// Trailing colons are excluded separately by the scanner and emitter to
+// preserve mapping separators immediately after aliases (issue #109).
 func isAnchorChar(b []byte, i int) bool {
-	if isColon(b, i) {
-		// [Go] we exclude colons from anchor/alias names.
-		//
-		// A colon is a valid anchor character according to the YAML 1.2 specification,
-		// but it can lead to ambiguity.
-		// https://github.com/yaml/go-yaml/issues/109
-		//
-		// Also, it would have been a breaking change to support it, as go.yaml.in/yaml/v3 ignores it.
-		// Supporting it could lead to unexpected behavior.
-		return false
-	}
-
 	return isPrintable(b, i) &&
 		!isLineBreak(b, i) &&
 		!isBlank(b, i) &&
@@ -1552,6 +1542,36 @@ func (parser *Parser) scanAnchor(token *Token, typ TokenType) error {
 	}
 
 	for isAnchorChar(parser.buffer, parser.buffer_pos) {
+		if isColon(parser.buffer, parser.buffer_pos) {
+			// A colon run belongs to the name only if a name character
+			// follows it. Leave trailing colons for the token scanner.
+			offset := 1
+			for {
+				if parser.unread <= offset {
+					// Keep room for the reader's next decoded input chunk.
+					if cap(parser.buffer) < offset+input_buffer_size {
+						buffer := make([]byte, len(parser.buffer),
+							2*(offset+input_buffer_size))
+						copy(buffer, parser.buffer)
+						parser.buffer = buffer
+					}
+					if err := parser.updateBuffer(offset + 1); err != nil {
+						return err
+					}
+				}
+				if !isColon(parser.buffer, parser.buffer_pos+offset) {
+					break
+				}
+				offset++
+			}
+			if !isAnchorChar(parser.buffer, parser.buffer_pos+offset) {
+				break
+			}
+			for offset > 0 {
+				s = parser.read(s)
+				offset--
+			}
+		}
 		s = parser.read(s)
 		if parser.unread < 1 {
 			if err := parser.updateBuffer(1); err != nil {
