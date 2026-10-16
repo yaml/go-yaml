@@ -971,9 +971,15 @@ func (parser *Parser) fetchNextToken() (err error) {
 	}
 
 	// Is it the value indicator?
-	if parser.buffer[parser.buffer_pos] == ':' && (parser.flow_level > 0 &&
-		!parser.isFlowSequence() || isBlankOrZero(parser.buffer, parser.buffer_pos+1)) {
-		return parser.fetchValue()
+	if parser.buffer[parser.buffer_pos] == ':' {
+		// A flow value may itself start with a colon and safe scalar content.
+		plain_value := len(parser.tokens) > 0 &&
+			parser.tokens[len(parser.tokens)-1].Type == VALUE_TOKEN &&
+			!isFlowIndicator(parser.buffer, parser.buffer_pos+1)
+		if isBlankOrZero(parser.buffer, parser.buffer_pos+1) ||
+			(parser.flow_level > 0 && !parser.isFlowSequence() && !plain_value) {
+			return parser.fetchValue()
+		}
 	}
 
 	// Is it an alias?
