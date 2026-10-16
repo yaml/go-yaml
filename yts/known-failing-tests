@@ -21,8 +21,6 @@ TestYAMLSuite/6BCT/EventComparisonTest
 TestYAMLSuite/6BCT/LoadTest
 TestYAMLSuite/6BFJ/EventComparisonTest
 TestYAMLSuite/6BFJ/LoadTest
-TestYAMLSuite/6CA3/EventComparisonTest
-TestYAMLSuite/6CA3/LoadTest
 TestYAMLSuite/6LVF/EventComparisonTest
 TestYAMLSuite/6LVF/LoadTest
 TestYAMLSuite/6PBE/LoadTest
@@ -104,8 +102,6 @@ TestYAMLSuite/MUS6-05/LoadTest
 TestYAMLSuite/MUS6-06/EventComparisonTest
 TestYAMLSuite/MUS6-06/LoadTest
 TestYAMLSuite/NKF9/EventComparisonTest
-TestYAMLSuite/Q5MG/EventComparisonTest
-TestYAMLSuite/Q5MG/LoadTest
 TestYAMLSuite/Q9WF/LoadTest
 TestYAMLSuite/QB6E/EventComparisonTest
 TestYAMLSuite/QB6E/LoadTest

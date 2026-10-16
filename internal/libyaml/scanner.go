@@ -2975,6 +2975,7 @@ func (parser *Parser) scanToNextToken() error {
 		// Eat whitespaces.
 		// Tabs are allowed:
 		//  - in the flow context
+		//  - before a root flow collection (checked below)
 		//  - in the block context, but not at the beginning of the line or
 		//  after '-', '?', or ':' (complex value).
 		if parser.unread < 1 {
@@ -2989,6 +2990,26 @@ func (parser *Parser) scanToNextToken() error {
 				if err := parser.updateBuffer(1); err != nil {
 					return err
 				}
+			}
+		}
+
+		// Tabs before an opening root flow collection are separation.
+		if parser.flow_level == 0 && parser.indent < 0 &&
+			isTab(parser.buffer, parser.buffer_pos) {
+			tab_mark := parser.mark
+			for isBlank(parser.buffer, parser.buffer_pos) {
+				parser.skip()
+				if parser.unread < 1 {
+					if err := parser.updateBuffer(1); err != nil {
+						return err
+					}
+				}
+			}
+			if parser.buffer[parser.buffer_pos] != '[' &&
+				parser.buffer[parser.buffer_pos] != '{' {
+				return formatScannerErrorContext(
+					"while scanning for the next token", tab_mark,
+					"found character that cannot start any token", tab_mark)
 			}
 		}
 
