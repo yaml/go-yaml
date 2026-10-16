@@ -372,6 +372,28 @@
     want:
       english: null
 
+# Block sequence separation
+- decode:
+    name: tab separation before flow mapping in block sequence
+    yaml: "-\t{key: value}\n"
+    type: '[]any'
+    want:
+    - key: value
+
+- decode:
+    name: tab separation before quoted scalar in block sequence
+    yaml: "- \t'quoted'\n"
+    type: '[]string'
+    want:
+    - quoted
+
+- decode:
+    name: tab separation before block scalar in block sequence
+    yaml: "-\t|\n text\n"
+    type: '[]string'
+    want:
+    - "text\n"
+
 # Flow collection separation
 - decode:
     name: colon-prefixed values in flow mappings
