@@ -1598,3 +1598,38 @@
     type: map[string]string
     want:
       foo: "x\n\t\n"
+
+- decode:
+    name: Keep empty literal scalar space-only line at EOF
+    yaml: "- |+\n   "
+    type: '[]string'
+    want:
+    - "\n"
+
+- decode:
+    name: Keep empty folded scalar space-only line at EOF
+    yaml: "foo: >+\n   "
+    type: map[string]string
+    want:
+      foo: "\n"
+
+- decode:
+    name: Keep explicitly indented empty scalar line at EOF
+    yaml: "foo: |2+\n  "
+    type: map[string]string
+    want:
+      foo: "\n"
+
+- decode:
+    name: Keep multiple empty scalar lines at EOF
+    yaml: "foo: |+\n \n  "
+    type: map[string]string
+    want:
+      foo: "\n\n"
+
+- decode:
+    name: Keep trailing empty scalar line at EOF
+    yaml: "foo: |+\n  x\n  "
+    type: map[string]string
+    want:
+      foo: "x\n\n"
