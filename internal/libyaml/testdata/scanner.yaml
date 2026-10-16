@@ -371,6 +371,20 @@
 
 # Error test
 - scan-error:
+    name: Comment attached to indentation then chomping indicators
+    yaml: |
+      key: |2-# comment
+        value
+    like: comment without preceding whitespace
+
+- scan-error:
+    name: Comment attached to chomping then indentation indicators
+    yaml: |
+      key: |-2# comment
+        value
+    like: comment without preceding whitespace
+
+- scan-error:
     name: Invalid character
     yaml: "\x01"
 
