@@ -2634,6 +2634,8 @@ func (parser *Parser) scanPlainScalar(token *Token) error {
 		indentMark := Mark{}
 		mixedIndent := false
 		mixedMark := Mark{}
+		// A tab is indentation only if the line contains scalar content.
+		badTab := Mark{}
 		for isBlank(parser.buffer, parser.buffer_pos) || isLineBreak(parser.buffer, parser.buffer_pos) {
 			if isBlank(parser.buffer, parser.buffer_pos) {
 
@@ -2648,11 +2650,8 @@ func (parser *Parser) scanPlainScalar(token *Token) error {
 							mixedIndent = true
 							mixedMark = parser.mark
 						}
-					} else if isTab(parser.buffer, parser.buffer_pos) {
-						return formatScannerErrorContext(
-							"while scanning a plain scalar", start_mark,
-							"found a tab character that violates indentation",
-							parser.mark)
+					} else if isTab(parser.buffer, parser.buffer_pos) && badTab.Line == 0 {
+						badTab = parser.mark
 					}
 				}
 
@@ -2679,12 +2678,18 @@ func (parser *Parser) scanPlainScalar(token *Token) error {
 				}
 				indentStyle = indentStyleUnknown
 				mixedIndent = false
+				badTab = Mark{}
 			}
 			if parser.unread < 1 {
 				if err := parser.updateBuffer(1); err != nil {
 					return err
 				}
 			}
+		}
+		if badTab.Line != 0 && !isZeroChar(parser.buffer, parser.buffer_pos) &&
+			parser.buffer[parser.buffer_pos] != '#' {
+			return formatScannerErrorContext("while scanning a plain scalar", start_mark,
+				"found a tab character that violates indentation", badTab)
 		}
 		if parser.indentConfig != nil &&
 			indentStyle != indentStyleUnknown &&
