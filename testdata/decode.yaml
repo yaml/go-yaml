@@ -1525,3 +1525,26 @@
     type: map[string]string
     want:
       foo: bar
+
+- decode:
+    name: Tab-only line after a plain scalar
+    yaml: "foo: one\n\t\nbar: two\n"
+    type: map[string]string
+    want:
+      foo: one
+      bar: two
+
+- decode:
+    name: Tab-prefixed comment after a plain scalar
+    yaml: "foo: one\n\t# comment\nbar: two\n"
+    type: map[string]string
+    want:
+      foo: one
+      bar: two
+
+- decode:
+    name: Tab-only trailing line at end of input
+    yaml: "foo: one\n\t"
+    type: map[string]string
+    want:
+      foo: one
