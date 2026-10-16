@@ -1289,7 +1289,7 @@ func (parser *Parser) parseFlowSequenceEntry(event *Event, first bool) error {
 			}
 		}
 
-		if token.Type == KEY_TOKEN {
+		if token.Type == KEY_TOKEN || token.Type == VALUE_TOKEN {
 			parser.state = PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_KEY_STATE
 			*event = Event{
 				Type:      MAPPING_START_EVENT,
@@ -1298,7 +1298,9 @@ func (parser *Parser) parseFlowSequenceEntry(event *Event, first bool) error {
 				Implicit:  true,
 				Style:     Style(FLOW_MAPPING_STYLE),
 			}
-			parser.skipToken()
+			if token.Type == KEY_TOKEN {
+				parser.skipToken()
+			}
 			return nil
 		} else if token.Type != FLOW_SEQUENCE_END_TOKEN {
 			parser.states = append(parser.states, PARSE_FLOW_SEQUENCE_ENTRY_STATE)
@@ -1336,10 +1338,8 @@ func (parser *Parser) parseFlowSequenceEntryMappingKey(event *Event) error {
 		parser.states = append(parser.states, PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_VALUE_STATE)
 		return parser.parseNode(event, false, false)
 	}
-	mark := token.EndMark
-	parser.skipToken()
 	parser.state = PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_VALUE_STATE
-	return parser.processEmptyScalar(event, mark)
+	return parser.processEmptyScalar(event, token.StartMark)
 }
 
 // Parse the productions:
@@ -1427,6 +1427,10 @@ func (parser *Parser) parseFlowMappingKey(event *Event, first bool) error {
 			}
 		}
 
+		if token.Type == VALUE_TOKEN {
+			parser.state = PARSE_FLOW_MAPPING_VALUE_STATE
+			return parser.processEmptyScalar(event, token.StartMark)
+		}
 		if token.Type == KEY_TOKEN {
 			parser.skipToken()
 			if err := parser.peekToken(&token); err != nil {
