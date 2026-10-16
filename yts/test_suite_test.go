@@ -253,8 +253,10 @@ func runTest(t *testing.T, testPath string) {
 			return
 		}
 		var jsonValue any
-		jsonErr := json.Unmarshal(inJSON, &jsonValue)
-		if jsonErr != nil {
+		// Read only the first JSON value, matching loadFirstDocument.
+		// Empty streams have a nil value on both sides.
+		jsonErr := json.NewDecoder(bytes.NewReader(inJSON)).Decode(&jsonValue)
+		if jsonErr != nil && jsonErr != io.EOF {
 			t.Errorf("Test: %s\nDescription: %s\nError: Failed to unmarshal in.json: %v", testPath, testDescription, jsonErr)
 		} else if !reflect.DeepEqual(currentUnmarshaledValue, jsonValue) {
 			t.Errorf("Test: %s\nDescription: %s\nError: YAML unmarshal vs JSON unmarshal mismatch\nExpected: %+v\nGot     : %+v", testPath, testDescription, jsonValue, currentUnmarshaledValue)
