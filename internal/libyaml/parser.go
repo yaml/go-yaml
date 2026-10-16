@@ -1680,6 +1680,9 @@ func formatEvent(e *Event) string {
 
 	case SEQUENCE_START_EVENT:
 		b.WriteString("+SEQ")
+		if e.SequenceStyle() == FLOW_SEQUENCE_STYLE {
+			b.WriteString(" []")
+		}
 		if len(e.Anchor) > 0 {
 			b.WriteString(" &")
 			b.Write(e.Anchor)
@@ -1688,14 +1691,14 @@ func formatEvent(e *Event) string {
 			b.WriteString(" <")
 			b.Write(e.Tag)
 			b.WriteString(">")
-		}
-		if e.SequenceStyle() == FLOW_SEQUENCE_STYLE {
-			b.WriteString(" []")
 		}
 	case SEQUENCE_END_EVENT:
 		b.WriteString("-SEQ")
 	case MAPPING_START_EVENT:
 		b.WriteString("+MAP")
+		if e.MappingStyle() == FLOW_MAPPING_STYLE {
+			b.WriteString(" {}")
+		}
 		if len(e.Anchor) > 0 {
 			b.WriteString(" &")
 			b.Write(e.Anchor)
@@ -1704,9 +1707,6 @@ func formatEvent(e *Event) string {
 			b.WriteString(" <")
 			b.Write(e.Tag)
 			b.WriteString(">")
-		}
-		if e.MappingStyle() == FLOW_MAPPING_STYLE {
-			b.WriteString(" {}")
 		}
 	case MAPPING_END_EVENT:
 		b.WriteString("-MAP")
