@@ -317,48 +317,24 @@ func nodeRoundTrip(t *testing.T, src []byte, indent int) []byte {
 	return buf.Bytes()
 }
 
-func TestNodeFoldedScalarRoundtripStable(t *testing.T) {
-	cases := []struct {
-		name string
-		src  string
-	}{
-		{
-			name: "folded heading then more-indented block",
-			src:  "key: >\n  Heading:\n\n    * first item\n    * second item\n",
-		},
-		{
-			name: "folded single newline between plain lines",
-			src:  "key: >\n  one\n\n  two\n",
-		},
-		{
-			name: "folded single line",
-			src:  "key: >\n  just one line\n",
-		},
-		{
-			name: "literal control",
-			src:  "key: |\n  Heading:\n\n    * first item\n    * second item\n",
-		},
+func runNodeRoundTripTestCase(t *testing.T, tc map[string]any) {
+	t.Helper()
+
+	src := datatest.RequireString(t, tc, "yaml")
+	var first map[string]string
+	if err := yaml.Unmarshal([]byte(src), &first); err != nil {
+		t.Fatalf("Unmarshal source: %v", err)
 	}
+	want := first["key"]
 
-	for _, tc := range cases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			var first map[string]string
-			if err := yaml.Unmarshal([]byte(tc.src), &first); err != nil {
-				t.Fatalf("Unmarshal source: %v", err)
-			}
-			want := first["key"]
-
-			current := []byte(tc.src)
-			for round := 0; round < 4; round++ {
-				var m map[string]string
-				if err := yaml.Unmarshal(current, &m); err != nil {
-					t.Fatalf("round %d: Unmarshal: %v", round, err)
-				}
-				assert.Equal(t, want, m["key"])
-				current = nodeRoundTrip(t, current, 2)
-			}
-		})
+	current := []byte(src)
+	for round := 0; round < 4; round++ {
+		var m map[string]string
+		if err := yaml.Unmarshal(current, &m); err != nil {
+			t.Fatalf("round %d: Unmarshal: %v", round, err)
+		}
+		assert.Equal(t, want, m["key"])
+		current = nodeRoundTrip(t, current, 2)
 	}
 }
 
@@ -652,7 +628,8 @@ func TestNodeFromYAML(t *testing.T) {
 	datatest.RunTestCases(t, func() ([]map[string]any, error) {
 		return datatest.LoadTestCasesFromFile("testdata/node.yaml", libyaml.LoadAny)
 	}, map[string]datatest.TestHandler{
-		"node-test": runNodeTestCase,
+		"node-test":      runNodeTestCase,
+		"node-roundtrip": runNodeRoundTripTestCase,
 	})
 }
 
