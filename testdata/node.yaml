@@ -17,6 +17,7 @@
 #
 # Test Types:
 #   node-test - Validates YAML node structure and round-trip encoding/decoding
+#   node-roundtrip - Checks the value of 'key' across four node round trips
 #
 # Common Keys:
 #   name   - Test case name (string)
@@ -2077,6 +2078,38 @@
           content: [{kind: Scalar, tag: '!!int', text: '3'}, {kind: Scalar, tag: '!!int', text: '4'}]
 
 # Literal and folded variations
+- node-roundtrip:
+    name: folded heading then more-indented block
+    yaml: |
+      key: >
+        Heading:
+
+          * first item
+          * second item
+
+- node-roundtrip:
+    name: folded single newline between plain lines
+    yaml: |
+      key: >
+        one
+
+        two
+
+- node-roundtrip:
+    name: folded single line
+    yaml: |
+      key: >
+        just one line
+
+- node-roundtrip:
+    name: literal control
+    yaml: |
+      key: |
+        Heading:
+
+          * first item
+          * second item
+
 - node-test:
     name: folded long more-indented line
     yaml: |
