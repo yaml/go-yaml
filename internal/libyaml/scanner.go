@@ -1159,7 +1159,7 @@ func (parser *Parser) fetchDirective() error {
 
 // Produce the DOCUMENT-START or DOCUMENT-END token.
 func (parser *Parser) fetchDocumentIndicator(typ TokenType) error {
-	if typ == DOCUMENT_START_TOKEN && parser.indentConfig != nil &&
+	if parser.indentConfig != nil &&
 		parser.indentConfig.LoadStyle == IndentStyleAuto &&
 		parser.indentConfig.Scope == IndentScopeDocument {
 		parser.indentStyle = indentStyleUnknown

@@ -1,0 +1,15 @@
+# Copyright 2026 The go-yaml Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+# Document scope permits the style change; stream scope must reject it.
+- auto-scope:
+    name: Explicit document start
+    yaml: "---\nroot:\n\tvalue: true\n---\nroot:\n  value: true\n"
+
+- auto-scope:
+    name: Bare document after explicit end
+    yaml: "root:\n\tvalue: true\n...\nroot:\n  value: true\n"
+
+- auto-scope:
+    name: Bare document after commented explicit end
+    yaml: "root:\n  value: true\n... # next\nroot:\n\tvalue: true\n"

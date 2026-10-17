@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"go.yaml.in/yaml/v4"
+	"go.yaml.in/yaml/v4/internal/libyaml"
+	"go.yaml.in/yaml/v4/internal/testutil/datatest"
 	"go.yaml.in/yaml/v4/plugin/tabindent"
 )
 
@@ -348,7 +350,21 @@ func TestLoaderDumperAndNodeAPIs(t *testing.T) {
 }
 
 func TestAutoDetectionScope(t *testing.T) {
-	input := "---\nroot:\n\tvalue: true\n---\nroot:\n  value: true\n"
+	datatest.RunTestCases(t, func() ([]map[string]any, error) {
+		return datatest.LoadTestCasesFromFile(
+			"testdata/auto-detection.yaml", libyaml.LoadAny)
+	}, map[string]datatest.TestHandler{
+		"auto-scope": runAutoDetectionScopeTest,
+	})
+}
+
+func runAutoDetectionScopeTest(t *testing.T, tc map[string]any) {
+	t.Helper()
+
+	input, ok := tc["yaml"].(string)
+	if !ok {
+		t.Fatal("yaml field must be a string")
+	}
 	var values []any
 	err := yaml.Load(
 		[]byte(input), &values, yaml.WithAllDocuments(),
