@@ -2078,6 +2078,27 @@
 
 # Literal and folded variations
 - node-test:
+    name: folded long more-indented line
+    yaml: |
+      key: >
+        intro
+          a more-indented line that is longer than the eighty columns of the default line width
+        outro
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - kind: Scalar
+          text: key
+        - kind: Scalar
+          style: Folded
+          text: |
+            intro
+              a more-indented line that is longer than the eighty columns of the default line width
+            outro
+
+- node-test:
     name: literal with chomping indicator keep
     decode: true
     encode: false
