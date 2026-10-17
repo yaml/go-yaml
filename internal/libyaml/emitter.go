@@ -1303,7 +1303,8 @@ func (emitter *Emitter) analyzeAnchor(anchor []byte, alias bool) error {
 		}
 	}
 	for i := 0; i < len(anchor); i += width(anchor[i]) {
-		if !isAnchorChar(anchor, i) {
+		if !isAnchorChar(anchor, i) ||
+			(isColon(anchor, i) && i+1 == len(anchor)) {
 			problem := "anchor value must contain valid characters only"
 			if alias {
 				problem = "alias value must contain valid characters only"

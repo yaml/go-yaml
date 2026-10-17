@@ -18,6 +18,7 @@
 # Common Keys:
 #   name - Test case name (string)
 #   yaml - Input YAML string to scan
+#   also - Use skip-comments to disable comment collection for scan-error
 #   want - Expected result (format varies by test type):
 #          * For scan-error: boolean (defaults to true if omitted; set to false if no error expected)
 #          * For scan-tokens: list of token type names (scalars or type-as-key format)
@@ -371,6 +372,40 @@
 
 # Error test
 - scan-error:
+    name: Comment attached to flow end with comments disabled
+    yaml: '[a]# comment'
+    also: skip-comments
+    like: comment without preceding whitespace
+
+- scan-error:
+    name: Comment attached to comma with comments disabled
+    yaml: |
+      [a,# comment
+       b]
+    also: skip-comments
+    like: comment without preceding whitespace
+
+- scan-error:
+    name: Comment attached to quoted scalar with comments disabled
+    yaml: 'key: "value"# comment'
+    also: skip-comments
+    like: comment without preceding whitespace
+
+- scan-error:
+    name: Comment attached to indentation then chomping indicators
+    yaml: |
+      key: |2-# comment
+        value
+    like: comment without preceding whitespace
+
+- scan-error:
+    name: Comment attached to chomping then indentation indicators
+    yaml: |
+      key: |-2# comment
+        value
+    like: comment without preceding whitespace
+
+- scan-error:
     name: Invalid character
     yaml: "\x01"
 
@@ -553,7 +588,6 @@
     name: Is anchor char - colon
     func: isAnchorChar
     data: ':'
-    want: false
 
 - char-predicate:
     name: Is anchor char - left bracket

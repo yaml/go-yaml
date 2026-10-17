@@ -372,6 +372,148 @@
     want:
       english: null
 
+# Block scalar content
+- decode:
+    name: tab content after implicit block scalar indentation
+    yaml: "foo: |-\n \tbar\n"
+    type: map[string]string
+    want:
+      foo: "\tbar"
+
+# Block sequence separation
+- decode:
+    name: tab separation before flow mapping in block sequence
+    yaml: "-\t{key: value}\n"
+    type: '[]any'
+    want:
+    - key: value
+
+- decode:
+    name: tab separation before quoted scalar in block sequence
+    yaml: "- \t'quoted'\n"
+    type: '[]string'
+    want:
+    - quoted
+
+- decode:
+    name: tab separation before block scalar in block sequence
+    yaml: "-\t|\n text\n"
+    type: '[]string'
+    want:
+    - "text\n"
+
+# Flow collection separation
+- decode:
+    name: colon-prefixed values in flow mappings
+    yaml: '{x: :x, "key"::value}'
+    type: map[string]string
+    want:
+      x: :x
+      key: :value
+
+- decode:
+    name: tab separation before root flow mapping
+    yaml: "\t\t {foo: bar}\n"
+    type: map[string]any
+    want:
+      foo: bar
+
+- decode:
+    name: tab separation before root flow sequence
+    yaml: " \t[foo, bar]\n"
+    type: '[]any'
+    want:
+    - foo
+    - bar
+
+# Flow mappings with line breaks in keys or before values
+- decode:
+    name: flow mapping with colon on next line
+    yaml: |
+      {foo
+      : 42}
+    type: map[string]any
+    want:
+      foo: 42
+
+- decode:
+    name: flow mapping with CRLF before colon
+    yaml: "{foo\r\n: 42}\n"
+    type: map[string]any
+    want:
+      foo: 42
+
+- decode:
+    name: flow mapping with quoted keys before line breaks
+    yaml: |
+      {'foo'
+      : 42, "bar"
+      :43}
+    type: map[string]any
+    want:
+      foo: 42
+      bar: 43
+
+- decode:
+    name: flow mapping with multiline keys
+    yaml: |
+      {plain
+      key: 42, 'single
+      quoted': 43, "double
+      quoted": 44}
+    type: map[string]any
+    want:
+      plain key: 42
+      single quoted: 43
+      double quoted: 44
+
+- decode:
+    name: flow mapping with comments before colon
+    yaml: |
+      {foo # key comment
+      # another comment
+      : 42}
+    type: map[string]any
+    want:
+      foo: 42
+
+- decode:
+    name: flow mapping with multiline and omitted values
+    yaml: |
+      {foo
+      : 42, bar
+      : 43, baz
+      , qux:}
+    type: map[string]any
+    want:
+      foo: 42
+      bar: 43
+      baz: null
+      qux: null
+
+- decode:
+    name: nested flow mapping with colon on next line
+    yaml: |
+      outer: {foo
+        : 42, bar: {baz
+        : 43}}
+    type: map[string]any
+    want:
+      outer:
+        foo: 42
+        bar:
+          baz: 43
+
+- decode:
+    name: flow mapping with alias key before line break
+    yaml: |
+      [&key foo, {*key
+      : 42}]
+    type: '[]any'
+    want:
+    - foo
+    - foo: 42
+
 # Flow sequences
 - decode:
     name: flow sequence two items
@@ -1362,3 +1504,210 @@
         value: hello world
       b:
         value: hello world
+
+- decode:
+    name: Tab-only line before a block mapping
+    yaml: " \t\nfoo: bar\n"
+    type: map[string]string
+    want:
+      foo: bar
+
+- decode:
+    name: Tab-only line inside a block value
+    yaml: "foo:\n\t\n bar\n"
+    type: map[string]string
+    want:
+      foo: bar
+
+- decode:
+    name: Tab-prefixed comment inside a block value
+    yaml: "foo:\n\t# comment\n bar\n"
+    type: map[string]string
+    want:
+      foo: bar
+
+- decode:
+    name: Tab-only line after a plain scalar
+    yaml: "foo: one\n\t\nbar: two\n"
+    type: map[string]string
+    want:
+      foo: one
+      bar: two
+
+- decode:
+    name: Tab-prefixed comment after a plain scalar
+    yaml: "foo: one\n\t# comment\nbar: two\n"
+    type: map[string]string
+    want:
+      foo: one
+      bar: two
+
+- decode:
+    name: Tab-only trailing line at end of input
+    yaml: "foo: one\n\t"
+    type: map[string]string
+    want:
+      foo: one
+
+- decode:
+    name: Tab separation before an indented scalar value
+    yaml: "foo:\n \tbar\n"
+    type: map[string]string
+    want:
+      foo: bar
+
+- decode:
+    name: Tab separation before an indented flow value
+    yaml: "foo:\n \t[bar]\n"
+    type: map[string][]string
+    want:
+      foo:
+      - bar
+
+- decode:
+    name: Tab separation before an indented quoted value
+    yaml: "foo:\n \t\"bar\"\n"
+    type: map[string]string
+    want:
+      foo: bar
+
+- decode:
+    name: Literal scalar final space-only content line at EOF
+    yaml: "foo: |\n  x\n   "
+    type: map[string]string
+    want:
+      foo: "x\n \n"
+
+- decode:
+    name: Folded scalar final space-only content line at EOF
+    yaml: "foo: >\n  x\n   "
+    type: map[string]string
+    want:
+      foo: "x\n \n"
+
+- decode:
+    name: Explicit indent scalar final space-only content line at EOF
+    yaml: "foo: |2+\n  x\n   "
+    type: map[string]string
+    want:
+      foo: "x\n \n"
+
+- decode:
+    name: Literal scalar final tab-only content line at EOF
+    yaml: "foo: |\n  x\n  \t"
+    type: map[string]string
+    want:
+      foo: "x\n\t\n"
+
+- decode:
+    name: Keep empty literal scalar space-only line at EOF
+    yaml: "- |+\n   "
+    type: '[]string'
+    want:
+    - "\n"
+
+- decode:
+    name: Keep empty folded scalar space-only line at EOF
+    yaml: "foo: >+\n   "
+    type: map[string]string
+    want:
+      foo: "\n"
+
+- decode:
+    name: Keep explicitly indented empty scalar line at EOF
+    yaml: "foo: |2+\n  "
+    type: map[string]string
+    want:
+      foo: "\n"
+
+- decode:
+    name: Keep multiple empty scalar lines at EOF
+    yaml: "foo: |+\n \n  "
+    type: map[string]string
+    want:
+      foo: "\n\n"
+
+- decode:
+    name: Keep trailing empty scalar line at EOF
+    yaml: "foo: |+\n  x\n  "
+    type: map[string]string
+    want:
+      foo: "x\n\n"
+
+- decode:
+    name: Interior colons in anchor and alias names
+    yaml: "[&a:b cat, *a:b]"
+    type: '[]string'
+    want: [cat, cat]
+
+- decode:
+    name: Leading and consecutive colons in anchor names
+    yaml: "[&::a::b cat, *::a::b]"
+    type: '[]string'
+    want: [cat, cat]
+
+- decode:
+    name: Interior colon alias key with adjacent mapping separator
+    yaml: "source: &a:b cat\n*a:b: dog\n"
+    type: map[string]string
+    want:
+      source: cat
+      cat: dog
+
+- decode:
+    name: Interior colon alias key in a flow mapping
+    yaml: "{source: &a:b cat, *a:b: dog}"
+    type: map[string]string
+    want:
+      source: cat
+      cat: dog
+
+- decode:
+    name: Interior colon alias at end of input
+    yaml: "source: &a:b cat\ncopy: *a:b"
+    type: map[string]string
+    want:
+      source: cat
+      copy: cat
+
+- decode:
+    name: Anchor colon at a raw buffer boundary
+    yaml:
+      join:
+      - text: 'source: &'
+      - loop: [a, 502]
+      - text: ":b cat\ncopy: *"
+      - loop: [a, 502]
+      - text: :b
+    type: map[string]string
+    want:
+      source: cat
+      copy: cat
+
+- decode:
+    name: Interior anchor colon run larger than the input buffer
+    yaml:
+      join:
+      - text: 'source: &a'
+      - loop: [':', 4096]
+      - text: "b cat\ncopy: *a"
+      - loop: [':', 4096]
+      - text: b
+    type: map[string]string
+    want:
+      source: cat
+      copy: cat
+
+- decode:
+    name: Mapping separator after a long interior alias colon run
+    yaml:
+      join:
+      - text: 'source: &a'
+      - loop: [':', 4096]
+      - text: "b cat\n*a"
+      - loop: [':', 4096]
+      - text: 'b: dog'
+    type: map[string]string
+    want:
+      source: cat
+      cat: dog

@@ -699,7 +699,11 @@ func runDecodeTest(t *testing.T, tc map[string]any) {
 	// Get test inputs
 	yamlData, ok := tc["yaml"].(string)
 	if !ok {
-		t.Fatal("yaml field must be string")
+		data, err := datatest.GenerateData(tc["yaml"])
+		if err != nil {
+			t.Fatalf("invalid YAML input generator: %v", err)
+		}
+		yamlData = string(data)
 	}
 
 	// Note: "type" field in YAML is renamed to "output_type" during normalization

@@ -533,19 +533,9 @@ func isFlowIndicator(b []byte, i int) bool {
 // ']', '{', '}', ','.
 // We further limit it to ascii chars only, which is a subset of the spec
 // production but is usually what most people expect.
+// Trailing colons are excluded separately by the scanner and emitter to
+// preserve mapping separators immediately after aliases (issue #109).
 func isAnchorChar(b []byte, i int) bool {
-	if isColon(b, i) {
-		// [Go] we exclude colons from anchor/alias names.
-		//
-		// A colon is a valid anchor character according to the YAML 1.2 specification,
-		// but it can lead to ambiguity.
-		// https://github.com/yaml/go-yaml/issues/109
-		//
-		// Also, it would have been a breaking change to support it, as go.yaml.in/yaml/v3 ignores it.
-		// Supporting it could lead to unexpected behavior.
-		return false
-	}
-
 	return isPrintable(b, i) &&
 		!isLineBreak(b, i) &&
 		!isBlank(b, i) &&
@@ -719,9 +709,6 @@ func isEndOfScalarInFlowContentChar(b []byte, i int) bool {
 	// ",", "[", "]", "{" and "}"
 	case ',', '[', ']', '{', '}':
 		return true
-	// "? "
-	case '?':
-		return isBlankOrZero(b, i+1)
 	// ": ", ":,", ":]" and ":}"
 	case ':':
 		return b[i+1] == ' ' || b[i+1] == ',' ||
@@ -911,6 +898,20 @@ func (parser *Parser) fetchNextToken() (err error) {
 		if err != nil {
 			return
 		}
+		// Validate separation even when comments are not collected.
+		if parser.newlines == 0 {
+			if parser.unread < 1 {
+				if err = parser.updateBuffer(1); err != nil {
+					return
+				}
+			}
+			if parser.buffer[parser.buffer_pos] == '#' && len(parser.tokens) > 0 &&
+				parser.tokens[len(parser.tokens)-1].EndMark.Index == parser.mark.Index {
+				err = formatScannerError(
+					"found a comment without preceding whitespace", parser.mark)
+				return
+			}
+		}
 		if parser.skip_comments {
 			return
 		}
@@ -960,9 +961,15 @@ func (parser *Parser) fetchNextToken() (err error) {
 	}
 
 	// Is it the value indicator?
-	if parser.buffer[parser.buffer_pos] == ':' && (parser.flow_level > 0 &&
-		!parser.isFlowSequence() || isBlankOrZero(parser.buffer, parser.buffer_pos+1)) {
-		return parser.fetchValue()
+	if parser.buffer[parser.buffer_pos] == ':' {
+		// A flow value may itself start with a colon and safe scalar content.
+		plain_value := len(parser.tokens) > 0 &&
+			parser.tokens[len(parser.tokens)-1].Type == VALUE_TOKEN &&
+			!isFlowIndicator(parser.buffer, parser.buffer_pos+1)
+		if isBlankOrZero(parser.buffer, parser.buffer_pos+1) ||
+			(parser.flow_level > 0 && !parser.isFlowSequence() && !plain_value) {
+			return parser.fetchValue()
+		}
 	}
 
 	// Is it an alias?
@@ -1030,7 +1037,10 @@ func (parser *Parser) fetchNextToken() (err error) {
 		parser.buffer[parser.buffer_pos] == '>' || parser.buffer[parser.buffer_pos] == '\'' ||
 		parser.buffer[parser.buffer_pos] == '"' || parser.buffer[parser.buffer_pos] == '%' ||
 		parser.buffer[parser.buffer_pos] == '@' || parser.buffer[parser.buffer_pos] == '`') ||
-		(parser.buffer[parser.buffer_pos] == '-' && !isBlank(parser.buffer, parser.buffer_pos+1)) ||
+		(parser.buffer[parser.buffer_pos] == '-' &&
+			!isBlankOrZero(parser.buffer, parser.buffer_pos+1) &&
+			(parser.flow_level == 0 ||
+				!isFlowIndicator(parser.buffer, parser.buffer_pos+1))) ||
 		((parser.buffer[parser.buffer_pos] == '?' || parser.buffer[parser.buffer_pos] == ':') &&
 			!isBlankOrZero(parser.buffer, parser.buffer_pos+1)) {
 		return parser.fetchPlainScalar()
@@ -1175,6 +1185,27 @@ func (parser *Parser) fetchDocumentIndicator(typ TokenType) error {
 	parser.skip()
 
 	end_mark := parser.mark
+
+	// Only whitespace and a comment may follow a document-end marker.
+	if typ == DOCUMENT_END_TOKEN {
+		for {
+			if parser.unread < 1 {
+				if err := parser.updateBuffer(1); err != nil {
+					return err
+				}
+			}
+			if !isBlank(parser.buffer, parser.buffer_pos) {
+				break
+			}
+			parser.skip()
+		}
+		if !isBreakOrZero(parser.buffer, parser.buffer_pos) &&
+			parser.buffer[parser.buffer_pos] != '#' {
+			return formatScannerErrorContext(
+				"while scanning a document-end marker", start_mark,
+				"found unexpected content after document-end marker", parser.mark)
+		}
+	}
 
 	// Create the DOCUMENT-START or DOCUMENT-END token.
 	token := Token{
@@ -1428,6 +1459,11 @@ func (parser *Parser) fetchTag() error {
 
 // Produce the SCALAR(...,literal) or SCALAR(...,folded) tokens.
 func (parser *Parser) fetchValue() error {
+	// Flow values must be indented beyond the surrounding block collection.
+	if parser.flow_level > 0 && parser.mark.Column <= parser.indent {
+		return formatScannerError("mapping values are not allowed in this context", parser.mark)
+	}
+
 	simple_key := &parser.simple_key
 
 	// Have we found a simple key?
@@ -1506,6 +1542,36 @@ func (parser *Parser) scanAnchor(token *Token, typ TokenType) error {
 	}
 
 	for isAnchorChar(parser.buffer, parser.buffer_pos) {
+		if isColon(parser.buffer, parser.buffer_pos) {
+			// A colon run belongs to the name only if a name character
+			// follows it. Leave trailing colons for the token scanner.
+			offset := 1
+			for {
+				if parser.unread <= offset {
+					// Keep room for the reader's next decoded input chunk.
+					if cap(parser.buffer) < offset+input_buffer_size {
+						buffer := make([]byte, len(parser.buffer),
+							2*(offset+input_buffer_size))
+						copy(buffer, parser.buffer)
+						parser.buffer = buffer
+					}
+					if err := parser.updateBuffer(offset + 1); err != nil {
+						return err
+					}
+				}
+				if !isColon(parser.buffer, parser.buffer_pos+offset) {
+					break
+				}
+				offset++
+			}
+			if !isAnchorChar(parser.buffer, parser.buffer_pos+offset) {
+				break
+			}
+			for offset > 0 {
+				s = parser.read(s)
+				offset--
+			}
+		}
 		s = parser.read(s)
 		if parser.unread < 1 {
 			if err := parser.updateBuffer(1); err != nil {
@@ -1615,6 +1681,8 @@ func (parser *Parser) scanBlockScalar(token *Token, literal bool) error {
 		}
 	}
 
+	header_end := parser.mark.Index
+
 	// Eat whitespaces and comments to the end of the line.
 	if parser.unread < 1 {
 		if err := parser.updateBuffer(1); err != nil {
@@ -1630,6 +1698,10 @@ func (parser *Parser) scanBlockScalar(token *Token, literal bool) error {
 		}
 	}
 	if parser.buffer[parser.buffer_pos] == '#' {
+		if parser.mark.Index == header_end {
+			return formatScannerErrorContext("while scanning a block scalar", start_mark,
+				"found a comment without preceding whitespace", parser.mark)
+		}
 		if err := parser.scanLineComment(start_mark); err != nil {
 			return err
 		}
@@ -1712,6 +1784,7 @@ func (parser *Parser) scanBlockScalar(token *Token, literal bool) error {
 		leading_blank = isBlank(parser.buffer, parser.buffer_pos)
 
 		// Consume the current line.
+		lineStart := len(s)
 		for !isBreakOrZero(parser.buffer, parser.buffer_pos) {
 			s = parser.read(s)
 			if parser.unread < 1 {
@@ -1728,7 +1801,13 @@ func (parser *Parser) scanBlockScalar(token *Token, literal bool) error {
 			}
 		}
 
-		leading_break = parser.readLine(leading_break)
+		// A final whitespace-only content line retains its line break.
+		if isZeroChar(parser.buffer, parser.buffer_pos) &&
+			len(bytes.Trim(s[lineStart:], " \t")) == 0 {
+			leading_break = append(leading_break, '\n')
+		} else {
+			leading_break = parser.readLine(leading_break)
+		}
 
 		// Eat the following indentation spaces and line breaks.
 		if err := parser.scanBlockScalarBreaks(&indent, &trailing_breaks, start_mark, &end_mark); err != nil {
@@ -1798,8 +1877,11 @@ func (parser *Parser) scanBlockScalarBreaks(indent *int, breaks *[]byte, start_m
 			max_indent = parser.mark.Column
 		}
 
-		// Check for a tab character messing the indentation.
-		if (*indent == 0 || parser.mark.Column < *indent) && isTab(parser.buffer, parser.buffer_pos) {
+		// Before auto-detection, tabs after the required indentation prefix
+		// are content, not indentation.
+		if isTab(parser.buffer, parser.buffer_pos) &&
+			((*indent == 0 && parser.mark.Column <= parser.indent) ||
+				(*indent > 0 && parser.mark.Column < *indent)) {
 			return formatScannerErrorContext("while scanning a block scalar", start_mark,
 				"found a tab character where an indentation space is expected", parser.mark)
 		}
@@ -1829,6 +1911,14 @@ func (parser *Parser) scanBlockScalarBreaks(indent *int, breaks *[]byte, start_m
 		// [Go] Should really be returning breaks instead.
 		*breaks = parser.readLine(*breaks)
 		*end_mark = parser.mark
+	}
+
+	// Count a final space-only line, including one shorter than the indent.
+	// An unterminated header and EOF immediately after a break add no line.
+	if isZeroChar(parser.buffer, parser.buffer_pos) &&
+		parser.mark.Line > start_mark.Line && parser.mark.Column > 1 &&
+		(*indent == 0 || parser.mark.Column <= *indent) {
+		*breaks = append(*breaks, '\n')
 	}
 
 	// Determine the indentation level if needed.
@@ -2077,6 +2167,10 @@ func (parser *Parser) scanDirective(token *Token) error {
 	}
 
 	if parser.buffer[parser.buffer_pos] == '#' {
+		if parser.mark.Index == token.EndMark.Index {
+			return formatScannerErrorContext("while scanning a directive", start_mark,
+				"found a comment without preceding whitespace", parser.mark)
+		}
 		// [Go] Discard this inline comment for the time being.
 		//if !parser.ScanLineComment(start_mark) {
 		//	return false
@@ -2246,8 +2340,8 @@ func (parser *Parser) scanFlowScalar(token *Token, single bool) error {
 					s = append(s, '\x20')
 				case '"':
 					s = append(s, '"')
-				case '\'':
-					s = append(s, '\'')
+				case '/':
+					s = append(s, '/')
 				case '\\':
 					s = append(s, '\\')
 				case 'N': // NEL (#x85)
@@ -2575,6 +2669,8 @@ func (parser *Parser) scanPlainScalar(token *Token) error {
 		indentMark := Mark{}
 		mixedIndent := false
 		mixedMark := Mark{}
+		// A tab is indentation only if the line contains scalar content.
+		badTab := Mark{}
 		for isBlank(parser.buffer, parser.buffer_pos) || isLineBreak(parser.buffer, parser.buffer_pos) {
 			if isBlank(parser.buffer, parser.buffer_pos) {
 
@@ -2589,11 +2685,8 @@ func (parser *Parser) scanPlainScalar(token *Token) error {
 							mixedIndent = true
 							mixedMark = parser.mark
 						}
-					} else if isTab(parser.buffer, parser.buffer_pos) {
-						return formatScannerErrorContext(
-							"while scanning a plain scalar", start_mark,
-							"found a tab character that violates indentation",
-							parser.mark)
+					} else if isTab(parser.buffer, parser.buffer_pos) && badTab.Line == 0 {
+						badTab = parser.mark
 					}
 				}
 
@@ -2620,12 +2713,18 @@ func (parser *Parser) scanPlainScalar(token *Token) error {
 				}
 				indentStyle = indentStyleUnknown
 				mixedIndent = false
+				badTab = Mark{}
 			}
 			if parser.unread < 1 {
 				if err := parser.updateBuffer(1); err != nil {
 					return err
 				}
 			}
+		}
+		if badTab.Line != 0 && !isZeroChar(parser.buffer, parser.buffer_pos) &&
+			parser.buffer[parser.buffer_pos] != '#' {
+			return formatScannerErrorContext("while scanning a plain scalar", start_mark,
+				"found a tab character that violates indentation", badTab)
 		}
 		if parser.indentConfig != nil &&
 			indentStyle != indentStyleUnknown &&
@@ -2970,8 +3069,10 @@ func (parser *Parser) scanToNextToken() error {
 		// Eat whitespaces.
 		// Tabs are allowed:
 		//  - in the flow context
+		//  - before a root flow collection (checked below)
+		//  - after a block sequence indicator (checked below)
 		//  - in the block context, but not at the beginning of the line or
-		//  after '-', '?', or ':' (complex value).
+		//  after '?' or ':' (complex value).
 		if parser.unread < 1 {
 			if err := parser.updateBuffer(1); err != nil {
 				return err
@@ -2984,6 +3085,48 @@ func (parser *Parser) scanToNextToken() error {
 				if err := parser.updateBuffer(1); err != nil {
 					return err
 				}
+			}
+		}
+
+		// Tabs after an indicator or sufficient indentation may separate
+		// scalar or flow content, but may not indent a block collection.
+		if parser.flow_level == 0 && isTab(parser.buffer, parser.buffer_pos) &&
+			len(parser.tokens) > 0 {
+			previous := &parser.tokens[len(parser.tokens)-1]
+			if (previous.Type == BLOCK_ENTRY_TOKEN &&
+				previous.EndMark.Line == parser.mark.Line) ||
+				(parser.mark.Line > previous.EndMark.Line &&
+					parser.mark.Column > parser.indent) {
+				parser.block_indent_tab = parser.mark
+				for isBlank(parser.buffer, parser.buffer_pos) {
+					parser.skip()
+					if parser.unread < 1 {
+						if err := parser.updateBuffer(1); err != nil {
+							return err
+						}
+					}
+				}
+			}
+		}
+
+		// Tabs may separate a root flow opener or a blank/comment line.
+		if parser.flow_level == 0 && isTab(parser.buffer, parser.buffer_pos) {
+			tab_mark := parser.mark
+			for isBlank(parser.buffer, parser.buffer_pos) {
+				parser.skip()
+				if parser.unread < 1 {
+					if err := parser.updateBuffer(1); err != nil {
+						return err
+					}
+				}
+			}
+			rootFlow := parser.indent < 0 &&
+				(parser.buffer[parser.buffer_pos] == '[' || parser.buffer[parser.buffer_pos] == '{')
+			if !rootFlow && !isBreakOrZero(parser.buffer, parser.buffer_pos) &&
+				parser.buffer[parser.buffer_pos] != '#' {
+				return formatScannerErrorContext(
+					"while scanning for the next token", tab_mark,
+					"found character that cannot start any token", tab_mark)
 			}
 		}
 
@@ -3339,6 +3482,17 @@ func (parser *Parser) rollIndent(column, number int, typ TokenType, mark Mark) e
 	}
 
 	if parser.indent < column {
+		if parser.block_indent_tab.Line != 0 &&
+			parser.block_indent_tab.Line == mark.Line {
+			if parser.indentConfig == nil {
+				return formatScannerError(
+					"found a tab character where an indentation space is expected",
+					parser.block_indent_tab)
+			}
+			if err := parser.validateIndentStyle('\t', parser.block_indent_tab); err != nil {
+				return err
+			}
+		}
 		// Push the current indentation level to the stack and set the new
 		// indentation level.
 		parser.indents = append(parser.indents, parser.indent)

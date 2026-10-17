@@ -235,6 +235,8 @@ type Parser struct {
 	indent  int   // The current indentation level.
 	indents []int // The indentation levels stack.
 
+	block_indent_tab Mark // First tab before a possible block collection.
+
 	simple_key_allowed  bool        // May a simple key occur at the current position?
 	simple_key_possible bool        // Is the current simple key possible?
 	simple_key          SimpleKey   // The current simple key.
@@ -650,8 +652,10 @@ func (parser *Parser) parseDocumentEnd(event *Event) error {
 		end_mark = token.EndMark
 		parser.skipToken()
 		implicit = false
-	case VERSION_DIRECTIVE_TOKEN, TAG_DIRECTIVE_TOKEN,
-		DOCUMENT_START_TOKEN, STREAM_END_TOKEN:
+	case VERSION_DIRECTIVE_TOKEN, TAG_DIRECTIVE_TOKEN:
+		return formatParserError(
+			"did not find expected <document end> before directive", token.StartMark)
+	case DOCUMENT_START_TOKEN, STREAM_END_TOKEN:
 		// Document ended properly.
 		// https://github.com/yaml/go-yaml/pull/410
 	default:
@@ -662,6 +666,9 @@ func (parser *Parser) parseDocumentEnd(event *Event) error {
 	parser.tag_directives = parser.tag_directives[:0]
 
 	parser.state = PARSE_DOCUMENT_START_STATE
+	if !implicit {
+		parser.state = PARSE_IMPLICIT_DOCUMENT_START_STATE
+	}
 	*event = Event{
 		Type:      DOCUMENT_END_EVENT,
 		StartMark: start_mark,
@@ -1191,6 +1198,9 @@ func (parser *Parser) parseBlockMappingKey(event *Event, first bool) error {
 			parser.state = PARSE_BLOCK_MAPPING_VALUE_STATE
 			return parser.processEmptyScalar(event, mark)
 		}
+	case VALUE_TOKEN:
+		parser.state = PARSE_BLOCK_MAPPING_VALUE_STATE
+		return parser.processEmptyScalar(event, token.StartMark)
 	case BLOCK_END_TOKEN:
 		parser.state = parser.states[len(parser.states)-1]
 		parser.states = parser.states[:len(parser.states)-1]
@@ -1286,7 +1296,7 @@ func (parser *Parser) parseFlowSequenceEntry(event *Event, first bool) error {
 			}
 		}
 
-		if token.Type == KEY_TOKEN {
+		if token.Type == KEY_TOKEN || token.Type == VALUE_TOKEN {
 			parser.state = PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_KEY_STATE
 			*event = Event{
 				Type:      MAPPING_START_EVENT,
@@ -1295,7 +1305,9 @@ func (parser *Parser) parseFlowSequenceEntry(event *Event, first bool) error {
 				Implicit:  true,
 				Style:     Style(FLOW_MAPPING_STYLE),
 			}
-			parser.skipToken()
+			if token.Type == KEY_TOKEN {
+				parser.skipToken()
+			}
 			return nil
 		} else if token.Type != FLOW_SEQUENCE_END_TOKEN {
 			parser.states = append(parser.states, PARSE_FLOW_SEQUENCE_ENTRY_STATE)
@@ -1333,10 +1345,8 @@ func (parser *Parser) parseFlowSequenceEntryMappingKey(event *Event) error {
 		parser.states = append(parser.states, PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_VALUE_STATE)
 		return parser.parseNode(event, false, false)
 	}
-	mark := token.EndMark
-	parser.skipToken()
 	parser.state = PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_VALUE_STATE
-	return parser.processEmptyScalar(event, mark)
+	return parser.processEmptyScalar(event, token.StartMark)
 }
 
 // Parse the productions:
@@ -1424,6 +1434,10 @@ func (parser *Parser) parseFlowMappingKey(event *Event, first bool) error {
 			}
 		}
 
+		if token.Type == VALUE_TOKEN {
+			parser.state = PARSE_FLOW_MAPPING_VALUE_STATE
+			return parser.processEmptyScalar(event, token.StartMark)
+		}
 		if token.Type == KEY_TOKEN {
 			parser.skipToken()
 			if err := parser.peekToken(&token); err != nil {
@@ -1466,7 +1480,9 @@ func (parser *Parser) parseFlowMappingValue(event *Event, empty bool) error {
 	if err := parser.peekToken(&token); err != nil {
 		return err
 	}
-	if empty {
+	// A key without a KEY token may still have a value when the ':' is on
+	// a later line, or the key itself spans multiple lines.
+	if empty && token.Type != VALUE_TOKEN {
 		parser.state = PARSE_FLOW_MAPPING_KEY_STATE
 		return parser.processEmptyScalar(event, token.StartMark)
 	}
@@ -1659,11 +1675,16 @@ func formatEvent(e *Event) string {
 			`\`, `\\`,
 			"\n", `\n`,
 			"\t", `\t`,
+			"\r", `\r`,
+			"\b", `\b`,
 		).Replace(string(e.Value))
 		b.WriteString(val)
 
 	case SEQUENCE_START_EVENT:
 		b.WriteString("+SEQ")
+		if e.SequenceStyle() == FLOW_SEQUENCE_STYLE {
+			b.WriteString(" []")
+		}
 		if len(e.Anchor) > 0 {
 			b.WriteString(" &")
 			b.Write(e.Anchor)
@@ -1672,14 +1693,14 @@ func formatEvent(e *Event) string {
 			b.WriteString(" <")
 			b.Write(e.Tag)
 			b.WriteString(">")
-		}
-		if e.SequenceStyle() == FLOW_SEQUENCE_STYLE {
-			b.WriteString(" []")
 		}
 	case SEQUENCE_END_EVENT:
 		b.WriteString("-SEQ")
 	case MAPPING_START_EVENT:
 		b.WriteString("+MAP")
+		if e.MappingStyle() == FLOW_MAPPING_STYLE {
+			b.WriteString(" {}")
+		}
 		if len(e.Anchor) > 0 {
 			b.WriteString(" &")
 			b.Write(e.Anchor)
@@ -1688,9 +1709,6 @@ func formatEvent(e *Event) string {
 			b.WriteString(" <")
 			b.Write(e.Tag)
 			b.WriteString(">")
-		}
-		if e.MappingStyle() == FLOW_MAPPING_STYLE {
-			b.WriteString(" {}")
 		}
 	case MAPPING_END_EVENT:
 		b.WriteString("-MAP")
