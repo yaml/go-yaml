@@ -1282,3 +1282,13 @@
     data: '#'
     args: [false]
     want: false
+
+- scan-error:
+    name: Tab before a root flow sequence used as a block key
+    yaml: "\t[foo]: bar\n"
+    like: tab character where an indentation space is expected
+
+- scan-error:
+    name: Tab before a root flow mapping used as a block key
+    yaml: "\t{foo: bar}: baz\n"
+    like: tab character where an indentation space is expected

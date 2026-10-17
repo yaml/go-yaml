@@ -3122,6 +3122,9 @@ func (parser *Parser) scanToNextToken() error {
 			}
 			rootFlow := parser.indent < 0 &&
 				(parser.buffer[parser.buffer_pos] == '[' || parser.buffer[parser.buffer_pos] == '{')
+			if rootFlow {
+				parser.block_indent_tab = tab_mark
+			}
 			if !rootFlow && !isBreakOrZero(parser.buffer, parser.buffer_pos) &&
 				parser.buffer[parser.buffer_pos] != '#' {
 				return formatScannerErrorContext(
