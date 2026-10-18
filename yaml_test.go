@@ -2884,15 +2884,30 @@ func TestBlockSequenceScalarRoundTrip(t *testing.T) {
 	}
 }
 
-func TestSetIndentNegative(t *testing.T) {
-	var buf bytes.Buffer
-	enc := yaml.NewEncoder(&buf)
-	enc.SetIndent(-1)
-	err := enc.Encode(map[string]any{"a": "b"})
-	assert.NoError(t, err)
-	err = enc.Close()
-	assert.NoError(t, err)
-	assert.Equal(t, "a: b\n", buf.String())
+func TestSetIndentNonPositive(t *testing.T) {
+	for _, spaces := range []int{-1, 0} {
+		for _, between := range []bool{false, true} {
+			when := "before_first_document"
+			if between {
+				when = "between_documents"
+			}
+			t.Run(fmt.Sprintf("indent_%d/%s", spaces, when), func(t *testing.T) {
+				var buf bytes.Buffer
+				enc := yaml.NewEncoder(&buf)
+				want := "a:\n  b: c\n"
+				if between {
+					enc.SetIndent(8)
+					assert.NoError(t, enc.Encode("warmup"))
+					want = "warmup\n---\n" + want
+				}
+				enc.SetIndent(spaces)
+				in := map[string]any{"a": map[string]string{"b": "c"}}
+				assert.NoError(t, enc.Encode(in))
+				assert.NoError(t, enc.Close())
+				assert.Equal(t, want, buf.String())
+			})
+		}
+	}
 }
 
 func TestSortedOutput(t *testing.T) {

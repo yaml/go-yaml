@@ -844,8 +844,7 @@ func (e *Encoder) Encode(v any) error {
 }
 
 // SetIndent changes the indentation used when encoding.
-// Negative values are treated as 0 so callers that pass user or computed
-// input (for example yq -I=-1) do not panic.
+// Zero and negative values use 2 spaces of indentation.
 func (e *Encoder) SetIndent(spaces int) {
 	e.dumper.SetLegacyEncoderIndent(spaces)
 }
