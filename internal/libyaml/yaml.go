@@ -14,6 +14,18 @@ import (
 	"strings"
 )
 
+// EndType records how the preceding document ended.
+type EndType int
+
+const (
+	// END_EXPLICIT_TYPE follows an explicit document-end marker.
+	END_EXPLICIT_TYPE EndType = iota
+	// END_IMPLICIT_TYPE follows a document without an explicit end marker.
+	END_IMPLICIT_TYPE
+	// END_IMPLICIT_WITH_TRAILING_TYPE follows a keep-chomped block scalar.
+	END_IMPLICIT_WITH_TRAILING_TYPE
+)
+
 // VersionDirective holds the YAML version directive data.
 type VersionDirective struct {
 	major int8 // The major version number.

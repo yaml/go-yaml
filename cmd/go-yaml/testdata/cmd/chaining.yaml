@@ -12,7 +12,6 @@
     printf 'old\n' | go-yaml -e | sed 's/value: old/value: new/' | go-yaml -Y
   out: |
     new
-    ...
 
 - name: Preserve comments through every stage
   cmd: |
@@ -42,4 +41,3 @@
     %TAG !e! tag:example.com,2026:
     ---
     !e!thing value
-    ...

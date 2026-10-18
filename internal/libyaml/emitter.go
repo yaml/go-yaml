@@ -101,11 +101,11 @@ type Emitter struct {
 	mapping_context    bool // Is it a mapping context?
 	simple_key_context bool // Is it a simple mapping key context?
 
-	line       int  // The current line.
-	column     int  // The current column.
-	whitespace bool // If the last character was a whitespace?
-	indention  bool // If the last character was an indentation character (' ', '-', '?', ':')?
-	OpenEnded  bool // If an explicit document end is required?
+	line       int     // The current line.
+	column     int     // The current column.
+	whitespace bool    // If the last character was a whitespace?
+	indention  bool    // If the last character was an indentation character (' ', '-', '?', ':')?
+	EndType    EndType // Whether an explicit document end is required.
 
 	space_above bool // Is there's an empty line above?
 	foot_indent int  // The indent used to write the foot comment above, or -1 if none.
@@ -368,6 +368,7 @@ func (emitter *Emitter) needMoreEvents() bool {
 
 // Expect STREAM-START.
 func (emitter *Emitter) emitStreamStart(event *Event) error {
+	emitter.EndType = END_EXPLICIT_TYPE
 	if event.Type != STREAM_START_EVENT {
 		return EmitterError{
 			Message: "expected STREAM-START",
@@ -441,7 +442,8 @@ func (emitter *Emitter) emitDocumentStart(event *Event, first bool) error {
 			implicit = false
 		}
 
-		if emitter.OpenEnded && (event.versionDirective != nil || len(event.tagDirectives) > 0) {
+		if emitter.EndType != END_EXPLICIT_TYPE &&
+			(event.versionDirective != nil || len(event.tagDirectives) > 0) {
 			if err := emitter.writeIndicator([]byte("..."), true, false, false); err != nil {
 				return err
 			}
@@ -449,6 +451,7 @@ func (emitter *Emitter) emitDocumentStart(event *Event, first bool) error {
 				return err
 			}
 		}
+		emitter.EndType = END_EXPLICIT_TYPE
 
 		if event.versionDirective != nil {
 			implicit = false
@@ -511,14 +514,16 @@ func (emitter *Emitter) emitDocumentStart(event *Event, first bool) error {
 		}
 
 		emitter.state = EMIT_DOCUMENT_CONTENT_STATE
+		emitter.EndType = END_EXPLICIT_TYPE
 		return nil
 	}
 
 	if event.Type == STREAM_END_EVENT {
-		if emitter.OpenEnded {
+		if emitter.EndType == END_IMPLICIT_WITH_TRAILING_TYPE {
 			if err := emitter.writeIndicator([]byte("..."), true, false, false); err != nil {
 				return err
 			}
+			emitter.EndType = END_EXPLICIT_TYPE
 			if err := emitter.writeIndent(); err != nil {
 				return err
 			}
@@ -575,9 +580,12 @@ func (emitter *Emitter) emitDocumentEnd(event *Event) error {
 		if err := emitter.writeIndicator([]byte("..."), true, false, false); err != nil {
 			return err
 		}
+		emitter.EndType = END_EXPLICIT_TYPE
 		if err := emitter.writeIndent(); err != nil {
 			return err
 		}
+	} else if emitter.EndType == END_EXPLICIT_TYPE {
+		emitter.EndType = END_IMPLICIT_TYPE
 	}
 	if err := emitter.flush(); err != nil {
 		return err
@@ -964,6 +972,11 @@ func (emitter *Emitter) emitAlias(event *Event) error {
 	if err := emitter.processAnchor(); err != nil {
 		return err
 	}
+	if emitter.simple_key_context {
+		if err := emitter.put(' '); err != nil {
+			return err
+		}
+	}
 	emitter.state = emitter.states[len(emitter.states)-1]
 	emitter.states = emitter.states[:len(emitter.states)-1]
 	return nil
@@ -1249,7 +1262,8 @@ func (emitter *Emitter) processFootComment() error {
 
 // Check if a %YAML directive is valid.
 func (emitter *Emitter) analyzeVersionDirective(version_directive *VersionDirective) error {
-	if version_directive.major != 1 || version_directive.minor != 1 {
+	if version_directive.major != 1 ||
+		(version_directive.minor != 1 && version_directive.minor != 2) {
 		return EmitterError{
 			Message: "incompatible %YAML directive",
 		}
@@ -1687,7 +1701,6 @@ func (emitter *Emitter) writeIndicator(indicator []byte, need_whitespace, is_whi
 	}
 	emitter.whitespace = is_whitespace
 	emitter.indention = (emitter.indention && is_indention)
-	emitter.OpenEnded = false
 	return nil
 }
 
@@ -1776,7 +1789,9 @@ func (emitter *Emitter) writeTagContent(value []byte, need_whitespace bool) erro
 // writePlainScalar writes a plain (unquoted) scalar to the output, handling
 // line breaks and wrapping as needed.
 func (emitter *Emitter) writePlainScalar(value []byte, allow_breaks bool) error {
-	if len(value) > 0 && !emitter.whitespace {
+	// Avoid trailing spaces for empty values in block mode.
+	// In flow mode, keep the space to prevent ambiguous output like {a:}.
+	if !emitter.whitespace && (len(value) > 0 || emitter.flow_level > 0) {
 		if err := emitter.put(' '); err != nil {
 			return err
 		}
@@ -1828,9 +1843,6 @@ func (emitter *Emitter) writePlainScalar(value []byte, allow_breaks bool) error 
 		emitter.whitespace = false
 	}
 	emitter.indention = false
-	if emitter.root_context {
-		emitter.OpenEnded = true
-	}
 
 	return nil
 }
@@ -2065,7 +2077,7 @@ func (emitter *Emitter) writeBlockScalarHints(value []byte) error {
 		}
 	}
 
-	emitter.OpenEnded = false
+	emitter.EndType = END_EXPLICIT_TYPE
 
 	var chomp_hint [1]byte
 	if len(value) == 0 {
@@ -2079,7 +2091,7 @@ func (emitter *Emitter) writeBlockScalarHints(value []byte) error {
 			chomp_hint[0] = '-'
 		} else if i == 0 {
 			chomp_hint[0] = '+'
-			emitter.OpenEnded = true
+			emitter.EndType = END_IMPLICIT_WITH_TRAILING_TYPE
 		} else {
 			i--
 			for value[i]&0xC0 == 0x80 {
@@ -2087,7 +2099,7 @@ func (emitter *Emitter) writeBlockScalarHints(value []byte) error {
 			}
 			if isLineBreak(value, i) {
 				chomp_hint[0] = '+'
-				emitter.OpenEnded = true
+				emitter.EndType = END_IMPLICIT_WITH_TRAILING_TYPE
 			}
 		}
 	}
