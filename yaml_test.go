@@ -3155,6 +3155,10 @@ func TestScalarStyleWithTabs(t *testing.T) {
 			data, err := yaml.Marshal(testCase.input)
 			assert.NoError(t, err)
 			assert.Equal(t, testCase.expected, string(data))
+
+			var decoded string
+			assert.NoError(t, yaml.Unmarshal(data, &decoded))
+			assert.Equal(t, testCase.input, decoded)
 		})
 	}
 }
