@@ -584,6 +584,21 @@ func runNodeTestCase(t *testing.T, tc map[string]any) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, yamlInput, buf.String())
+
+		if roundtrip, _ := tc["roundtrip"].(bool); roundtrip {
+			current := buf.Bytes()
+			for round := 0; round < 4; round++ {
+				var actualNode yaml.Node
+				err := yaml.Unmarshal(current, &actualNode)
+				assert.NoError(t, err)
+				actualInfo := formatNodeInfo(actualNode)
+				assertNodeInfoEqual(t, &expectedInfo, actualInfo,
+					fmt.Sprintf("%s round %d", name, round))
+				if round < 3 {
+					current = nodeRoundTrip(t, current, 2)
+				}
+			}
+		}
 	}
 }
 

@@ -1464,9 +1464,6 @@ func (emitter *Emitter) analyzeScalar(value []byte) error {
 		emitter.scalar_data.flow_plain_allowed = false
 		emitter.scalar_data.block_plain_allowed = false
 	}
-	if trailing_space {
-		emitter.scalar_data.block_allowed = false
-	}
 	if break_space {
 		emitter.scalar_data.flow_plain_allowed = false
 		emitter.scalar_data.block_plain_allowed = false
@@ -1477,7 +1474,7 @@ func (emitter *Emitter) analyzeScalar(value []byte) error {
 		emitter.scalar_data.block_plain_allowed = false
 		emitter.scalar_data.single_quoted_allowed = false
 	}
-	if space_break || special_characters {
+	if special_characters {
 		emitter.scalar_data.block_allowed = false
 	}
 	if line_breaks {
@@ -2178,7 +2175,8 @@ func (emitter *Emitter) writeFoldedScalar(value []byte) error {
 				leading_spaces = isBlank(value, i)
 			}
 			if !breaks && !leading_spaces && isSpace(value, i) &&
-				!isSpace(value, i+1) &&
+				i+1 < len(value) && !isLineBreak(value, i+1) &&
+				!isBlank(value, i+1) &&
 				emitter.column > emitter.best_width {
 				if err := emitter.writeIndent(); err != nil {
 					return err

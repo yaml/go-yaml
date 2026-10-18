@@ -942,6 +942,7 @@
       " \t\n \t"
 
 # Whitespace with content (simple cases without leading tabs)
+# Trailing spaces in literal expectations are significant.
 - encode:
     name: whitespace with content - hello newline (literal)
     data: "hello\n"
@@ -959,32 +960,70 @@
            hello
 
 - encode:
-    name: whitespace with content - space newline hello (double quoted short)
+    name: whitespace with content - space newline hello (literal with indent)
     data: " \nhello"
     type: string
     want: |
-      " \nhello"
+      |4-
+           
+          hello
 
 - encode:
-    name: whitespace with content - spaces hello spaces newline (double quoted trailing)
+    name: whitespace with content - spaces hello spaces newline (literal)
     data: "  hello  \n"
     type: string
     want: |
-      "  hello  \n"
+      |4
+            hello  
 
 - encode:
-    name: whitespace with content - hello spaces newline (double quoted trailing)
+    name: whitespace with content - hello spaces newline (literal)
     data: "hello  \n"
     type: string
     want: |
-      "hello  \n"
+      |
+          hello  
 
 - encode:
-    name: whitespace with content - hello newline spaces (double quoted trailing)
+    name: whitespace with content - hello newline spaces (literal)
     data: "hello\n  "
     type: string
     want: |
-      "hello\n  "
+      |-
+          hello
+            
+
+- encode:
+    name: literal trailing spaces before newline (go-yaml 60 and yq 566)
+    data:
+      this: "should \nreally work\n"
+    type: map[string]string
+    want: |
+      this: |
+          should 
+          really work
+
+- encode:
+    name: literal final space on more-indented line (yq 1781)
+    data:
+      mstring: "aaa\n bbb "
+    type: map[string]string
+    want: |
+      mstring: |-
+          aaa
+           bbb 
+
+- encode:
+    name: literal whitespace line in compact sequence mapping
+    data:
+      outer:
+      - text: " \nhello"
+    type: map[string][]map[string]any
+    want: |
+      outer:
+          - text: |2-
+               
+              hello
 
 # Scalar style selection priority: a multiline value stays literal even
 # when quoting is preferred, including tab-leading content, which the

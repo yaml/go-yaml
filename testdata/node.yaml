@@ -14,6 +14,7 @@
 #       node: Expected node structure (as NodeInfo)
 #       decode: false  # Optional: skip decode test
 #       encode: false  # Optional: skip encode test
+#       roundtrip: true  # Optional: check four emitted round trips
 #
 # Test Types:
 #   node-test - Validates YAML node structure and round-trip encoding/decoding
@@ -25,6 +26,7 @@
 #   node   - Expected node structure in NodeInfo format
 #   decode - Set to false to skip decode test (default: true)
 #   encode - Set to false to skip encode test (default: true)
+#   roundtrip - Reparse four encoded outputs and check nodes (default: false)
 #
 # NodeInfo Format:
 #   kind    - Node kind: Document, Sequence, Mapping, Scalar, Alias
@@ -2130,6 +2132,302 @@
             intro
               a more-indented line that is longer than the eighty columns of the default line width
             outro
+
+# Trailing spaces in literal YAML fixtures are significant.
+- node-test:
+    name: literal trailing spaces before newline (go-yaml 60 and yq 566)
+    roundtrip: true
+    yaml: |
+      this: |
+        should 
+        really work
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: this}
+        - kind: Scalar
+          style: Literal
+          text: "should \nreally work\n"
+
+- node-test:
+    name: literal final space on more-indented line (yq 1781)
+    roundtrip: true
+    yaml: |
+      mstring: |-
+        aaa
+         bbb 
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: mstring}
+        - {kind: Scalar, style: Literal, text: "aaa\n bbb "}
+
+- node-test:
+    name: literal trailing spaces strip
+    roundtrip: true
+    yaml: |
+      |-
+        first 
+        last  
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Literal, text: "first \nlast  "}
+
+- node-test:
+    name: literal trailing spaces keep
+    roundtrip: true
+    yaml: |+
+      |+
+        first 
+
+
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Literal, text: "first \n\n\n"}
+
+- node-test:
+    name: literal whitespace-only final line
+    roundtrip: true
+    yaml: |
+      |-
+        first
+          
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Literal, text: "first\n  "}
+
+- node-test:
+    name: literal whitespace-only line before content
+    roundtrip: true
+    yaml: |
+      |2-
+         
+        hello
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Literal, text: " \nhello"}
+
+- node-test:
+    name: literal trailing spaces in sequence
+    roundtrip: true
+    yaml: |
+      - |
+        first 
+        last
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        content:
+        - {kind: Scalar, style: Literal, text: "first \nlast\n"}
+
+- node-test:
+    name: literal final space after leading empty line
+    roundtrip: true
+    yaml: |
+      |2-
+
+         hello 
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Literal, text: "\n hello "}
+
+- node-test:
+    name: literal whitespace-only after leading empty line
+    roundtrip: true
+    yaml: |
+      |2-
+
+         
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Literal, text: "\n "}
+
+- node-test:
+    name: literal final space with leading tab
+    roundtrip: true
+    yaml: |
+      |2-
+
+        	hello 
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Literal, text: "\n\thello "}
+
+- node-test:
+    name: folded trailing spaces before newline
+    roundtrip: true
+    yaml: |
+      >
+        first 
+
+        last
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Folded, text: "first \nlast\n"}
+
+- node-test:
+    name: folded trailing spaces strip
+    roundtrip: true
+    yaml: |
+      >-
+        first
+
+        last  
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Folded, text: "first\nlast  "}
+
+- node-test:
+    name: folded trailing spaces keep
+    roundtrip: true
+    yaml: |+
+      >+
+        first 
+
+
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Folded, text: "first \n\n\n"}
+
+- node-test:
+    name: folded whitespace-only final line
+    roundtrip: true
+    yaml: |
+      >-
+        first
+          
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Folded, text: "first\n  "}
+
+- node-test:
+    name: folded final space after leading empty line
+    roundtrip: true
+    yaml: |
+      >2-
+
+         hello 
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Folded, text: "\n hello "}
+
+- node-test:
+    name: folded whitespace-only after leading empty line
+    roundtrip: true
+    yaml: |
+      >2-
+
+         
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Folded, text: "\n "}
+
+- node-test:
+    name: folded final space with leading tab
+    roundtrip: true
+    yaml: |
+      >2-
+
+        	hello 
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Folded, text: "\n\thello "}
+
+- node-test:
+    name: folded long line trailing spaces before newline
+    roundtrip: true
+    yaml: |
+      >
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 
+
+        last
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        style: Folded
+        text: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \nlast\n"
+
+- node-test:
+    name: folded long line final spaces
+    roundtrip: true
+    yaml: |
+      >-
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        style: Folded
+        text: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  "
+
+- node-test:
+    name: folded long line trailing spaces and tab
+    roundtrip: true
+    yaml: |
+      >-
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 	 
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        style: Folded
+        text: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \t "
+
+- node-test:
+    name: folded long more-indented line trailing spaces
+    roundtrip: true
+    yaml: |
+      >2-
+         This more-indented line must retain all of its spaces even when it exceeds the default line width  
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        style: Folded
+        text: " This more-indented line must retain all of its spaces even when it exceeds the default line width  "
+
+- node-test:
+    name: block style trailing spaces requires quotes in flow
+    decode: false
+    yaml: |
+      ["hello \nworld "]
+    node:
+      kind: Document
+      content:
+      - kind: Sequence
+        style: Flow
+        content:
+        - {kind: Scalar, style: Literal, text: "hello \nworld "}
+
+- node-test:
+    name: block style trailing spaces requires quotes for control characters
+    decode: false
+    yaml: |
+      "hello\0 \nworld "
+    node:
+      kind: Document
+      content:
+      - {kind: Scalar, style: Literal, text: "hello\0 \nworld "}
 
 - node-test:
     name: literal with chomping indicator keep
