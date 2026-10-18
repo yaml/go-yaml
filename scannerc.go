@@ -2400,8 +2400,12 @@ func yaml_parser_scan_block_scalar_breaks(parser *yaml_parser_t, indent *int, br
 			max_indent = parser.mark.column
 		}
 
-		// Check for a tab character messing the indentation.
-		if (*indent == 0 || parser.mark.column < *indent) && is_tab(parser.buffer, parser.buffer_pos) {
+		// Check for a tab character messing the indentation. Before the
+		// indentation is detected, a tab after the required indentation
+		// prefix is content, not indentation (YAML 1.2.2 example 8.2).
+		if is_tab(parser.buffer, parser.buffer_pos) &&
+			((*indent == 0 && parser.mark.column <= parser.indent) ||
+				(*indent > 0 && parser.mark.column < *indent)) {
 			return yaml_parser_set_scanner_error(parser, "while scanning a block scalar",
 				start_mark, "found a tab character where an indentation space is expected")
 		}

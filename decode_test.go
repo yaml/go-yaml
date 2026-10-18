@@ -251,6 +251,17 @@ var unmarshalTests = []struct {
 		map[string]string{"scalar": "\nfolded line\nnext line\n * one\n * two\n\nlast line\n"},
 	},
 
+	// Block scalar whose first line starts with a tab after the indentation:
+	// the tab is content (YAML 1.2.2 example 8.2).
+	{
+		"- |\n detected\n- >\n \n  \n  # detected\n- |1\n  explicit\n- >\n \t\n detected\n",
+		[]interface{}{"detected\n", "\n\n# detected\n", " explicit\n", "\t\ndetected\n"},
+	},
+	{
+		"a: |-\n  \ttext\n",
+		map[string]string{"a": "\ttext"},
+	},
+
 	// Map inside interface with no type hints.
 	{
 		"a: {b: c}",
@@ -977,6 +988,8 @@ var unmarshalErrorTests = []struct {
 	{"b: *a\na: &a {c: 1}", `yaml: unknown anchor 'a' referenced`},
 	{"%TAG !%79! tag:yaml.org,2002:\n---\nv: !%79!int '1'", "yaml: did not find expected whitespace"},
 	{"a:\n  1:\nb\n  2:", ".*could not find expected ':'"},
+	{"a:\n  b: |\n \ttext\n", "yaml: line 2: found a tab character where an indentation space is expected"},
+	{"- |\n\ttext\n", "yaml: line 2: found a tab character where an indentation space is expected"},
 	{"a: 1\nb: 2\nc 2\nd: 3\n", "^yaml: line 3: could not find expected ':'$"},
 	{"#\n-\n{", "yaml: line 3: could not find expected ':'"},   // Issue #665
 	{"0: [:!00 \xef", "yaml: incomplete UTF-8 octet sequence"}, // Issue #666
