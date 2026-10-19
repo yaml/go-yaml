@@ -215,13 +215,47 @@ func TestPluginRegistry(t *testing.T) {
 	}
 }
 
-func TestOldLimitNamesRejected(t *testing.T) {
-	if _, err := yaml.OptsYAML("plugin: {limit: true}"); err == nil {
-		t.Fatal("old limit configuration accepted")
+func TestLegacyLimitAliases(t *testing.T) {
+	var _ yaml.LimitPlugin = loaderlimits.New()
+	for _, config := range []string{
+		"plugin: {limit: true}",
+		"plugin: {limit: limit}",
+	} {
+		opt, err := yaml.OptsYAML(config)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var value any
+		if err := yaml.Load([]byte("[[]]"), &value, opt); err != nil {
+			t.Fatal(err)
+		}
 	}
 	var value any
 	if err := yaml.Load([]byte("[[]]"), &value,
-		yaml.WithNamedPlugin("limit")); err == nil {
-		t.Fatal("old limit selector accepted")
+		yaml.WithNamedPlugin("limit")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := yaml.OptsYAML(
+		"plugin: {limit: true, loader-limits: true}"); err == nil {
+		t.Fatal("accepted legacy and canonical loader-limits APIs together")
+	}
+
+	name := fmt.Sprintf("legacy-limit-%d",
+		atomic.AddUint64(&registryTestID, 1))
+	if err := yaml.RegisterPlugin(yaml.PluginRegistration{
+		API: "limit", Name: name,
+		Factory: func(map[string]any) (any, error) {
+			return loaderlimits.New(), nil
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	opt, err := yaml.OptsYAML(fmt.Sprintf(
+		"plugin: {loader-limits: {name: %s}}", name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := yaml.Load([]byte("[[]]"), &value, opt); err != nil {
+		t.Fatal(err)
 	}
 }

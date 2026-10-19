@@ -33,6 +33,11 @@ type LoaderLimitsPlugin interface {
 	CheckAlias(aliasCount, constructCount int) error
 }
 
+// LimitPlugin is the former name of [LoaderLimitsPlugin].
+//
+// Deprecated: use LoaderLimitsPlugin.
+type LimitPlugin = LoaderLimitsPlugin
+
 // ParserPlugin supplies a complete event stream in place of native parsing.
 type ParserPlugin = libyaml.ParserPlugin
 

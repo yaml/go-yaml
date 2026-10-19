@@ -88,8 +88,8 @@ options.
 
 ## Plugin builds
 
-The ordinary command contains the built-in `go-yaml` parser and loader-limits
-plugin.
+The ordinary command contains the built-in `go-yaml` parser, loader-limits
+plugin, and tab-indent plugin.
 Optional plugin implementations must be selected while building the command.
 
 `PLUGIN` contains only the plugin selector DSL:
@@ -104,8 +104,8 @@ The selector forms are `API`, `API@VERSION`, `API=IMPLEMENTATION`, and
 `API=IMPLEMENTATION@VERSION`.
 Comma-separated selectors can be passed in one flag.
 A bare API selects its default implementation.
-The `json-comments` default is `sanitizer`, and the `yaml-parser` default is
-`go-yaml`.
+The `json-comments` default is `sanitizer`, the `yaml-parser` default is
+`go-yaml`, and the `tab-indent` default is `tab-indent`.
 
 `PLUGIN` and `--plugin` never name files and never contain YAML.
 The build resolves the newest v-prefixed plugin release when a selector omits
@@ -126,6 +126,8 @@ plugin:
   loader-limits:
     depth: 50
     alias: 100
+  tab-indent:
+    mode: auto
   json-comments: sanitizer@v0.1.9
 ```
 
@@ -158,6 +160,9 @@ loading modes when the built-in parser is selected.
 External YAML-parser plugins work in JSON, YAML, node, and event modes.
 Token and legacy modes reject them because those paths do not consume
 YAML-parser plugin events.
+Tab indentation works in YAML, JSON, node, event, and token modes.
+Legacy loading and dumping modes reject it because they do not use the
+plugin-aware pipeline.
 
 For local development, related checkouts must be under `repos/`.
 Set `JSON-COMMENTS-LOCAL=1` or `REFERENCE-PARSER-LOCAL=1` to use them.

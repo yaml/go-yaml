@@ -98,7 +98,8 @@ $(if $(fuzz), --fuzz=FuzzEncodeFromJSON --fuzztime=$(time))\
 $(if $(opts), $(opts))\
 
 # Test rules:
-test: test-main test-internal test-cmd test-cli-build test-yts-all test-shell
+test: test-main test-internal test-cmd test-cli-build test-limit \
+  test-yts-all test-shell
 	@echo 'ALL TESTS PASS'
 
 check:
@@ -261,3 +262,10 @@ test-reference-parser: prepare-reference-parser
 
 test-cli-build: $(GO-DEPS)
 	go test ./util/build-cli$(TEST-OPTS)
+
+test-limit: $(PERL) $(GO-DEPS)
+	GOWORK=off go -C plugin/limit test ./...$(TEST-OPTS)
+	GOWORK=off go -C plugin/limit mod edit -json | \
+	  $(PERL) -0777 -ne \
+	  'exit 1 unless /"Deprecated":\s*"use .*loaderlimits instead\."/'
+	@echo 'LIMIT MODULE DEPRECATION PASS'

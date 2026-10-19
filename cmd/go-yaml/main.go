@@ -339,6 +339,9 @@ func buildOptions(configFile string, optionFlags []string, pluginSpecs ...string
 			if !ok {
 				return nil, fmt.Errorf("plugin configuration must be a mapping")
 			}
+			if err := pluginreg.NormalizeConfig(plugins); err != nil {
+				return nil, err
+			}
 		}
 		for _, spec := range pluginSpecs {
 			selections, err := pluginreg.ParseSelectors(spec)

@@ -3,8 +3,8 @@
 The go-yaml v4 plugin system lets applications replace selected processing
 stages without adding optional dependencies to the core module.
 
-A plugin API defines a role such as `yaml-parser`, `json-comments`, or
-`loader-limits`.
+A plugin API defines a role such as `yaml-parser`, `json-comments`,
+`loader-limits`, or `tab-indent`.
 Each API can have several named implementations.
 The current implementations are:
 
@@ -14,10 +14,11 @@ The current implementations are:
 | `yaml-parser` | `reference` | `plugin/yamlparser/reference` | no |
 | `json-comments` | `sanitizer` | `plugin/jsoncomments` | yes |
 | `loader-limits` | `loader-limits` | `plugin/loaderlimits` | yes |
+| `tab-indent` | `tab-indent` | `plugin/tabindent` | yes |
 
-The optional packages are separate Go modules.
-Importing the core `go.yaml.in/yaml/v4` module does not acquire Glojure or the
-YAMLStar generated code.
+The JSON-comments and reference YAML-parser packages are separate Go modules.
+Importing the core `go.yaml.in/yaml/v4` module does not acquire their generated
+code or dependencies.
 
 ## Direct Go use
 
@@ -29,12 +30,14 @@ import (
     "go.yaml.in/yaml/v4"
     "go.yaml.in/yaml/v4/plugin/jsoncomments"
     "go.yaml.in/yaml/v4/plugin/loaderlimits"
+    "go.yaml.in/yaml/v4/plugin/tabindent"
 )
 
 var value any
 err := yaml.Load(input, &value,
     yaml.WithPlugin(jsoncomments.New()),
-    yaml.WithPlugin(loaderlimits.New(loaderlimits.DepthValue(50))))
+    yaml.WithPlugin(loaderlimits.New(loaderlimits.DepthValue(50))),
+    yaml.WithPlugin(tabindent.New()))
 ```
 
 The public plugin interfaces are:
@@ -51,6 +54,10 @@ type JSONCommentsPlugin interface {
 type LoaderLimitsPlugin interface {
     CheckDepth(depth int, ctx *DepthContext) error
     CheckAlias(aliasCount, constructCount int) error
+}
+
+type TabIndentPlugin interface {
+    TabIndentConfig() IndentConfig
 }
 ```
 
@@ -92,6 +99,21 @@ loader = yaml.NewLoader(data,
 | `AliasNone()` | Disable alias checking |
 | `AliasFunc(fn)` | Supply an alias policy function |
 
+## Tab-indent plugin
+
+The tab-indent plugin enables tab-aware structural indentation while loading
+and can emit structural indentation with tabs while dumping.
+Its default `auto` mode detects tabs or spaces for each document and emits tabs.
+
+```go
+plugin := tabindent.New()
+err := yaml.Load(input, &value, yaml.WithPlugin(plugin))
+output, err := yaml.Dump(value, yaml.WithPlugin(plugin))
+```
+
+Configuration accepts `mode` (`auto` or `tabs`), `load` (`auto`, `spaces`, or
+`tabs`), `dump` (`spaces` or `tabs`), and `auto` (`document` or `stream`).
+
 ## Named configuration
 
 External packages register named implementations for `yaml.OptsYAML` and
@@ -105,6 +127,9 @@ if err := jsoncomments.Register(); err != nil {
 if err := reference.Register(); err != nil {
     log.Fatal(err)
 }
+if err := tabindent.Register(); err != nil {
+    log.Fatal(err)
+}
 ```
 
 Configuration can use mappings, strings, or booleans:
@@ -116,6 +141,9 @@ plugin:
   loader-limits:
     depth: 50
     alias: 1000
+  tab-indent:
+    mode: auto
+    auto: document
 ```
 
 A string is the short form `IMPLEMENTATION` or `IMPLEMENTATION@VERSION`.
@@ -137,6 +165,21 @@ A requested version must match the linked implementation exactly.
 Disabling `loader-limits` leaves the core safety limits active.
 The loader-limits implementation accepts integer `depth` and `alias` settings.
 A null setting disables that one check.
+
+### Release-candidate compatibility
+
+Use `loader-limits` and `LoaderLimitsPlugin` in new code.
+For migration from earlier v4 release candidates, the `limit` configuration
+key and implementation name are accepted as deprecated aliases.
+Configuring both `limit` and `loader-limits` is an error.
+The deprecated `LimitPlugin` type alias also remains available.
+
+The previously published `go.yaml.in/yaml/v4/plugin/limit` import path is
+retained as a module deprecation marker.
+Its original implementation remains available to users pinned to an earlier
+release candidate.
+Migrate imports to `go.yaml.in/yaml/v4/plugin/loaderlimits`.
+The former `parser` name is not an alias for `yaml-parser`.
 
 ## Optional implementations
 
@@ -235,6 +278,7 @@ plugin events.
 Run the optional module checks with:
 
 ```bash
+make test-limit
 make test-json-comments
 make test-json-comments-race
 make test-reference-parser

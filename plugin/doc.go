@@ -11,8 +11,9 @@
 //
 // Loader-limits plugin (plugin/loaderlimits), API loader-limits:
 //   - Configurable depth and alias expansion limits
+//   - The former plugin/limit module is deprecated
 //
-// Tab indentation plugin (plugin/tabindent):
+// Tab indentation plugin (plugin/tabindent), API tab-indent:
 //   - Tab-aware structural indentation for loading and dumping
 //
 // JSON-comments plugin (plugin/jsoncomments), API json-comments:

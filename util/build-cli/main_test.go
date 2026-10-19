@@ -30,7 +30,11 @@ func TestInspectConfig(t *testing.T) {
 				"{load: spaces, dump: spaces, auto: stream}}",
 			false, false, "",
 		},
-		{"old limit API", "plugin: {limit: true}", false, true, ""},
+		{"old limit API", "plugin: {limit: true}", false, false, ""},
+		{
+			"limit API conflict",
+			"plugin: {limit: true, loader-limits: true}", false, true, "",
+		},
 		{
 			"YAML parser", "plugin: {yaml-parser: go-yaml}",
 			false, false, "",
