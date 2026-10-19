@@ -962,12 +962,14 @@ func (parser *Parser) fetchNextToken() (err error) {
 
 	// Is it the value indicator?
 	if parser.buffer[parser.buffer_pos] == ':' {
-		// A flow value may itself start with a colon and safe scalar content.
-		plain_value := len(parser.tokens) > 0 &&
-			parser.tokens[len(parser.tokens)-1].Type == VALUE_TOKEN &&
+		// A flow key or value may start with a colon and safe scalar content.
+		plain_scalar := len(parser.tokens) > 0 &&
+			(parser.tokens[len(parser.tokens)-1].Type == VALUE_TOKEN ||
+				parser.tokens[len(parser.tokens)-1].Type == KEY_TOKEN ||
+				parser.tokens[len(parser.tokens)-1].Type == FLOW_MAPPING_START_TOKEN) &&
 			!isFlowIndicator(parser.buffer, parser.buffer_pos+1)
 		if isBlankOrZero(parser.buffer, parser.buffer_pos+1) ||
-			(parser.flow_level > 0 && !parser.isFlowSequence() && !plain_value) {
+			(parser.flow_level > 0 && !parser.isFlowSequence() && !plain_scalar) {
 			return parser.fetchValue()
 		}
 	}
