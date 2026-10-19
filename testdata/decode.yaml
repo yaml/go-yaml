@@ -404,6 +404,41 @@
 
 # Flow collection separation
 - decode:
+    name: colon-prefixed flow key with omitted value
+    yaml: '{:foo}'
+    type: map[string]any
+    want:
+      :foo: null
+
+- decode:
+    name: colon-prefixed flow key with value
+    yaml: '{:foo: bar}'
+    type: map[string]string
+    want:
+      :foo: bar
+
+- decode:
+    name: colon-prefixed explicit flow key with omitted value
+    yaml: '{? :foo}'
+    type: map[string]any
+    want:
+      :foo: null
+
+- decode:
+    name: colon-prefixed explicit flow key with value
+    yaml: '{? :foo : bar}'
+    type: map[string]string
+    want:
+      :foo: bar
+
+- decode:
+    name: colon-prefixed explicit flow key with adjacent separator
+    yaml: '{? :foo: bar}'
+    type: map[string]string
+    want:
+      :foo: bar
+
+- decode:
     name: colon-prefixed values in flow mappings
     yaml: '{x: :x, "key"::value}'
     type: map[string]string
