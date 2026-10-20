@@ -136,9 +136,11 @@ func (d *Dumper) Close() (err error) {
 //
 // This method is only provided for backward compatibility with the legacy Encoder API.
 // Do not use in libyaml, use [WithIndent] instead.
+// Zero and negative values are normalized to 2 spaces.
 func (d *Dumper) SetLegacyEncoderIndent(spaces int) {
-	if spaces < 0 {
-		failDumpf(SerializerStage, "cannot indent to a negative number of spaces")
+	// Stream-start normalization does not run again between documents.
+	if spaces <= 0 {
+		spaces = 2
 	}
 	// Set on serializer's emitter
 	d.serializer.Emitter.BestIndent = spaces

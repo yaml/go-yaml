@@ -843,7 +843,8 @@ func (e *Encoder) Encode(v any) error {
 	return e.dumper.Dump(v)
 }
 
-// SetIndent changes the used indentation used when encoding.
+// SetIndent changes the indentation used when encoding.
+// Zero and negative values use 2 spaces of indentation.
 func (e *Encoder) SetIndent(spaces int) {
 	e.dumper.SetLegacyEncoderIndent(spaces)
 }
