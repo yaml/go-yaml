@@ -264,8 +264,8 @@ test-cli-build: $(GO-DEPS)
 	go test ./util/build-cli$(TEST-OPTS)
 
 test-limit: $(PERL) $(GO-DEPS)
-	GOWORK=off go -C plugin/limit test ./...$(TEST-OPTS)
-	GOWORK=off go -C plugin/limit mod edit -json | \
+	cd plugin/limit && GOWORK=off go test ./...$(TEST-OPTS)
+	cd plugin/limit && GOWORK=off go mod edit -json | \
 	  $(PERL) -0777 -ne \
 	  'exit 1 unless /"Deprecated":\s*"use .*loaderlimits instead\."/'
 	@echo 'LIMIT MODULE DEPRECATION PASS'
