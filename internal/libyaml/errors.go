@@ -282,10 +282,11 @@ func (e *LoadErrors) Is(target error) bool {
 
 // TypeError is a legacy error type retained for compatibility.
 //
-// A TypeError is returned by [Load] and [Loader.Load] when one or more fields in
-// the YAML document cannot be properly decoded into the requested
-// types. When this error is returned, the value is still
-// unmarshaled partially.
+// [Load] and [Loader.Load] return *LoadErrors when one or more fields cannot
+// be decoded into the requested types.
+// The destination value may be partially populated.
+// For compatibility, [LoadErrors.As] synthesizes a *TypeError when callers
+// use [errors.As].
 //
 // Deprecated: Use [LoadErrors] instead.
 type TypeError struct {

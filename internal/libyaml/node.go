@@ -107,7 +107,8 @@ const (
 	FlowStyle
 )
 
-// StreamVersionDirective represents a YAML %YAML version directive for [Stream.StreamVersionDirective].
+// StreamVersionDirective represents a YAML %YAML version directive for
+// [Stream.Version].
 type StreamVersionDirective struct {
 	Major int
 	Minor int
