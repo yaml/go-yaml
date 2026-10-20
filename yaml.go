@@ -54,10 +54,11 @@ func WithV2Defaults() Option {
 	)
 }
 
-// WithV3Defaults returns options that match the behavior of go-yaml v3.
-// This is useful for migrating code from v3 to v4 while preserving the same output format.
-//
-// These is the default settings when using [Unmarshal] or [Marshal].
+// WithV3Defaults returns default options for go-yaml v3 compatibility.
+// [Unmarshal] uses these defaults.
+// [Marshal] uses them with the line width overridden to -1 (unlimited).
+// [Dump] with this preset uses a line width of 80 unless overridden, so its
+// output may wrap differently from [Marshal].
 func WithV3Defaults() Option {
 	return Options(
 		WithIndent(4),
@@ -573,7 +574,8 @@ type (
 	// This includes encoding, version directive, and tag directives.
 	Stream = libyaml.Stream
 
-	// VersionDirective represents a YAML %YAML version directive for [Stream.VersionDirective].
+	// VersionDirective represents a YAML %YAML version directive for
+	// [Stream.Version].
 	VersionDirective = libyaml.StreamVersionDirective
 
 	// TagDirective represents a YAML %TAG directive for [Stream.TagDirectives].

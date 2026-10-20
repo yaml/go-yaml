@@ -272,7 +272,7 @@ const (
 // TokenType represents the [Token.Type] of a scanned [Token].
 type TokenType int
 
-// Possible [TokenToken] types.
+// Possible [TokenType] values.
 const (
 	// NO_TOKEN represents an empty token.
 	NO_TOKEN TokenType = iota
