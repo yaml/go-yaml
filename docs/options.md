@@ -386,7 +386,9 @@ err := loader.Load(&config)
 
 ##### `yaml.WithSingleDocument(...bool)`
 
-Only load the first YAML document, then return EOF.
+Only load the first YAML document, then return `io.EOF` on subsequent
+`Loader.Load` calls.
+Additional documents are left unread and unvalidated.
 
 ```go
 // Enable single document mode (short form)
@@ -398,7 +400,7 @@ var doc1 Doc
 loader.Load(&doc1)  // Loads first document
 
 var doc2 Doc
-loader.Load(&doc2)  // Returns io.EOF
+loader.Load(&doc2)  // Returns io.EOF even if more documents are present
 
 // Dynamic based on environment/config
 singleDoc := os.Getenv("SINGLE_DOC") == "true"
@@ -407,9 +409,15 @@ loader, _ := yaml.NewLoader(reader,
 )
 ```
 
-**Use case:** When you expect exactly one document and want to catch extras.
+**Use case:** Intentionally process only the first document in a stream.
 
-**Default:** false (multi-document mode)
+**Default:** false (`Loader.Load` can continue reading subsequent documents).
+
+Package-level `yaml.Load` rejects additional documents by default.
+Passing `WithSingleDocument()` skips that validation, including syntax checks
+on later documents.
+Omit this option when loading a configuration that must contain exactly one
+document.
 
 ##### `yaml.WithUniqueKeys(...bool)`
 
@@ -564,23 +572,16 @@ type AppConfig struct {
 }
 
 func LoadConfig(filename string) (*AppConfig, error) {
-    f, err := os.Open(filename)
-    if err != nil {
-        return nil, err
-    }
-    defer f.Close()
-
-    loader, err := yaml.NewLoader(f,
-        yaml.WithV4Defaults(),
-        yaml.WithKnownFields(),          // Catch typos (defaults to true)
-        yaml.WithSingleDocument(),       // Expect exactly one doc
-    )
+    input, err := os.ReadFile(filename)
     if err != nil {
         return nil, err
     }
 
     var config AppConfig
-    if err := loader.Load(&config); err != nil {
+    if err := yaml.Load(input, &config,
+        yaml.WithV4Defaults(),
+        yaml.WithKnownFields(), // Reject unknown fields
+    ); err != nil {
         return nil, err
     }
 
@@ -671,10 +672,12 @@ func ProcessMultiDocs(reader io.Reader) error {
 
 ### Pattern: Application Config Loader
 
+Use package-level `Load` to reject additional documents:
+
 ```go
-loader, _ := yaml.NewLoader(configFile,
-    yaml.WithSingleDocument(),    // Only one config file
-    yaml.WithKnownFields(),       // Strict validation (defaults to true)
+err := yaml.Load(input, &config,
+    yaml.WithKnownFields(),
+    yaml.WithUniqueKeys(),
 )
 ```
 
@@ -705,8 +708,10 @@ users.
 
 **Validation:** Use `WithKnownFields()` to catch config file typos early.
 
-**One document:** Use `WithSingleDocument()` when you expect exactly one YAML
-document.
+**One document:** Use `yaml.Load` without `WithSingleDocument()` to reject
+extra YAML documents.
+Use `WithSingleDocument()` only to stop after the first document and ignore
+the remaining input.
 
 **Test your options:** Run examples with different options to see the output
 format.
