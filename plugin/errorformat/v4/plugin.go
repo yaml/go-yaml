@@ -1,7 +1,7 @@
 // Copyright 2026 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-// Package errfmtv4 provides the go-yaml v4 error formatter.
+// Package errorformatv4 provides the go-yaml v4 error formatter.
 //
 // With no options, the v4 formatter renders the current structured go-yaml
 // error style:
@@ -11,7 +11,7 @@
 //
 // It can also be configured with alternate load-error position styles or
 // custom text/template templates.
-package errfmtv4
+package errorformatv4
 
 import (
 	"bytes"
@@ -103,12 +103,12 @@ func WithPositionStyle(style PositionStyle) Option {
 			p.positionStyle = style
 			return nil
 		default:
-			return fmt.Errorf("errfmt v4: invalid position style %d", style)
+			return fmt.Errorf("error-format v4: invalid position style %d", style)
 		}
 	}
 }
 
-// FormatLoadError implements [yaml.ErrorFmtPlugin].
+// FormatLoadError implements [yaml.ErrorFormatPlugin].
 func (p *Plugin) FormatLoadError(err *libyaml.LoadError) string {
 	var out bytes.Buffer
 	if execErr := p.loadTemplate.Execute(&out, newLoadTemplateData(err)); execErr != nil {
@@ -118,7 +118,7 @@ func (p *Plugin) FormatLoadError(err *libyaml.LoadError) string {
 	return out.String()
 }
 
-// FormatDumpError implements [yaml.ErrorFmtPlugin].
+// FormatDumpError implements [yaml.ErrorFormatPlugin].
 func (p *Plugin) FormatDumpError(err *libyaml.DumpError) string {
 	var out bytes.Buffer
 	if execErr := p.dumpTemplate.Execute(&out, newDumpTemplateData(err)); execErr != nil {
@@ -135,7 +135,7 @@ func NewFromYAML(cfg map[string]any) (*Plugin, error) {
 		case "position":
 			s, ok := val.(string)
 			if !ok {
-				return nil, fmt.Errorf("errfmt v4: position must be a string, got %T", val)
+				return nil, fmt.Errorf("error-format v4: position must be a string, got %T", val)
 			}
 			style, err := parsePositionStyle(s)
 			if err != nil {
@@ -145,17 +145,17 @@ func NewFromYAML(cfg map[string]any) (*Plugin, error) {
 		case "load-template":
 			s, ok := val.(string)
 			if !ok {
-				return nil, fmt.Errorf("errfmt v4: %s must be a string, got %T", key, val)
+				return nil, fmt.Errorf("error-format v4: %s must be a string, got %T", key, val)
 			}
 			opts = append(opts, WithLoadTemplate(s))
 		case "dump-template":
 			s, ok := val.(string)
 			if !ok {
-				return nil, fmt.Errorf("errfmt v4: dump-template must be a string, got %T", val)
+				return nil, fmt.Errorf("error-format v4: dump-template must be a string, got %T", val)
 			}
 			opts = append(opts, WithDumpTemplate(s))
 		default:
-			return nil, fmt.Errorf("errfmt v4: unknown key %q", key)
+			return nil, fmt.Errorf("error-format v4: unknown key %q", key)
 		}
 	}
 	return New(opts...)
@@ -168,15 +168,15 @@ func (p *Plugin) compileTemplate() error {
 		"line":     line,
 		"lineCol":  lineCol,
 	}
-	t, err := template.New("errfmtv4-load").Funcs(funcs).Parse(p.loadTemplateText)
+	t, err := template.New("errorformatv4-load").Funcs(funcs).Parse(p.loadTemplateText)
 	if err != nil {
-		return fmt.Errorf("errfmt v4: invalid load template: %w", err)
+		return fmt.Errorf("error-format v4: invalid load template: %w", err)
 	}
 	p.loadTemplate = t
 
-	t, err = template.New("errfmtv4-dump").Funcs(funcs).Parse(p.dumpTemplateText)
+	t, err = template.New("errorformatv4-dump").Funcs(funcs).Parse(p.dumpTemplateText)
 	if err != nil {
-		return fmt.Errorf("errfmt v4: invalid dump template: %w", err)
+		return fmt.Errorf("error-format v4: invalid dump template: %w", err)
 	}
 	p.dumpTemplate = t
 	return nil
@@ -191,7 +191,7 @@ func parsePositionStyle(s string) (PositionStyle, error) {
 	case "line":
 		return PositionLine, nil
 	default:
-		return 0, fmt.Errorf("errfmt v4: invalid position %q (use short, long, or line)", s)
+		return 0, fmt.Errorf("error-format v4: invalid position %q (use short, long, or line)", s)
 	}
 }
 

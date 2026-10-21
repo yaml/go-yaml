@@ -9,8 +9,8 @@ Plugins are registered with `yaml.WithPlugin(...)`.
 | Plugin | Import Path | Use When |
 |---|---|---|
 | [Limit](limit.md) | `go.yaml.in/yaml/v4/plugin/loaderlimits` | You need to relax, tighten, or replace YAML depth and alias safety limits. |
-| [Errfmt v3](errfmt-v3.md) | `go.yaml.in/yaml/v4/plugin/errfmt/v3` | You need v3-compatible error strings like `yaml: line 2: message`. |
-| [Errfmt v4](errfmt-v4.md) | `go.yaml.in/yaml/v4/plugin/errfmt/v4` | You need the v4 error format, different position text, or custom error templates. |
+| [Error-format v3](error-format-v3.md) | `go.yaml.in/yaml/v4/plugin/errorformat/v3` | You need v3-compatible error strings like `yaml: line 2: message`. |
+| [Error-format v4](error-format-v4.md) | `go.yaml.in/yaml/v4/plugin/errorformat/v4` | You need the v4 error format, different position text, or custom error templates. |
 
 ## Registering Plugins
 
@@ -22,7 +22,7 @@ Multiple plugins may be registered at once:
 
 ```go
 loader, err := yaml.NewLoader(r,
-    yaml.WithPlugin(loaderlimits.New(), errfmtv4.Must()),
+    yaml.WithPlugin(loaderlimits.New(), errorformatv4.Must()),
 )
 ```
 
@@ -37,7 +37,7 @@ Plugins can also be configured with `yaml.OptsYAML`:
 plugin:
   loader-limits:
     depth: 50
-  errfmt:
+  error-format:
     v4:
       position: long
 ```
@@ -55,5 +55,5 @@ err = yaml.Load(data, &out, opts)
 ## Third-Party Plugins
 
 Third-party plugins implement one of the public plugin interfaces, such as
-`yaml.LoaderLimitsPlugin` or `yaml.ErrorFmtPlugin`, and are passed to
+`yaml.LoaderLimitsPlugin` or `yaml.ErrorFormatPlugin`, and are passed to
 `yaml.WithPlugin(...)`.

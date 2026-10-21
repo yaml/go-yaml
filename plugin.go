@@ -11,7 +11,7 @@ import (
 	"go.yaml.in/yaml/v4/plugin/loaderlimits"
 )
 
-// ErrorFmtPlugin customizes how YAML load and dump errors are rendered.
+// ErrorFormatPlugin customizes how YAML load and dump errors are rendered.
 //
 // When registered, FormatLoadError and FormatDumpError are called to produce
 // the error message string for each [LoadError] and [DumpError], allowing the
@@ -19,9 +19,9 @@ import (
 //
 // Example usage:
 //
-//	import errfmtv3 "go.yaml.in/yaml/v4/plugin/errfmt/v3"
-//	loader := yaml.NewLoader(data, yaml.WithPlugin(errfmtv3.New()))
-type ErrorFmtPlugin interface {
+//	import errorformatv3 "go.yaml.in/yaml/v4/plugin/errorformat/v3"
+//	loader := yaml.NewLoader(data, yaml.WithPlugin(errorformatv3.New()))
+type ErrorFormatPlugin interface {
 	// FormatLoadError returns the string representation of a LoadError.
 	// The returned string is used as the error message.
 	FormatLoadError(err *LoadError) string
@@ -110,8 +110,9 @@ type nativeParserPlugin struct{}
 
 var pluginRegistry = pluginreg.NewRegistry(
 	PluginRegistration{
-		API: "errfmt", Name: "errfmt", Default: true,
-		Factory: newErrfmtPluginFromYAML,
+		API: pluginreg.ErrorFormatAPI, Name: pluginreg.ErrorFormatAPI,
+		Default: true,
+		Factory: newErrorFormatPluginFromYAML,
 	},
 	PluginRegistration{
 		API:     pluginreg.LoaderLimitsAPI,

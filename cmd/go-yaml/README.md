@@ -88,8 +88,8 @@ options.
 
 ## Plugin builds
 
-The ordinary command contains the built-in `go-yaml` parser, loader-limits
-plugin, and tab-indent plugin.
+The ordinary command contains the built-in `go-yaml` parser, loader-limits,
+tab-indent, and error-format plugins.
 Optional plugin implementations must be selected while building the command.
 
 `PLUGIN` contains only the plugin selector DSL:
@@ -106,10 +106,18 @@ Comma-separated selectors can be passed in one flag.
 A bare API selects its default implementation.
 The `json-comments` default is `sanitizer`, the `yaml-parser` default is
 `go-yaml`, and the `tab-indent` default is `tab-indent`.
+The `error-format` default implementation is also named `error-format`:
+
+```bash
+make cli PLUGIN=error-format
+./go-yaml --plugin=error-format -j data.yaml
+```
 
 `PLUGIN` and `--plugin` never name files and never contain YAML.
-The build resolves the newest v-prefixed plugin release when a selector omits
-the version.
+For optional implementations, the build resolves the newest v-prefixed plugin
+release when a selector omits the version.
+Core implementations such as `error-format` are unversioned within the
+registry and ship with go-yaml.
 Runtime selectors can choose only implementations already linked into the
 binary.
 
@@ -126,6 +134,9 @@ plugin:
   loader-limits:
     depth: 50
     alias: 100
+  error-format:
+    v4:
+      position: long
   tab-indent:
     mode: auto
   json-comments: sanitizer@v0.1.9

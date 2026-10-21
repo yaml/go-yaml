@@ -42,7 +42,7 @@ type Options struct {
 	// IndentConfig enables tab-aware structural indentation.
 	IndentConfig *IndentConfig
 
-	// Error formatting (set by WithPlugin(errfmtv3.New() or errfmtv4.New(...)))
+	// Error formatting (set by WithPlugin with an error-format plugin).
 	FormatLoadError func(*LoadError) string
 	FormatDumpError func(*DumpError) string
 

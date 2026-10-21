@@ -12,8 +12,8 @@ import (
 	"testing"
 
 	"go.yaml.in/yaml/v4"
-	errfmtv3 "go.yaml.in/yaml/v4/plugin/errfmt/v3"
-	errfmtv4 "go.yaml.in/yaml/v4/plugin/errfmt/v4"
+	errorformatv3 "go.yaml.in/yaml/v4/plugin/errorformat/v3"
+	errorformatv4 "go.yaml.in/yaml/v4/plugin/errorformat/v4"
 	"go.yaml.in/yaml/v4/plugin/loaderlimits"
 )
 
@@ -263,12 +263,29 @@ func TestLegacyLimitAliases(t *testing.T) {
 	}
 }
 
-// errfmtBadYAML triggers a scanner error (block sequence not allowed here).
-var errfmtBadYAML = []byte("value: -\n")
+// errorFormatBadYAML triggers a scanner error (block sequence not allowed here).
+var errorFormatBadYAML = []byte("value: -\n")
 
-func TestWithPlugin_ErrfmtV4_Default(t *testing.T) {
+func TestNamedErrorFormatPlugin(t *testing.T) {
+	var _ yaml.ErrorFormatPlugin = errorformatv3.New()
+	var _ yaml.ErrorFormatPlugin = errorformatv4.Must()
+
+	var value any
+	err := yaml.Load(errorFormatBadYAML, &value,
+		yaml.WithNamedPlugin("error-format"))
+	if err == nil || !strings.HasPrefix(err.Error(),
+		"go-yaml load error in scanner at L1.C8:") {
+		t.Fatalf("named error-format plugin: %v", err)
+	}
+	if err := yaml.Load(nil, &value,
+		yaml.WithNamedPlugin("errfmt")); err == nil {
+		t.Fatal("old error-format API name accepted")
+	}
+}
+
+func TestWithPlugin_ErrorFormatV4_Default(t *testing.T) {
 	var result any
-	err := yaml.Load(errfmtBadYAML, &result, yaml.WithPlugin(errfmtv4.Must()))
+	err := yaml.Load(errorFormatBadYAML, &result, yaml.WithPlugin(errorformatv4.Must()))
 	if err == nil {
 		t.Fatal("Expected error, got nil")
 	}
@@ -279,9 +296,9 @@ func TestWithPlugin_ErrfmtV4_Default(t *testing.T) {
 	}
 }
 
-func TestWithPlugin_ErrfmtV3(t *testing.T) {
+func TestWithPlugin_ErrorFormatV3(t *testing.T) {
 	var result any
-	err := yaml.Load(errfmtBadYAML, &result, yaml.WithPlugin(errfmtv3.New()))
+	err := yaml.Load(errorFormatBadYAML, &result, yaml.WithPlugin(errorformatv3.New()))
 	if err == nil {
 		t.Fatal("Expected error, got nil")
 	}
@@ -292,13 +309,13 @@ func TestWithPlugin_ErrfmtV3(t *testing.T) {
 	}
 }
 
-func TestWithPlugin_ErrfmtV4_LongPosition(t *testing.T) {
-	p, err := errfmtv4.New(errfmtv4.WithPositionStyle(errfmtv4.PositionLong))
+func TestWithPlugin_ErrorFormatV4_LongPosition(t *testing.T) {
+	p, err := errorformatv4.New(errorformatv4.WithPositionStyle(errorformatv4.PositionLong))
 	if err != nil {
-		t.Fatalf("New errfmtv4 failed: %v", err)
+		t.Fatalf("New errorformatv4 failed: %v", err)
 	}
 	var result any
-	err = yaml.Load(errfmtBadYAML, &result, yaml.WithPlugin(p))
+	err = yaml.Load(errorFormatBadYAML, &result, yaml.WithPlugin(p))
 	if err == nil {
 		t.Fatal("Expected error, got nil")
 	}
@@ -308,13 +325,13 @@ func TestWithPlugin_ErrfmtV4_LongPosition(t *testing.T) {
 	}
 }
 
-func TestWithPlugin_ErrfmtV4_LinePosition(t *testing.T) {
-	p, err := errfmtv4.New(errfmtv4.WithPositionStyle(errfmtv4.PositionLine))
+func TestWithPlugin_ErrorFormatV4_LinePosition(t *testing.T) {
+	p, err := errorformatv4.New(errorformatv4.WithPositionStyle(errorformatv4.PositionLine))
 	if err != nil {
-		t.Fatalf("New errfmtv4 failed: %v", err)
+		t.Fatalf("New errorformatv4 failed: %v", err)
 	}
 	var result any
-	err = yaml.Load(errfmtBadYAML, &result, yaml.WithPlugin(p))
+	err = yaml.Load(errorFormatBadYAML, &result, yaml.WithPlugin(p))
 	if err == nil {
 		t.Fatal("Expected error, got nil")
 	}
@@ -324,13 +341,13 @@ func TestWithPlugin_ErrfmtV4_LinePosition(t *testing.T) {
 	}
 }
 
-func TestWithPlugin_ErrfmtV4_Template(t *testing.T) {
-	p, err := errfmtv4.New(errfmtv4.WithLoadTemplate("{{.Stage}} {{pos .Mark}} {{.Message}}"))
+func TestWithPlugin_ErrorFormatV4_Template(t *testing.T) {
+	p, err := errorformatv4.New(errorformatv4.WithLoadTemplate("{{.Stage}} {{pos .Mark}} {{.Message}}"))
 	if err != nil {
-		t.Fatalf("New errfmtv4 failed: %v", err)
+		t.Fatalf("New errorformatv4 failed: %v", err)
 	}
 	var result any
-	err = yaml.Load(errfmtBadYAML, &result, yaml.WithPlugin(p))
+	err = yaml.Load(errorFormatBadYAML, &result, yaml.WithPlugin(p))
 	if err == nil {
 		t.Fatal("Expected error, got nil")
 	}
@@ -341,15 +358,15 @@ func TestWithPlugin_ErrfmtV4_Template(t *testing.T) {
 	}
 }
 
-func TestWithPlugin_ErrfmtV4_InvalidTemplate(t *testing.T) {
-	_, err := errfmtv4.New(errfmtv4.WithLoadTemplate("{{"))
+func TestWithPlugin_ErrorFormatV4_InvalidTemplate(t *testing.T) {
+	_, err := errorformatv4.New(errorformatv4.WithLoadTemplate("{{"))
 	if err == nil {
 		t.Fatal("Expected invalid template error, got nil")
 	}
 }
 
-func TestWithPlugin_ErrfmtV4_DumpDefault(t *testing.T) {
-	_, err := yaml.Dump(make(chan int), yaml.WithPlugin(errfmtv4.Must()))
+func TestWithPlugin_ErrorFormatV4_DumpDefault(t *testing.T) {
+	_, err := yaml.Dump(make(chan int), yaml.WithPlugin(errorformatv4.Must()))
 	if err == nil {
 		t.Fatal("Expected error, got nil")
 	}
@@ -359,8 +376,8 @@ func TestWithPlugin_ErrfmtV4_DumpDefault(t *testing.T) {
 	}
 }
 
-func TestWithPlugin_ErrfmtV3_Dump(t *testing.T) {
-	_, err := yaml.Dump(make(chan int), yaml.WithPlugin(errfmtv3.New()))
+func TestWithPlugin_ErrorFormatV3_Dump(t *testing.T) {
+	_, err := yaml.Dump(make(chan int), yaml.WithPlugin(errorformatv3.New()))
 	if err == nil {
 		t.Fatal("Expected error, got nil")
 	}
@@ -370,10 +387,10 @@ func TestWithPlugin_ErrfmtV3_Dump(t *testing.T) {
 	}
 }
 
-func TestWithPlugin_ErrfmtV4_DumpTemplate(t *testing.T) {
-	p, err := errfmtv4.New(errfmtv4.WithDumpTemplate("{{.Stage}}/{{.Message}}"))
+func TestWithPlugin_ErrorFormatV4_DumpTemplate(t *testing.T) {
+	p, err := errorformatv4.New(errorformatv4.WithDumpTemplate("{{.Stage}}/{{.Message}}"))
 	if err != nil {
-		t.Fatalf("New errfmtv4 failed: %v", err)
+		t.Fatalf("New errorformatv4 failed: %v", err)
 	}
 	_, err = yaml.Dump(make(chan int), yaml.WithPlugin(p))
 	if err == nil {
@@ -385,10 +402,10 @@ func TestWithPlugin_ErrfmtV4_DumpTemplate(t *testing.T) {
 	}
 }
 
-func TestWithPlugin_ErrfmtV4_DumpStages(t *testing.T) {
+func TestWithPlugin_ErrorFormatV4_DumpStages(t *testing.T) {
 	t.Run("serializer", func(t *testing.T) {
 		n := yaml.Node{Kind: 99}
-		_, err := yaml.Dump(&n, yaml.WithPlugin(errfmtv4.Must()))
+		_, err := yaml.Dump(&n, yaml.WithPlugin(errorformatv4.Must()))
 		if err == nil {
 			t.Fatal("Expected error, got nil")
 		}
@@ -399,7 +416,7 @@ func TestWithPlugin_ErrfmtV4_DumpStages(t *testing.T) {
 	})
 
 	t.Run("writer", func(t *testing.T) {
-		dumper, err := yaml.NewDumper(errorWriter{}, yaml.WithPlugin(errfmtv4.Must()))
+		dumper, err := yaml.NewDumper(errorWriter{}, yaml.WithPlugin(errorformatv4.Must()))
 		if err != nil {
 			t.Fatalf("NewDumper failed: %v", err)
 		}
@@ -424,8 +441,8 @@ func (customDumpErrorMarshaler) MarshalYAML() (any, error) {
 	)
 }
 
-func TestWithPlugin_ErrfmtV3_CustomDumpError(t *testing.T) {
-	_, err := yaml.Dump(customDumpErrorMarshaler{}, yaml.WithPlugin(errfmtv3.New()))
+func TestWithPlugin_ErrorFormatV3_CustomDumpError(t *testing.T) {
+	_, err := yaml.Dump(customDumpErrorMarshaler{}, yaml.WithPlugin(errorformatv3.New()))
 	if err == nil {
 		t.Fatal("Expected error, got nil")
 	}
@@ -468,14 +485,14 @@ func TestWithDefaults_ErrorFormatting(t *testing.T) {
 		},
 		{
 			name: "explicit plugin after defaults wins",
-			opts: []yaml.Option{yaml.WithV3Defaults(), yaml.WithPlugin(errfmtv4.Must())},
+			opts: []yaml.Option{yaml.WithV3Defaults(), yaml.WithPlugin(errorformatv4.Must())},
 			want: "go-yaml load error in ",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var result any
-			err := yaml.Load(errfmtBadYAML, &result, tt.opts...)
+			err := yaml.Load(errorFormatBadYAML, &result, tt.opts...)
 			if err == nil {
 				t.Fatal("Expected error, got nil")
 			}
@@ -513,7 +530,7 @@ func TestWithDefaults_DumpErrorFormatting(t *testing.T) {
 		},
 		{
 			name: "explicit plugin after defaults wins",
-			opts: []yaml.Option{yaml.WithV3Defaults(), yaml.WithPlugin(errfmtv4.Must())},
+			opts: []yaml.Option{yaml.WithV3Defaults(), yaml.WithPlugin(errorformatv4.Must())},
 			want: "go-yaml dump error in representer: ",
 		},
 	}

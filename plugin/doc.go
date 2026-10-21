@@ -25,7 +25,7 @@
 // The JSON-comments and reference YAML-parser packages are separate Go modules
 // so their dependencies remain optional.
 //
-// Errfmt plugins (plugin/errfmt/v3 and plugin/errfmt/v4):
+// ErrorFormat plugins (plugin/errorformat/v3 and plugin/errorformat/v4):
 //   - Versioned YAML load and dump error message formatting
 //
 // # Usage
@@ -34,7 +34,7 @@
 //
 //	import "go.yaml.in/yaml/v4"
 //	import "go.yaml.in/yaml/v4/plugin/loaderlimits"
-//	import errfmtv3 "go.yaml.in/yaml/v4/plugin/errfmt/v3"
+//	import errorformatv3 "go.yaml.in/yaml/v4/plugin/errorformat/v3"
 //
 //	// Disable alias checking for documents with many aliases
 //	loader, err := yaml.NewLoader(data,
@@ -44,7 +44,7 @@
 //	}
 //
 //	// Use legacy error format (yaml: line N: msg)
-//	loader, err = yaml.NewLoader(data, yaml.WithPlugin(errfmtv3.New()))
+//	loader, err = yaml.NewLoader(data, yaml.WithPlugin(errorformatv3.New()))
 //	if err != nil {
 //	    return err
 //	}
