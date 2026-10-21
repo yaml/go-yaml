@@ -141,8 +141,8 @@ func inspectConfig(data []byte) (buildConfig, error) {
 				name = pluginreg.CanonicalName(api, name)
 			}
 			switch api {
-			case pluginreg.LoaderLimitsAPI:
-				if name != "" && name != pluginreg.LoaderLimitsAPI {
+			case pluginreg.ErrorFormatAPI, pluginreg.LoaderLimitsAPI:
+				if name != "" && name != api {
 					return selection, fmt.Errorf(
 						"no CLI build provider for plugin %q implementation %q",
 						api, name)

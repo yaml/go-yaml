@@ -9,6 +9,8 @@ import (
 )
 
 const (
+	// ErrorFormatAPI is the error-format plugin API name.
+	ErrorFormatAPI = "error-format"
 	// LoaderLimitsAPI is the loader-limits plugin API name.
 	LoaderLimitsAPI = "loader-limits"
 	// YAMLParserAPI is the YAML-parser plugin API name.

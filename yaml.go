@@ -25,8 +25,8 @@ import (
 
 	"go.yaml.in/yaml/v4/internal/libyaml"
 	pluginreg "go.yaml.in/yaml/v4/internal/plugin"
-	errfmtv3 "go.yaml.in/yaml/v4/plugin/errfmt/v3"
-	errfmtv4 "go.yaml.in/yaml/v4/plugin/errfmt/v4"
+	errorformatv3 "go.yaml.in/yaml/v4/plugin/errorformat/v3"
+	errorformatv4 "go.yaml.in/yaml/v4/plugin/errorformat/v4"
 	"go.yaml.in/yaml/v4/plugin/loaderlimits"
 )
 
@@ -47,7 +47,7 @@ func WithV2Defaults() Option {
 		WithUnicode(true),
 		WithUniqueKeys(true),
 		WithQuotePreference(QuoteLegacy),
-		WithPlugin(loaderlimits.New(), errfmtv4.Must()),
+		WithPlugin(loaderlimits.New(), errorformatv4.Must()),
 	)
 }
 
@@ -60,7 +60,7 @@ func WithV3Defaults() Option {
 		WithUnicode(true),
 		WithUniqueKeys(true),
 		WithQuotePreference(QuoteLegacy),
-		WithPlugin(loaderlimits.New(), errfmtv3.New()),
+		WithPlugin(loaderlimits.New(), errorformatv3.New()),
 	)
 }
 
@@ -73,7 +73,7 @@ func WithV4Defaults() Option {
 		WithUnicode(true),
 		WithUniqueKeys(true),
 		WithQuotePreference(QuoteSingle),
-		WithPlugin(loaderlimits.New(), errfmtv4.Must()),
+		WithPlugin(loaderlimits.New(), errorformatv4.Must()),
 	)
 }
 
@@ -283,7 +283,7 @@ type DepthContext = libyaml.DepthContext
 //   - ParserPlugin: Supplies a complete YAML event stream
 //   - JSONCommentsPlugin: Sanitizes JSON-style comments before parsing
 //   - TabIndentPlugin: Enables tab-aware loading and tab-indented dumping
-//   - ErrorFmtPlugin: Customizes load and dump error message formatting
+//   - ErrorFormatPlugin: Customizes load and dump error message formatting
 //
 // Example:
 //
@@ -331,7 +331,7 @@ func WithPlugin(plugins ...any) Option {
 				o.IndentConfig = &config
 				registered = true
 			}
-			if ep, ok := p.(ErrorFmtPlugin); ok {
+			if ep, ok := p.(ErrorFormatPlugin); ok {
 				o.FormatLoadError = ep.FormatLoadError
 				o.FormatDumpError = ep.FormatDumpError
 				registered = true
@@ -372,7 +372,7 @@ func WithPlugin(plugins ...any) Option {
 // Null plugin values are invalid.
 // Currently supported: "loader-limits" with keys "depth" and "alias" (int
 // or null to disable).
-// The "errfmt" API accepts a "v3" or "v4" formatter config.
+// The "error-format" API accepts a "v3" or "v4" formatter config.
 //
 // Only fields specified in the YAML will override other options when
 // combined. Unspecified fields won't affect other options.
@@ -385,7 +385,7 @@ func WithPlugin(plugins ...any) Option {
 //	  plugin:
 //	    loader-limits:
 //	      depth: 50
-//	    errfmt:
+//	    error-format:
 //	      v4:
 //	        position: long
 //	`)
@@ -517,9 +517,9 @@ func OptsYAML(yamlStr string) (Option, error) {
 	return Options(optList...), nil
 }
 
-func newErrfmtPluginFromYAML(cfg map[string]any) (any, error) {
+func newErrorFormatPluginFromYAML(cfg map[string]any) (any, error) {
 	if len(cfg) == 0 {
-		return errfmtv4.New()
+		return errorformatv4.New()
 	}
 	var selected string
 	var selectedConfig map[string]any
@@ -527,7 +527,7 @@ func newErrfmtPluginFromYAML(cfg map[string]any) (any, error) {
 		switch key {
 		case "v3", "v4":
 			if selected != "" {
-				return nil, errors.New(`yaml: plugin "errfmt" must select only one of v3 or v4`)
+				return nil, errors.New(`yaml: plugin "error-format" must select only one of v3 or v4`)
 			}
 			selected = key
 			switch v := val.(type) {
@@ -536,19 +536,19 @@ func newErrfmtPluginFromYAML(cfg map[string]any) (any, error) {
 			case map[string]any:
 				selectedConfig = v
 			default:
-				return nil, fmt.Errorf(`yaml: plugin "errfmt.%s" value must be a mapping or null`, key)
+				return nil, fmt.Errorf(`yaml: plugin "error-format.%s" value must be a mapping or null`, key)
 			}
 		default:
-			return nil, fmt.Errorf(`yaml: plugin "errfmt" unknown formatter %q`, key)
+			return nil, fmt.Errorf(`yaml: plugin "error-format" unknown formatter %q`, key)
 		}
 	}
 	switch selected {
 	case "v3":
-		return errfmtv3.NewFromYAML(selectedConfig)
+		return errorformatv3.NewFromYAML(selectedConfig)
 	case "v4":
-		return errfmtv4.NewFromYAML(selectedConfig)
+		return errorformatv4.NewFromYAML(selectedConfig)
 	default:
-		return errfmtv4.New()
+		return errorformatv4.New()
 	}
 }
 
@@ -875,7 +875,7 @@ type Encoder struct {
 // to w.
 func NewEncoder(w io.Writer) *Encoder {
 	// NewDumper won't return an error with these defaults.
-	dumper, _ := libyaml.NewDumper(w, WithV3Defaults(), WithPlugin(errfmtv4.Must()))
+	dumper, _ := libyaml.NewDumper(w, WithV3Defaults(), WithPlugin(errorformatv4.Must()))
 	return &Encoder{dumper: dumper}
 }
 

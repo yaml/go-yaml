@@ -4,7 +4,7 @@ The go-yaml v4 plugin system lets applications replace selected processing
 stages without adding optional dependencies to the core module.
 
 A plugin API defines a role such as `yaml-parser`, `json-comments`,
-`loader-limits`, or `tab-indent`.
+`loader-limits`, `tab-indent`, or `error-format`.
 Each API can have several named implementations.
 The current implementations are:
 
@@ -13,7 +13,7 @@ The current implementations are:
 | `yaml-parser` | `go-yaml` | core | yes |
 | `yaml-parser` | `reference` | `plugin/yamlparser/reference` | no |
 | `json-comments` | `sanitizer` | `plugin/jsoncomments` | yes |
-| `errfmt` | `errfmt` | `plugin/errfmt/v3` and `plugin/errfmt/v4` | yes |
+| `error-format` | `error-format` | `plugin/errorformat/v3` and `plugin/errorformat/v4` | yes |
 | `loader-limits` | `loader-limits` | `plugin/loaderlimits` | yes |
 | `tab-indent` | `tab-indent` | `plugin/tabindent` | yes |
 
@@ -44,7 +44,7 @@ err := yaml.Load(input, &value,
 The public plugin interfaces are:
 
 ```go
-type ErrorFmtPlugin interface {
+type ErrorFormatPlugin interface {
     FormatLoadError(err *LoadError) string
     FormatDumpError(err *DumpError) string
 }
@@ -84,8 +84,8 @@ Plugin implementations must support independent concurrent calls.
 
 ## Error formatting
 
-See [Errfmt v3](plugin/errfmt-v3.md) and
-[Errfmt v4](plugin/errfmt-v4.md) for the formatter guides.
+See [Error-format v3](plugin/error-format-v3.md) and
+[Error-format v4](plugin/error-format-v4.md) for the formatter guides.
 
 ## Default Behavior
 
@@ -93,7 +93,7 @@ Bare `yaml.Load`, `yaml.Dump`, `yaml.NewLoader`, and `yaml.NewDumper` use
 v4 defaults:
 
 - default safety limits equivalent to `loaderlimits.New()`
-- v4 error formatting equivalent to `errfmtv4.Must()`
+- v4 error formatting equivalent to `errorformatv4.Must()`
 
 Version presets select error formatting as follows:
 
@@ -112,7 +112,7 @@ plugin:
   loader-limits:
     depth: 50
     alias: 1000
-  errfmt:
+  error-format:
     v4:
       position: long
 ```
@@ -126,6 +126,16 @@ err = yaml.Load(data, &out, opts)
 ```
 
 See the plugin-specific guides for supported configuration keys.
+The default implementation is also named `error-format`:
+
+```go
+opts := yaml.WithNamedPlugin("error-format")
+```
+
+```yaml
+plugin:
+  error-format: error-format
+```
 
 ## Loader-limits plugin
 
@@ -282,6 +292,7 @@ It never names a file and never contains YAML.
 
 ```bash
 make cli PLUGIN=yaml-parser=reference@v0.2.5,json-comments
+make cli PLUGIN=error-format
 ```
 
 Selectors have these forms:
@@ -294,7 +305,8 @@ API=IMPLEMENTATION@VERSION
 ```
 
 A bare API selects its default implementation.
-The build resolves the newest v-prefixed release when no version is supplied.
+For optional implementations, the build resolves the newest v-prefixed
+release when no version is supplied.
 A version selects that exact release.
 Go downloads released modules through its configured module proxy and stores
 them in the Go module cache.

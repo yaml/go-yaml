@@ -3427,6 +3427,54 @@ func TestOptsYAML(t *testing.T) {
 			yamlStr: "plugin: {loader-limits: true}",
 		},
 		{
+			name:    "error-format disabled",
+			yamlStr: "plugin: {error-format: false}",
+		},
+		{
+			name:      "old error-format API",
+			yamlStr:   "plugin: {errfmt: true}",
+			expectErr: true,
+			errMatch:  `plugin "errfmt" has no default implementation`,
+		},
+		{
+			name:      "old error-format implementation",
+			yamlStr:   "plugin: {error-format: errfmt}",
+			expectErr: true,
+			errMatch:  `unknown implementation "errfmt"`,
+		},
+		{
+			name:    "disabled old error-format API",
+			yamlStr: "plugin: {errfmt: false}",
+		},
+		{
+			name:    "disabled old error-format API mapping",
+			yamlStr: "plugin: {errfmt: {disable: true}}",
+		},
+		{
+			name:      "null error-format configuration",
+			yamlStr:   "plugin: {error-format: null}",
+			expectErr: true,
+			errMatch:  "mapping, string, or boolean",
+		},
+		{
+			name:      "multiple error-format versions",
+			yamlStr:   "plugin: {error-format: {v3: {}, v4: {}}}",
+			expectErr: true,
+			errMatch:  `plugin "error-format" must select only one of v3 or v4`,
+		},
+		{
+			name:      "invalid v3 error-format configuration",
+			yamlStr:   "plugin: {error-format: {v3: {unknown: true}}}",
+			expectErr: true,
+			errMatch:  `error-format v3: unknown key "unknown"`,
+		},
+		{
+			name:      "invalid v4 error-format configuration",
+			yamlStr:   "plugin: {error-format: {v4: {position: bad}}}",
+			expectErr: true,
+			errMatch:  `error-format v4: invalid position "bad"`,
+		},
+		{
 			name:    "plugin disabled",
 			yamlStr: "plugin: {loader-limits: false}",
 		},

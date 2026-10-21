@@ -1,11 +1,11 @@
 // Copyright 2026 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-// Package errfmtv3 provides the go-yaml v3-compatible error formatter.
+// Package errorformatv3 provides the go-yaml v3-compatible error formatter.
 //
 // The v3 formatter renders load errors as "yaml: line N: message" and dump
 // errors as "yaml: message", matching the legacy go-yaml error style.
-package errfmtv3
+package errorformatv3
 
 import (
 	"fmt"
@@ -21,7 +21,7 @@ func New() *Plugin {
 	return &Plugin{}
 }
 
-// FormatLoadError implements [yaml.ErrorFmtPlugin].
+// FormatLoadError implements [yaml.ErrorFormatPlugin].
 func (p *Plugin) FormatLoadError(err *libyaml.LoadError) string {
 	line := err.Mark.Line
 	if line == 0 {
@@ -30,7 +30,7 @@ func (p *Plugin) FormatLoadError(err *libyaml.LoadError) string {
 	return fmt.Sprintf("yaml: line %d: %s", line, err.Message)
 }
 
-// FormatDumpError implements [yaml.ErrorFmtPlugin].
+// FormatDumpError implements [yaml.ErrorFormatPlugin].
 func (p *Plugin) FormatDumpError(err *libyaml.DumpError) string {
 	return fmt.Sprintf("yaml: %s", err.Message)
 }
@@ -38,7 +38,7 @@ func (p *Plugin) FormatDumpError(err *libyaml.DumpError) string {
 // NewFromYAML creates a v3 error formatting plugin from YAML config.
 func NewFromYAML(cfg map[string]any) (*Plugin, error) {
 	for key := range cfg {
-		return nil, fmt.Errorf("errfmt v3: unknown key %q", key)
+		return nil, fmt.Errorf("error-format v3: unknown key %q", key)
 	}
 	return New(), nil
 }

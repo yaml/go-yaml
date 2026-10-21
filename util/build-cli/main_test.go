@@ -19,6 +19,41 @@ func TestInspectConfig(t *testing.T) {
 		version       string
 	}{
 		{"defaults", "{}", false, false, ""},
+		{"error format", "plugin: {error-format: true}", false, false, ""},
+		{
+			"error format implementation", "plugin: {error-format: error-format}",
+			false, false, "",
+		},
+		{
+			"error format v3", "plugin: {error-format: {v3: {}}}",
+			false, false, "",
+		},
+		{
+			"error format v4",
+			"plugin: {error-format: {name: error-format, v4: {position: long}}}",
+			false, false, "",
+		},
+		{
+			"invalid error format", "plugin: {error-format: {v4: {position: bad}}}",
+			false, true, "",
+		},
+		{
+			"versioned error format", "plugin: {error-format: {version: 1.2.3}}",
+			false, true, "",
+		},
+		{
+			"unknown error format implementation",
+			"plugin: {error-format: {name: missing}}", false, true, "",
+		},
+		{"old error format API", "plugin: {errfmt: true}", false, true, ""},
+		{
+			"old error format implementation", "plugin: {error-format: errfmt}",
+			false, true, "",
+		},
+		{
+			"disabled old error format API", "plugin: {errfmt: false}",
+			false, false, "",
+		},
 		{
 			"limit", "plugin: {loader-limits: {depth: 50, alias: null}}",
 			false, false, "",
@@ -164,6 +199,56 @@ func TestConfiguredTabIndentCLI(t *testing.T) {
 	if err != nil || string(out) != "root:\n\tvalue: true\n" {
 		t.Fatalf("got %q, %v", out, err)
 	}
+}
+
+func TestConfiguredErrorFormatCLI(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	goTool, err := exec.LookPath("go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory := t.TempDir()
+	config := filepath.Join(directory, "options.yaml")
+	binary := filepath.Join(directory, "go-yaml")
+	data := "plugin:\n  error-format:\n    v4:\n" +
+		"      load-template: 'custom {{.Stage}}: {{.Message}}'\n"
+	if err := os.WriteFile(config, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := buildCLI(root, config, binary, goTool, ""); err != nil {
+		t.Fatal(err)
+	}
+	run := func(want string, flags ...string) {
+		t.Helper()
+		cmd := exec.Command(binary, append([]string{"-j"}, flags...)...)
+		cmd.Stdin = strings.NewReader("value: -\n")
+		out, err := cmd.CombinedOutput()
+		if err == nil || !strings.Contains(string(out), want) {
+			t.Fatalf("%v: got %q, %v; want %q", flags, out, err, want)
+		}
+	}
+	run("custom scanner: block sequence entries are not allowed in this context")
+	for _, selector := range []string{
+		"error-format", "error-format=error-format",
+	} {
+		run("go-yaml load error in scanner at L1.C8:", "--plugin="+selector)
+		if err := buildCLIWithPlugins(
+			root, "", selector, binary, goTool, ""); err != nil {
+			t.Fatal(err)
+		}
+		run("go-yaml load error in scanner at L1.C8:")
+	}
+	data = "plugin: {error-format: {v3: {}}}\n"
+	if err := os.WriteFile(config, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	run("yaml: line 1: block sequence entries are not allowed in this context",
+		"-C", config)
+	run(`plugin "errfmt" has no default implementation`, "--plugin=errfmt")
+	run(`unknown implementation "errfmt"`, "--plugin=error-format=errfmt")
 }
 
 func TestConfiguredCLI(t *testing.T) {

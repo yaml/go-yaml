@@ -49,12 +49,12 @@ type LoadError struct {
 	err error // Underlying error (for Unwrap support)
 
 	// formatter is an optional function that controls the error string
-	// representation. Set by the errfmt plugin via Options.FormatLoadError.
+	// representation. Set by the error-format plugin via Options.FormatLoadError.
 	formatter func(*LoadError) string
 }
 
 // Error returns the error message with stage and position information.
-// If a formatter is set (via the errfmt plugin), it is called instead.
+// If a formatter is set (via the error-format plugin), it is called instead.
 // Default format: "go-yaml load error in <stage> at L:C: <message>"
 // Or with context: "go-yaml load error in <stage> (<ctx>) at L:C-L:C: <message>"
 func (e *LoadError) Error() string {
@@ -126,7 +126,7 @@ type DumpError struct {
 	err error // Underlying error (for Unwrap support)
 
 	// formatter is an optional function that controls the error string
-	// representation. Set by the errfmt plugin via Options.FormatDumpError.
+	// representation. Set by the error-format plugin via Options.FormatDumpError.
 	formatter func(*DumpError) string
 }
 
