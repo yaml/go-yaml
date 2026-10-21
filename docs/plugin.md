@@ -103,6 +103,32 @@ Version presets select error formatting as follows:
 | `yaml.WithV3Defaults()` | v3 formatter |
 | `yaml.WithV4Defaults()` | v4 formatter |
 
+Historical go-yaml v2 errors used the `yaml: ...` prefix, with `line N:` when
+position information was available.
+`WithV2Defaults()` selects v2-compatible processing and output options together
+with the current v4 error formatter.
+It does not reproduce historical v2 error strings.
+For legacy-style error strings, apply the v3 formatter after the preset:
+
+```go
+opts := yaml.Options(
+    yaml.WithV2Defaults(),
+    yaml.WithPlugin(errorformatv3.New()),
+)
+```
+
+The legacy APIs select their error formatters as follows:
+
+| API | Error Formatter |
+|---|---|
+| `yaml.Unmarshal`, `yaml.NewDecoder` | v3 formatter |
+| `yaml.Marshal` | v3 formatter |
+| `yaml.NewEncoder` | v4 formatter |
+
+`NewEncoder` keeps v3-compatible serialization options and explicitly selects
+v4 error formatting.
+Serialization options and error formatting are independent settings.
+
 ## YAML Configuration
 
 Plugins can be configured from YAML strings using `yaml.OptsYAML`:

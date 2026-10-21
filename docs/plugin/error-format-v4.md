@@ -8,8 +8,16 @@ go-yaml load error in scanner at L2.C6: message
 go-yaml dump error in representer: message
 ```
 
-It is installed by default for bare `yaml.Load`, `yaml.NewLoader`,
-`yaml.NewEncoder`, `yaml.WithV2Defaults()`, and `yaml.WithV4Defaults()`.
+Bare `yaml.Load`, `yaml.Dump`, `yaml.NewLoader`, and `yaml.NewDumper` use this
+formatter.
+`yaml.WithV2Defaults()` and `yaml.WithV4Defaults()` also select v4 formatting.
+
+`yaml.NewEncoder` keeps v3-compatible serialization options and explicitly
+selects the v4 error formatter.
+`yaml.Marshal` uses v3 error formatting.
+See [default selection](../plugin.md#default-behavior) for the complete mapping
+and the historical v2 error style.
+
 Use this plugin explicitly when you want v4 formatting after another preset, or
 when you need custom position text or custom templates.
 

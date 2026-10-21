@@ -39,6 +39,9 @@ import (
 //	yaml.Dump(&data, yaml.WithV3Defaults(), yaml.WithIndent(2), yaml.WithCompactSeqIndent())
 
 // WithV2Defaults returns V2-compatible default options.
+// It uses the current v4 error formatter.
+// To select legacy-style error strings, apply WithPlugin(errorformatv3.New())
+// after this preset.
 func WithV2Defaults() Option {
 	return Options(
 		WithIndent(2),
@@ -871,6 +874,7 @@ type Encoder struct {
 }
 
 // NewEncoder returns a new encoder that writes to w.
+// It uses v3-compatible serialization options and the v4 error formatter.
 // The Encoder should be closed after use to flush all data
 // to w.
 func NewEncoder(w io.Writer) *Encoder {

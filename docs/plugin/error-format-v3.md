@@ -14,13 +14,20 @@ on the older error string shape.
 ## Defaults
 
 `yaml.WithV3Defaults()` installs the v3 error formatter automatically.
-The legacy APIs `yaml.Unmarshal`, `yaml.Marshal`, and `yaml.NewDecoder` use
-v3 defaults. `yaml.NewEncoder` keeps v3-compatible dump options, but uses the
-v4 error formatter.
+`yaml.Unmarshal` and `yaml.NewDecoder` use v3 error formatting for loading.
+`yaml.Marshal` uses v3 error formatting for dumping.
 
-Bare `yaml.Load`, `yaml.NewLoader`, `yaml.WithV2Defaults()`, and
-`yaml.WithV4Defaults()` use the v4 formatter unless you explicitly register
-the v3 plugin.
+`yaml.NewEncoder` keeps v3-compatible serialization options and explicitly
+selects the v4 error formatter.
+Its YAML output settings and error formatting are independent.
+
+Bare `yaml.Load`, `yaml.Dump`, `yaml.NewLoader`, and `yaml.NewDumper` use the
+v4 formatter.
+`yaml.WithV2Defaults()` and `yaml.WithV4Defaults()` also select v4 formatting.
+The v2 preset keeps current error formatting while selecting v2-compatible
+processing and output options.
+See [default selection](../plugin.md#default-behavior) for the complete mapping
+and the historical v2 error style.
 
 ## Go Usage
 
@@ -45,6 +52,17 @@ With v3 defaults:
 ```go
 var out any
 err := yaml.Load(data, &out, yaml.WithV3Defaults())
+```
+
+To combine v2-compatible options with legacy-style error strings, select the
+v3 formatter after the preset:
+
+```go
+var out any
+err := yaml.Load(data, &out,
+    yaml.WithV2Defaults(),
+    yaml.WithPlugin(errorformatv3.New()),
+)
 ```
 
 ## Output
