@@ -7,28 +7,34 @@ Below is a summary of its capabilities:
 
 ## License
 
-The `go-yaml` project is licensed under the Apache License 2.0.
-See the [LICENSE](LICENSE) file for more details.
+See [LICENSE](../../LICENSE) and [NOTICE](../../NOTICE) for licensing details,
+including the MIT license retained by the listed libyaml-derived files.
 
 ## Features
 
 ### YAML Parsing and Encoding
-- `-y` / `--yaml`: Outputs YAML in a compact format.
-- `-Y` / `--YAML`: Outputs YAML while preserving styles and comments.
+
+- `-y` / `--yaml`: Outputs YAML through ordinary value encoding.
+- `-Y` / `--YAML`: Outputs YAML using nodes, retaining supported styles and
+  comments without promising exact formatting preservation.
 
 ### JSON Conversion
+
 - `-j` / `--json`: Outputs JSON in a compact format.
 - `-J` / `--JSON`: Outputs JSON in a pretty-printed format.
 
 ### Token Inspection
+
 - `-t` / `--token`: Outputs tokens from the YAML input.
 - `-T` / `--TOKEN`: Outputs tokens with line information.
 
 ### Event Inspection
+
 - `-e` / `--event`: Outputs events from the YAML input.
 - `-E` / `--EVENT`: Outputs events with line information.
 
 ### Node Representation
+
 - `-n` / `--node`: Outputs a compact representation of the YAML node structure.
 - `-N` / `--NODE`: Outputs nodes with tags and styles.
 
@@ -70,19 +76,40 @@ inputs. Token and event streams include `STREAM-START` and `STREAM-END` so a
 pipeline can validate that it received a complete stream.
 
 ### Formatting Options
+
 - `-l` / `--long`: Enables long (block) formatted output.
 
 ### Processing Modes
-- `-u` / `--unmarshal`: Uses `Unmarshal` instead of `Decode` for YAML input.
-- `-m` / `--marshal`: Uses `Marshal` instead of `Encode` for YAML output.
 
-### Help and Version
+The default processing path uses `Load` and `Dump`.
+These long flags select the classic APIs for comparison:
+
+- `--unmarshal`: Uses `Unmarshal` for YAML input.
+- `--decode`: Uses `Decoder.Decode` for YAML input.
+- `--marshal`: Uses `Marshal` for YAML output.
+- `--encode`: Uses `Encoder.Encode` for YAML output.
+
+### Help and Build Information
+
 - `-h` / `--help`: Displays help information.
-- `--version`: Displays the version of the tool.
+- `-o help`: Lists available option names and presets.
+
+Use Go's build information to identify the installed module revision:
+
+```bash
+go version -m "$(command -v go-yaml)"
+```
 
 ## Usage
-The tool reads YAML data from `stdin` and processes it based on the specified
-flags.
+
+Select an output mode and pass a file, or read from standard input.
+Put flags before the file name:
+
+```bash
+go-yaml -J config.yaml
+go-yaml -n < config.yaml
+```
+
 It validates flag combinations and provides error messages for incompatible
 options.
 

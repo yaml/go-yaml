@@ -33,6 +33,11 @@ YTS-DIR := yts/testdata/$(YTS-TAG)
 
 CLI-BINARY := go-yaml
 
+# README recording tools are installed only when explicitly requested.
+YAMLCAST-COMMIT := 0dfec58fc184e97b21239d0b54dc222bd8311cf1
+YAMLCAST-YS-VERSION := 0.2.32
+YAMLCAST-URL := https://codeload.github.com/ingydotnet/yamlcast
+
 # Pager for viewing documentation:
 PAGER ?= less -FRX
 
@@ -49,6 +54,11 @@ GO-NO-DEP-GO := true
 endif
 
 include $(MAKES)/go.mk
+
+YAMLCAST-ROOT := $(LOCAL-ROOT)/yamlcast-$(YAMLCAST-COMMIT)
+YAMLCAST := $(YAMLCAST-ROOT)/bin/yamlcast
+YAMLCAST-ARCHIVE := $(LOCAL-CACHE)/yamlcast-$(YAMLCAST-COMMIT).tar.gz
+YAMLCAST-READY := $(YAMLCAST-ROOT)/.cache/ready-$(YAMLCAST-YS-VERSION)
 
 # Set this from the `make` command to override:
 GOLANGCI-LINT-VERSION ?= v2.14.0
@@ -182,6 +192,30 @@ endif
 
 $(CLI-BINARY): $(GO)
 	go build -o $@ ./cmd/$@
+
+# Render the README image with the current CLI and demo sources.
+# Chrome's Unix socket path is too long under the project-local TMPDIR.
+update: cli yamlcast
+	@TMPDIR=/tmp YAMLCAST_ROOT=$(YAMLCAST-ROOT) \
+	PATH=$(YAMLCAST-ROOT)/.cache/local/bin:$(PATH) \
+	  $(YAMLCAST) docs/demo/cli.yaml
+
+yamlcast: $(YAMLCAST-READY)
+
+$(YAMLCAST-READY): $(YAMLCAST)
+	$(MAKE) -C $(YAMLCAST-ROOT) \
+	  YAMLSCRIPT-VERSION=$(YAMLCAST-YS-VERSION) shell CMD=true
+	touch $@
+
+$(YAMLCAST): $(YAMLCAST-ARCHIVE)
+	mkdir -p $(YAMLCAST-ROOT)/.cache
+	tar -xzf $< -C $(YAMLCAST-ROOT) --strip-components=1
+	ln -sfn $(MAKES) $(YAMLCAST-ROOT)/.cache/makes
+	touch $@
+
+$(YAMLCAST-ARCHIVE):
+	curl+ $(YAMLCAST-URL)/tar.gz/$(YAMLCAST-COMMIT) > $@.tmp
+	mv $@.tmp $@
 
 run-examples: $(GO)
 	@for dir in example/*/; do \
