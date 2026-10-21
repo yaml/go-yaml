@@ -16,14 +16,11 @@
 // Tab indentation plugin (plugin/tabindent), API tab-indent:
 //   - Tab-aware structural indentation for loading and dumping
 //
-// JSON-comments plugin (plugin/jsoncomments), API json-comments:
-//   - Optional JSON-style comment sanitizing
-//
 // Reference YAML-parser plugin (plugin/yamlparser/reference), API yaml-parser:
 //   - Optional YAMLStar reference parser implementation
 //
-// The JSON-comments and reference YAML-parser packages are separate Go modules
-// so their dependencies remain optional.
+// The reference YAML-parser package is a separate Go module so its
+// dependencies remain optional.
 //
 // ErrorFormat plugins (plugin/errorformat/v3 and plugin/errorformat/v4):
 //   - Versioned YAML load and dump error message formatting

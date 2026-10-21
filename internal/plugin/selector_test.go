@@ -10,22 +10,22 @@ import (
 
 func TestParseSelectors(t *testing.T) {
 	got, err := ParseSelectors(
-		"yaml-parser=reference@v0.2.5,json-comments")
+		"yaml-parser=reference@v0.2.5,loader-limits")
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := []Selection{
 		{API: "yaml-parser", Name: "reference", Version: "v0.2.5"},
-		{API: "json-comments"},
+		{API: "loader-limits"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %#v, want %#v", got, want)
 	}
-	got, err = ParseSelectors("json-comments@0.1.9")
+	got, err = ParseSelectors("loader-limits@1.2.3")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want = []Selection{{API: "json-comments", Version: "0.1.9"}}
+	want = []Selection{{API: "loader-limits", Version: "1.2.3"}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %#v, want %#v", got, want)
 	}

@@ -52,9 +52,6 @@ type Options struct {
 	// Parser supplies complete events in place of native parsing.
 	Parser ParserPlugin
 
-	// JSONComments sanitizes JSON-style comments before parsing.
-	JSONComments JSONCommentsPlugin
-
 	// IndentConfig enables tab-aware structural indentation.
 	IndentConfig *IndentConfig
 
