@@ -1,8 +1,0 @@
-indent: 2
-plugin:
-  loader-limits:
-    depth: 3
-    alias: 100
-  json-comments:
-    name: sanitizer
-    version: v0.1.9

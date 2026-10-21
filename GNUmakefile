@@ -175,15 +175,14 @@ tidy: $(GO-DEPS)
 # Pass configuration paths as environment values, not shell source.
 export GO_YAML_BUILD_CONFIG = $(CONFIG)
 export GO_YAML_BUILD_PLUGIN = $(PLUGIN)
+export GO_YAML_BUILD_PLUGIN_PACKAGE = $(PLUGIN-PACKAGE)
 export GO_YAML_BUILD_GO = $(GO)
 export GO_YAML_BUILD_PERL = $(PERL)
-JSON-COMMENTS-LOCAL ?= 0
-export GO_YAML_JSON_COMMENTS_LOCAL = $(JSON-COMMENTS-LOCAL)
 REFERENCE-PARSER-LOCAL ?= 0
 export GO_YAML_REFERENCE_PARSER_LOCAL = $(REFERENCE-PARSER-LOCAL)
 
 cli: $(GO)
-ifneq ($(strip $(CONFIG)$(PLUGIN)),)
+ifneq ($(strip $(CONFIG)$(PLUGIN)$(PLUGIN-PACKAGE)),)
 cli: $(PERL)
 	go run ./util/build-cli
 else
@@ -255,35 +254,11 @@ $(GOLANGCI-LINT): $(GOLANGCI-LINT-VERSIONED)
 # Optional plugin dependencies stay outside the core module.
 PLUGIN-WORK = $(CURDIR)/.cache/plugin-work/go.work
 
-prepare-json-comments: $(PERL) $(GO-DEPS)
-	GO_YAML_BUILD_JSON_COMMENTS=true \
-	GO_YAML_JSON_COMMENTS_LOCAL=1 \
-	GO_YAML_JSON_COMMENTS_VERSION=v0.1.9 \
-	$(PERL) util/prepare-plugins
-
 prepare-reference-parser: $(PERL) $(GO-DEPS)
 	GO_YAML_BUILD_REFERENCE_PARSER=true \
 	GO_YAML_REFERENCE_PARSER_LOCAL=1 \
 	GO_YAML_REFERENCE_PARSER_VERSION=v0.2.5 \
 	$(PERL) util/prepare-plugins
-
-test-json-comments: prepare-json-comments
-	GOWORK=$(PLUGIN-WORK) CGO_ENABLED=0 \
-	  go test ./plugin/jsoncomments/... ./.cache/cli-plugins/...$(TEST-OPTS)
-	GO_YAML_TEST_JSON_COMMENTS=1 \
-	GO_YAML_JSON_COMMENTS_LOCAL=1 \
-	go test ./util/build-cli \
-	  -run TestConfiguredJSONCLI$(TEST-OPTS)
-
-lint-json-comments: prepare-json-comments $(GOLANGCI-LINT-VERSIONED)
-	GOWORK=$(PLUGIN-WORK) $(GOLANGCI-LINT-VERSIONED) run \
-	  ./plugin/jsoncomments/...
-
-# The generated parser shares state; exercise concurrent Go and EDN callers.
-test-json-comments-race: prepare-json-comments
-	GOWORK=$(PLUGIN-WORK) go test -race -count=3 \
-	  ./plugin/jsoncomments/... \
-	  github.com/yamlstar/yamlstar-plugin-json-comments/parser
 
 test-reference-parser: prepare-reference-parser
 	GOWORK=$(PLUGIN-WORK) CGO_ENABLED=0 \

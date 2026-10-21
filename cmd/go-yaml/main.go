@@ -599,13 +599,6 @@ func main() {
 		}
 		return
 	}
-	if configured.JSONComments != nil &&
-		(*tokenMode || *tokenProfuseMode || unmarshalMode || decodeMode) {
-		inputData, err = configured.JSONComments.Sanitize(inputData)
-		if err != nil {
-			log.Fatal("Failed to sanitize JSON comments:", err)
-		}
-	}
 	input = bytes.NewReader(inputData)
 
 	// Process YAML input

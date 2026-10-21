@@ -61,9 +61,6 @@ type LimitPlugin = LoaderLimitsPlugin
 // ParserPlugin supplies a complete event stream in place of native parsing.
 type ParserPlugin = libyaml.ParserPlugin
 
-// JSONCommentsPlugin sanitizes JSON-style comments before parsing.
-type JSONCommentsPlugin = libyaml.JSONCommentsPlugin
-
 // IndentMode supplies loading and dumping defaults.
 type IndentMode = libyaml.IndentMode
 

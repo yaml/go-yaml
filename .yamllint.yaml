@@ -5,7 +5,6 @@ extends: default
 
 ignore: |
   /**/testdata/
-  /example/json-comments/data.yaml
 
 rules:
   brackets:

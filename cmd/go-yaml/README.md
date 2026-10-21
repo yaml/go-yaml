@@ -122,17 +122,17 @@ Optional plugin implementations must be selected while building the command.
 `PLUGIN` contains only the plugin selector DSL:
 
 ```bash
-make cli PLUGIN=yaml-parser=reference@v0.2.5,json-comments
-./go-yaml --plugin=yaml-parser=reference@0.2.5,json-comments \
-  -j example/json-comments/data.yaml
+make cli PLUGIN=yaml-parser=reference@v0.2.5,loader-limits
+./go-yaml --plugin=yaml-parser=reference@0.2.5,loader-limits \
+  -j data.yaml
 ```
 
 The selector forms are `API`, `API@VERSION`, `API=IMPLEMENTATION`, and
 `API=IMPLEMENTATION@VERSION`.
 Comma-separated selectors can be passed in one flag.
 A bare API selects its default implementation.
-The `json-comments` default is `sanitizer`, the `yaml-parser` default is
-`go-yaml`, and the `tab-indent` default is `tab-indent`.
+The `yaml-parser` default is `go-yaml`, and the `tab-indent` default is
+`tab-indent`.
 The `error-format` default implementation is also named `error-format`:
 
 ```bash
@@ -166,7 +166,6 @@ plugin:
       position: long
   tab-indent:
     mode: auto
-  json-comments: sanitizer@v0.1.9
 ```
 
 ```bash
@@ -193,8 +192,6 @@ Null plugin values are invalid.
 Versions may be entered with or without `v`, but documentation and Git tags use
 the prefix.
 
-The JSON-comments sanitizer works in JSON, YAML, node, event, token, and legacy
-loading modes when the built-in parser is selected.
 External YAML-parser plugins work in JSON, YAML, node, and event modes.
 Token and legacy modes reject them because those paths do not consume
 YAML-parser plugin events.
@@ -203,8 +200,32 @@ Legacy loading and dumping modes reject it because they do not use the
 plugin-aware pipeline.
 
 For local development, related checkouts must be under `repos/`.
-Set `JSON-COMMENTS-LOCAL=1` or `REFERENCE-PARSER-LOCAL=1` to use them.
+Set `REFERENCE-PARSER-LOCAL=1` to use the local reference-parser checkout.
 Build staging, workspaces, and downloaded build metadata live under `.cache/`.
 Go stores downloaded released modules in its module cache.
 
-Use `make cli` without `CONFIG` or `PLUGIN` to restore the ordinary command.
+Use `make cli` without `CONFIG`, `PLUGIN`, or `PLUGIN-PACKAGE` to restore the
+ordinary command.
+
+## External plugin packages
+
+`PLUGIN-PACKAGE` accepts a comma-separated list of released Go packages, each
+with an explicit tagged version.
+Each package must export `Register() error` and register its implementations
+using `yaml.RegisterPlugin`.
+
+```bash
+make cli \
+  PLUGIN-PACKAGE=example.org/custom-parser/goyaml@v1.2.3 \
+  PLUGIN=yaml-parser=custom
+```
+
+Package versions may include release suffixes such as `v1.2.3-rc.1`.
+Local paths, unversioned packages, and `@latest` are not supported.
+A packages-only build keeps native defaults and permits later selection with
+`--plugin` or `--config`.
+Packages register in list order; configuration is validated after registration.
+Compilation, registration, or configuration failures preserve an existing binary.
+
+See [the plugin documentation](../../docs/plugin.md#external-plugin-packages)
+for multiple-package builds and the external registration contract.

@@ -12,7 +12,6 @@ use JSON::PP;
 
 my $root = abs_path('.');
 my $go = $ENV{GO_YAML_BUILD_GO} || 'go';
-my $json_enabled = ($ENV{GO_YAML_BUILD_JSON_COMMENTS} // '') eq 'true';
 my $reference_enabled = ($ENV{GO_YAML_BUILD_REFERENCE_PARSER} // '') eq 'true';
 
 sub go_json {
@@ -95,40 +94,6 @@ sub resolve_version {
 }
 
 my @plugins;
-if ($json_enabled) {
-    my $local = ($ENV{GO_YAML_JSON_COMMENTS_LOCAL} // '0') eq '1';
-    my $upstream = "$root/repos/yamlstar-plugin-json-comments";
-    -f "$upstream/sanitizer/sanitizer.go"
-        or die "Missing JSON-comments sanitizer in $upstream\n" if $local;
-    my $query = canonical_query(
-        $ENV{GO_YAML_JSON_COMMENTS_VERSION}, 'JSON-comments');
-    my $local_version = $local
-        ? local_version("$upstream/plugin.edn",
-            qr/:version\s+"([0-9]+\.[0-9]+\.[0-9]+)"/,
-            'JSON-comments')
-        : '';
-    push @plugins, {
-        api => 'json-comments',
-        module => 'github.com/yamlstar/yamlstar-plugin-json-comments',
-        wrapper => 'go.yaml.in/yaml/v4/plugin/jsoncomments',
-        wrapper_path => "$root/plugin/jsoncomments",
-        upstream => $upstream,
-        local => $local,
-        version => resolve_version(
-            'github.com/yamlstar/yamlstar-plugin-json-comments',
-            $query, $local, $local_version),
-        source => <<'GO',
-package main
-
-import jsoncomments "go.yaml.in/yaml/v4/plugin/jsoncomments"
-
-func init() {
-	compiledPluginRegistrations = append(
-		compiledPluginRegistrations, jsoncomments.Register)
-}
-GO
-    };
-}
 if ($reference_enabled) {
     my $local = ($ENV{GO_YAML_REFERENCE_PARSER_LOCAL} // '0') eq '1';
     my $upstream = "$root/repos/yamlstar-plugin-parser-reference";
@@ -201,8 +166,6 @@ make_path($workdir);
 my @work_uses = ($root);
 my @work_replacements;
 for my $plugin (@plugins) {
-    push @work_uses, "$root/example/json-comments"
-        if $plugin->{api} eq 'json-comments';
     push @work_uses, $plugin->{wrapper_path};
     if ($plugin->{local}) {
         push @work_uses, $plugin->{upstream};

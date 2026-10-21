@@ -294,7 +294,6 @@ type DepthContext = libyaml.DepthContext
 // Currently supported plugin types:
 //   - LoaderLimitsPlugin: Controls depth and alias expansion limits
 //   - ParserPlugin: Supplies a complete YAML event stream
-//   - JSONCommentsPlugin: Sanitizes JSON-style comments before parsing
 //   - TabIndentPlugin: Enables tab-aware loading and tab-indented dumping
 //   - ErrorFormatPlugin: Customizes load and dump error message formatting
 //
@@ -322,14 +321,6 @@ func WithPlugin(plugins ...any) Option {
 					return errors.New("yaml: multiple yaml-parser plugins")
 				}
 				o.Parser = source
-				registered = true
-			}
-			if comments, ok := p.(JSONCommentsPlugin); ok {
-				if o.JSONComments != nil {
-					return errors.New(
-						"yaml: multiple json-comments plugins")
-				}
-				o.JSONComments = comments
 				registered = true
 			}
 			if tabs, ok := p.(TabIndentPlugin); ok {
