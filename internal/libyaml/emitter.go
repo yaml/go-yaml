@@ -973,7 +973,7 @@ func (emitter *Emitter) emitNode(event *Event,
 
 	switch event.Type {
 	case ALIAS_EVENT:
-		return emitter.emitAlias(event)
+		return emitter.emitAlias()
 	case SCALAR_EVENT:
 		return emitter.emitScalar(event)
 	case SEQUENCE_START_EVENT:
@@ -988,7 +988,7 @@ func (emitter *Emitter) emitNode(event *Event,
 }
 
 // Expect ALIAS.
-func (emitter *Emitter) emitAlias(event *Event) error {
+func (emitter *Emitter) emitAlias() error {
 	if err := emitter.processAnchor(); err != nil {
 		return err
 	}
