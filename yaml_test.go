@@ -947,6 +947,62 @@ func TestUnmarshalDurationInt(t *testing.T) {
 	assert.ErrorMatches(t, "yaml: construct errors: line 1: cannot construct !!int `123` into time.Duration", err)
 }
 
+func TestUnmarshalExplicitIntTag(t *testing.T) {
+	// An explicit !!int tag must carry a YAML int literal. Forms that
+	// are only valid as Go integer literals — the 0b binary prefix and
+	// underscore digit separators — are rejected (issue #143), with
+	// the same error as any other non-int value.
+	for _, data := range []string{
+		"a: !!int 0b101010",
+		"a: !!int 0B101010",
+		"a: !!int -0b101010",
+		"a: !!int 1_000_000",
+		"a: !!int 0x_2a",
+	} {
+		value := strings.TrimPrefix(data, "a: !!int ")
+		want := "yaml: cannot construct !!str `" + value + "` as a !!int"
+
+		var m map[string]any
+		err := yaml.Unmarshal([]byte(data), &m)
+		assert.ErrorMatches(t, want, err)
+
+		var s struct {
+			A int `yaml:"a"`
+		}
+		err = yaml.Unmarshal([]byte(data), &s)
+		assert.ErrorMatches(t, want, err)
+	}
+
+	// Valid YAML int literals under an explicit tag keep decoding.
+	for data, want := range map[string]int{
+		"a: !!int 42":    42,
+		"a: !!int -42":   -42,
+		"a: !!int +42":   42,
+		"a: !!int 052":   42,
+		"a: !!int 0o52":  42,
+		"a: !!int 0x2a":  42,
+		"a: !!int +0x2a": 42,
+		"a: !!int -0o52": -42,
+	} {
+		var m map[string]any
+		err := yaml.Unmarshal([]byte(data), &m)
+		assert.NoError(t, err)
+		assert.Equal(t, want, m["a"])
+	}
+
+	// Untagged scalars are unaffected: implicit resolution keeps
+	// accepting the Go-style forms (covered by issue #144, not #143).
+	for data, want := range map[string]int{
+		"a: 0b101010":  42,
+		"a: 1_000_000": 1000000,
+	} {
+		var m map[string]any
+		err := yaml.Unmarshal([]byte(data), &m)
+		assert.NoError(t, err)
+		assert.Equal(t, want, m["a"])
+	}
+}
+
 func TestUnmarshalErrorsFromYAML(t *testing.T) {
 	datatest.RunTestCases(t, func() ([]map[string]any, error) {
 		return datatest.LoadTestCasesFromFile("testdata/unmarshal_errors.yaml", libyaml.LoadAny)
