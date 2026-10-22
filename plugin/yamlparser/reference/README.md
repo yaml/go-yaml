@@ -28,6 +28,14 @@ make cli PLUGIN=yaml-parser=reference@v0.2.6
 For local development, use the checkout under
 `repos/yamlstar-plugin-parser-reference` by setting
 `REFERENCE-PARSER-LOCAL=1`.
+If the checkout is elsewhere in a coordinated workspace, set
+`GO_YAML_REFERENCE_PARSER_DIR` to its absolute path.
+The optional test target also honors this override:
+
+```bash
+GO_YAML_REFERENCE_PARSER_DIR=/path/to/yamlstar-plugin-parser-reference \
+  make test-reference-parser
+```
 
 See the [plugin documentation](../../../docs/plugin.md) for configuration and
 CLI build details.
