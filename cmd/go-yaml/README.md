@@ -122,8 +122,8 @@ Optional plugin implementations must be selected while building the command.
 `PLUGIN` contains only the plugin selector DSL:
 
 ```bash
-make cli PLUGIN=yaml-parser=reference@v0.2.5,loader-limits
-./go-yaml --plugin=yaml-parser=reference@0.2.5,loader-limits \
+make cli PLUGIN=yaml-parser=reference@v0.2.6,loader-limits
+./go-yaml --plugin=yaml-parser=reference@0.2.6,loader-limits \
   -j data.yaml
 ```
 
@@ -157,7 +157,7 @@ configuration as the command's defaults.
 ```yaml
 indent: 4
 plugin:
-  yaml-parser: reference@v0.2.5
+  yaml-parser: reference@v0.2.6
   loader-limits:
     depth: 50
     alias: 100

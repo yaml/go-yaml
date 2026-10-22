@@ -257,7 +257,7 @@ PLUGIN-WORK = $(CURDIR)/.cache/plugin-work/go.work
 prepare-reference-parser: $(PERL) $(GO-DEPS)
 	GO_YAML_BUILD_REFERENCE_PARSER=true \
 	GO_YAML_REFERENCE_PARSER_LOCAL=1 \
-	GO_YAML_REFERENCE_PARSER_VERSION=v0.2.5 \
+	GO_YAML_REFERENCE_PARSER_VERSION=v0.2.6 \
 	$(PERL) util/prepare-plugins
 
 test-reference-parser: prepare-reference-parser
