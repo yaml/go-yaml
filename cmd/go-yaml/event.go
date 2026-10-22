@@ -82,6 +82,29 @@ func ProcessEvents(reader io.Reader, profuse, compact, unmarshal bool, opts ...y
 	return processEventsDecode(reader, profuse, compact, opts...)
 }
 
+// dumpEventInfo dumps value to a YAML string using a temporary Dumper.
+//
+// The error returned by the Dumper's Close method is always reported:
+// when Dump itself fails, a Close error is included alongside the Dump
+// error instead of being discarded (issue #247).
+func dumpEventInfo(what string, value any) (string, error) {
+	var buf bytes.Buffer
+	enc, err := yaml.NewDumper(&buf)
+	if err != nil {
+		return "", fmt.Errorf("failed to create dumper: %w", err)
+	}
+	if err := enc.Dump(value); err != nil {
+		if cerr := enc.Close(); cerr != nil {
+			return "", fmt.Errorf("failed to dump %s: %w (and failed to close dumper: %v)", what, err, cerr)
+		}
+		return "", fmt.Errorf("failed to dump %s: %w", what, err)
+	}
+	if err := enc.Close(); err != nil {
+		return "", fmt.Errorf("failed to close dumper: %w", err)
+	}
+	return buf.String(), nil
+}
+
 // processEventsDecode uses libyaml.Parser.Parse for YAML processing
 func processEventsDecode(reader io.Reader, profuse, compact bool, opts ...yaml.Option) error {
 	// Read all input from reader
@@ -170,38 +193,22 @@ func processEventsDecode(reader io.Reader, profuse, compact bool, opts ...yaml.O
 					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Pos})
 			}
 
-			var buf bytes.Buffer
-			enc, err := yaml.NewDumper(&buf)
+			out, err := dumpEventInfo("compact event info", []*yaml.Node{compactNode})
 			if err != nil {
-				return fmt.Errorf("failed to create dumper: %w", err)
+				return err
 			}
-			if err := enc.Dump([]*yaml.Node{compactNode}); err != nil {
-				enc.Close()
-				return fmt.Errorf("failed to dump compact event info: %w", err)
-			}
-			if err := enc.Close(); err != nil {
-				return fmt.Errorf("failed to close dumper: %w", err)
-			}
-			fmt.Print(buf.String())
+			fmt.Print(out)
 		}
 	} else {
 		// For non-compact mode, output each event as a separate mapping
 		for _, event := range events {
 			info := formatEventInfo(event, profuse)
 
-			var buf bytes.Buffer
-			enc, err := yaml.NewDumper(&buf)
+			out, err := dumpEventInfo("event info", []*EventInfo{info})
 			if err != nil {
-				return fmt.Errorf("failed to create dumper: %w", err)
+				return err
 			}
-			if err := enc.Dump([]*EventInfo{info}); err != nil {
-				enc.Close()
-				return fmt.Errorf("failed to dump event info: %w", err)
-			}
-			if err := enc.Close(); err != nil {
-				return fmt.Errorf("failed to close dumper: %w", err)
-			}
-			fmt.Print(buf.String())
+			fmt.Print(out)
 		}
 	}
 
@@ -296,38 +303,22 @@ func processEventsUnmarshal(reader io.Reader, profuse, compact bool) error {
 					&yaml.Node{Kind: yaml.ScalarNode, Value: info.Pos})
 			}
 
-			var buf bytes.Buffer
-			enc, err := yaml.NewDumper(&buf)
+			out, err := dumpEventInfo("compact event info", []*yaml.Node{compactNode})
 			if err != nil {
-				return fmt.Errorf("failed to create dumper: %w", err)
+				return err
 			}
-			if err := enc.Dump([]*yaml.Node{compactNode}); err != nil {
-				enc.Close()
-				return fmt.Errorf("failed to dump compact event info: %w", err)
-			}
-			if err := enc.Close(); err != nil {
-				return fmt.Errorf("failed to close dumper: %w", err)
-			}
-			fmt.Print(buf.String())
+			fmt.Print(out)
 		}
 	} else {
 		// For non-compact mode, output each event as a separate mapping
 		for _, event := range events {
 			info := formatEventInfo(event, profuse)
 
-			var buf bytes.Buffer
-			enc, err := yaml.NewDumper(&buf)
+			out, err := dumpEventInfo("event info", []*EventInfo{info})
 			if err != nil {
-				return fmt.Errorf("failed to create dumper: %w", err)
+				return err
 			}
-			if err := enc.Dump([]*EventInfo{info}); err != nil {
-				enc.Close()
-				return fmt.Errorf("failed to dump event info: %w", err)
-			}
-			if err := enc.Close(); err != nil {
-				return fmt.Errorf("failed to close dumper: %w", err)
-			}
-			fmt.Print(buf.String())
+			fmt.Print(out)
 		}
 	}
 
