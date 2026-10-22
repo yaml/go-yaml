@@ -211,7 +211,7 @@ Configuration can use mappings, strings, or booleans:
 
 ```yaml
 plugin:
-  yaml-parser: reference@v0.2.5
+  yaml-parser: reference@v0.2.6
   loader-limits:
     depth: 50
     alias: 1000
@@ -289,7 +289,7 @@ make cli CONFIG=options.yaml
 It never names a file and never contains YAML.
 
 ```bash
-make cli PLUGIN=yaml-parser=reference@v0.2.5,loader-limits
+make cli PLUGIN=yaml-parser=reference@v0.2.6,loader-limits
 make cli PLUGIN=error-format
 ```
 
@@ -314,14 +314,14 @@ For local development, place the related checkouts under `repos/` and set the
 matching override:
 
 ```bash
-make cli PLUGIN=yaml-parser=reference@v0.2.5,loader-limits \
+make cli PLUGIN=yaml-parser=reference@v0.2.6,loader-limits \
   REFERENCE-PARSER-LOCAL=1
 ```
 
 The compiled command uses the same selector DSL at runtime:
 
 ```bash
-./go-yaml --plugin=yaml-parser=reference@0.2.5,loader-limits -j data.yaml
+./go-yaml --plugin=yaml-parser=reference@0.2.6,loader-limits -j data.yaml
 ```
 
 A runtime selector can choose only implementations already linked into the

@@ -133,15 +133,15 @@ func TestInspectConfig(t *testing.T) {
 		{name: "documents", config: "--- {}\n--- {}", invalid: true},
 		{
 			name:      "reference",
-			config:    "plugin: {yaml-parser: reference@v0.2.5}",
+			config:    "plugin: {yaml-parser: reference@v0.2.6}",
 			reference: true,
-			version:   "v0.2.5",
+			version:   "v0.2.6",
 		},
 		{
 			name:      "reference mapping",
-			config:    "plugin: {yaml-parser: {name: reference, version: 0.2.5}}",
+			config:    "plugin: {yaml-parser: {name: reference, version: 0.2.6}}",
 			reference: true,
-			version:   "v0.2.5",
+			version:   "v0.2.6",
 		},
 		{
 			name:    "reference null version",
@@ -170,10 +170,10 @@ func TestInspectConfig(t *testing.T) {
 		},
 		{
 			name:      "external with reference",
-			config:    "plugin: {yaml-parser: reference@v0.2.5, custom: true}",
+			config:    "plugin: {yaml-parser: reference@v0.2.6, custom: true}",
 			external:  true,
 			reference: true,
-			version:   "v0.2.5",
+			version:   "v0.2.6",
 		},
 		{
 			name:     "external invalid core option",
@@ -391,17 +391,17 @@ func TestConfiguredReferenceCLI(t *testing.T) {
 			t.Fatalf("%v: got %q, %v", flags, out, err)
 		}
 	}
-	write("plugin: {yaml-parser: reference@v0.2.5}\n")
+	write("plugin: {yaml-parser: reference@v0.2.6}\n")
 	if err := buildCLI(root, config, binary, goTool,
 		os.Getenv("GO_YAML_BUILD_PERL")); err != nil {
 		t.Fatal(err)
 	}
 	run("-j")
-	run("-j", "--plugin=yaml-parser=reference@0.2.5")
+	run("-j", "--plugin=yaml-parser=reference@0.2.6")
 	run("-j", "--plugin=yaml-parser=go-yaml")
 	modules, err := exec.Command(goTool, "version", "-m", binary).CombinedOutput()
 	if err != nil || !bytes.Contains(modules, []byte(
-		"github.com/yamlstar/yamlstar-plugin-parser-reference\tv0.2.5")) {
+		"github.com/yamlstar/yamlstar-plugin-parser-reference\tv0.2.6")) {
 		t.Fatalf("linked plugin version: %v\n%s", err, modules)
 	}
 	write("plugin: {yaml-parser: reference@v0.2.4}\n")

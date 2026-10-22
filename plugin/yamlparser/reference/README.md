@@ -11,7 +11,7 @@ err := yaml.Load(input, &value, yaml.WithPlugin(reference.New()))
 ```
 
 Call `reference.Register()` before using `yaml.OptsYAML` with
-`plugin: {yaml-parser: reference@v0.2.5}`.
+`plugin: {yaml-parser: reference@v0.2.6}`.
 
 The API name is `yaml-parser` and the implementation name is `reference`.
 This implementation is optional and is not selected by a bare `yaml-parser`
@@ -21,8 +21,8 @@ From the repository root:
 
 ```bash
 make test-reference-parser
-make cli PLUGIN=yaml-parser=reference@v0.2.5
-./go-yaml --plugin=yaml-parser=reference@0.2.5 -j data.yaml
+make cli PLUGIN=yaml-parser=reference@v0.2.6
+./go-yaml --plugin=yaml-parser=reference@0.2.6 -j data.yaml
 ```
 
 For local development, use the checkout under
