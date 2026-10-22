@@ -318,6 +318,30 @@
       a: '1:1'
 
 - encode:
+    name: comma-separated string (YAML 1.1 number compat)
+    data:
+      a: '400,403,404'
+    type: map[string]string
+    want: |
+      a: '400,403,404'
+
+- encode:
+    name: comma with sign prefix (YAML 1.1 number compat)
+    data:
+      a: '+12,345'
+    type: map[string]string
+    want: |
+      a: '+12,345'
+
+- encode:
+    name: comma-separated float (YAML 1.1 number compat)
+    data:
+      a: '1,230.15'
+    type: map[string]string
+    want: |
+      a: '1,230.15'
+
+- encode:
     name: null byte in string
     data:
       a: "\x00"
