@@ -41,6 +41,9 @@ func NewResolver(opts *Options) *Resolver {
 // - Default sequences to !!seq
 // - Default mappings to !!map
 // - Resolve plain scalars to implicit types (int, float, bool, null, timestamp)
+// - Validate scalars carrying an explicit !!int tag against the YAML
+// int grammar, rejecting Go-only literal forms (0b prefix, digit
+// separators) that the constructor would otherwise silently accept
 func (r *Resolver) Resolve(n *Node) {
 	if n == nil {
 		return
@@ -48,6 +51,27 @@ func (r *Resolver) Resolve(n *Node) {
 
 	switch n.Kind {
 	case ScalarNode:
+		if n.Tag != "" && shortTag(n.Tag) == intTag && n.Value != "" {
+			// The tag on the node at this stage was provided by the
+			// document (or set programmatically), never inferred: an
+			// explicit !!int tag must carry a YAML int literal.
+			// Values that are only valid as Go integer literals
+			// (the 0b binary prefix, underscore digit separators)
+			// are silently accepted by the constructor's Go-style
+			// parsing, so reject them here with the same error the
+			// constructor reports for other non-int values.
+			// Untagged scalars are unaffected: they keep being
+			// resolved from their value below.
+			if hint := resolveTable[n.Value[0]]; hint == 'D' || hint == 'S' {
+				if !yamlIntLiteral.MatchString(n.Value) {
+					Fail(formatResolverError(
+						fmt.Sprintf("cannot construct !!str `%s` as a !!int", n.Value),
+						Mark{},
+						r.formatError(),
+					))
+				}
+			}
+		}
 		if n.Tag == "" {
 			if n.Style&(SingleQuotedStyle|DoubleQuotedStyle|LiteralStyle|FoldedStyle) != 0 {
 				// Quoted scalars default to !!str without value resolution
@@ -204,6 +228,14 @@ var negativeZero = math.Copysign(0.0, -1.0)
 // yamlStyleFloat matches floating-point numbers in YAML style (including
 // scientific notation and numbers starting with a dot).
 var yamlStyleFloat = regexp.MustCompile(`^[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?$`)
+
+// yamlIntLiteral matches the integer literals accepted in a scalar
+// carrying an explicit !!int tag: the YAML 1.2 core schema forms
+// (decimal, 0o octal and 0x hexadecimal, with an optional leading sign)
+// plus the legacy leading-zero octal form (052) that go-yaml has always
+// accepted. Go-only forms — the 0b binary prefix and underscore digit
+// separators — do not match.
+var yamlIntLiteral = regexp.MustCompile(`^[-+]?(?:0[xX][0-9a-fA-F]+|0[oO][0-7]+|[0-9]+)$`)
 
 // allowedTimestampFormats lists the timestamp formats supported by the
 // resolver.
