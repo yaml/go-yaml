@@ -96,7 +96,8 @@ sub resolve_version {
 my @plugins;
 if ($reference_enabled) {
     my $local = ($ENV{GO_YAML_REFERENCE_PARSER_LOCAL} // '0') eq '1';
-    my $upstream = "$root/repos/yamlstar-plugin-parser-reference";
+    my $upstream = $ENV{GO_YAML_REFERENCE_PARSER_DIR} ||
+        "$root/repos/yamlstar-plugin-parser-reference";
     -f "$upstream/parser/parser.go"
         or die "Missing reference parser in $upstream\n" if $local;
     my $query = canonical_query(
