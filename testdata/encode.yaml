@@ -13,7 +13,8 @@
 #       ...
 #
 # Test Types:
-#   encode - Validates YAML marshaling of Go values
+#   encode - Validates Marshal with v3 compatibility defaults
+#   encode-opts - Validates Dump with v4 defaults and optional overrides
 #
 # Common Keys:
 #   name - Test case name (string)
@@ -317,6 +318,14 @@
     want: |
       a: "1:1"
 
+- encode-opts:
+    name: v4 defaults - colon-separated string (base 60 float compat)
+    data:
+      a: '1:1'
+    type: map[string]string
+    want: |
+      a: '1:1'
+
 - encode:
     name: null byte in string
     data:
@@ -398,6 +407,14 @@
     want: |
       "<<": []
 
+- encode-opts:
+    name: v4 defaults - merge key as regular key
+    data:
+      '<<': []
+    type: map[string]any
+    want: |
+      '<<': []
+
 - encode:
     name: merge key as value
     data:
@@ -405,6 +422,14 @@
     type: map[string]any
     want: |
       foo: "<<"
+
+- encode-opts:
+    name: v4 defaults - merge key as value
+    data:
+      foo: '<<'
+    type: map[string]any
+    want: |
+      foo: '<<'
 
 # Long strings
 - encode:
@@ -510,6 +535,14 @@
     type: testStructA_String
     want: |
       a: "off"
+
+- encode-opts:
+    name: v4 defaults - struct string field off
+    data:
+      a: off
+    type: testStructA_String
+    want: |
+      a: 'off'
 
 # Struct tests with yaml tags
 - encode:
