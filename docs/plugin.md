@@ -143,6 +143,28 @@ err = yaml.Load(data, &out, opts)
 ```
 
 See the plugin-specific guides for supported configuration keys.
+An unversioned scalar first selects a registered implementation.
+Otherwise, it can name an empty configuration entry accepted by the default
+implementation.
+For example, these configurations are equivalent:
+
+```yaml
+plugin:
+  error-format: v3
+```
+
+```yaml
+plugin:
+  error-format:
+    v3: {}
+```
+
+This shorthand works for any plugin whose default factory accepts that entry.
+Registered implementation names take precedence.
+Explicit `name` fields and versioned selectors always select implementations.
+The same shorthand works with `--plugin=error-format=v3` at runtime and
+`make cli PLUGIN=error-format=v3` at build time.
+
 The default implementation is also named `error-format`:
 
 ```go

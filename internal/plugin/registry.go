@@ -88,6 +88,29 @@ func (r *Registry) Register(registration Registration) error {
 	return nil
 }
 
+// CreateShortForm resolves a scalar implementation or empty configuration entry.
+// Registered names take precedence over entries in the default implementation.
+// Versioned selectors always identify registered implementations.
+func (r *Registry) CreateShortForm(api, value string) (any, error) {
+	cfg, err := ConfigValue(api, value)
+	if err != nil {
+		return nil, fmt.Errorf("yaml: plugin %q: %w", api, err)
+	}
+	api = CanonicalAPI(api)
+	name := cfg["name"].(string)
+	r.RLock()
+	_, registered := r.registrations[api][name]
+	hasDefault := r.defaults[api] != ""
+	r.RUnlock()
+	if !registered && hasDefault && cfg["version"] == nil {
+		entry := map[string]any{name: map[string]any{}}
+		if plugin, err := r.Create(api, entry); err == nil {
+			return plugin, nil
+		}
+	}
+	return r.Create(api, cfg)
+}
+
 // Create resolves and constructs a configured implementation.
 func (r *Registry) Create(api string, cfg map[string]any) (any, error) {
 	api = CanonicalAPI(api)

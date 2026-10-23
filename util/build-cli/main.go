@@ -152,7 +152,8 @@ func inspectConfig(data []byte, external bool) (buildConfig, error) {
 			}
 			switch api {
 			case pluginreg.ErrorFormatAPI, pluginreg.LoaderLimitsAPI:
-				if name != "" && name != api {
+				_, shortForm := value.(string)
+				if name != "" && name != api && !shortForm {
 					return selection, fmt.Errorf(
 						"no CLI build provider for plugin %q implementation %q",
 						api, name)
@@ -232,6 +233,10 @@ func mergePluginDSL(data []byte, specs string) ([]byte, error) {
 		return nil, err
 	}
 	for _, selection := range selections {
+		if selection.Name != "" && selection.Version == "" {
+			plugins[selection.API] = selection.Name
+			continue
+		}
 		if selection.Name == "" && selection.Version == "" {
 			plugins[selection.API] = true
 			continue

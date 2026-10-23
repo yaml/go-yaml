@@ -198,3 +198,21 @@
       value: -
     want: |-
       yaml: line 1: block sequence entries are not allowed in this context
+
+- plugin-error:
+    name: error-format v3 scalar shorthand
+    plugin:
+      error-format: v3
+    data: |
+      value: -
+    want: |-
+      yaml: line 1: block sequence entries are not allowed in this context
+
+- plugin-error:
+    name: error-format v4 scalar shorthand
+    plugin:
+      error-format: v4
+    data: |
+      value: -
+    want: |-
+      go-yaml load error in scanner at L1.C8: block sequence entries are not allowed in this context
