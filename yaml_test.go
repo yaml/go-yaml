@@ -2511,68 +2511,36 @@ func TestEncodeToYAML(t *testing.T) {
 	datatest.RunTestCases(t, func() ([]map[string]any, error) {
 		return datatest.LoadTestCasesFromFile("testdata/encode.yaml", libyaml.LoadAny)
 	}, map[string]datatest.TestHandler{
-		"encode":      runEncodeTest,
-		"encode-opts": runEncodeOptsTest,
+		"encode":  runEncodeTest,
+		"marshal": runMarshalTest,
+		"dump":    runDumpTest,
 	})
 }
 
 func runEncodeTest(t *testing.T, tc map[string]any) {
 	t.Helper()
 
-	// Get type and create instance
-	// Note: "type" field in YAML is renamed to "output_type" during normalization
-	// to avoid conflict with the test type ("encode")
-	typeName, ok := tc["output_type"].(string)
-	if !ok {
-		t.Fatalf("output_type must be a string")
-	}
-	data := tc["data"]
-
-	// Create pointer target of the specified type (for addressability)
-	targetPtr, err := encodeTypeRegistry.NewPointerInstance(typeName)
-	if err != nil {
-		t.Fatalf("Failed to create instance of type %s: %v", typeName, err)
-	}
-
-	// Resolve value constants (like +Inf, -Inf, NaN, -0)
-	resolvedData := encodeValueRegistry.Resolve(data)
-
-	// Unmarshal the data into the target to populate it
-	dataBytes, err := yaml.Marshal(resolvedData)
-	if err != nil {
-		t.Fatalf("Failed to marshal data: %v", err)
-	}
-
-	err = yaml.Unmarshal(dataBytes, targetPtr)
-	if err != nil {
-		t.Fatalf("Failed to unmarshal data into target: %v", err)
-	}
-
-	// Marshal the target back to YAML
-	output, err := yaml.Marshal(targetPtr)
-	if err != nil {
-		t.Fatalf("Marshal failed: %v", err)
-	}
-
-	// Compare with expected output
-	want, ok := tc["want"].(string)
-	if !ok {
-		t.Fatalf("want must be a string")
-	}
-	assert.Equal(t, want, string(output))
+	runEncodeValueTest(t, tc, func(value any) ([]byte, error) {
+		var buf bytes.Buffer
+		encoder := yaml.NewEncoder(&buf)
+		if err := encoder.Encode(value); err != nil {
+			return nil, err
+		}
+		if err := encoder.Close(); err != nil {
+			return nil, err
+		}
+		return buf.Bytes(), nil
+	})
 }
 
-func runEncodeOptsTest(t *testing.T, tc map[string]any) {
+func runMarshalTest(t *testing.T, tc map[string]any) {
 	t.Helper()
 
-	// Get type and create instance
-	// Note: "type" field in YAML is renamed to "output_type" during normalization
-	// to avoid conflict with the test type ("encode-opts")
-	typeName, ok := tc["output_type"].(string)
-	if !ok {
-		t.Fatalf("output_type must be a string")
-	}
-	data := tc["data"]
+	runEncodeValueTest(t, tc, yaml.Marshal)
+}
+
+func runDumpTest(t *testing.T, tc map[string]any) {
+	t.Helper()
 
 	// Parse options
 	var opts []yaml.Option
@@ -2606,6 +2574,22 @@ func runEncodeOptsTest(t *testing.T, tc map[string]any) {
 		}
 	}
 
+	runEncodeValueTest(t, tc, func(value any) ([]byte, error) {
+		return yaml.Dump(value, opts...)
+	})
+}
+
+func runEncodeValueTest(t *testing.T, tc map[string]any, encodeValue func(any) ([]byte, error)) {
+	t.Helper()
+
+	// The fixture's type field is normalized to output_type so it does not
+	// conflict with the handler name stored in type.
+	typeName, ok := tc["output_type"].(string)
+	if !ok {
+		t.Fatalf("output_type must be a string")
+	}
+	data := tc["data"]
+
 	// Create pointer target of the specified type (for addressability)
 	targetPtr, err := encodeTypeRegistry.NewPointerInstance(typeName)
 	if err != nil {
@@ -2626,10 +2610,10 @@ func runEncodeOptsTest(t *testing.T, tc map[string]any) {
 		t.Fatalf("Failed to unmarshal data into target: %v", err)
 	}
 
-	// Dump the target to YAML with options
-	output, err := yaml.Dump(targetPtr, opts...)
+	// Serialize the populated value using the selected API.
+	output, err := encodeValue(targetPtr)
 	if err != nil {
-		t.Fatalf("Dump failed: %v", err)
+		t.Fatalf("%s failed: %v", tc["type"], err)
 	}
 
 	// Compare with expected output

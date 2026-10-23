@@ -13,8 +13,9 @@
 #       ...
 #
 # Test Types:
-#   encode - Validates Marshal with v3 compatibility defaults
-#   encode-opts - Validates Dump with v4 defaults and optional overrides
+#   encode - Validates Encoder.Encode with v3 compatibility defaults
+#   marshal - Validates Marshal with v3 compatibility defaults
+#   dump - Validates Dump with v4 defaults and optional overrides
 #
 # Common Keys:
 #   name - Test case name (string)
@@ -34,8 +35,8 @@
 #
 # Note:
 #   The test framework unmarshals the 'data' into the specified 'type',
-#   then marshals it back to YAML and compares with 'want'. This ensures the
-#   value can be properly constructed from YAML representation.
+#   then serializes it with the selected API and compares with 'want'.
+#   Input quote styles are not retained when constructing Go maps or structs.
 
 # Basic string values
 - encode:
@@ -318,7 +319,15 @@
     want: |
       a: "1:1"
 
-- encode-opts:
+- marshal:
+    name: Marshal - colon-separated string (base 60 float compat)
+    data:
+      a: '1:1'
+    type: map[string]string
+    want: |
+      a: "1:1"
+
+- dump:
     name: v4 defaults - colon-separated string (base 60 float compat)
     data:
       a: '1:1'
@@ -407,7 +416,15 @@
     want: |
       "<<": []
 
-- encode-opts:
+- marshal:
+    name: Marshal - merge key as regular key
+    data:
+      '<<': []
+    type: map[string]any
+    want: |
+      "<<": []
+
+- dump:
     name: v4 defaults - merge key as regular key
     data:
       '<<': []
@@ -423,7 +440,15 @@
     want: |
       foo: "<<"
 
-- encode-opts:
+- marshal:
+    name: Marshal - merge key as value
+    data:
+      foo: '<<'
+    type: map[string]any
+    want: |
+      foo: "<<"
+
+- dump:
     name: v4 defaults - merge key as value
     data:
       foo: '<<'
@@ -432,13 +457,31 @@
       foo: '<<'
 
 # Long strings
-- encode:
+- marshal:
     name: long string no wrapping
     data:
       a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '
     type: map[string]string
     want: |
       a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '
+
+- encode:
+    name: Encode - long string wrapping
+    data:
+      a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '
+    type: map[string]string
+    want: |
+      a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz
+          ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '
+
+- dump:
+    name: Dump - long string wrapping
+    data:
+      a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '
+    type: map[string]string
+    want: |
+      a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz
+        ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '
 
 # Struct encoding tests
 - encode:
@@ -536,7 +579,15 @@
     want: |
       a: "off"
 
-- encode-opts:
+- marshal:
+    name: Marshal - struct string field off
+    data:
+      a: off
+    type: testStructA_String
+    want: |
+      a: "off"
+
+- dump:
     name: v4 defaults - struct string field off
     data:
       a: off
@@ -755,7 +806,7 @@
                 more indented
               regular
 
-- encode-opts:
+- dump:
     name: block scalar indicator - indent 2 in sequence
     data:
       parameters:
@@ -771,7 +822,7 @@
             a
           b
 
-- encode-opts:
+- dump:
     name: block scalar indicator - indent 3 in sequence
     data:
       parameters:
@@ -787,7 +838,7 @@
               a
             b
 
-- encode-opts:
+- dump:
     name: block scalar indicator - indent 4 in sequence
     data:
       parameters:
@@ -803,7 +854,7 @@
                 a
               b
 
-- encode-opts:
+- dump:
     name: block scalar indicator - indent 5 in sequence
     data:
       parameters:
@@ -819,7 +870,7 @@
                   a
                 b
 
-- encode-opts:
+- dump:
     name: block scalar indicator - indent 6 in sequence
     data:
       parameters:
@@ -835,7 +886,7 @@
                     a
                   b
 
-- encode-opts:
+- dump:
     name: block scalar indicator - indent 7 in sequence
     data:
       parameters:
@@ -851,7 +902,7 @@
                       a
                     b
 
-- encode-opts:
+- dump:
     name: block scalar indicator - indent 8 in sequence
     data:
       parameters:
@@ -867,7 +918,7 @@
                         a
                       b
 
-- encode-opts:
+- dump:
     name: block scalar indicator - indent 9 in sequence
     data:
       parameters:
@@ -883,7 +934,7 @@
                           a
                         b
 
-- encode-opts:
+- dump:
     name: block scalar indicator - indent 9 with leading breaks
     data:
       parameters:
@@ -1063,7 +1114,7 @@
 # emitter handles with an explicit indentation indicator. A single line
 # value that must be quoted still uses the preferred quotes (see the
 # QuoteSingle cases below).
-- encode-opts:
+- dump:
     name: style priority - literal wins over quote preference
     data:
       v: "hello\nworld"
@@ -1075,7 +1126,7 @@
         hello
         world
 
-- encode-opts:
+- dump:
     name: style priority - tab-leading multiline stays literal
     data:
       v: "\tthis\nis\nmultiline"
@@ -1085,7 +1136,7 @@
     want: "v: |2-\n  \tthis\n  is\n  multiline\n"
 
 # WithQuotePreference tests - QuoteSingle (v4 default)
-- encode-opts:
+- dump:
     name: QuoteSingle - string "true"
     data:
       v: 'true'
@@ -1095,7 +1146,7 @@
     want: |
       v: 'true'
 
-- encode-opts:
+- dump:
     name: QuoteSingle - string "false"
     data:
       v: 'false'
@@ -1105,7 +1156,7 @@
     want: |
       v: 'false'
 
-- encode-opts:
+- dump:
     name: QuoteSingle - string "null"
     data:
       v: 'null'
@@ -1115,7 +1166,7 @@
     want: |
       v: 'null'
 
-- encode-opts:
+- dump:
     name: QuoteSingle - string "123"
     data:
       v: '123'
@@ -1125,7 +1176,7 @@
     want: |
       v: '123'
 
-- encode-opts:
+- dump:
     name: QuoteSingle - leading whitespace
     data:
       v: ' hello'
@@ -1135,7 +1186,7 @@
     want: |
       v: ' hello'
 
-- encode-opts:
+- dump:
     name: QuoteSingle - trailing whitespace
     data:
       v: 'hello '
@@ -1145,7 +1196,7 @@
     want: |
       v: 'hello '
 
-- encode-opts:
+- dump:
     name: QuoteSingle - syntax character (colon-space)
     data:
       v: ': hello'
@@ -1155,7 +1206,7 @@
     want: |
       v: ': hello'
 
-- encode-opts:
+- dump:
     name: QuoteSingle - dash string
     data:
       v: '-'
@@ -1165,7 +1216,7 @@
     want: |
       v: '-'
 
-- encode-opts:
+- dump:
     name: QuoteSingle - string "off" (YAML 1.1 bool, representer path)
     data:
       v: 'off'
@@ -1175,7 +1226,7 @@
     want: |
       v: 'off'
 
-- encode-opts:
+- dump:
     name: QuoteSingle - merge key "<<" (representer path)
     data:
       '<<': []
@@ -1186,7 +1237,7 @@
       '<<': []
 
 # WithQuotePreference tests - QuoteDouble
-- encode-opts:
+- dump:
     name: QuoteDouble - string "true"
     data:
       v: 'true'
@@ -1196,7 +1247,7 @@
     want: |
       v: "true"
 
-- encode-opts:
+- dump:
     name: QuoteDouble - string "false"
     data:
       v: 'false'
@@ -1206,7 +1257,7 @@
     want: |
       v: "false"
 
-- encode-opts:
+- dump:
     name: QuoteDouble - string "null"
     data:
       v: 'null'
@@ -1216,7 +1267,7 @@
     want: |
       v: "null"
 
-- encode-opts:
+- dump:
     name: QuoteDouble - string "123"
     data:
       v: '123'
@@ -1226,7 +1277,7 @@
     want: |
       v: "123"
 
-- encode-opts:
+- dump:
     name: QuoteDouble - leading whitespace
     data:
       v: ' hello'
@@ -1236,7 +1287,7 @@
     want: |
       v: " hello"
 
-- encode-opts:
+- dump:
     name: QuoteDouble - trailing whitespace
     data:
       v: 'hello '
@@ -1246,7 +1297,7 @@
     want: |
       v: "hello "
 
-- encode-opts:
+- dump:
     name: QuoteDouble - syntax character (colon-space)
     data:
       v: ': hello'
@@ -1256,7 +1307,7 @@
     want: |
       v: ": hello"
 
-- encode-opts:
+- dump:
     name: QuoteDouble - dash string
     data:
       v: '-'
@@ -1266,7 +1317,7 @@
     want: |
       v: "-"
 
-- encode-opts:
+- dump:
     name: QuoteDouble - string "off" (YAML 1.1 bool, representer path)
     data:
       v: 'off'
@@ -1276,7 +1327,7 @@
     want: |
       v: "off"
 
-- encode-opts:
+- dump:
     name: QuoteDouble - merge key "<<" (representer path)
     data:
       '<<': []
@@ -1289,7 +1340,7 @@
 # WithQuotePreference tests - QuoteLegacy (v3 behavior)
 # Legacy: bool-like strings (representer) → double quotes
 # Legacy: whitespace strings (emitter) → single quotes
-- encode-opts:
+- dump:
     name: QuoteLegacy - string "true" (double from representer)
     data:
       v: 'true'
@@ -1299,7 +1350,7 @@
     want: |
       v: "true"
 
-- encode-opts:
+- dump:
     name: QuoteLegacy - string "false" (double from representer)
     data:
       v: 'false'
@@ -1309,7 +1360,7 @@
     want: |
       v: "false"
 
-- encode-opts:
+- dump:
     name: QuoteLegacy - string "null" (double from representer)
     data:
       v: 'null'
@@ -1319,7 +1370,7 @@
     want: |
       v: "null"
 
-- encode-opts:
+- dump:
     name: QuoteLegacy - string "123" (double from representer)
     data:
       v: '123'
@@ -1329,7 +1380,7 @@
     want: |
       v: "123"
 
-- encode-opts:
+- dump:
     name: QuoteLegacy - string "off" (YAML 1.1 bool, double from representer)
     data:
       v: 'off'
@@ -1339,7 +1390,7 @@
     want: |
       v: "off"
 
-- encode-opts:
+- dump:
     name: QuoteLegacy - leading whitespace (single from emitter)
     data:
       v: ' hello'
@@ -1349,7 +1400,7 @@
     want: |
       v: ' hello'
 
-- encode-opts:
+- dump:
     name: QuoteLegacy - trailing whitespace (single from emitter)
     data:
       v: 'hello '
@@ -1359,7 +1410,7 @@
     want: |
       v: 'hello '
 
-- encode-opts:
+- dump:
     name: QuoteLegacy - syntax character (single from emitter)
     data:
       v: ': hello'
@@ -1369,7 +1420,7 @@
     want: |
       v: ': hello'
 
-- encode-opts:
+- dump:
     name: QuoteLegacy - dash string (single from emitter)
     data:
       v: '-'
@@ -1380,7 +1431,7 @@
       v: '-'
 
 # Plain strings should remain unquoted regardless of quote preference
-- encode-opts:
+- dump:
     name: QuoteSingle - plain string stays plain
     data:
       v: hello
@@ -1390,7 +1441,7 @@
     want: |
       v: hello
 
-- encode-opts:
+- dump:
     name: QuoteDouble - plain string stays plain
     data:
       v: hello
