@@ -31,6 +31,14 @@ func TestInspectConfig(t *testing.T) {
 			config: "plugin: {error-format: {v3: {}}}",
 		},
 		{
+			name:   "error format v3 shorthand",
+			config: "plugin: {error-format: v3}",
+		},
+		{
+			name:   "error format v4 shorthand",
+			config: "plugin: {error-format: v4}",
+		},
+		{
 			name: "error format v4",
 			config: "plugin: {error-format: " +
 				"{name: error-format, v4: {position: long}}}",
@@ -275,6 +283,22 @@ func TestConfiguredErrorFormatCLI(t *testing.T) {
 	}
 	run("yaml: line 1: block sequence entries are not allowed in this context",
 		"-C", config)
+	data = "plugin: {error-format: v3}\n"
+	if err := os.WriteFile(config, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	want := "yaml: line 1: block sequence entries are not allowed in this context"
+	run(want, "-C", config)
+	run(want, "--plugin=error-format=v3")
+	if err := buildCLI(root, config, binary, goTool, ""); err != nil {
+		t.Fatal(err)
+	}
+	run(want)
+	if err := buildCLIWithPlugins(
+		root, "", "error-format=v3", binary, goTool, ""); err != nil {
+		t.Fatal(err)
+	}
+	run(want)
 	run(`plugin "errfmt" has no default implementation`, "--plugin=errfmt")
 	run(`unknown implementation "errfmt"`, "--plugin=error-format=errfmt")
 }

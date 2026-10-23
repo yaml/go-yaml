@@ -367,8 +367,8 @@ func WithPlugin(plugins ...any) Option {
 // - plugin (map of plugin API to config)
 //
 // The plugin field configures plugins by API. Each value is a configuration
-// map, true for the default implementation, or false to leave the plugin
-// disabled. A map may select an implementation with "name" and require its
+// map or string, true for the default implementation, or false to leave the
+// plugin disabled. A map may select an implementation with "name" and require its
 // exact release with "version". Versions may include a leading "v".
 // A map may contain "disable": true to leave the plugin disabled.
 // The "name", "version", and "disable" host fields are not passed to the
@@ -377,6 +377,9 @@ func WithPlugin(plugins ...any) Option {
 // Currently supported: "loader-limits" with keys "depth" and "alias" (int
 // or null to disable).
 // The "error-format" API accepts a "v3" or "v4" formatter config.
+// An unversioned string first selects a registered implementation. Otherwise,
+// it may name an empty configuration entry accepted by the default factory:
+// "error-format: v3" is equivalent to "error-format: {v3: {}}".
 //
 // Only fields specified in the YAML will override other options when
 // combined. Unspecified fields won't affect other options.
@@ -501,11 +504,12 @@ func OptsYAML(yamlStr string) (Option, error) {
 				}
 			}
 		case string:
-			var err error
-			cfgMap, err = pluginreg.ConfigValue(name, v)
+			p, err := pluginRegistry.CreateShortForm(name, v)
 			if err != nil {
-				return nil, fmt.Errorf("yaml: plugin %q: %w", name, err)
+				return nil, err
 			}
+			optList = append(optList, WithPlugin(p))
+			continue
 		default:
 			return nil, fmt.Errorf(
 				"yaml: plugin %q value must be a mapping, string, or boolean",

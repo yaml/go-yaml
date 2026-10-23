@@ -89,6 +89,13 @@ Configure the v3 formatter with `yaml.OptsYAML`:
 
 ```yaml
 plugin:
+  error-format: v3
+```
+
+The equivalent mapping form remains available:
+
+```yaml
+plugin:
   error-format:
     v3:
 ```
