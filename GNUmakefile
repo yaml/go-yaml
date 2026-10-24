@@ -84,7 +84,7 @@ MAKES-REALCLEAN := $(dir $(YTS-DIR))
 
 SHELL-SCRIPTS = \
   util/common.bash \
-  cmd/go-yaml/demo/demo-plugins \
+  cmd/go-yaml/demo/demo-plugins.sh \
   $(shell grep -rl '^.!/usr/bin/env bash' util | \
           grep -v '\.sw')
 

@@ -13,7 +13,7 @@ range_ends=()
 
 usage() {
   cat <<'HELP'
-Usage: cmd/go-yaml/demo/demo-plugins [-i] [--list] [N|N-M|N- ...]
+Usage: cmd/go-yaml/demo/demo-plugins.sh [-i] [--list] [N|N-M|N- ...]
 
 Each numbered demo prints its purpose, commands, output, and result.
 Numbers and inclusive ranges select demos in their original order.
@@ -42,11 +42,11 @@ Executable override:
                     An override uses that executable without building it.
 
 Examples:
-  cmd/go-yaml/demo/demo-plugins
-  cmd/go-yaml/demo/demo-plugins 3 5-7 9
-  cmd/go-yaml/demo/demo-plugins -i 10-
-  cmd/go-yaml/demo/demo-plugins --list
-  GO_YAML_BIN=/path/to/go-yaml cmd/go-yaml/demo/demo-plugins
+  cmd/go-yaml/demo/demo-plugins.sh
+  cmd/go-yaml/demo/demo-plugins.sh 3 5-7 9
+  cmd/go-yaml/demo/demo-plugins.sh -i 10-
+  cmd/go-yaml/demo/demo-plugins.sh --list
+  GO_YAML_BIN=/path/to/go-yaml cmd/go-yaml/demo/demo-plugins.sh
 
 Exit status: 0 for successful demos, 1 for unexpected failures, 2 if no
 demos could run or the arguments are invalid.
