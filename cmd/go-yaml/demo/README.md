@@ -7,13 +7,13 @@ Expected rejections count as passes.
 From the repository root:
 
 ```bash
-./cmd/go-yaml/demo/demo-plugins
-./cmd/go-yaml/demo/demo-plugins --list
-./cmd/go-yaml/demo/demo-plugins 3 5-7 9
-./cmd/go-yaml/demo/demo-plugins -i 10-
+./cmd/go-yaml/demo/demo-plugins.sh
+./cmd/go-yaml/demo/demo-plugins.sh --list
+./cmd/go-yaml/demo/demo-plugins.sh 3 5-7 9
+./cmd/go-yaml/demo/demo-plugins.sh -i 10-
 ```
 
-You can also run `./demo-plugins` from this directory.
+You can also run `./demo-plugins.sh` from this directory.
 Numbers follow the catalog order, starting at 1.
 Selections run in that order; `5-7` includes both endpoints, and `10-` runs
 demo 10 through the end.
@@ -52,7 +52,7 @@ native CLI.
 To use an existing executable and skip the build, set `GO_YAML_BIN`:
 
 ```bash
-GO_YAML_BIN=/path/to/go-yaml ./cmd/go-yaml/demo/demo-plugins
+GO_YAML_BIN=/path/to/go-yaml ./cmd/go-yaml/demo/demo-plugins.sh
 ```
 
 That executable must already contain the plugins you want to demonstrate.
