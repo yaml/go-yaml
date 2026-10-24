@@ -402,3 +402,21 @@ registered implementations available through runtime configuration or flags.
 External packages may implement any existing plugin interface.
 Only one parser implementation can be selected at a time.
 Runtime flags cannot download or load additional packages.
+
+## Plugin demos
+
+Run `./cmd/go-yaml/demo/demo-plugins` from a fresh clone to demonstrate the
+plugins.
+It builds the CLI once with the reference parser and external adapters fetched
+through Go modules; no `repos/*` checkouts are needed.
+The demo build selects the reference parser by default.
+Run `make cli` afterward to restore the ordinary native CLI.
+
+```bash
+./cmd/go-yaml/demo/demo-plugins --list
+./cmd/go-yaml/demo/demo-plugins 3 5-7 9
+./cmd/go-yaml/demo/demo-plugins -i 10-
+```
+
+See the [demo README](../cmd/go-yaml/demo/README.md) for interactive controls,
+dependencies, and executable overrides.

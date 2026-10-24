@@ -79,11 +79,12 @@ SHELL-NAME := makes go-yaml
 include $(MAKES)/clean.mk
 include $(MAKES)/shell.mk
 
-MAKES-CLEAN := $(CLI-BINARY) $(GOLANGCI-LINT)
+MAKES-CLEAN := $(CLI-BINARY) $(GOLANGCI-LINT) *.so
 MAKES-REALCLEAN := $(dir $(YTS-DIR))
 
 SHELL-SCRIPTS = \
   util/common.bash \
+  cmd/go-yaml/demo/demo-plugins \
   $(shell grep -rl '^.!/usr/bin/env bash' util | \
           grep -v '\.sw')
 
