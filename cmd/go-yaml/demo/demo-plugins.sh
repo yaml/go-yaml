@@ -89,7 +89,12 @@ if [[ $go_yaml_bin == */* ]]; then
   [[ $directory == /* ]] || directory=$PWD/$directory
   PATH=$directory:$PATH
 fi
-export PATH
+export PATH go_yaml_bin
+
+go-yaml() {
+  command "$go_yaml_bin" "$@"
+}
+export -f go-yaml
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/yaml-plugin-demo.XXXXXXXX")
 trap 'rm -rf "$work"' EXIT
@@ -101,20 +106,16 @@ skipped=0
 failed=0
 reruns=0
 demo_commands=()
-demo_binaries=()
 demo_builds=()
 demo_bodies=()
 built_commands=()
 demo_expected=()
 demo_implementations=()
-demo_paths=()
-demo_categories=()
 demo_descriptions=()
 previous_number=0
 previous_command=
 previous_expected=
 previous_implementation=
-previous_path=
 
 data_file=$demo_dir/demo-plugins.yaml
 ys_bin=ys
@@ -141,23 +142,12 @@ number_selected() {
 }
 
 load_demo() {
-  local number=$1 host category binary command_path=$PATH directory
-  local template tool_word work_word make_args make_word built override
+  local number=$1 template make_args make_word built
 
-  host=$(demo_value "$number" tool)
-  category=$host
-  case $host in
-    go-yaml) binary=$go_yaml_bin; override=${GO_YAML_BIN:-} ;;
-    *) printf 'Unknown demo tool: %s\n' "$host" >&2; return 2 ;;
-  esac
   template=$(demo_value "$number" cmnd)
-  printf -v tool_word %q "${binary##*/}"
-  printf -v work_word %q "$work"
-  template=${template//\{tool\}/$tool_word}
-  template=${template//\{work\}/$work_word}
   demo_bodies[number]=$template
   make_args=
-  [[ -n $override ]] || make_args=$(demo_value "$number" make)
+  [[ -n ${GO_YAML_BIN:-} ]] || make_args=$(demo_value "$number" make)
   for built in "${built_commands[@]}"; do
     if [[ $make_args == "$built" ]]; then
       make_args=
@@ -169,36 +159,27 @@ load_demo() {
     printf -v make_word 'make -C %q' "$root"
     template="$make_word $make_args && $template"
   fi
-  if [[ $binary == */* ]]; then
-    directory=${binary%/*}
-    [[ $directory == /* ]] || directory=$PWD/$directory
-    command_path=$directory:$PATH
-  fi
   demo_commands[number]=$template
-  demo_binaries[number]=$binary
   demo_expected[number]=$(demo_value "$number" fail)
   demo_implementations[number]=$(demo_value "$number" impl)
-  demo_paths[number]=$command_path
-  demo_categories[number]=$category
   demo_descriptions[number]=$(demo_value "$number" desc)
 }
 
 show_demo() {
   local number=$1 expected=$2
-  printf '\nDemo %d: %s: %s\n' "$number" \
-    "${demo_categories[number]}" "${demo_descriptions[number]}"
+  printf '\nDemo %d: go-yaml: %s\n' "$number" "${demo_descriptions[number]}"
   if [[ -n $expected ]]; then
     printf 'Expected: rejection containing %q\n' "$expected"
   fi
 }
 
 execute_command() {
-  local number=$1 line=$2 expected=$3 implementation=$4 command_path=$5
-  local planned_command=${demo_commands[number]} binary=${demo_binaries[number]}
+  local number=$1 line=$2 expected=$3 implementation=$4
+  local planned_command=${demo_commands[number]}
   local output status make_word
   if [[ $line == "$planned_command" && -z ${demo_builds[number]} ]] &&
-    ! command -v "$binary" > /dev/null; then
-    printf 'SKIP: executable unavailable: %s\n' "$binary"
+    ! type -P "$go_yaml_bin" > /dev/null; then
+    printf 'SKIP: executable unavailable: %s\n' "$go_yaml_bin"
     skipped=$((skipped + 1))
     return 0
   fi
@@ -207,7 +188,7 @@ execute_command() {
   status=0
   if [[ $line == "$planned_command" && -n ${demo_builds[number]} ]]; then
     printf -v make_word 'make -C %q' "$root"
-    if PATH=$command_path bash -o pipefail -c \
+    if bash -o pipefail -c \
       "$make_word ${demo_builds[number]}" > "$work/output" 2>&1; then
       built_commands+=("${demo_builds[number]}")
       line=${demo_bodies[number]}
@@ -221,7 +202,7 @@ execute_command() {
     failed=$((failed + 1))
     return 0
   fi
-  if PATH=$command_path bash -o pipefail -c "$line" >> "$work/output" 2>&1; then
+  if bash -o pipefail -c "$line" >> "$work/output" 2>&1; then
     status=0
   else
     status=$?
@@ -230,7 +211,6 @@ execute_command() {
   previous_command=$line
   previous_expected=$expected
   previous_implementation=$implementation
-  previous_path=$command_path
   if $interactive; then
     history -s "$line"
   fi
@@ -271,7 +251,6 @@ run_interactive() {
   local pending=$1 current=$1 edited_command requested
   local preview=${demo_commands[current]} expected=${demo_expected[current]}
   local implementation=${demo_implementations[current]}
-  local command_path=${demo_paths[current]}
 
   while true; do
     show_demo "$current" "$expected"
@@ -286,7 +265,6 @@ run_interactive() {
           preview=$previous_command
           expected=$previous_expected
           implementation=$previous_implementation
-          command_path=$previous_path
           break
         fi
         continue
@@ -304,7 +282,6 @@ run_interactive() {
         preview=${demo_commands[current]}
         expected=${demo_expected[current]}
         implementation=${demo_implementations[current]}
-        command_path=${demo_paths[current]}
         break
       fi
       if [[ $edited_command != "$preview" ]]; then
@@ -315,7 +292,7 @@ run_interactive() {
         reruns=$((reruns + 1))
       fi
       execute_command "$current" "$edited_command" "$expected" \
-        "$implementation" "$command_path"
+        "$implementation"
       (( current != pending )) || return 0
 
       # An extra command does not consume the pending demo.
@@ -323,7 +300,6 @@ run_interactive() {
       preview=${demo_commands[current]}
       expected=${demo_expected[current]}
       implementation=${demo_implementations[current]}
-      command_path=${demo_paths[current]}
       break
     done
   done
@@ -366,8 +342,7 @@ run_selected() {
         fi
       else
         execute_command "$number" "${demo_commands[number]}" \
-          "${demo_expected[number]}" "${demo_implementations[number]}" \
-          "${demo_paths[number]}"
+          "${demo_expected[number]}" "${demo_implementations[number]}"
       fi
     fi
   done
