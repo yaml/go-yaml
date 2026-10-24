@@ -229,3 +229,6 @@ Compilation, registration, or configuration failures preserve an existing binary
 
 See [the plugin documentation](../../docs/plugin.md#external-plugin-packages)
 for multiple-package builds and the external registration contract.
+
+Run the [plugin demos](demo/README.md) to try the implementations from a fresh
+clone, with optional interactive command editing.
