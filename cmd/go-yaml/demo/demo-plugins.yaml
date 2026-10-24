@@ -4,14 +4,12 @@
 # Each distinct build runs once per invocation.
 # Executable overrides skip their builds.
 
-# Pin the JSON-comments registration fix until its next tagged release.
-
 - tool: go-yaml
   # Package paths and pinned versions must remain single shell words.
   # yamllint disable rule:line-length
   make: &cli >-
     cli PLUGIN=yaml-parser=reference@v0.2.6
-    PLUGIN-PACKAGE=github.com/yamlstar/yamlstar-plugin-parser-json-comments/goyaml@v0.1.1-0.20261022155435-34852ce05304,github.com/yamlstar/yamlstar-plugin-parser-rapidyaml/goyaml@v0.1.4,github.com/yamlstar/yamlstar-plugin-parser-toml/goyaml@v0.1.2
+    PLUGIN-PACKAGE=github.com/yamlstar/yamlstar-plugin-parser-json-comments/goyaml@v0.1.1,github.com/yamlstar/yamlstar-plugin-parser-rapidyaml/goyaml@v0.1.4,github.com/yamlstar/yamlstar-plugin-parser-toml/goyaml@v0.1.2
   # yamllint enable rule:line-length
   desc: Parse YAML with the native go-yaml implementation
   cmnd: >-
