@@ -74,6 +74,9 @@ func FormatNode(n yaml.Node, profuse bool) *NodeInfo {
 	// Don't set style for Document, Stream, or Alias nodes
 	if n.Kind != yaml.DocumentNode && n.Kind != yaml.StreamNode && n.Kind != yaml.AliasNode {
 		if style := formatStyle(n.Style, profuse); style != "" {
+			if style == "Plain" && (n.Kind == yaml.MappingNode || n.Kind == yaml.SequenceNode) {
+				style = "Block"
+			}
 			info.Style = style
 		}
 	}

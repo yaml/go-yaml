@@ -25,6 +25,8 @@ const (
 	stageNode  stageKind = "node"
 )
 
+var errInvalidNodeStyle = errors.New("invalid node style")
+
 type structuredInput struct {
 	stage  stageKind
 	tokens []*TokenInfo
@@ -64,6 +66,8 @@ func detectStructuredInput(data []byte, forced string) (*structuredInput, error)
 	}
 	if nodes, err := decodeNodeContract(data); err == nil {
 		return &structuredInput{stage: stageNode, nodes: nodes}, nil
+	} else if errors.Is(err, errInvalidNodeStyle) {
+		return nil, err
 	}
 	return &structuredInput{stage: stageYAML}, nil
 }
@@ -170,8 +174,8 @@ func validEventType(value string) bool {
 }
 
 func decodeNodeContract(data []byte) ([]*yaml.Node, error) {
-	if nodes, err := decodeDetailedNodes(data); err == nil {
-		return nodes, nil
+	if nodes, err := decodeDetailedNodes(data); err == nil || errors.Is(err, errInvalidNodeStyle) {
+		return nodes, err
 	}
 	return decodeCompactNodes(data)
 }
@@ -219,7 +223,7 @@ func nodeInfoToNode(info *NodeInfo) (*yaml.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	style, err := parseNodeStyle(info.Style)
+	style, err := parseNodeStyle(info.Style, kind)
 	if err != nil {
 		return nil, err
 	}
@@ -279,10 +283,18 @@ func parseNodeKind(kind string) (yaml.Kind, error) {
 	}
 }
 
-func parseNodeStyle(style string) (yaml.Style, error) {
+func parseNodeStyle(style string, kind yaml.Kind) (yaml.Style, error) {
 	switch strings.ToLower(style) {
-	case "", "plain":
+	case "":
 		return 0, nil
+	case "plain":
+		if kind == yaml.ScalarNode {
+			return 0, nil
+		}
+	case "block":
+		if kind == yaml.MappingNode || kind == yaml.SequenceNode {
+			return 0, nil
+		}
 	case "double":
 		return yaml.DoubleQuotedStyle, nil
 	case "single":
@@ -296,6 +308,7 @@ func parseNodeStyle(style string) (yaml.Style, error) {
 	default:
 		return 0, fmt.Errorf("unknown node style %q", style)
 	}
+	return 0, fmt.Errorf("%w %q for %s node", errInvalidNodeStyle, style, formatKind(kind))
 }
 
 func decodeCompactNodes(data []byte) ([]*yaml.Node, error) {
@@ -393,7 +406,7 @@ func fillCompactNode(node *yaml.Node, shape string, value *yaml.Node) error {
 		}
 	case "plain", "double", "single", "literal", "folded":
 		node.Kind, node.Value = yaml.ScalarNode, value.Value
-		style, _ := parseNodeStyle(shape)
+		style, _ := parseNodeStyle(shape, yaml.ScalarNode)
 		node.Style = style
 	case "alias":
 		node.Kind, node.Value = yaml.AliasNode, value.Value
