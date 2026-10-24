@@ -3,7 +3,7 @@ module go.yaml.in/yaml/v4/plugin/yamlparser/reference
 go 1.24
 
 require (
-	github.com/yamlstar/yamlstar-plugin-parser-reference v0.2.5
+	github.com/yamlstar/yamlstar-plugin-parser-reference v0.2.6
 	go.yaml.in/yaml/v4 v4.0.0-rc.6
 )
 

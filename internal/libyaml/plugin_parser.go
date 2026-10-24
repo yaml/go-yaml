@@ -16,12 +16,6 @@ type ParserPlugin interface {
 	Parse(input []byte) ([]PluginEvent, error)
 }
 
-// JSONCommentsPlugin sanitizes JSON-style comments before parsing.
-// Implementations must support concurrent calls with independent input.
-type JSONCommentsPlugin interface {
-	Sanitize(input []byte) ([]byte, error)
-}
-
 // IndentMode supplies loading and dumping defaults.
 type IndentMode string
 
@@ -101,10 +95,9 @@ type TabIndentPlugin interface {
 }
 
 // hasInputPlugins reports whether input must pass through EventReader.
-// Parser plugins replace native parsing, while JSON-comments plugins sanitize
-// the complete input before native parsing.
+// Parser plugins replace native parsing.
 func hasInputPlugins(opts *Options) bool {
-	return opts != nil && (opts.Parser != nil || opts.JSONComments != nil)
+	return opts != nil && opts.Parser != nil
 }
 
 // PluginEvent is a portable YAML event supplied by a plugin.
@@ -192,29 +185,14 @@ func (e *EventReader) initialize() {
 		e.err = formatLoadError(NewLoadError(ReaderStage, err.Error(), Mark{}, err), e.opts.FormatLoadError)
 		return
 	}
-	if e.opts.JSONComments != nil {
-		input, err = e.opts.JSONComments.Sanitize(input)
-		if err != nil {
-			e.err = formatLoadError(NewLoadError(ReaderStage, err.Error(), Mark{}, err), e.opts.FormatLoadError)
-			return
-		}
+	e.pluginEvents = true
+	e.events, err = e.opts.Parser.Parse(input)
+	if err == nil {
+		err = validatePluginEvents(e.events, e.opts.DepthCheck)
 	}
-	if e.opts.Parser != nil {
-		e.pluginEvents = true
-		e.events, err = e.opts.Parser.Parse(input)
-		if err == nil {
-			err = validatePluginEvents(e.events, e.opts.DepthCheck)
-		}
-		if err != nil {
-			e.err = formatLoadError(NewLoadError(ParserStage, err.Error(), Mark{}, err), e.opts.FormatLoadError)
-		}
-		return
+	if err != nil {
+		e.err = formatLoadError(NewLoadError(ParserStage, err.Error(), Mark{}, err), e.opts.FormatLoadError)
 	}
-	e.parser = NewParser()
-	e.parser.SetInputString(input)
-	e.parser.depthCheck = e.opts.DepthCheck
-	e.parser.formatError = e.opts.FormatLoadError
-	e.parser.indentConfig = e.opts.IndentConfig
 }
 
 // validatePluginEvents checks structure before the recursive composer sees it.

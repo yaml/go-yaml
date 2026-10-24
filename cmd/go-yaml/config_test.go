@@ -112,6 +112,8 @@ func TestErrorFormatOptions(t *testing.T) {
 		invalid              bool
 	}{
 		{"embedded v3", "", "yaml: line 1:", false},
+		{"v3 shorthand", "error-format=v3", "yaml: line 1:", false},
+		{"v4 shorthand", "error-format=v4", "go-yaml load error in scanner", false},
 		{"default", "error-format", "go-yaml load error in scanner", false},
 		{
 			"explicit implementation", "error-format=error-format",

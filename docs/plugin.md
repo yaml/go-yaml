@@ -3,7 +3,7 @@
 The go-yaml v4 plugin system lets applications replace selected processing
 stages without adding optional dependencies to the core module.
 
-A plugin API defines a role such as `yaml-parser`, `json-comments`,
+A plugin API defines a role such as `yaml-parser`,
 `loader-limits`, `tab-indent`, or `error-format`.
 Each API can have several named implementations.
 The current implementations are:
@@ -12,13 +12,12 @@ The current implementations are:
 |---|---|---|---|
 | `yaml-parser` | `go-yaml` | core | yes |
 | `yaml-parser` | `reference` | `plugin/yamlparser/reference` | no |
-| `json-comments` | `sanitizer` | `plugin/jsoncomments` | yes |
 | `error-format` | `error-format` | `plugin/errorformat/v3` and `plugin/errorformat/v4` | yes |
 | `loader-limits` | `loader-limits` | `plugin/loaderlimits` | yes |
 | `tab-indent` | `tab-indent` | `plugin/tabindent` | yes |
 
-The JSON-comments and reference YAML-parser packages are separate Go modules.
-Importing the core `go.yaml.in/yaml/v4` module does not acquire their generated
+The reference YAML-parser package is a separate Go module.
+Importing the core `go.yaml.in/yaml/v4` module does not acquire its generated
 code or dependencies.
 
 ## Direct Go use
@@ -29,14 +28,12 @@ directly.
 ```go
 import (
     "go.yaml.in/yaml/v4"
-    "go.yaml.in/yaml/v4/plugin/jsoncomments"
     "go.yaml.in/yaml/v4/plugin/loaderlimits"
     "go.yaml.in/yaml/v4/plugin/tabindent"
 )
 
 var value any
 err := yaml.Load(input, &value,
-    yaml.WithPlugin(jsoncomments.New()),
     yaml.WithPlugin(loaderlimits.New(loaderlimits.DepthValue(50))),
     yaml.WithPlugin(tabindent.New()))
 ```
@@ -53,10 +50,6 @@ type ParserPlugin interface {
     Parse(input []byte) ([]PluginEvent, error)
 }
 
-type JSONCommentsPlugin interface {
-    Sanitize(input []byte) ([]byte, error)
-}
-
 type LoaderLimitsPlugin interface {
     CheckDepth(depth int, ctx *DepthContext) error
     CheckAlias(aliasCount, constructCount int) error
@@ -67,8 +60,6 @@ type TabIndentPlugin interface {
 }
 ```
 
-A JSON-comments plugin transforms the input first.
-The selected parser then parses the transformed UTF-8 text.
 The built-in `go-yaml` parser remains the default unless a YAML-parser plugin is
 selected.
 
@@ -79,7 +70,7 @@ composing nodes.
 Depth limits apply to that stream and cannot limit work already performed by
 an external parser.
 
-Input is buffered when a YAML-parser or JSON-comments plugin is active.
+Input is buffered when a YAML-parser plugin is active.
 Plugin implementations must support independent concurrent calls.
 
 ## Error formatting
@@ -152,6 +143,28 @@ err = yaml.Load(data, &out, opts)
 ```
 
 See the plugin-specific guides for supported configuration keys.
+An unversioned scalar first selects a registered implementation.
+Otherwise, it can name an empty configuration entry accepted by the default
+implementation.
+For example, these configurations are equivalent:
+
+```yaml
+plugin:
+  error-format: v3
+```
+
+```yaml
+plugin:
+  error-format:
+    v3: {}
+```
+
+This shorthand works for any plugin whose default factory accepts that entry.
+Registered implementation names take precedence.
+Explicit `name` fields and versioned selectors always select implementations.
+The same shorthand works with `--plugin=error-format=v3` at runtime and
+`make cli PLUGIN=error-format=v3` at build time.
+
 The default implementation is also named `error-format`:
 
 ```go
@@ -208,9 +221,6 @@ External packages register named implementations for `yaml.OptsYAML` and
 Call each optional package's `Register` function once during startup.
 
 ```go
-if err := jsoncomments.Register(); err != nil {
-    log.Fatal(err)
-}
 if err := reference.Register(); err != nil {
     log.Fatal(err)
 }
@@ -223,8 +233,7 @@ Configuration can use mappings, strings, or booleans:
 
 ```yaml
 plugin:
-  yaml-parser: reference@v0.2.5
-  json-comments: sanitizer@v0.1.9
+  yaml-parser: reference@v0.2.6
   loader-limits:
     depth: 50
     alias: 1000
@@ -285,21 +294,6 @@ var value any
 err := yaml.Load(input, &value, yaml.WithPlugin(reference.New()))
 ```
 
-### JSON comments
-
-`go.yaml.in/yaml/v4/plugin/jsoncomments` adapts the sanitizer from
-`github.com/yamlstar/yamlstar-plugin-json-comments`.
-It accepts UTF-8 YAML containing `//` and non-nesting `/* */` comments.
-Comment markers inside quoted scalars, block scalars, and URLs are preserved.
-JSON literals and numbers permit adjacent comments such as `true// comment`.
-Other plain scalars require separation, so `foo// text` remains scalar text.
-
-The sanitizer replaces comment characters while preserving line endings.
-The selected parser receives the sanitized text.
-Comments do not appear in nodes, while YAML styles, tags, anchors, aliases,
-and parser position information remain available.
-See the upstream syntax document for the exact recognition rules.
-
 ## CLI build selection
 
 The ordinary `go-yaml` binary contains only core implementations.
@@ -310,14 +304,14 @@ It selects build dependencies and embeds the full configuration as the binary's
 defaults.
 
 ```bash
-make cli CONFIG=example/json-comments/options.yaml
+make cli CONFIG=options.yaml
 ```
 
 `PLUGIN` is only the plugin selector DSL.
 It never names a file and never contains YAML.
 
 ```bash
-make cli PLUGIN=yaml-parser=reference@v0.2.5,json-comments
+make cli PLUGIN=yaml-parser=reference@v0.2.6,loader-limits
 make cli PLUGIN=error-format
 ```
 
@@ -342,14 +336,14 @@ For local development, place the related checkouts under `repos/` and set the
 matching override:
 
 ```bash
-make cli PLUGIN=yaml-parser=reference@v0.2.5,json-comments \
-  REFERENCE-PARSER-LOCAL=1 JSON-COMMENTS-LOCAL=1
+make cli PLUGIN=yaml-parser=reference@v0.2.6,loader-limits \
+  REFERENCE-PARSER-LOCAL=1
 ```
 
 The compiled command uses the same selector DSL at runtime:
 
 ```bash
-./go-yaml --plugin=yaml-parser=reference@0.2.5,json-comments -j data.yaml
+./go-yaml --plugin=yaml-parser=reference@0.2.6,loader-limits -j data.yaml
 ```
 
 A runtime selector can choose only implementations already linked into the
@@ -358,19 +352,71 @@ It cannot download or add Go code.
 `-C FILE` and `--config=FILE` continue to load YAML configuration files.
 A runtime configuration replaces embedded defaults.
 
-JSON, YAML, node, and event modes support YAML-parser and JSON-comments plugins.
-Token and legacy modes support the JSON-comments sanitizer with the built-in
-`go-yaml` parser.
-They reject an external parser because those modes do not consume YAML-parser
-plugin events.
+JSON, YAML, node, and event modes support YAML-parser plugins.
+Token and legacy loading modes reject external parsers because those modes do
+not consume YAML-parser plugin events.
 
 Run the optional module checks with:
 
 ```bash
 make test-limit
-make test-json-comments
-make test-json-comments-race
 make test-reference-parser
 ```
 
-[upstream syntax document]: https://github.com/yamlstar/yamlstar-plugin-json-comments/blob/main/Syntax.md
+## External plugin packages
+
+`PLUGIN-PACKAGE` links released Go packages into a configured CLI without
+adding adapters or dependencies to this repository.
+Each package must export `Register() error` and register its implementations
+through `yaml.RegisterPlugin`.
+A parser implementation supplies the existing `yaml.ParserPlugin` interface.
+
+```bash
+make cli \
+  PLUGIN-PACKAGE=example.org/custom-parser/goyaml@v1.2.3 \
+  PLUGIN=yaml-parser=custom
+./go-yaml --plugin=yaml-parser=custom -j data.yaml
+```
+
+Use a comma-separated list to link multiple packages:
+
+```bash
+make cli \
+  PLUGIN-PACKAGE=example.org/parser/go@v1.2.3,example.org/limits@v0.2.0
+```
+
+Each entry requires an explicit version such as `v1.2.3` or `v1.2.3-rc.1`.
+Local paths, unversioned entries, and `@latest` are not supported.
+Go resolves dependencies using its configured module proxy and module cache.
+The core module remains replaced by the current checkout in the staged CLI.
+
+Packages are registered in list order before configuration is evaluated.
+Registration failures, duplicate registrations, and invalid plugin options
+fail the build before replacing an existing executable.
+The completed executable validates the selected implementation and version.
+
+`PLUGIN-PACKAGE` links code; `PLUGIN` and `CONFIG` select implementations and
+embed defaults.
+A build with only `PLUGIN-PACKAGE` keeps ordinary defaults and makes the
+registered implementations available through runtime configuration or flags.
+External packages may implement any existing plugin interface.
+Only one parser implementation can be selected at a time.
+Runtime flags cannot download or load additional packages.
+
+## Plugin demos
+
+Run `./cmd/go-yaml/demo/demo-plugins.sh` from a fresh clone to demonstrate the
+plugins.
+It builds the CLI once with the reference parser and external adapters fetched
+through Go modules; no `repos/*` checkouts are needed.
+The demo build selects the reference parser by default.
+Run `make cli` afterward to restore the ordinary native CLI.
+
+```bash
+./cmd/go-yaml/demo/demo-plugins.sh --list
+./cmd/go-yaml/demo/demo-plugins.sh 3 5-7 9
+./cmd/go-yaml/demo/demo-plugins.sh -i 10-
+```
+
+See the [demo README](../cmd/go-yaml/demo/README.md) for interactive controls,
+dependencies, and executable overrides.

@@ -294,7 +294,6 @@ type DepthContext = libyaml.DepthContext
 // Currently supported plugin types:
 //   - LoaderLimitsPlugin: Controls depth and alias expansion limits
 //   - ParserPlugin: Supplies a complete YAML event stream
-//   - JSONCommentsPlugin: Sanitizes JSON-style comments before parsing
 //   - TabIndentPlugin: Enables tab-aware loading and tab-indented dumping
 //   - ErrorFormatPlugin: Customizes load and dump error message formatting
 //
@@ -322,14 +321,6 @@ func WithPlugin(plugins ...any) Option {
 					return errors.New("yaml: multiple yaml-parser plugins")
 				}
 				o.Parser = source
-				registered = true
-			}
-			if comments, ok := p.(JSONCommentsPlugin); ok {
-				if o.JSONComments != nil {
-					return errors.New(
-						"yaml: multiple json-comments plugins")
-				}
-				o.JSONComments = comments
 				registered = true
 			}
 			if tabs, ok := p.(TabIndentPlugin); ok {
@@ -376,8 +367,8 @@ func WithPlugin(plugins ...any) Option {
 // - plugin (map of plugin API to config)
 //
 // The plugin field configures plugins by API. Each value is a configuration
-// map, true for the default implementation, or false to leave the plugin
-// disabled. A map may select an implementation with "name" and require its
+// map or string, true for the default implementation, or false to leave the
+// plugin disabled. A map may select an implementation with "name" and require its
 // exact release with "version". Versions may include a leading "v".
 // A map may contain "disable": true to leave the plugin disabled.
 // The "name", "version", and "disable" host fields are not passed to the
@@ -386,6 +377,9 @@ func WithPlugin(plugins ...any) Option {
 // Currently supported: "loader-limits" with keys "depth" and "alias" (int
 // or null to disable).
 // The "error-format" API accepts a "v3" or "v4" formatter config.
+// An unversioned string first selects a registered implementation. Otherwise,
+// it may name an empty configuration entry accepted by the default factory:
+// "error-format: v3" is equivalent to "error-format: {v3: {}}".
 //
 // Only fields specified in the YAML will override other options when
 // combined. Unspecified fields won't affect other options.
@@ -510,11 +504,12 @@ func OptsYAML(yamlStr string) (Option, error) {
 				}
 			}
 		case string:
-			var err error
-			cfgMap, err = pluginreg.ConfigValue(name, v)
+			p, err := pluginRegistry.CreateShortForm(name, v)
 			if err != nil {
-				return nil, fmt.Errorf("yaml: plugin %q: %w", name, err)
+				return nil, err
 			}
+			optList = append(optList, WithPlugin(p))
+			continue
 		default:
 			return nil, fmt.Errorf(
 				"yaml: plugin %q value must be a mapping, string, or boolean",

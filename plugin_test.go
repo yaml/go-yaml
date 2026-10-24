@@ -218,6 +218,62 @@ func TestPluginRegistry(t *testing.T) {
 	}
 }
 
+func TestPluginConfigShortForm(t *testing.T) {
+	api := fmt.Sprintf("test-short-form-%d", atomic.AddUint64(&registryTestID, 1))
+	source := func(value string) any {
+		return registeredSourceFunc(func([]byte) ([]yaml.PluginEvent, error) {
+			return registeredScalarStream(value), nil
+		})
+	}
+	if err := yaml.RegisterPlugin(yaml.PluginRegistration{
+		API: api, Name: api,
+		Factory: func(cfg map[string]any) (any, error) {
+			if len(cfg) == 1 {
+				for _, key := range []string{"compact", "alternate"} {
+					if options, ok := cfg[key].(map[string]any); ok && len(options) == 0 {
+						return source("configured " + key), nil
+					}
+				}
+			}
+			return nil, errors.New("expected an empty compact or alternate entry")
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := yaml.RegisterPlugin(yaml.PluginRegistration{
+		API: api, Name: "alternate", Version: "1.2.3",
+		Factory: func(map[string]any) (any, error) { return source("named"), nil },
+	}); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ setting, want string }{
+		{"compact", "configured compact"},
+		{"{compact: {}}", "configured compact"},
+		{"{alternate: {}}", "configured alternate"},
+		{"alternate", "named"},
+		{"alternate@v1.2.3", "named"},
+	} {
+		t.Run(tc.setting, func(t *testing.T) {
+			opt, err := yaml.OptsYAML(fmt.Sprintf("plugin: {%s: %s}", api, tc.setting))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var value string
+			if err := yaml.Load(nil, &value, opt); err != nil || value != tc.want {
+				t.Fatalf("got %q, %v; want %q", value, err, tc.want)
+			}
+		})
+	}
+	for _, setting := range []string{
+		"missing", "compact@v1.2.3", "{name: compact}", "alternate@v1.2.4",
+	} {
+		if _, err := yaml.OptsYAML(fmt.Sprintf(
+			"plugin: {%s: %s}", api, setting)); err == nil {
+			t.Fatalf("accepted invalid selection %s", setting)
+		}
+	}
+}
+
 func TestLegacyLimitAliases(t *testing.T) {
 	var _ yaml.LimitPlugin = loaderlimits.New()
 	for _, config := range []string{

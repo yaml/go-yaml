@@ -349,6 +349,10 @@ func buildOptions(configFile string, optionFlags []string, pluginSpecs ...string
 				return nil, err
 			}
 			for _, selection := range selections {
+				if selection.Name != "" && selection.Version == "" {
+					plugins[selection.API] = selection.Name
+					continue
+				}
 				if selection.Name == "" && selection.Version == "" {
 					plugins[selection.API] = true
 					continue
@@ -598,13 +602,6 @@ func main() {
 			log.Fatal("Failed to process structured input:", err)
 		}
 		return
-	}
-	if configured.JSONComments != nil &&
-		(*tokenMode || *tokenProfuseMode || unmarshalMode || decodeMode) {
-		inputData, err = configured.JSONComments.Sanitize(inputData)
-		if err != nil {
-			log.Fatal("Failed to sanitize JSON comments:", err)
-		}
 	}
 	input = bytes.NewReader(inputData)
 

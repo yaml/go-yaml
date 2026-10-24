@@ -1,0 +1,399 @@
+#!/usr/bin/env bash
+# Demonstrate go-yaml plugins without related source checkouts.
+
+set -euo pipefail
+
+demo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
+root=$(cd "$demo_dir/../../.." && pwd -P)
+list_only=false
+interactive=false
+requests=()
+range_starts=()
+range_ends=()
+
+usage() {
+  cat <<'HELP'
+Usage: cmd/go-yaml/demo/demo-plugins.sh [-i] [--list] [N|N-M|N- ...]
+
+Each numbered demo prints its purpose, commands, output, and result.
+Numbers and inclusive ranges select demos in their original order.
+N- selects demo N through the end.
+Non-interactive output is piped through less -FRX.
+-i uses readline to edit each command before running it.
+Clear the line with Ctrl+U and press Enter to recall the last command run.
+Enter a demo number to load that command for editing.
+After running a recalled or numbered command, the pending demo returns.
+Press Enter again to run the loaded command, or edit it first.
+Ctrl+D quits; Ctrl+C interrupts.
+--list prints the demos and commands without running them.
+Expected errors count as successful demonstrations.
+Missing executables, implementations, or shared libraries are marked SKIP.
+Unexpected errors count as failures, and the remaining demos still run.
+
+Demo definitions come from the sister demo-plugins.yaml file, using ys.
+A demo with a make field builds its executable before its first use.
+Each distinct build runs once per invocation.
+Build dependencies and shared libraries are downloaded automatically.
+No repos/* checkouts are needed.
+Use --list to inspect the commands without building the executables.
+
+Executable override:
+  GO_YAML_BIN       Default: ./go-yaml
+                    An override uses that executable without building it.
+
+Examples:
+  cmd/go-yaml/demo/demo-plugins.sh
+  cmd/go-yaml/demo/demo-plugins.sh 3 5-7 9
+  cmd/go-yaml/demo/demo-plugins.sh -i 10-
+  cmd/go-yaml/demo/demo-plugins.sh --list
+  GO_YAML_BIN=/path/to/go-yaml cmd/go-yaml/demo/demo-plugins.sh
+
+Exit status: 0 for successful demos, 1 for unexpected failures, 2 if no
+demos could run or the arguments are invalid.
+HELP
+}
+
+for argument in "$@"; do
+  case $argument in
+    --list) list_only=true ;;
+    -i|--interactive) interactive=true ;;
+    -h|--help) usage; exit 0 ;;
+    *)
+      if [[ $argument =~ ^([1-9][0-9]*)(-([1-9][0-9]*)?)?$ ]]; then
+        requests+=("$argument")
+      else
+        printf 'Invalid argument: %s\n' "$argument" >&2
+        usage >&2
+        exit 2
+      fi
+      ;;
+  esac
+done
+
+if $interactive && ! $list_only && [[ ! -t 0 ]]; then
+  printf 'Interactive mode requires a terminal on stdin.\n' >&2
+  exit 2
+fi
+if ! $interactive || $list_only; then
+  command -v less > /dev/null || {
+    printf 'Non-interactive mode requires less.\n' >&2
+    exit 2
+  }
+fi
+
+go_yaml_bin=${GO_YAML_BIN:-$root/go-yaml}
+
+# Make the selected executable available by its short command name.
+if [[ $go_yaml_bin == */* ]]; then
+  directory=${go_yaml_bin%/*}
+  [[ $directory == /* ]] || directory=$PWD/$directory
+  PATH=$directory:$PATH
+fi
+export PATH
+
+work=$(mktemp -d "${TMPDIR:-/tmp}/yaml-plugin-demo.XXXXXXXX")
+trap 'rm -rf "$work"' EXIT
+trap 'exit 130' INT
+number=0
+selected=0
+passed=0
+skipped=0
+failed=0
+reruns=0
+demo_commands=()
+demo_binaries=()
+demo_builds=()
+demo_bodies=()
+built_commands=()
+demo_expected=()
+demo_implementations=()
+demo_paths=()
+demo_categories=()
+demo_descriptions=()
+previous_number=0
+previous_command=
+previous_expected=
+previous_implementation=
+previous_path=
+
+data_file=$demo_dir/demo-plugins.yaml
+ys_bin=ys
+if ! command -v "$ys_bin" > /dev/null; then
+  printf '$ source <(curl -s https://in-1.cc) ys\n' >&2
+  # shellcheck disable=SC1090
+  source <(curl -s https://in-1.cc) ys
+fi
+
+demo_value() {
+  local index=$(($1 - 1)) key=$2
+  "$ys_bin" -e "print: _.$index.$key || ''" "$data_file"
+}
+
+number_selected() {
+  local index
+  (( ${#range_starts[@]} > 0 )) || return 0
+  for index in "${!range_starts[@]}"; do
+    if (( number >= range_starts[index] && number <= range_ends[index] )); then
+      return 0
+    fi
+  done
+  return 1
+}
+
+load_demo() {
+  local number=$1 host category binary command_path=$PATH directory
+  local template tool_word work_word make_args make_word built override
+
+  host=$(demo_value "$number" tool)
+  category=$host
+  case $host in
+    go-yaml) binary=$go_yaml_bin; override=${GO_YAML_BIN:-} ;;
+    *) printf 'Unknown demo tool: %s\n' "$host" >&2; return 2 ;;
+  esac
+  template=$(demo_value "$number" cmnd)
+  printf -v tool_word %q "${binary##*/}"
+  printf -v work_word %q "$work"
+  template=${template//\{tool\}/$tool_word}
+  template=${template//\{work\}/$work_word}
+  demo_bodies[number]=$template
+  make_args=
+  [[ -n $override ]] || make_args=$(demo_value "$number" make)
+  for built in "${built_commands[@]}"; do
+    if [[ $make_args == "$built" ]]; then
+      make_args=
+      break
+    fi
+  done
+  demo_builds[number]=$make_args
+  if [[ -n $make_args ]]; then
+    printf -v make_word 'make -C %q' "$root"
+    template="$make_word $make_args && $template"
+  fi
+  if [[ $binary == */* ]]; then
+    directory=${binary%/*}
+    [[ $directory == /* ]] || directory=$PWD/$directory
+    command_path=$directory:$PATH
+  fi
+  demo_commands[number]=$template
+  demo_binaries[number]=$binary
+  demo_expected[number]=$(demo_value "$number" fail)
+  demo_implementations[number]=$(demo_value "$number" impl)
+  demo_paths[number]=$command_path
+  demo_categories[number]=$category
+  demo_descriptions[number]=$(demo_value "$number" desc)
+}
+
+show_demo() {
+  local number=$1 expected=$2
+  printf '\nDemo %d: %s: %s\n' "$number" \
+    "${demo_categories[number]}" "${demo_descriptions[number]}"
+  if [[ -n $expected ]]; then
+    printf 'Expected: rejection containing %q\n' "$expected"
+  fi
+}
+
+execute_command() {
+  local number=$1 line=$2 expected=$3 implementation=$4 command_path=$5
+  local planned_command=${demo_commands[number]} binary=${demo_binaries[number]}
+  local output status make_word
+  if [[ $line == "$planned_command" && -z ${demo_builds[number]} ]] &&
+    ! command -v "$binary" > /dev/null; then
+    printf 'SKIP: executable unavailable: %s\n' "$binary"
+    skipped=$((skipped + 1))
+    return 0
+  fi
+
+  : > "$work/output"
+  status=0
+  if [[ $line == "$planned_command" && -n ${demo_builds[number]} ]]; then
+    printf -v make_word 'make -C %q' "$root"
+    if PATH=$command_path bash -o pipefail -c \
+      "$make_word ${demo_builds[number]}" > "$work/output" 2>&1; then
+      built_commands+=("${demo_builds[number]}")
+      line=${demo_bodies[number]}
+    else
+      status=$?
+    fi
+  fi
+  if (( status != 0 )); then
+    cat "$work/output"
+    printf 'FAIL: build exited %d\n' "$status"
+    failed=$((failed + 1))
+    return 0
+  fi
+  if PATH=$command_path bash -o pipefail -c "$line" >> "$work/output" 2>&1; then
+    status=0
+  else
+    status=$?
+  fi
+  previous_number=$number
+  previous_command=$line
+  previous_expected=$expected
+  previous_implementation=$implementation
+  previous_path=$command_path
+  if $interactive; then
+    history -s "$line"
+  fi
+  output=$(< "$work/output")
+
+  if (( status != 0 )); then
+    case $output in
+      *"unknown implementation \"$implementation\" for plugin"*|\
+      *'was not found; searched:'*|\
+      *'rapidyaml shared libraries are unsupported on '*)
+        printf 'SKIP: %s\n' "${output%%$'\n'*}"
+        skipped=$((skipped + 1))
+        return 0
+        ;;
+    esac
+  fi
+
+  cat "$work/output"
+  if [[ -n $expected ]]; then
+    if (( status != 0 )) && [[ $output == *"$expected"* ]]; then
+      printf 'PASS: expected rejection\n'
+      passed=$((passed + 1))
+    else
+      printf 'FAIL: expected rejection containing %q (exit %d)\n' \
+        "$expected" "$status"
+      failed=$((failed + 1))
+    fi
+  elif (( status == 0 )); then
+    printf '\nPASS\n'
+    passed=$((passed + 1))
+  else
+    printf 'FAIL: command exited %d\n' "$status"
+    failed=$((failed + 1))
+  fi
+}
+
+run_interactive() {
+  local pending=$1 current=$1 edited_command requested
+  local preview=${demo_commands[current]} expected=${demo_expected[current]}
+  local implementation=${demo_implementations[current]}
+  local command_path=${demo_paths[current]}
+
+  while true; do
+    show_demo "$current" "$expected"
+    while true; do
+      if ! IFS= read -r -e -i "$preview" -p '$ ' edited_command; then
+        printf '\n'
+        exit 0
+      fi
+      if [[ -z ${edited_command//[[:space:]]/} ]]; then
+        if [[ -n $previous_command ]]; then
+          current=$previous_number
+          preview=$previous_command
+          expected=$previous_expected
+          implementation=$previous_implementation
+          command_path=$previous_path
+          break
+        fi
+        continue
+      fi
+      if [[ $edited_command =~ ^[[:space:]]*([0-9]+)[[:space:]]*$ ]]; then
+        requested=${BASH_REMATCH[1]}
+        if [[ ! $requested =~ ^[1-9][0-9]*$ ]] ||
+          (( ${#requested} > ${#demo_count} )) ||
+          (( requested > demo_count )); then
+          printf 'Choose a demo number from 1 to %d.\n' "$demo_count"
+          continue
+        fi
+        load_demo "$requested" || return
+        current=$requested
+        preview=${demo_commands[current]}
+        expected=${demo_expected[current]}
+        implementation=${demo_implementations[current]}
+        command_path=${demo_paths[current]}
+        break
+      fi
+      if [[ $edited_command != "$preview" ]]; then
+        expected=
+        implementation=
+      fi
+      if (( current != pending )); then
+        reruns=$((reruns + 1))
+      fi
+      execute_command "$current" "$edited_command" "$expected" \
+        "$implementation" "$command_path"
+      (( current != pending )) || return 0
+
+      # An extra command does not consume the pending demo.
+      current=$pending
+      preview=${demo_commands[current]}
+      expected=${demo_expected[current]}
+      implementation=${demo_implementations[current]}
+      command_path=${demo_paths[current]}
+      break
+    done
+  done
+}
+
+demo_count=$("$ys_bin" -e 'say: _:len' "$data_file")
+
+for request in "${requests[@]}"; do
+  start=${request%%-*}
+  end=$start
+  if [[ $request == *- ]]; then
+    end=$demo_count
+  elif [[ $request == *-* ]]; then
+    end=${request#*-}
+  fi
+  if (( ${#start} > ${#demo_count} || ${#end} > ${#demo_count} )) ||
+    (( start > end || end > demo_count )); then
+    printf 'Invalid demo range: %s (available: 1-%d)\n' \
+      "$request" "$demo_count" >&2
+    exit 2
+  fi
+  range_starts+=("$start")
+  range_ends+=("$end")
+done
+
+run_selected() {
+  local number
+  for ((number = 1; number <= demo_count; number++)); do
+    number_selected || continue
+    load_demo "$number" || return
+    selected=$((selected + 1))
+    if $interactive && ! $list_only; then
+      run_interactive "$number" || return
+    else
+      show_demo "$number" "${demo_expected[number]}"
+      printf '$ %s\n' "${demo_commands[number]}"
+      if $list_only; then
+        if [[ -n ${demo_builds[number]} ]]; then
+          built_commands+=("${demo_builds[number]}")
+        fi
+      else
+        execute_command "$number" "${demo_commands[number]}" \
+          "${demo_expected[number]}" "${demo_implementations[number]}" \
+          "${demo_paths[number]}"
+      fi
+    fi
+  done
+  if $list_only; then
+    printf '\nListed %d demos.\n' "$selected"
+  else
+    printf '\n%d demos' "$selected"
+    (( reruns == 0 )) || printf ' and %d extra runs' "$reruns"
+    printf ': %d passed, %d skipped, %d failed.\n' \
+      "$passed" "$skipped" "$failed"
+    (( failed == 0 )) || return 1
+    (( passed > 0 )) || return 2
+  fi
+  (( selected > 0 )) || return 2
+}
+
+if $interactive && ! $list_only; then
+  run_selected
+else
+  if run_selected 2>&1 | less -FRX; then
+    exit 0
+  else
+    pipeline_status=("${PIPESTATUS[@]}")
+    (( pipeline_status[1] == 0 )) || exit "${pipeline_status[1]}"
+    # Quitting less can close the pipe while demos are still printing.
+    (( pipeline_status[0] != 141 )) || exit 0
+    exit "${pipeline_status[0]}"
+  fi
+fi
