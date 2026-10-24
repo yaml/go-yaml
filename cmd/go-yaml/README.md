@@ -38,6 +38,10 @@ including the MIT license retained by the listed libyaml-derived files.
 - `-n` / `--node`: Outputs a compact representation of the YAML node structure.
 - `-N` / `--NODE`: Outputs nodes with tags and styles.
 
+Collection styles are `Block` or `Flow`.
+`Plain` is a scalar style, alongside `Double`, `Single`, `Literal`, and `Folded`.
+Detailed node input rejects `Plain` for mappings and sequences.
+
 ### Chaining
 
 Token, event, and node output is also accepted as input. The supported forward
