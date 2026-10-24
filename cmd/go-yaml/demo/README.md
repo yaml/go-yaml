@@ -64,12 +64,13 @@ arguments or when no demos pass.
 ## Catalog
 
 [demo-plugins.yaml](demo-plugins.yaml) contains the demo definitions.
-The four-letter keys `tool`, `desc`, and `cmnd` identify the executable,
-description, and shell command.
+The four-letter keys `desc` and `cmnd` identify the description and shell
+command.
 Optional `make` arguments build the CLI, `impl` identifies the implementation,
 and `fail` specifies text expected in a rejection.
 The script reads these values using `ys`.
-`{tool}` expands to the executable name and `{work}` to a scratch directory.
+Commands invoke `go-yaml` directly.
+The script routes that command to the selected executable.
 
 See the [plugin guide](../../../docs/plugin.md) for the API and configuration
 contracts.
