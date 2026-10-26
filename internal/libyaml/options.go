@@ -52,6 +52,9 @@ type Options struct {
 	// Parser supplies complete events in place of native parsing.
 	Parser ParserPlugin
 
+	// MergeKey selects the mapping merge algorithm.
+	MergeKey MergeKeyPlugin
+
 	// IndentConfig enables tab-aware structural indentation.
 	IndentConfig *IndentConfig
 

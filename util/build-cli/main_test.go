@@ -97,6 +97,17 @@ func TestInspectConfig(t *testing.T) {
 		{name: "defaults", config: "{}"},
 		{name: "limit", config: "plugin: {loader-limits: {depth: 50, alias: null}}"},
 		{name: "tab indent", config: "plugin: {tab-indent: true}"},
+		{name: "merge key", config: "plugin: {merge-key: true}"},
+		{name: "merge disabled", config: "plugin: {merge-key: disable}"},
+		{name: "merge false", config: "plugin: {merge-key: false}"},
+		{
+			name:   "merge policy",
+			config: "plugin: {merge-key: {multiple: combine, conflicts: last}}",
+		},
+		{
+			name:   "invalid merge policy",
+			config: "plugin: {merge-key: {multiple: last}}", invalid: true,
+		},
 		{
 			name:   "tab details",
 			config: "plugin: {tab-indent: {load: spaces, dump: spaces, auto: stream}}",
@@ -433,4 +444,42 @@ func TestConfiguredReferenceCLI(t *testing.T) {
 		os.Getenv("GO_YAML_BUILD_PERL")); err == nil {
 		t.Fatal("unavailable parser version built")
 	}
+}
+
+func TestConfiguredMergeKeyCLI(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	goTool, err := exec.LookPath("go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory := t.TempDir()
+	binary := filepath.Join(directory, "go-yaml")
+	if err := buildCLIWithPlugins(root, "", "merge-key=disable",
+		binary, goTool, ""); err != nil {
+		t.Fatal(err)
+	}
+	run := func(input, want string, flags ...string) {
+		t.Helper()
+		cmd := exec.Command(binary, append([]string{"-j"}, flags...)...)
+		cmd.Stdin = strings.NewReader(input)
+		out, err := cmd.CombinedOutput()
+		if err != nil || strings.TrimSpace(string(out)) != want {
+			t.Fatalf("got %q, %v; want %q", out, err, want)
+		}
+	}
+	run("<<: {x: 1}", `{"\u003c\u003c":{"x":1}}`)
+	run("<<: {x: 1}", `{"x":1}`, "--plugin=merge-key")
+	config := filepath.Join(directory, "merge.yaml")
+	if err := os.WriteFile(config, []byte(
+		"plugin: {merge-key: {multiple: combine, conflicts: last}}\n"),
+		0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := buildCLI(root, config, binary, goTool, ""); err != nil {
+		t.Fatal(err)
+	}
+	run("<<: {x: 1, a: 1}\n<<: {x: 2, b: 2}", `{"a":1,"b":2,"x":2}`)
 }

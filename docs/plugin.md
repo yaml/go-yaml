@@ -4,7 +4,7 @@ The go-yaml v4 plugin system lets applications replace selected processing
 stages without adding optional dependencies to the core module.
 
 A plugin API defines a role such as `yaml-parser`,
-`loader-limits`, `tab-indent`, or `error-format`.
+`loader-limits`, `merge-key`, `tab-indent`, or `error-format`.
 Each API can have several named implementations.
 The current implementations are:
 
@@ -13,6 +13,7 @@ The current implementations are:
 | `yaml-parser` | `go-yaml` | core | yes |
 | `yaml-parser` | `reference` | `plugin/yamlparser/reference` | no |
 | `error-format` | `error-format` | `plugin/errorformat/v3` and `plugin/errorformat/v4` | yes |
+| `merge-key` | `merge-key` | `plugin/mergekey` | yes |
 | `loader-limits` | `loader-limits` | `plugin/loaderlimits` | yes |
 | `tab-indent` | `tab-indent` | `plugin/tabindent` | yes |
 
@@ -55,6 +56,11 @@ type LoaderLimitsPlugin interface {
     CheckAlias(aliasCount, constructCount int) error
 }
 
+type MergeKeyPlugin interface {
+    MergeKeyConfig() MergeKeyConfig
+    MergeMappings(MergeKeyInput) (*Node, error)
+}
+
 type TabIndentPlugin interface {
     TabIndentConfig() IndentConfig
 }
@@ -72,6 +78,13 @@ an external parser.
 
 Input is buffered when a YAML-parser plugin is active.
 Plugin implementations must support independent concurrent calls.
+
+## Merge keys
+
+The built-in merge algorithm remains enabled by default.
+Use `merge-key` to disable merging, configure repeated directives and conflicts,
+or select a replacement algorithm.
+See [Merge-Key](plugin/merge-key.md) for configuration and implementation details.
 
 ## Error formatting
 

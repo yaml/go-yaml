@@ -13,6 +13,10 @@
 //   - Configurable depth and alias expansion limits
 //   - The former plugin/limit module is deprecated
 //
+// Merge-Key plugin (plugin/mergekey), API merge-key:
+//   - Disable merging, combine repeated directives, and select conflict policy
+//   - Replace the mapping merge algorithm with a third-party implementation
+//
 // Tab indentation plugin (plugin/tabindent), API tab-indent:
 //   - Tab-aware structural indentation for loading and dumping
 //
