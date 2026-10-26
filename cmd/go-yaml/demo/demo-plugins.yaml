@@ -1,0 +1,92 @@
+# Demo numbers follow list order; see README.md for usage.
+# make contains arguments to make from this repository's root.
+# Each distinct build runs once per invocation.
+# Executable overrides skip their builds.
+
+# Package paths and pinned versions must remain single shell words.
+# yamllint disable rule:line-length
+- make: &cli >-
+    cli PLUGIN=yaml-parser=reference@v0.2.6
+    PLUGIN-PACKAGE=github.com/yamlstar/yamlstar-plugin-parser-json-comments/goyaml@v0.1.1,github.com/yamlstar/yamlstar-plugin-parser-rapidyaml/goyaml@v0.1.4,github.com/yamlstar/yamlstar-plugin-parser-toml/goyaml@v0.1.2
+  # yamllint enable rule:line-length
+  desc: Parse YAML with the native go-yaml implementation
+  cmnd: >-
+    <<<$'answer: 42\nitems: [one, two]\n' go-yaml
+    --plugin=yaml-parser=go-yaml -J
+  impl: go-yaml
+
+- make: *cli
+  desc: Parse YAML with the reference parser
+  cmnd: >-
+    <<<$'answer: 42\nitems: [one, two]\n' go-yaml
+    --plugin=yaml-parser=reference -J
+  impl: reference
+
+- make: *cli
+  desc: Parse JSON-style comments with the JSON-comments parser
+  cmnd: >-
+    <<<$'{answer: true/* JSON block comment */} // line comment\n'
+    go-yaml --plugin=yaml-parser=json-comments -J
+  impl: json-comments
+
+- make: *cli
+  desc: Parse YAML with the RapidYAML shared-library adapter
+  cmnd: >-
+    <<<$'answer: 42\nitems: [one, two]\n' go-yaml
+    --plugin=yaml-parser=rapidyaml -J
+  impl: rapidyaml
+
+- make: *cli
+  desc: Parse TOML with the external TOML adapter
+  cmnd: >-
+    <<<$'answer = 42\n[server]\nhost = "localhost"\n' go-yaml
+    --plugin=yaml-parser=toml -J
+  impl: toml
+
+- make: *cli
+  desc: Load tab-indented YAML with tab-indent
+  cmnd: >-
+    <<<$'root:\n\tanswer: 42\n' go-yaml
+    --plugin=yaml-parser=go-yaml\,tab-indent -J
+  impl: go-yaml
+
+- make: *cli
+  desc: Dump YAML using tabs with tab-indent
+  cmnd: >-
+    <<<$'root:\n  answer: 42\n' go-yaml
+    --plugin=yaml-parser=go-yaml\,tab-indent -y
+  impl: go-yaml
+
+- make: *cli
+  desc: Reject excessive nesting with loader-limits
+  cmnd: >-
+    <<<$'[[[0]]]\n' go-yaml
+    -C <(echo '{plugin: {loader-limits: {depth: 2}}}') -J
+  fail: depth
+
+- make: *cli
+  desc: Reject alias expansion with loader-limits
+  cmnd: >-
+    <<<$'[&value 42, *value]\n' go-yaml
+    -C <(echo '{plugin: {loader-limits: {alias: 0}}}') -J
+  fail: alias
+
+- make: *cli
+  desc: Show a parse error using the v3 error formatter
+  cmnd: >-
+    <<<$'answer: [1, 2\n' go-yaml -C <(echo '{plugin: {error-format: v3}}') -J
+  fail: 'yaml: line'
+
+- make: *cli
+  desc: Show a parse error using the v4 error formatter
+  cmnd: >-
+    <<<$'answer: [1, 2\n' go-yaml
+    -C <(echo '{plugin: {error-format: {v4: {position: long}}}}') -J
+  fail: at line
+
+- make: *cli
+  desc: Customize the v4 error template
+  cmnd: >-
+    <<<$'answer: [1, 2\n' go-yaml -C <(echo
+    '{plugin: {error-format: {v4: {load-template: "DEMO: {{.Message}}"}}}}') -J
+  fail: 'DEMO:'

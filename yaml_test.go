@@ -36,6 +36,32 @@ var negativeZero = math.Copysign(0.0, -1.0)
 
 var unmarshalIntTest = 123
 
+func assertLoadErrorEqual(t *testing.T, want, got *libyaml.LoadError) {
+	t.Helper()
+	assert.Equal(t, want.Stage, got.Stage)
+	assert.Equal(t, want.Message, got.Message)
+	assert.DeepEqual(t, want.Mark, got.Mark)
+	assert.DeepEqual(t, want.ContextMark, got.ContextMark)
+	assert.Equal(t, want.ContextMsg, got.ContextMsg)
+	wantCause := want.Unwrap()
+	if wantCause == nil && got.Unwrap() == nil {
+		return
+	}
+	assert.ErrorIs(t, got, wantCause)
+}
+
+func assertLoadErrorsEqual(t *testing.T, want *yaml.LoadErrors, gotErr error) {
+	t.Helper()
+	got, ok := gotErr.(*yaml.LoadErrors)
+	if !ok {
+		t.Fatalf("got %T; want *yaml.LoadErrors", gotErr)
+	}
+	assert.Equal(t, len(want.Errors), len(got.Errors))
+	for i := range want.Errors {
+		assertLoadErrorEqual(t, want.Errors[i], got.Errors[i])
+	}
+}
+
 // archSafeInt returns v as int if it fits in the architecture's int type,
 // otherwise returns int64.
 func archSafeInt(v int64) any {
@@ -1010,7 +1036,7 @@ func TestParserErrorUnmarshal(t *testing.T) {
 		},
 		Message: "could not find expected ':'",
 	}
-	assert.DeepEqual(t, expectedErr, asErr)
+	assertLoadErrorEqual(t, expectedErr, asErr)
 }
 
 func TestParserErrorDecoder(t *testing.T) {
@@ -1028,7 +1054,7 @@ func TestParserErrorDecoder(t *testing.T) {
 		},
 		Message: "block sequence entries are not allowed in this context",
 	}
-	assert.DeepEqual(t, expectedErr, asErr)
+	assertLoadErrorEqual(t, expectedErr, asErr)
 }
 
 var unmarshalerTests = []struct {
@@ -1462,7 +1488,7 @@ func TestUnmarshalerError(t *testing.T) {
 			yaml.NewLoadError(yaml.ConstructorStage, errFailing.Error(), yaml.Mark{Line: 1, Column: 17}, errFailing),
 		},
 	}
-	assert.DeepEqual(t, expectedErr, err)
+	assertLoadErrorsEqual(t, expectedErr, err)
 	// whatever could be unmarshaled must be unmarshaled
 	assert.Equal(t, 123, dst.Foo)
 	assert.DeepEqual(t, &failingUnmarshaler{}, dst.Bar)
@@ -1488,7 +1514,7 @@ func TestLegacyUnmarshalerError(t *testing.T) {
 			yaml.NewLoadError(yaml.ConstructorStage, errFailing.Error(), yaml.Mark{Line: 1, Column: 17}, errFailing),
 		},
 	}
-	assert.DeepEqual(t, expectedErr, err)
+	assertLoadErrorsEqual(t, expectedErr, err)
 	// whatever could be unmarshaled must be unmarshaled
 	assert.Equal(t, 123, dst.Foo)
 	assert.DeepEqual(t, &legacyFailingUnmarshaler{}, dst.Bar)
@@ -1516,7 +1542,7 @@ func TestTextUnmarshalerError(t *testing.T) {
 			yaml.NewLoadError(yaml.ConstructorStage, errFailing.Error(), yaml.Mark{Line: 1, Column: 17}, errFailing),
 		},
 	}
-	assert.DeepEqual(t, expectedErr, err)
+	assertLoadErrorsEqual(t, expectedErr, err)
 	// whatever could be unmarshaled must be unmarshaled
 	assert.Equal(t, 123, dst.Foo)
 	assert.DeepEqual(t, &failingTextUnmarshaler{}, dst.Bar)
@@ -1728,7 +1754,7 @@ func TestMerge(t *testing.T) {
 
 	wantStringMap := make(map[string]any)
 	for k, v := range want {
-		wantStringMap[fmt.Sprintf("%v", k)] = v
+		wantStringMap[k] = v
 	}
 
 	var m map[any]any
@@ -2074,6 +2100,20 @@ a:
 	}
 }
 
+func TestInvalidMergeValueError(t *testing.T) {
+	data := []byte("a:\n  <<: 1\n")
+
+	x := map[string]any{}
+	err := yaml.Unmarshal(data, &x)
+	if err == nil {
+		t.Fatal("expected error, got none")
+	}
+	var loadErr *yaml.LoadError
+	assert.ErrorAs(t, err, &loadErr)
+	assert.Equal(t, yaml.ConstructorStage, loadErr.Stage)
+	assert.Equal(t, "map merge requires map or sequence of maps as the value", loadErr.Message)
+}
+
 func TestParserErrorUnknownAnchorPosition(t *testing.T) {
 	tests := []struct {
 		data   string
@@ -2098,7 +2138,7 @@ func TestParserErrorUnknownAnchorPosition(t *testing.T) {
 				Column: test.column,
 			},
 		}
-		assert.DeepEqual(t, expected, asErr)
+		assertLoadErrorEqual(t, expected, asErr)
 	}
 }
 
@@ -2471,68 +2511,36 @@ func TestEncodeToYAML(t *testing.T) {
 	datatest.RunTestCases(t, func() ([]map[string]any, error) {
 		return datatest.LoadTestCasesFromFile("testdata/encode.yaml", libyaml.LoadAny)
 	}, map[string]datatest.TestHandler{
-		"encode":      runEncodeTest,
-		"encode-opts": runEncodeOptsTest,
+		"encode":  runEncodeTest,
+		"marshal": runMarshalTest,
+		"dump":    runDumpTest,
 	})
 }
 
 func runEncodeTest(t *testing.T, tc map[string]any) {
 	t.Helper()
 
-	// Get type and create instance
-	// Note: "type" field in YAML is renamed to "output_type" during normalization
-	// to avoid conflict with the test type ("encode")
-	typeName, ok := tc["output_type"].(string)
-	if !ok {
-		t.Fatalf("output_type must be a string")
-	}
-	data := tc["data"]
-
-	// Create pointer target of the specified type (for addressability)
-	targetPtr, err := encodeTypeRegistry.NewPointerInstance(typeName)
-	if err != nil {
-		t.Fatalf("Failed to create instance of type %s: %v", typeName, err)
-	}
-
-	// Resolve value constants (like +Inf, -Inf, NaN, -0)
-	resolvedData := encodeValueRegistry.Resolve(data)
-
-	// Unmarshal the data into the target to populate it
-	dataBytes, err := yaml.Marshal(resolvedData)
-	if err != nil {
-		t.Fatalf("Failed to marshal data: %v", err)
-	}
-
-	err = yaml.Unmarshal(dataBytes, targetPtr)
-	if err != nil {
-		t.Fatalf("Failed to unmarshal data into target: %v", err)
-	}
-
-	// Marshal the target back to YAML
-	output, err := yaml.Marshal(targetPtr)
-	if err != nil {
-		t.Fatalf("Marshal failed: %v", err)
-	}
-
-	// Compare with expected output
-	want, ok := tc["want"].(string)
-	if !ok {
-		t.Fatalf("want must be a string")
-	}
-	assert.Equal(t, want, string(output))
+	runEncodeValueTest(t, tc, func(value any) ([]byte, error) {
+		var buf bytes.Buffer
+		encoder := yaml.NewEncoder(&buf)
+		if err := encoder.Encode(value); err != nil {
+			return nil, err
+		}
+		if err := encoder.Close(); err != nil {
+			return nil, err
+		}
+		return buf.Bytes(), nil
+	})
 }
 
-func runEncodeOptsTest(t *testing.T, tc map[string]any) {
+func runMarshalTest(t *testing.T, tc map[string]any) {
 	t.Helper()
 
-	// Get type and create instance
-	// Note: "type" field in YAML is renamed to "output_type" during normalization
-	// to avoid conflict with the test type ("encode-opts")
-	typeName, ok := tc["output_type"].(string)
-	if !ok {
-		t.Fatalf("output_type must be a string")
-	}
-	data := tc["data"]
+	runEncodeValueTest(t, tc, yaml.Marshal)
+}
+
+func runDumpTest(t *testing.T, tc map[string]any) {
+	t.Helper()
 
 	// Parse options
 	var opts []yaml.Option
@@ -2566,6 +2574,22 @@ func runEncodeOptsTest(t *testing.T, tc map[string]any) {
 		}
 	}
 
+	runEncodeValueTest(t, tc, func(value any) ([]byte, error) {
+		return yaml.Dump(value, opts...)
+	})
+}
+
+func runEncodeValueTest(t *testing.T, tc map[string]any, encodeValue func(any) ([]byte, error)) {
+	t.Helper()
+
+	// The fixture's type field is normalized to output_type so it does not
+	// conflict with the handler name stored in type.
+	typeName, ok := tc["output_type"].(string)
+	if !ok {
+		t.Fatalf("output_type must be a string")
+	}
+	data := tc["data"]
+
 	// Create pointer target of the specified type (for addressability)
 	targetPtr, err := encodeTypeRegistry.NewPointerInstance(typeName)
 	if err != nil {
@@ -2586,10 +2610,10 @@ func runEncodeOptsTest(t *testing.T, tc map[string]any) {
 		t.Fatalf("Failed to unmarshal data into target: %v", err)
 	}
 
-	// Dump the target to YAML with options
-	output, err := yaml.Dump(targetPtr, opts...)
+	// Serialize the populated value using the selected API.
+	output, err := encodeValue(targetPtr)
 	if err != nil {
-		t.Fatalf("Dump failed: %v", err)
+		t.Fatalf("%s failed: %v", tc["type"], err)
 	}
 
 	// Compare with expected output
@@ -2638,7 +2662,7 @@ func TestEncoderWriteError(t *testing.T) {
 type errorWriter struct{}
 
 func (errorWriter) Write([]byte) (int, error) {
-	return 0, fmt.Errorf("some write error")
+	return 0, errors.New("some write error")
 }
 
 var marshalErrorTests = []struct {
@@ -2651,14 +2675,14 @@ var marshalErrorTests = []struct {
 		inlineB `yaml:",inline"`
 	}{1, inlineB{2, inlineC{3}}},
 	//nolint:dupword // struct is duplicated here as the first one is the struct and the second is the name of the inline struct
-	error: `go-yaml dump error in representer: duplicated key 'b' in struct struct \{ B int; .*`,
+	error: `yaml: duplicated key 'b' in struct struct \{ B int; .*`,
 	stage: yaml.RepresenterStage,
 }, {
 	value: &struct {
 		A int
 		B map[string]int `yaml:",inline"`
 	}{1, map[string]int{"a": 2}},
-	error: `go-yaml dump error in representer: cannot have key "a" in inlined map: conflicts with struct field`,
+	error: `yaml: cannot have key "a" in inlined map: conflicts with struct field`,
 	stage: yaml.RepresenterStage,
 }}
 
@@ -3387,6 +3411,54 @@ func TestOptsYAML(t *testing.T) {
 			yamlStr: "plugin: {loader-limits: true}",
 		},
 		{
+			name:    "error-format disabled",
+			yamlStr: "plugin: {error-format: false}",
+		},
+		{
+			name:      "old error-format API",
+			yamlStr:   "plugin: {errfmt: true}",
+			expectErr: true,
+			errMatch:  `plugin "errfmt" has no default implementation`,
+		},
+		{
+			name:      "old error-format implementation",
+			yamlStr:   "plugin: {error-format: errfmt}",
+			expectErr: true,
+			errMatch:  `unknown implementation "errfmt"`,
+		},
+		{
+			name:    "disabled old error-format API",
+			yamlStr: "plugin: {errfmt: false}",
+		},
+		{
+			name:    "disabled old error-format API mapping",
+			yamlStr: "plugin: {errfmt: {disable: true}}",
+		},
+		{
+			name:      "null error-format configuration",
+			yamlStr:   "plugin: {error-format: null}",
+			expectErr: true,
+			errMatch:  "mapping, string, or boolean",
+		},
+		{
+			name:      "multiple error-format versions",
+			yamlStr:   "plugin: {error-format: {v3: {}, v4: {}}}",
+			expectErr: true,
+			errMatch:  `plugin "error-format" must select only one of v3 or v4`,
+		},
+		{
+			name:      "invalid v3 error-format configuration",
+			yamlStr:   "plugin: {error-format: {v3: {unknown: true}}}",
+			expectErr: true,
+			errMatch:  `error-format v3: unknown key "unknown"`,
+		},
+		{
+			name:      "invalid v4 error-format configuration",
+			yamlStr:   "plugin: {error-format: {v4: {position: bad}}}",
+			expectErr: true,
+			errMatch:  `error-format v4: invalid position "bad"`,
+		},
+		{
 			name:    "plugin disabled",
 			yamlStr: "plugin: {loader-limits: false}",
 		},
@@ -3614,9 +3686,9 @@ func runLimitTest(t *testing.T, tc map[string]any) {
 		}
 	}
 
-	// Run unmarshal
+	// Run load with v4 defaults.
 	var v any
-	err = yaml.Unmarshal(data, &v)
+	err = yaml.Load(data, &v)
 	if expectedError != "" {
 		if err == nil {
 			t.Fatalf("expected error %q, got nil", expectedError)

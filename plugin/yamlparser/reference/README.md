@@ -11,7 +11,7 @@ err := yaml.Load(input, &value, yaml.WithPlugin(reference.New()))
 ```
 
 Call `reference.Register()` before using `yaml.OptsYAML` with
-`plugin: {yaml-parser: reference@v0.2.5}`.
+`plugin: {yaml-parser: reference@v0.2.6}`.
 
 The API name is `yaml-parser` and the implementation name is `reference`.
 This implementation is optional and is not selected by a bare `yaml-parser`
@@ -21,13 +21,21 @@ From the repository root:
 
 ```bash
 make test-reference-parser
-make cli PLUGIN=yaml-parser=reference@v0.2.5
-./go-yaml --plugin=yaml-parser=reference@0.2.5 -j data.yaml
+make cli PLUGIN=yaml-parser=reference@v0.2.6
+./go-yaml --plugin=yaml-parser=reference@0.2.6 -j data.yaml
 ```
 
 For local development, use the checkout under
 `repos/yamlstar-plugin-parser-reference` by setting
 `REFERENCE-PARSER-LOCAL=1`.
+If the checkout is elsewhere in a coordinated workspace, set
+`GO_YAML_REFERENCE_PARSER_DIR` to its absolute path.
+The optional test target also honors this override:
 
-See the [plugin documentation](../../../docs/plugins.md) for configuration and
+```bash
+GO_YAML_REFERENCE_PARSER_DIR=/path/to/yamlstar-plugin-parser-reference \
+  make test-reference-parser
+```
+
+See the [plugin documentation](../../../docs/plugin.md) for configuration and
 CLI build details.

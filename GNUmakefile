@@ -33,6 +33,11 @@ YTS-DIR := yts/testdata/$(YTS-TAG)
 
 CLI-BINARY := go-yaml
 
+# README recording tools are installed only when explicitly requested.
+YAMLCAST-COMMIT := 0dfec58fc184e97b21239d0b54dc222bd8311cf1
+YAMLCAST-YS-VERSION := 0.2.32
+YAMLCAST-URL := https://codeload.github.com/ingydotnet/yamlcast
+
 # Pager for viewing documentation:
 PAGER ?= less -FRX
 
@@ -49,6 +54,11 @@ GO-NO-DEP-GO := true
 endif
 
 include $(MAKES)/go.mk
+
+YAMLCAST-ROOT := $(LOCAL-ROOT)/yamlcast-$(YAMLCAST-COMMIT)
+YAMLCAST := $(YAMLCAST-ROOT)/bin/yamlcast
+YAMLCAST-ARCHIVE := $(LOCAL-CACHE)/yamlcast-$(YAMLCAST-COMMIT).tar.gz
+YAMLCAST-READY := $(YAMLCAST-ROOT)/.cache/ready-$(YAMLCAST-YS-VERSION)
 
 # Set this from the `make` command to override:
 GOLANGCI-LINT-VERSION ?= v2.14.0
@@ -69,11 +79,12 @@ SHELL-NAME := makes go-yaml
 include $(MAKES)/clean.mk
 include $(MAKES)/shell.mk
 
-MAKES-CLEAN := $(CLI-BINARY) $(GOLANGCI-LINT)
+MAKES-CLEAN := $(CLI-BINARY) $(GOLANGCI-LINT) *.so
 MAKES-REALCLEAN := $(dir $(YTS-DIR))
 
 SHELL-SCRIPTS = \
   util/common.bash \
+  cmd/go-yaml/demo/demo-plugins.sh \
   $(shell grep -rl '^.!/usr/bin/env bash' util | \
           grep -v '\.sw')
 
@@ -165,15 +176,14 @@ tidy: $(GO-DEPS)
 # Pass configuration paths as environment values, not shell source.
 export GO_YAML_BUILD_CONFIG = $(CONFIG)
 export GO_YAML_BUILD_PLUGIN = $(PLUGIN)
+export GO_YAML_BUILD_PLUGIN_PACKAGE = $(PLUGIN-PACKAGE)
 export GO_YAML_BUILD_GO = $(GO)
 export GO_YAML_BUILD_PERL = $(PERL)
-JSON-COMMENTS-LOCAL ?= 0
-export GO_YAML_JSON_COMMENTS_LOCAL = $(JSON-COMMENTS-LOCAL)
 REFERENCE-PARSER-LOCAL ?= 0
 export GO_YAML_REFERENCE_PARSER_LOCAL = $(REFERENCE-PARSER-LOCAL)
 
 cli: $(GO)
-ifneq ($(strip $(CONFIG)$(PLUGIN)),)
+ifneq ($(strip $(CONFIG)$(PLUGIN)$(PLUGIN-PACKAGE)),)
 cli: $(PERL)
 	go run ./util/build-cli
 else
@@ -182,6 +192,30 @@ endif
 
 $(CLI-BINARY): $(GO)
 	go build -o $@ ./cmd/$@
+
+# Render the README image with the current CLI and demo sources.
+# Chrome's Unix socket path is too long under the project-local TMPDIR.
+update: cli yamlcast
+	@TMPDIR=/tmp YAMLCAST_ROOT=$(YAMLCAST-ROOT) \
+	PATH=$(YAMLCAST-ROOT)/.cache/local/bin:$(PATH) \
+	  $(YAMLCAST) docs/demo/cli.yaml
+
+yamlcast: $(YAMLCAST-READY)
+
+$(YAMLCAST-READY): $(YAMLCAST)
+	$(MAKE) -C $(YAMLCAST-ROOT) \
+	  YAMLSCRIPT-VERSION=$(YAMLCAST-YS-VERSION) shell CMD=true
+	touch $@
+
+$(YAMLCAST): $(YAMLCAST-ARCHIVE)
+	mkdir -p $(YAMLCAST-ROOT)/.cache
+	tar -xzf $< -C $(YAMLCAST-ROOT) --strip-components=1
+	ln -sfn $(MAKES) $(YAMLCAST-ROOT)/.cache/makes
+	touch $@
+
+$(YAMLCAST-ARCHIVE):
+	curl+ $(YAMLCAST-URL)/tar.gz/$(YAMLCAST-COMMIT) > $@.tmp
+	mv $@.tmp $@
 
 run-examples: $(GO)
 	@for dir in example/*/; do \
@@ -221,35 +255,11 @@ $(GOLANGCI-LINT): $(GOLANGCI-LINT-VERSIONED)
 # Optional plugin dependencies stay outside the core module.
 PLUGIN-WORK = $(CURDIR)/.cache/plugin-work/go.work
 
-prepare-json-comments: $(PERL) $(GO-DEPS)
-	GO_YAML_BUILD_JSON_COMMENTS=true \
-	GO_YAML_JSON_COMMENTS_LOCAL=1 \
-	GO_YAML_JSON_COMMENTS_VERSION=v0.1.9 \
-	$(PERL) util/prepare-plugins
-
 prepare-reference-parser: $(PERL) $(GO-DEPS)
 	GO_YAML_BUILD_REFERENCE_PARSER=true \
 	GO_YAML_REFERENCE_PARSER_LOCAL=1 \
-	GO_YAML_REFERENCE_PARSER_VERSION=v0.2.5 \
+	GO_YAML_REFERENCE_PARSER_VERSION=v0.2.6 \
 	$(PERL) util/prepare-plugins
-
-test-json-comments: prepare-json-comments
-	GOWORK=$(PLUGIN-WORK) CGO_ENABLED=0 \
-	  go test ./plugin/jsoncomments/... ./.cache/cli-plugins/...$(TEST-OPTS)
-	GO_YAML_TEST_JSON_COMMENTS=1 \
-	GO_YAML_JSON_COMMENTS_LOCAL=1 \
-	go test ./util/build-cli \
-	  -run TestConfiguredJSONCLI$(TEST-OPTS)
-
-lint-json-comments: prepare-json-comments $(GOLANGCI-LINT-VERSIONED)
-	GOWORK=$(PLUGIN-WORK) $(GOLANGCI-LINT-VERSIONED) run \
-	  ./plugin/jsoncomments/...
-
-# The generated parser shares state; exercise concurrent Go and EDN callers.
-test-json-comments-race: prepare-json-comments
-	GOWORK=$(PLUGIN-WORK) go test -race -count=3 \
-	  ./plugin/jsoncomments/... \
-	  github.com/yamlstar/yamlstar-plugin-json-comments/parser
 
 test-reference-parser: prepare-reference-parser
 	GOWORK=$(PLUGIN-WORK) CGO_ENABLED=0 \

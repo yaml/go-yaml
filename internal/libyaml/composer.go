@@ -61,6 +61,7 @@ func (c *Composer) configureInput(r io.Reader) {
 	}
 	if c.opts != nil {
 		c.Parser.depthCheck = c.opts.DepthCheck
+		c.Parser.formatError = c.opts.FormatLoadError
 		c.Parser.indentConfig = c.opts.IndentConfig
 	}
 }
@@ -75,6 +76,7 @@ func NewComposerFromEvents(events []Event, opts *Options) *Composer {
 	c.Parser.SetInputEvents(events)
 	if opts != nil {
 		c.Parser.depthCheck = opts.DepthCheck
+		c.Parser.formatError = opts.FormatLoadError
 	}
 	return &c
 }
@@ -234,7 +236,7 @@ func (c *Composer) alias() *Node {
 	n.Alias = c.anchors[n.Value]
 	if n.Alias == nil {
 		msg := fmt.Sprintf("unknown anchor '%s' referenced", n.Value)
-		Fail(formatComposerError(msg, Mark{
+		Fail(c.formatComposerError(msg, Mark{
 			Line:   n.Line,
 			Column: n.Column,
 		}))
@@ -400,13 +402,13 @@ func (c *Composer) expect(e EventType) {
 		}
 	}
 	if c.event.Type == STREAM_END_EVENT {
-		Fail(formatComposerError(
+		Fail(c.formatComposerError(
 			"attempted to go past the end of stream; corrupted value?",
 			Mark{Line: c.event.StartMark.Line, Column: c.event.StartMark.Column},
 		))
 	}
 	if c.event.Type != e {
-		Fail(formatComposerError(
+		Fail(c.formatComposerError(
 			fmt.Sprintf("expected %s event but got %s", e, c.event.Type),
 			Mark{Line: c.event.StartMark.Line, Column: c.event.StartMark.Column},
 		))
@@ -473,7 +475,7 @@ func (c *Composer) captureDirectives(n *Node) {
 	}
 }
 
-// Fail panics with a YAMLError wrapping the given error.
+// Fail panics with a [YAMLError] wrapping the given error.
 func Fail(err error) {
 	panic(&YAMLError{err})
 }
@@ -484,23 +486,33 @@ func failf(format string, args ...any) {
 }
 
 // formatComposerError creates a LoadError for composer-stage errors.
-func formatComposerError(message string, mark Mark) *LoadError {
+func (c *Composer) formatComposerError(message string, mark Mark) *LoadError {
+	var formatter func(*LoadError) string
+	if c.opts != nil {
+		formatter = c.opts.FormatLoadError
+	}
 	return &LoadError{
-		Stage:   ComposerStage,
-		Mark:    mark,
-		Message: message,
+		Stage:     ComposerStage,
+		Mark:      mark,
+		Message:   message,
+		formatter: formatter,
 	}
 }
 
 // formatComposerErrorContext creates a LoadError with both context and
 // problem information for composer-stage errors.
-func formatComposerErrorContext(context string, contextMark Mark, message string, mark Mark) *LoadError {
+func (c *Composer) formatComposerErrorContext(context string, contextMark Mark, message string, mark Mark) *LoadError {
+	var formatter func(*LoadError) string
+	if c.opts != nil {
+		formatter = c.opts.FormatLoadError
+	}
 	return &LoadError{
 		Stage:       ComposerStage,
 		ContextMark: contextMark,
 		ContextMsg:  context,
 		Mark:        mark,
 		Message:     message,
+		formatter:   formatter,
 	}
 }
 

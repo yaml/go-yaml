@@ -11,6 +11,26 @@ import (
 	"go.yaml.in/yaml/v4/plugin/loaderlimits"
 )
 
+// ErrorFormatPlugin customizes how YAML load and dump errors are rendered.
+//
+// When registered, FormatLoadError and FormatDumpError are called to produce
+// the error message string for each [LoadError] and [DumpError], allowing the
+// format to be customized.
+//
+// Example usage:
+//
+//	import errorformatv3 "go.yaml.in/yaml/v4/plugin/errorformat/v3"
+//	loader := yaml.NewLoader(data, yaml.WithPlugin(errorformatv3.New()))
+type ErrorFormatPlugin interface {
+	// FormatLoadError returns the string representation of a LoadError.
+	// The returned string is used as the error message.
+	FormatLoadError(err *LoadError) string
+
+	// FormatDumpError returns the string representation of a DumpError.
+	// The returned string is used as the error message.
+	FormatDumpError(err *DumpError) string
+}
+
 // LoaderLimitsPlugin configures safety limits for YAML loading.
 //
 // When registered, CheckDepth is called on each nesting depth increase,
@@ -40,9 +60,6 @@ type LimitPlugin = LoaderLimitsPlugin
 
 // ParserPlugin supplies a complete event stream in place of native parsing.
 type ParserPlugin = libyaml.ParserPlugin
-
-// JSONCommentsPlugin sanitizes JSON-style comments before parsing.
-type JSONCommentsPlugin = libyaml.JSONCommentsPlugin
 
 // IndentMode supplies loading and dumping defaults.
 type IndentMode = libyaml.IndentMode
@@ -89,6 +106,11 @@ type PluginRegistration = pluginreg.Registration
 type nativeParserPlugin struct{}
 
 var pluginRegistry = pluginreg.NewRegistry(
+	PluginRegistration{
+		API: pluginreg.ErrorFormatAPI, Name: pluginreg.ErrorFormatAPI,
+		Default: true,
+		Factory: newErrorFormatPluginFromYAML,
+	},
 	PluginRegistration{
 		API:     pluginreg.LoaderLimitsAPI,
 		Name:    pluginreg.LoaderLimitsAPI,

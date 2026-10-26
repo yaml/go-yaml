@@ -1,11 +1,12 @@
 // Copyright 2026 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-// Build a CLI with the plugins and defaults named by CONFIG and PLUGIN.
+// Build a CLI with CONFIG, PLUGIN, and PLUGIN-PACKAGE settings.
 package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -32,6 +33,7 @@ func main() {
 			filepath.Join(root, "go-yaml"),
 			os.Getenv("GO_YAML_BUILD_GO"),
 			os.Getenv("GO_YAML_BUILD_PERL"),
+			os.Getenv("GO_YAML_BUILD_PLUGIN_PACKAGE"),
 		)
 	}
 	if err != nil {
@@ -41,9 +43,9 @@ func main() {
 }
 
 type buildConfig struct {
-	jsonComments, referenceParser bool
-	jsonVersion, referenceVersion string
-	embedded                      []byte
+	referenceParser  bool
+	referenceVersion string
+	embedded         []byte
 }
 
 var pluginVersion = regexp.MustCompile(`^v?[0-9]+\.[0-9]+\.[0-9]+$`)
@@ -102,7 +104,7 @@ func pluginConfig(api string, value any) (map[string]any, bool, error) {
 
 // inspectConfig validates core options and selects known compiled plugins.
 // The completed binary validates embedded defaults against the real factories.
-func inspectConfig(data []byte) (buildConfig, error) {
+func inspectConfig(data []byte, external bool) (buildConfig, error) {
 	selection := buildConfig{embedded: data}
 	if err := registerBuildPlugins(); err != nil {
 		return selection, err
@@ -117,8 +119,7 @@ func inspectConfig(data []byte) (buildConfig, error) {
 	if value, present := config["plugin"]; present {
 		plugins, ok := value.(map[string]any)
 		if !ok {
-			return selection, fmt.Errorf(
-				"plugin configuration must be a mapping")
+			return selection, errors.New("plugin configuration must be a mapping")
 		}
 		if err := pluginreg.NormalizeConfig(plugins); err != nil {
 			return selection, err
@@ -131,6 +132,15 @@ func inspectConfig(data []byte) (buildConfig, error) {
 			if disabled {
 				continue
 			}
+			// External factories are available only in the staged executable.
+			// Keep automatic reference-parser preparation and validate all
+			// other plugin settings after registering the external packages.
+			if external {
+				if api != pluginreg.YAMLParserAPI || setting["name"] != "reference" {
+					delete(plugins, api)
+					continue
+				}
+			}
 			name := ""
 			if raw, found := setting["name"]; found {
 				name, ok = raw.(string)
@@ -141,8 +151,9 @@ func inspectConfig(data []byte) (buildConfig, error) {
 				name = pluginreg.CanonicalName(api, name)
 			}
 			switch api {
-			case pluginreg.LoaderLimitsAPI:
-				if name != "" && name != pluginreg.LoaderLimitsAPI {
+			case pluginreg.ErrorFormatAPI, pluginreg.LoaderLimitsAPI:
+				_, shortForm := value.(string)
+				if name != "" && name != api && !shortForm {
 					return selection, fmt.Errorf(
 						"no CLI build provider for plugin %q implementation %q",
 						api, name)
@@ -167,23 +178,6 @@ func inspectConfig(data []byte) (buildConfig, error) {
 						"no CLI build provider for plugin %q implementation %q",
 						api, name)
 				}
-			case "json-comments":
-				if name == "" {
-					name = "sanitizer"
-				}
-				if name != "sanitizer" {
-					return selection, fmt.Errorf(
-						"no CLI build provider for plugin %q implementation %q",
-						api, name)
-				}
-				selection.jsonComments = true
-				if raw, found := setting["version"]; found {
-					selection.jsonVersion, err = canonicalVersion(raw, api)
-					if err != nil {
-						return selection, err
-					}
-				}
-				delete(plugins, api)
 			case "tab-indent":
 				switch name {
 				case "", "tab-indent":
@@ -228,7 +222,7 @@ func mergePluginDSL(data []byte, specs string) ([]byte, error) {
 		var ok bool
 		plugins, ok = value.(map[string]any)
 		if !ok {
-			return nil, fmt.Errorf("plugin configuration must be a mapping")
+			return nil, errors.New("plugin configuration must be a mapping")
 		}
 		if err := pluginreg.NormalizeConfig(plugins); err != nil {
 			return nil, err
@@ -239,6 +233,10 @@ func mergePluginDSL(data []byte, specs string) ([]byte, error) {
 		return nil, err
 	}
 	for _, selection := range selections {
+		if selection.Name != "" && selection.Version == "" {
+			plugins[selection.API] = selection.Name
+			continue
+		}
 		if selection.Name == "" && selection.Version == "" {
 			plugins[selection.API] = true
 			continue
@@ -256,6 +254,74 @@ func mergePluginDSL(data []byte, specs string) ([]byte, error) {
 	return yaml.Dump(config)
 }
 
+var packageSpec = regexp.MustCompile(
+	`^[A-Za-z0-9][A-Za-z0-9._~/-]*@v[0-9]+\.[0-9]+\.[0-9]+` +
+		`(?:-[0-9A-Za-z.-]+)?(?:\+incompatible)?$`)
+
+func parsePackages(specs string) ([]string, error) {
+	if strings.TrimSpace(specs) == "" {
+		return nil, nil
+	}
+	var packages []string
+	seen := map[string]bool{}
+	for _, spec := range strings.Split(specs, ",") {
+		spec = strings.TrimSpace(spec)
+		path, _, _ := strings.Cut(spec, "@")
+		if !packageSpec.MatchString(spec) ||
+			!strings.Contains(strings.Split(path, "/")[0], ".") {
+			return nil, fmt.Errorf(
+				"expected package/path@vMAJOR.MINOR.PATCH, got %q", spec)
+		}
+		for _, part := range strings.Split(path, "/") {
+			if part == "" || part == "." || part == ".." {
+				return nil, fmt.Errorf("invalid package path %q", path)
+			}
+		}
+		if seen[path] {
+			return nil, fmt.Errorf("duplicate plugin package %q", path)
+		}
+		seen[path] = true
+		packages = append(packages, spec)
+	}
+	return packages, nil
+}
+
+func stagePackages(stage, goTool string, packages []string) error {
+	if len(packages) == 0 {
+		return nil
+	}
+	var source strings.Builder
+	source.WriteString("package main\n\nimport (\n")
+	for i, spec := range packages {
+		path, _, _ := strings.Cut(spec, "@")
+		fmt.Fprintf(&source, "plugin%d %q\n", i, path)
+	}
+	source.WriteString(
+		")\n\nfunc init() {\n" +
+			"compiledPluginRegistrations = append(" +
+			"compiledPluginRegistrations,\n")
+	for i := range packages {
+		fmt.Fprintf(&source, "plugin%d.Register,\n", i)
+	}
+	source.WriteString(")\n}\n")
+	if err := os.WriteFile(filepath.Join(stage, "external_plugins.go"),
+		[]byte(source.String()), 0o644); err != nil {
+		return err
+	}
+	for _, args := range [][]string{
+		append([]string{"get"}, packages...),
+		{"mod", "tidy"},
+	} {
+		cmd := exec.Command(goTool, args...)
+		cmd.Dir = stage
+		cmd.Env = buildEnvironment("off")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("prepare external plugins: %w\n%s", err, out)
+		}
+	}
+	return nil
+}
+
 func buildCLI(root, configFile, output, goTool, perlTool string) error {
 	return buildCLIWithPlugins(
 		root, configFile, "", output, goTool, perlTool)
@@ -263,22 +329,29 @@ func buildCLI(root, configFile, output, goTool, perlTool string) error {
 
 func buildCLIWithPlugins(
 	root, configFile, pluginSpecs, output, goTool, perlTool string,
+	packageSpecs ...string,
 ) error {
+	packages, err := parsePackages(strings.Join(packageSpecs, ","))
+	if err != nil {
+		return fmt.Errorf("invalid PLUGIN-PACKAGE: %w", err)
+	}
 	var data []byte
-	var err error
 	if configFile != "" {
 		data, err = os.ReadFile(configFile)
 		if err != nil {
 			return fmt.Errorf("read CONFIG: %w", err)
 		}
-	} else if pluginSpecs == "" {
-		return fmt.Errorf("CONFIG or PLUGIN must be set")
+	} else if pluginSpecs == "" && len(packages) == 0 {
+		return errors.New("CONFIG, PLUGIN, or PLUGIN-PACKAGE must be set")
 	}
 	data, err = mergePluginDSL(data, pluginSpecs)
 	if err != nil {
 		return fmt.Errorf("invalid PLUGIN: %w", err)
 	}
-	selection, err := inspectConfig(data)
+	if len(data) == 0 {
+		data = []byte("{}\n")
+	}
+	selection, err := inspectConfig(data, len(packages) != 0)
 	if err != nil {
 		return fmt.Errorf("invalid CONFIG: %w", err)
 	}
@@ -289,22 +362,22 @@ func buildCLIWithPlugins(
 		perlTool = "perl"
 	}
 	stage := filepath.Join(root, ".cache", "cli-config")
-	if selection.jsonComments || selection.referenceParser {
+	if selection.referenceParser {
 		cmd := exec.Command(perlTool, "util/prepare-plugins")
 		cmd.Dir = root
 		cmd.Env = append(os.Environ(),
 			"GO_YAML_BUILD_GO="+goTool,
-			"GO_YAML_BUILD_JSON_COMMENTS="+
-				strconv.FormatBool(selection.jsonComments),
 			"GO_YAML_BUILD_REFERENCE_PARSER="+
 				strconv.FormatBool(selection.referenceParser),
-			"GO_YAML_JSON_COMMENTS_VERSION="+selection.jsonVersion,
 			"GO_YAML_REFERENCE_PARSER_VERSION="+selection.referenceVersion)
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("prepare plugins: %w\n%s", err, out)
 		}
 		stage = filepath.Join(root, ".cache", "cli-plugins")
 	} else if err := stageNative(root, stage, goTool); err != nil {
+		return err
+	}
+	if err := stagePackages(stage, goTool, packages); err != nil {
 		return err
 	}
 	source := "package main\n\nfunc init() {\n\tdefaultConfig = " +
@@ -328,9 +401,8 @@ func buildCLIWithPlugins(
 	cmd := exec.Command(goTool, "build", "-o", binary, ".")
 	cmd.Dir = stage
 	cmd.Env = buildEnvironment("off")
-	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("compile configured CLI: %w", err)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("compile configured CLI: %w\n%s", err, out)
 	}
 	check := exec.Command(binary, "--help")
 	var stderr bytes.Buffer

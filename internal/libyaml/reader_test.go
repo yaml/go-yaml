@@ -42,7 +42,7 @@ func runReaderSetErrorTest(t *testing.T, tc TestCase) {
 	if value != -1 {
 		message = fmt.Sprintf("%s (value: %d)", problem, value)
 	}
-	err := formatReaderError(message, Mark{Index: offset})
+	err := parser.formatReaderError(message, Mark{Index: offset})
 
 	// Check return value: Want is a bool where true means success (no error).
 	want, ok := tc.Want.(bool)

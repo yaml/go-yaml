@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"go.yaml.in/yaml/v4"
@@ -99,5 +100,48 @@ func TestEmbeddedOptions(t *testing.T) {
 	}
 	if err := yaml.Load([]byte("[[]]"), &value, opts...); err != nil {
 		t.Fatalf("runtime config did not replace embedded limits: %v", err)
+	}
+}
+
+func TestErrorFormatOptions(t *testing.T) {
+	saved := defaultConfig
+	t.Cleanup(func() { defaultConfig = saved })
+	defaultConfig = "plugin: {error-format: {v3: {}}}\n"
+	for _, tc := range []struct {
+		name, selector, want string
+		invalid              bool
+	}{
+		{"embedded v3", "", "yaml: line 1:", false},
+		{"v3 shorthand", "error-format=v3", "yaml: line 1:", false},
+		{"v4 shorthand", "error-format=v4", "go-yaml load error in scanner", false},
+		{"default", "error-format", "go-yaml load error in scanner", false},
+		{
+			"explicit implementation", "error-format=error-format",
+			"go-yaml load error in scanner", false,
+		},
+		{"old API", "errfmt", "", true},
+		{"old implementation", "error-format=errfmt", "", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var selectors []string
+			if tc.selector != "" {
+				selectors = append(selectors, tc.selector)
+			}
+			opts, err := buildOptions("", nil, selectors...)
+			if tc.invalid {
+				if err == nil {
+					t.Fatal("old plugin name accepted")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			var value any
+			err = yaml.Load([]byte("value: -\n"), &value, opts...)
+			if err == nil || !strings.HasPrefix(err.Error(), tc.want) {
+				t.Fatalf("got %v, want prefix %q", err, tc.want)
+			}
+		})
 	}
 }

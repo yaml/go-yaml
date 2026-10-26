@@ -25,6 +25,8 @@ import (
 
 	"go.yaml.in/yaml/v4/internal/libyaml"
 	pluginreg "go.yaml.in/yaml/v4/internal/plugin"
+	errorformatv3 "go.yaml.in/yaml/v4/plugin/errorformat/v3"
+	errorformatv4 "go.yaml.in/yaml/v4/plugin/errorformat/v4"
 	"go.yaml.in/yaml/v4/plugin/loaderlimits"
 )
 
@@ -37,6 +39,9 @@ import (
 //	yaml.Dump(&data, yaml.WithV3Defaults(), yaml.WithIndent(2), yaml.WithCompactSeqIndent())
 
 // WithV2Defaults returns V2-compatible default options.
+// It uses the current v4 error formatter.
+// To select legacy-style error strings, apply WithPlugin(errorformatv3.New())
+// after this preset.
 func WithV2Defaults() Option {
 	return Options(
 		WithIndent(2),
@@ -45,11 +50,15 @@ func WithV2Defaults() Option {
 		WithUnicode(true),
 		WithUniqueKeys(true),
 		WithQuotePreference(QuoteLegacy),
-		WithPlugin(loaderlimits.New()),
+		WithPlugin(loaderlimits.New(), errorformatv4.Must()),
 	)
 }
 
-// WithV3Defaults returns V3-compatible default options.
+// WithV3Defaults returns default options for go-yaml v3 compatibility.
+// [Unmarshal] uses these defaults.
+// [Marshal] uses them with the line width overridden to -1 (unlimited).
+// [Dump] with this preset uses a line width of 80 unless overridden, so its
+// output may wrap differently from [Marshal].
 func WithV3Defaults() Option {
 	return Options(
 		WithIndent(4),
@@ -58,11 +67,12 @@ func WithV3Defaults() Option {
 		WithUnicode(true),
 		WithUniqueKeys(true),
 		WithQuotePreference(QuoteLegacy),
-		WithPlugin(loaderlimits.New()),
+		WithPlugin(loaderlimits.New(), errorformatv3.New()),
 	)
 }
 
 // WithV4Defaults returns the current V4 default options.
+// These is the default settings when using [Dump] or [Load] without any options.
 func WithV4Defaults() Option {
 	return Options(
 		WithIndent(2),
@@ -71,7 +81,7 @@ func WithV4Defaults() Option {
 		WithUnicode(true),
 		WithUniqueKeys(true),
 		WithQuotePreference(QuoteSingle),
-		WithPlugin(loaderlimits.New()),
+		WithPlugin(loaderlimits.New(), errorformatv4.Must()),
 	)
 }
 
@@ -82,7 +92,7 @@ func WithV4Defaults() Option {
 // Option allows configuring YAML loading and dumping operations.
 type Option = libyaml.Option
 
-// Option configuration functions
+// [Option] configuration functions
 var (
 	// WithIndent sets the number of spaces to use for indentation when
 	// dumping YAML content.
@@ -113,7 +123,7 @@ var (
 	// When called without arguments, defaults to true.
 	//
 	// This is useful when you expect exactly one document and want behavior
-	// similar to Unmarshal.
+	// similar to [Unmarshal].
 	WithSingleDocument = libyaml.WithSingleDocument
 
 	// WithStreamNodes enables returning stream boundary nodes when loading
@@ -263,9 +273,14 @@ func Options(opts ...Option) Option {
 // DepthKind represents the type of nesting (flow or block).
 type DepthKind = libyaml.DepthKind
 
-// DepthKind constants for nesting depth checks.
+// [DepthKind] constants for nesting depth checks
+//
+// They are the possible values for [DepthContext] when checking the nesting depth of YAML nodes.
 const (
-	DepthKindFlow  = libyaml.DepthKindFlow
+	// DepthKindFlow represents flow-style nesting (inside [] or {}).
+	DepthKindFlow = libyaml.DepthKindFlow
+
+	// DepthKindBlock represents block-style nesting (inside indentation).
 	DepthKindBlock = libyaml.DepthKindBlock
 )
 
@@ -279,8 +294,8 @@ type DepthContext = libyaml.DepthContext
 // Currently supported plugin types:
 //   - LoaderLimitsPlugin: Controls depth and alias expansion limits
 //   - ParserPlugin: Supplies a complete YAML event stream
-//   - JSONCommentsPlugin: Sanitizes JSON-style comments before parsing
 //   - TabIndentPlugin: Enables tab-aware loading and tab-indented dumping
+//   - ErrorFormatPlugin: Customizes load and dump error message formatting
 //
 // Example:
 //
@@ -308,14 +323,6 @@ func WithPlugin(plugins ...any) Option {
 				o.Parser = source
 				registered = true
 			}
-			if comments, ok := p.(JSONCommentsPlugin); ok {
-				if o.JSONComments != nil {
-					return errors.New(
-						"yaml: multiple json-comments plugins")
-				}
-				o.JSONComments = comments
-				registered = true
-			}
 			if tabs, ok := p.(TabIndentPlugin); ok {
 				if o.IndentConfig != nil {
 					return errors.New(
@@ -326,6 +333,11 @@ func WithPlugin(plugins ...any) Option {
 					return err
 				}
 				o.IndentConfig = &config
+				registered = true
+			}
+			if ep, ok := p.(ErrorFormatPlugin); ok {
+				o.FormatLoadError = ep.FormatLoadError
+				o.FormatDumpError = ep.FormatDumpError
 				registered = true
 			}
 			if !registered {
@@ -355,8 +367,8 @@ func WithPlugin(plugins ...any) Option {
 // - plugin (map of plugin API to config)
 //
 // The plugin field configures plugins by API. Each value is a configuration
-// map, true for the default implementation, or false to leave the plugin
-// disabled. A map may select an implementation with "name" and require its
+// map or string, true for the default implementation, or false to leave the
+// plugin disabled. A map may select an implementation with "name" and require its
 // exact release with "version". Versions may include a leading "v".
 // A map may contain "disable": true to leave the plugin disabled.
 // The "name", "version", and "disable" host fields are not passed to the
@@ -364,6 +376,10 @@ func WithPlugin(plugins ...any) Option {
 // Null plugin values are invalid.
 // Currently supported: "loader-limits" with keys "depth" and "alias" (int
 // or null to disable).
+// The "error-format" API accepts a "v3" or "v4" formatter config.
+// An unversioned string first selects a registered implementation. Otherwise,
+// it may name an empty configuration entry accepted by the default factory:
+// "error-format: v3" is equivalent to "error-format: {v3: {}}".
 //
 // Only fields specified in the YAML will override other options when
 // combined. Unspecified fields won't affect other options.
@@ -376,6 +392,9 @@ func WithPlugin(plugins ...any) Option {
 //	  plugin:
 //	    loader-limits:
 //	      depth: 50
+//	    error-format:
+//	      v4:
+//	        position: long
 //	`)
 //	yaml.Dump(&data, yaml.Options(V4, opts))
 func OptsYAML(yamlStr string) (Option, error) {
@@ -485,11 +504,12 @@ func OptsYAML(yamlStr string) (Option, error) {
 				}
 			}
 		case string:
-			var err error
-			cfgMap, err = pluginreg.ConfigValue(name, v)
+			p, err := pluginRegistry.CreateShortForm(name, v)
 			if err != nil {
-				return nil, fmt.Errorf("yaml: plugin %q: %w", name, err)
+				return nil, err
 			}
+			optList = append(optList, WithPlugin(p))
+			continue
 		default:
 			return nil, fmt.Errorf(
 				"yaml: plugin %q value must be a mapping, string, or boolean",
@@ -505,23 +525,62 @@ func OptsYAML(yamlStr string) (Option, error) {
 	return Options(optList...), nil
 }
 
+func newErrorFormatPluginFromYAML(cfg map[string]any) (any, error) {
+	if len(cfg) == 0 {
+		return errorformatv4.New()
+	}
+	var selected string
+	var selectedConfig map[string]any
+	for key, val := range cfg {
+		switch key {
+		case "v3", "v4":
+			if selected != "" {
+				return nil, errors.New(`yaml: plugin "error-format" must select only one of v3 or v4`)
+			}
+			selected = key
+			switch v := val.(type) {
+			case nil:
+				selectedConfig = map[string]any{}
+			case map[string]any:
+				selectedConfig = v
+			default:
+				return nil, fmt.Errorf(`yaml: plugin "error-format.%s" value must be a mapping or null`, key)
+			}
+		default:
+			return nil, fmt.Errorf(`yaml: plugin "error-format" unknown formatter %q`, key)
+		}
+	}
+	switch selected {
+	case "v3":
+		return errorformatv3.NewFromYAML(selectedConfig)
+	case "v4":
+		return errorformatv4.NewFromYAML(selectedConfig)
+	default:
+		return errorformatv4.New()
+	}
+}
+
 //-----------------------------------------------------------------------------
 // Type and constant re-exports
 //-----------------------------------------------------------------------------
 
-// Re-export stream-related types
 type (
-	Stream           = libyaml.Stream
+	// Stream holds stream-level metadata for [StreamNode].
+	// This includes encoding, version directive, and tag directives.
+	Stream = libyaml.Stream
+
+	// VersionDirective represents a YAML %YAML version directive for
+	// [Stream.Version].
 	VersionDirective = libyaml.StreamVersionDirective
 
-	// TagDirective represents a YAML %TAG directive for stream nodes.
+	// TagDirective represents a YAML %TAG directive for [Stream.TagDirectives].
 	TagDirective = libyaml.StreamTagDirective
 
-	// Encoding represents the character encoding of a YAML stream.
+	// Encoding represents the character encoding of a [Stream.Encoding].
 	Encoding = libyaml.Encoding
 )
 
-// Encoding constants for YAML stream encoding
+// [Encoding] constants for YAML stream encoding
 const (
 	// EncodingAny lets the parser choose the encoding.
 	EncodingAny = libyaml.ANY_ENCODING
@@ -540,21 +599,32 @@ const (
 // loading or dumping.
 type Stage = libyaml.Stage
 
-// Stage constants for YAML processing pipeline.
+// [Stage] constants for YAML loading stages
 const (
-	// Load stages
-	ReaderStage      = libyaml.ReaderStage      // Input reading and encoding
-	ScannerStage     = libyaml.ScannerStage     // Tokenization
-	ParserStage      = libyaml.ParserStage      // Event stream parsing
-	ComposerStage    = libyaml.ComposerStage    // Node tree construction
-	ResolverStage    = libyaml.ResolverStage    // Tag resolution
-	ConstructorStage = libyaml.ConstructorStage // Go value construction
+	// ReaderStage is the input reading and encoding stage.
+	ReaderStage = libyaml.ReaderStage
+	// ScannerStage is the tokenization stage.
+	ScannerStage = libyaml.ScannerStage
+	// ParserStage is the event stream parsing stage.
+	ParserStage = libyaml.ParserStage
+	// ComposerStage is the node tree construction stage.
+	ComposerStage = libyaml.ComposerStage
+	// ResolverStage is the tag resolution stage.
+	ResolverStage = libyaml.ResolverStage
+	// ConstructorStage is the Go value construction stage.
+	ConstructorStage = libyaml.ConstructorStage
+)
 
-	// Dump stages
-	RepresenterStage = libyaml.RepresenterStage // Go value to Node tree
-	SerializerStage  = libyaml.SerializerStage  // Node tree to events
-	EmitterStage     = libyaml.EmitterStage     // Events to YAML bytes
-	WriterStage      = libyaml.WriterStage      // Output writing
+// [Stage] constants for YAML dumping stages
+const (
+	// RepresenterStage is the Go value to Node tree stage.
+	RepresenterStage = libyaml.RepresenterStage
+	// SerializerStage is the Node tree to event stage.
+	SerializerStage = libyaml.SerializerStage
+	// EmitterStage is the events to YAML bytes stage.
+	EmitterStage = libyaml.EmitterStage
+	// WriterStage is the output writing stage.
+	WriterStage = libyaml.WriterStage
 )
 
 // Mark represents a position in the YAML document.
@@ -598,21 +668,32 @@ var NewDumpError = libyaml.NewDumpError
 // LineBreak represents the line ending style for YAML output.
 type LineBreak = libyaml.LineBreak
 
-// Line break constants for different platforms.
+// [LineBreak] constants for different platforms.
 const (
-	LineBreakLN   = libyaml.LN_BREAK   // Unix-style \n (default)
-	LineBreakCR   = libyaml.CR_BREAK   // Old Mac-style \r
-	LineBreakCRLN = libyaml.CRLN_BREAK // Windows-style \r\n
+
+	// LineBreakLN represents Unix-style line endings (\n), this is the default.
+	LineBreakLN = libyaml.LN_BREAK
+
+	// LineBreakCR represents Old Mac-style line endings (\r).
+	LineBreakCR = libyaml.CR_BREAK
+
+	// LineBreakCRLN represents Windows-style line endings (\r\n).
+	LineBreakCRLN = libyaml.CRLN_BREAK
 )
 
 // QuoteStyle represents the quote style to use when quoting is required.
 type QuoteStyle = libyaml.QuoteStyle
 
-// Quote style constants for required quoting.
+// [QuoteStyle] constants for required quoting.
 const (
-	QuoteSingle = libyaml.QuoteSingle // Prefer single quotes (v4 default)
-	QuoteDouble = libyaml.QuoteDouble // Prefer double quotes
-	QuoteLegacy = libyaml.QuoteLegacy // Legacy v2/v3 behavior
+	// QuoteSingle prefers single quotes (v4 default).
+	QuoteSingle = libyaml.QuoteSingle
+
+	// QuoteDouble prefers double quotes.
+	QuoteDouble = libyaml.QuoteDouble
+
+	// QuoteLegacy uses legacy v2/v3 behavior (mixed quoting).
+	QuoteLegacy = libyaml.QuoteLegacy
 )
 
 //-----------------------------------------------------------------------------
@@ -824,11 +905,12 @@ type Encoder struct {
 }
 
 // NewEncoder returns a new encoder that writes to w.
+// It uses v3-compatible serialization options and the v4 error formatter.
 // The Encoder should be closed after use to flush all data
 // to w.
 func NewEncoder(w io.Writer) *Encoder {
-	// NewDumper won't return an error when using WithV3Defaults()
-	dumper, _ := libyaml.NewDumper(w, WithV3Defaults())
+	// NewDumper won't return an error with these defaults.
+	dumper, _ := libyaml.NewDumper(w, WithV3Defaults(), WithPlugin(errorformatv4.Must()))
 	return &Encoder{dumper: dumper}
 }
 

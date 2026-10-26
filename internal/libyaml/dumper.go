@@ -47,15 +47,17 @@ func NewDumper(w io.Writer, opts ...Option) (*Dumper, error) {
 //
 // By default, Dump encodes a single value as a single YAML document.
 //
-// Use WithAllDocuments() to encode multiple values as a multi-document stream:
+// Use [WithAllDocuments] to encode multiple values as a multi-document stream:
 //
 //	docs := []Config{config1, config2, config3}
 //	yaml.Dump(docs, yaml.WithAllDocuments())
 //
-// When WithAllDocuments is used, in must be a slice.
+// When [WithAllDocuments] is used, in must be a slice.
 // Each element is encoded as a separate YAML document with "---" separators.
 //
-// See [Marshal] for details about the conversion of Go values to YAML.
+// See [yaml.Marshal] for details.
+//
+// [yaml.Marshal]: https://pkg.go.dev/go.yaml.in/yaml/v4#Marshal
 func Dump(in any, opts ...Option) (out []byte, err error) {
 	defer handleErr(&err)
 
@@ -78,8 +80,9 @@ func Dump(in any, opts ...Option) (out []byte, err error) {
 		inVal := reflect.ValueOf(in)
 		if inVal.Kind() != reflect.Slice {
 			return nil, &DumpError{
-				Stage:   RepresenterStage,
-				Message: "WithAllDocuments requires a slice input",
+				Stage:     RepresenterStage,
+				Message:   "WithAllDocuments requires a slice input",
+				formatter: o.FormatDumpError,
 			}
 		}
 
@@ -107,8 +110,10 @@ func Dump(in any, opts ...Option) (out []byte, err error) {
 // If multiple values are dumped to the stream, the second and subsequent
 // documents will be preceded with a "---" document separator.
 //
-// See the documentation for [Marshal] for details about the conversion of Go
+// See the documentation for [yaml.Marshal] for details about the conversion of Go
 // values to YAML.
+//
+// [yaml.Marshal]: https://pkg.go.dev/go.yaml.in/yaml/v4#Marshal
 func (d *Dumper) Dump(v any) (err error) {
 	defer handleErr(&err)
 
@@ -138,7 +143,11 @@ func (d *Dumper) Close() (err error) {
 // Do not use in libyaml, use [WithIndent] instead.
 func (d *Dumper) SetLegacyEncoderIndent(spaces int) {
 	if spaces < 0 {
-		failDumpf(SerializerStage, "cannot indent to a negative number of spaces")
+		failDumpf(
+			SerializerStage,
+			d.options.FormatDumpError,
+			"cannot indent to a negative number of spaces",
+		)
 	}
 	// Set on serializer's emitter
 	d.serializer.Emitter.BestIndent = spaces

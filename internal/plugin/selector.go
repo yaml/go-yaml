@@ -4,11 +4,14 @@
 package plugin
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
 
 const (
+	// ErrorFormatAPI is the error-format plugin API name.
+	ErrorFormatAPI = "error-format"
 	// LoaderLimitsAPI is the loader-limits plugin API name.
 	LoaderLimitsAPI = "loader-limits"
 	// YAMLParserAPI is the YAML-parser plugin API name.
@@ -70,7 +73,7 @@ func ParseSelectors(text string) ([]Selection, error) {
 func parseSelector(text string) (Selection, error) {
 	spec := strings.TrimSpace(text)
 	if spec == "" {
-		return Selection{}, fmt.Errorf("plugin selector must not be empty")
+		return Selection{}, errors.New("plugin selector must not be empty")
 	}
 	if strings.Count(spec, "=") > 1 || strings.Count(spec, "@") > 1 {
 		return Selection{}, fmt.Errorf("invalid plugin selector %q", spec)

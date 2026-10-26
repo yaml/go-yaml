@@ -79,31 +79,53 @@ type SimpleKey struct {
 // ParserState represents the state of the parser.
 type ParserState int
 
-// Parser state constants define the different states the parser can be in.
+// Possible [ParserState] constants are the different states the parser can be in.
 const (
+	// PARSE_STREAM_START_STATE expects STREAM-START.
 	PARSE_STREAM_START_STATE ParserState = iota
 
-	PARSE_IMPLICIT_DOCUMENT_START_STATE           // Expect the beginning of an implicit document.
-	PARSE_DOCUMENT_START_STATE                    // Expect DOCUMENT-START.
-	PARSE_DOCUMENT_CONTENT_STATE                  // Expect the content of a document.
-	PARSE_DOCUMENT_END_STATE                      // Expect DOCUMENT-END.
-	PARSE_BLOCK_NODE_STATE                        // Expect a block node.
-	PARSE_BLOCK_SEQUENCE_FIRST_ENTRY_STATE        // Expect the first entry of a block sequence.
-	PARSE_BLOCK_SEQUENCE_ENTRY_STATE              // Expect an entry of a block sequence.
-	PARSE_INDENTLESS_SEQUENCE_ENTRY_STATE         // Expect an entry of an indentless sequence.
-	PARSE_BLOCK_MAPPING_FIRST_KEY_STATE           // Expect the first key of a block mapping.
-	PARSE_BLOCK_MAPPING_KEY_STATE                 // Expect a block mapping key.
-	PARSE_BLOCK_MAPPING_VALUE_STATE               // Expect a block mapping value.
-	PARSE_FLOW_SEQUENCE_FIRST_ENTRY_STATE         // Expect the first entry of a flow sequence.
-	PARSE_FLOW_SEQUENCE_ENTRY_STATE               // Expect an entry of a flow sequence.
-	PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_KEY_STATE   // Expect a key of an ordered mapping.
-	PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_VALUE_STATE // Expect a value of an ordered mapping.
-	PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_END_STATE   // Expect the and of an ordered mapping entry.
-	PARSE_FLOW_MAPPING_FIRST_KEY_STATE            // Expect the first key of a flow mapping.
-	PARSE_FLOW_MAPPING_KEY_STATE                  // Expect a key of a flow mapping.
-	PARSE_FLOW_MAPPING_VALUE_STATE                // Expect a value of a flow mapping.
-	PARSE_FLOW_MAPPING_EMPTY_VALUE_STATE          // Expect an empty value of a flow mapping.
-	PARSE_END_STATE                               // Expect nothing.
+	// PARSE_IMPLICIT_DOCUMENT_START_STATE expects the beginning of an implicit document.
+	PARSE_IMPLICIT_DOCUMENT_START_STATE
+	// PARSE_DOCUMENT_START_STATE expects DOCUMENT-START.
+	PARSE_DOCUMENT_START_STATE
+	// PARSE_DOCUMENT_CONTENT_STATE expects the content of a document.
+	PARSE_DOCUMENT_CONTENT_STATE
+	// PARSE_DOCUMENT_END_STATE expects DOCUMENT-END.
+	PARSE_DOCUMENT_END_STATE
+	// PARSE_BLOCK_NODE_STATE expects a block node.
+	PARSE_BLOCK_NODE_STATE
+	// PARSE_BLOCK_SEQUENCE_FIRST_ENTRY_STATE expects the first entry of a block sequence.
+	PARSE_BLOCK_SEQUENCE_FIRST_ENTRY_STATE
+	// PARSE_BLOCK_SEQUENCE_ENTRY_STATE expects an entry of a block sequence.
+	PARSE_BLOCK_SEQUENCE_ENTRY_STATE
+	// PARSE_INDENTLESS_SEQUENCE_ENTRY_STATE expects an entry of an indentless sequence.
+	PARSE_INDENTLESS_SEQUENCE_ENTRY_STATE
+	// PARSE_BLOCK_MAPPING_FIRST_KEY_STATE expects the first key of a block mapping.
+	PARSE_BLOCK_MAPPING_FIRST_KEY_STATE
+	// PARSE_BLOCK_MAPPING_KEY_STATE expects a block mapping key.
+	PARSE_BLOCK_MAPPING_KEY_STATE
+	// PARSE_BLOCK_MAPPING_VALUE_STATE expects a block mapping value.
+	PARSE_BLOCK_MAPPING_VALUE_STATE
+	// PARSE_FLOW_SEQUENCE_FIRST_ENTRY_STATE expects the first entry of a flow sequence.
+	PARSE_FLOW_SEQUENCE_FIRST_ENTRY_STATE
+	// PARSE_FLOW_SEQUENCE_ENTRY_STATE expects an entry of a flow sequence.
+	PARSE_FLOW_SEQUENCE_ENTRY_STATE
+	// PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_KEY_STATE expects a key of an ordered mapping.
+	PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_KEY_STATE
+	// PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_VALUE_STATE expects a value of an ordered mapping.
+	PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_VALUE_STATE
+	// PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_END_STATE expects the and of an ordered mapping entry.
+	PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_END_STATE
+	// PARSE_FLOW_MAPPING_FIRST_KEY_STATE expects the first key of a flow mapping.
+	PARSE_FLOW_MAPPING_FIRST_KEY_STATE
+	// PARSE_FLOW_MAPPING_KEY_STATE expects a key of a flow mapping.
+	PARSE_FLOW_MAPPING_KEY_STATE
+	// PARSE_FLOW_MAPPING_VALUE_STATE expects a value of a flow mapping.
+	PARSE_FLOW_MAPPING_VALUE_STATE
+	// PARSE_FLOW_MAPPING_EMPTY_VALUE_STATE expects an empty value of a flow mapping.
+	PARSE_FLOW_MAPPING_EMPTY_VALUE_STATE
+	// PARSE_END_STATE expects nothing.
+	PARSE_END_STATE
 )
 
 // String returns a string representation of the parser state.
@@ -166,10 +188,14 @@ type AliasData struct {
 
 // Comment holds information about a comment in the YAML stream.
 type Comment struct {
-	ScanMark  Mark // Position where scanning for comments started
-	TokenMark Mark // Position after which tokens will be associated with this comment
-	StartMark Mark // Position of '#' comment mark
-	EndMark   Mark // Position where comment terminated
+	// ScanMark is the position where scanning for comments started
+	ScanMark Mark
+	// TokenMark is the position after which tokens will be associated with this comment
+	TokenMark Mark
+	// StartMark is the position of the '#' comment mark
+	StartMark Mark
+	// EndMark is the position where the comment ended
+	EndMark Mark
 
 	Head []byte
 	Line []byte
@@ -209,9 +235,12 @@ type Parser struct {
 
 	// Comments
 
-	HeadComment  []byte // The current head comments
-	LineComment  []byte // The current line comments
-	FootComment  []byte // The current foot comments
+	// HeadComment is the current head comments.
+	HeadComment []byte
+	// LineComment is the current line comments.
+	LineComment []byte
+	// FootComment is the current foot comments.
+	FootComment  []byte
 	tail_comment []byte // Foot comment that happens at the end of a block.
 	stem_comment []byte // Comment in item preceding a nested structure (list inside list item, etc)
 
@@ -242,7 +271,8 @@ type Parser struct {
 	simple_key          SimpleKey   // The current simple key.
 	simple_key_stack    []SimpleKey // The stack of simple keys.
 
-	depthCheck func(int, *DepthContext) error // Depth limit check function
+	depthCheck  func(int, *DepthContext) error // Depth limit check function
+	formatError func(*LoadError) string        // Optional error formatter
 
 	indentConfig *IndentConfig
 	// indentStyle is parser-local auto-detection state.
@@ -490,7 +520,7 @@ func (parser *Parser) parseStreamStart(event *Event) error {
 		return err
 	}
 	if token.Type != STREAM_START_TOKEN {
-		return formatParserError("did not find expected <stream-start>", token.StartMark)
+		return parser.formatParserError("did not find expected <stream-start>", token.StartMark)
 	}
 	parser.state = PARSE_IMPLICIT_DOCUMENT_START_STATE
 	*event = Event{
@@ -577,7 +607,7 @@ func (parser *Parser) parseDocumentStart(event *Event, implicit bool) error {
 			return err
 		}
 		if token.Type != DOCUMENT_START_TOKEN {
-			return formatParserError(
+			return parser.formatParserError(
 				"did not find expected <document start>", token.StartMark)
 		}
 		parser.states = append(parser.states, PARSE_DOCUMENT_END_STATE)
@@ -653,13 +683,13 @@ func (parser *Parser) parseDocumentEnd(event *Event) error {
 		parser.skipToken()
 		implicit = false
 	case VERSION_DIRECTIVE_TOKEN, TAG_DIRECTIVE_TOKEN:
-		return formatParserError(
+		return parser.formatParserError(
 			"did not find expected <document end> before directive", token.StartMark)
 	case DOCUMENT_START_TOKEN, STREAM_END_TOKEN:
 		// Document ended properly.
 		// https://github.com/yaml/go-yaml/pull/410
 	default:
-		return formatParserError(
+		return parser.formatParserError(
 			"did not find expected <document start>", token.StartMark)
 	}
 
@@ -697,11 +727,11 @@ func (parser *Parser) processDirectives(version_directive_ref **VersionDirective
 		switch token.Type {
 		case VERSION_DIRECTIVE_TOKEN:
 			if version_directive != nil {
-				return formatParserError(
+				return parser.formatParserError(
 					"found duplicate %YAML directive", token.StartMark)
 			}
 			if token.major != 1 || token.minor != 1 {
-				return formatParserError(
+				return parser.formatParserError(
 					"found incompatible YAML document", token.StartMark)
 			}
 			version_directive = &VersionDirective{
@@ -747,7 +777,7 @@ func (parser *Parser) appendTagDirective(value TagDirective, allow_duplicates bo
 			if allow_duplicates {
 				return nil
 			}
-			return formatParserError("found duplicate %TAG directive", mark)
+			return parser.formatParserError("found duplicate %TAG directive", mark)
 		}
 	}
 
@@ -872,7 +902,7 @@ func (parser *Parser) parseNode(event *Event, block, indentless_sequence bool) e
 				}
 			}
 			if len(tag) == 0 {
-				return formatParserErrorContext(
+				return parser.formatParserErrorContext(
 					"while parsing a node", start_mark,
 					"found undefined tag handle", tag_mark)
 			}
@@ -1009,7 +1039,7 @@ func (parser *Parser) parseNode(event *Event, block, indentless_sequence bool) e
 	if block {
 		context = "while parsing a block node"
 	}
-	return formatParserErrorContext(context, start_mark,
+	return parser.formatParserErrorContext(context, start_mark,
 		"did not find expected node content", token.StartMark)
 }
 
@@ -1067,7 +1097,7 @@ func (parser *Parser) parseBlockSequenceEntry(event *Event, first bool) error {
 
 	context_mark := parser.marks[len(parser.marks)-1]
 	parser.marks = parser.marks[:len(parser.marks)-1]
-	return formatParserErrorContext(
+	return parser.formatParserErrorContext(
 		"while parsing a block collection", context_mark,
 		"did not find expected '-' indicator", token.StartMark)
 }
@@ -1218,7 +1248,7 @@ func (parser *Parser) parseBlockMappingKey(event *Event, first bool) error {
 
 	context_mark := parser.marks[len(parser.marks)-1]
 	parser.marks = parser.marks[:len(parser.marks)-1]
-	return formatParserErrorContext(
+	return parser.formatParserErrorContext(
 		"while parsing a block mapping", context_mark,
 		"did not find expected key", token.StartMark)
 }
@@ -1291,7 +1321,7 @@ func (parser *Parser) parseFlowSequenceEntry(event *Event, first bool) error {
 			} else {
 				context_mark := parser.marks[len(parser.marks)-1]
 				parser.marks = parser.marks[:len(parser.marks)-1]
-				return formatParserErrorContext(
+				return parser.formatParserErrorContext(
 					"while parsing a flow sequence", context_mark,
 					"did not find expected ',' or ']'", token.StartMark)
 			}
@@ -1429,7 +1459,7 @@ func (parser *Parser) parseFlowMappingKey(event *Event, first bool) error {
 			} else {
 				context_mark := parser.marks[len(parser.marks)-1]
 				parser.marks = parser.marks[:len(parser.marks)-1]
-				return formatParserErrorContext(
+				return parser.formatParserErrorContext(
 					"while parsing a flow mapping", context_mark,
 					"did not find expected ',' or '}'", token.StartMark)
 			}
@@ -1558,23 +1588,25 @@ func (parser *Parser) skipToken() {
 
 // formatParserError creates a LoadError with the given problem message
 // and mark position.
-func formatParserError(problem string, problemMark Mark) *LoadError {
+func (parser *Parser) formatParserError(problem string, problemMark Mark) *LoadError {
 	return &LoadError{
-		Stage:   ParserStage,
-		Mark:    problemMark,
-		Message: problem,
+		Stage:     ParserStage,
+		Mark:      problemMark,
+		Message:   problem,
+		formatter: parser.formatError,
 	}
 }
 
 // formatParserErrorContext creates a LoadError with both context and
 // problem information, each with their own mark positions.
-func formatParserErrorContext(context string, contextMark Mark, problem string, problemMark Mark) *LoadError {
+func (parser *Parser) formatParserErrorContext(context string, contextMark Mark, problem string, problemMark Mark) *LoadError {
 	return &LoadError{
 		Stage:       ParserStage,
 		ContextMark: contextMark,
 		ContextMsg:  context,
 		Mark:        problemMark,
 		Message:     problem,
+		formatter:   parser.formatError,
 	}
 }
 

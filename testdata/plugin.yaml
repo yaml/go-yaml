@@ -131,3 +131,88 @@
       - text: 'x'
       - loop: [']', 10001]
     want: 'go-yaml load error in scanner (while increasing flow level) at L1.C10001: exceeded max depth of 10000'
+
+- plugin-error:
+    name: error-format v3 format on scanner error
+    plugin:
+      error-format:
+        v3:
+      loader-limits:
+        depth: 5
+    data:
+      join:
+      - loop: ['[', 6]
+      - text: 'x'
+      - loop: [']', 6]
+    want: 'yaml: line 1: exceeded max depth of 5'
+
+- plugin-error:
+    name: error-format v4 long position on scanner error
+    plugin:
+      error-format:
+        v4:
+          position: long
+      loader-limits:
+        depth: 5
+    data:
+      join:
+      - loop: ['[', 6]
+      - text: 'x'
+      - loop: [']', 6]
+    want: 'go-yaml load error in scanner (while increasing flow level) at line 1, column 6: exceeded max depth of 5'
+
+- plugin-error:
+    name: error-format v4 template on scanner error
+    plugin:
+      error-format:
+        v4:
+          load-template: '{{.Stage}} {{pos .Mark}} {{.Message}}'
+      loader-limits:
+        depth: 5
+    data:
+      join:
+      - loop: ['[', 6]
+      - text: 'x'
+      - loop: [']', 6]
+    want: 'scanner L1.C6 exceeded max depth of 5'
+
+- plugin-pass:
+    name: error-format default format (no-op)
+    plugin:
+      error-format: true
+    data: 'key: value'
+
+- plugin-pass:
+    name: error-format named implementation defaults
+    plugin:
+      error-format: error-format
+    data: 'key: value'
+
+- plugin-error:
+    name: error-format named implementation with v3 formatting
+    plugin:
+      error-format:
+        name: error-format
+        v3: {}
+    data: |
+      value: -
+    want: |-
+      yaml: line 1: block sequence entries are not allowed in this context
+
+- plugin-error:
+    name: error-format v3 scalar shorthand
+    plugin:
+      error-format: v3
+    data: |
+      value: -
+    want: |-
+      yaml: line 1: block sequence entries are not allowed in this context
+
+- plugin-error:
+    name: error-format v4 scalar shorthand
+    plugin:
+      error-format: v4
+    data: |
+      value: -
+    want: |-
+      go-yaml load error in scanner at L1.C8: block sequence entries are not allowed in this context

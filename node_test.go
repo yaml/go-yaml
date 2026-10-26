@@ -9,6 +9,7 @@ package yaml_test
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"reflect"
 	"testing"
@@ -280,7 +281,7 @@ func TestNodeZeroEncodeDecode(t *testing.T) {
 	// Kind zero is still unknown, though.
 	n.Line = 1
 	_, err = yaml.Marshal(&n)
-	assert.ErrorMatches(t, "go-yaml dump error in serializer: cannot represent node with unknown kind 0", err)
+	assert.ErrorMatches(t, "yaml: cannot represent node with unknown kind 0", err)
 	err = n.Load(&v)
 	assert.ErrorMatches(t, `go-yaml load error in constructor at L1: cannot construct node with unknown kind: '0'`, err)
 }
@@ -297,7 +298,7 @@ func TestNodeOmitEmpty(t *testing.T) {
 
 	v.B.Line = 1
 	_, err = yaml.Marshal(&v)
-	assert.ErrorMatches(t, "go-yaml dump error in serializer: cannot represent node with unknown kind 0", err)
+	assert.ErrorMatches(t, "yaml: cannot represent node with unknown kind 0", err)
 }
 
 func nodeRoundTrip(t *testing.T, src []byte, indent int) []byte {
@@ -363,7 +364,7 @@ func isStandardTag(tag string) bool {
 // parseNodeInfo converts a NodeInfo structure into a yaml.Node
 func parseNodeInfo(info *NodeInfo) (*yaml.Node, error) {
 	if info == nil {
-		return nil, fmt.Errorf("nil NodeInfo")
+		return nil, errors.New("nil NodeInfo")
 	}
 
 	node := &yaml.Node{}

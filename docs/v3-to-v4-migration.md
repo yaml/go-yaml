@@ -7,7 +7,8 @@ This guide will help you migrate your code from `go.yaml.in/yaml/v3`
 
 - [ ] Update import path
 - [ ] Optionally migrate to new API (Load/Dump, Loader/Dumper)
-- [ ] Adjust formatting expectations or use yaml.WithV3Defaults() preset
+- [ ] Review formatting defaults and choose compatibility options as needed
+- [ ] Check error handling and custom unmarshaler signatures
 - [ ] Update tests
 
 ## Import Path Change
@@ -25,6 +26,15 @@ import "go.yaml.in/yaml/v4"
 ```
 
 Update all import statements throughout your codebase.
+
+## Compatibility with go-yaml
+
+When migrating from [go-yaml/yaml](https://github.com/go-yaml/yaml/) ensure
+that YAML module imports are updated in all dependent projects transitively,
+because unmarshaller interface types `gopkg.in/yaml.v{version}.Unmarshaler` and
+`go.yaml.in/yaml/v{version}.Unmarshaler` are different types and thus are
+incompatible. Custom unmarshallers would not be called if executed with the
+parser from the different library.
 
 ## API Changes
 
@@ -66,8 +76,11 @@ err := decoder.Decode(&config)
 
 **v4:**
 ```go
-loader := yaml.NewLoader(reader)
-err := loader.Load(&config)
+loader, err := yaml.NewLoader(reader)
+if err != nil {
+    return err
+}
+err = loader.Load(&config)
 ```
 
 #### Streaming Encoding
@@ -81,9 +94,14 @@ encoder.Close()
 
 **v4:**
 ```go
-dumper := yaml.NewDumper(writer)
-err := dumper.Dump(&config)
-dumper.Close()
+dumper, err := yaml.NewDumper(writer)
+if err != nil {
+    return err
+}
+if err := dumper.Dump(&config); err != nil {
+    return err
+}
+return dumper.Close()
 ```
 
 ## New Features in v4
@@ -99,23 +117,30 @@ This is accessed via `Node.Stream`, which is non-nil only on
 Enable stream nodes with `WithStreamNodes()`:
 
 ```go
-loader := yaml.NewLoader(reader, yaml.WithStreamNodes())
+loader, err := yaml.NewLoader(reader, yaml.WithStreamNodes())
+if err != nil {
+    return err
+}
 for {
     var node yaml.Node
     err := loader.Load(&node)
     if errors.Is(err, io.EOF) {
         break
     }
+    if err != nil {
+        return err
+    }
     if node.Kind == yaml.StreamNode && node.Stream != nil {
-        enc := node.Stream.Encoding
-        ver := node.Stream.Version        // *yaml.VersionDirective
-        tags := node.Stream.TagDirectives // []yaml.TagDirective
+        // Inspect encoding, version, and tag directives.
+        fmt.Println(node.Stream.Encoding)
+        fmt.Println(node.Stream.Version)       // *yaml.VersionDirective
+        fmt.Println(node.Stream.TagDirectives) // []yaml.TagDirective
     }
 }
 ```
 
 With stream nodes enabled, the loader emits nodes in the pattern
-`[Stream, Doc, Stream, Doc, ..., Stream]` — one opening stream node
+`[Stream, Doc, Stream, Doc, ..., Stream]`: one opening stream node
 per document boundary, plus a final closing stream node.
 
 ### Functional Options
@@ -158,9 +183,14 @@ Available dump options:
   collections
 
 Available load options:
+
 - `WithKnownFields()` - Reject unknown struct fields
 - `WithUniqueKeys()` - Enforce unique mapping keys
-- `WithSingleDocument()` - Expect only one document
+- `WithSingleDocument()` - Only load the first document, ignoring later ones
+
+Package-level `Load` rejects additional documents by default.
+Adding `WithSingleDocument()` skips that check and leaves later documents
+unread and unvalidated.
 
 ### Options from YAML
 
@@ -210,11 +240,16 @@ items:
 
 ### Preserving v3 Behavior
 
-If you need v3's formatting, use the `yaml.WithV3Defaults()` preset:
+Use `yaml.WithV3Defaults()` to select v3 defaults.
+When replacing `Marshal`, also disable wrapping to match its line-width
+setting:
 
 ```go
-// Get v3-style formatting in v4
-data, err := yaml.Dump(&config, yaml.WithV3Defaults())
+// Match the classic Marshal formatting settings.
+data, err := yaml.Dump(&config,
+    yaml.WithV3Defaults(),
+    yaml.WithLineWidth(-1),
+)
 ```
 
 Or customize individual options:
@@ -228,8 +263,7 @@ data, err := yaml.Dump(&config,
 
 ## Backward Compatibility
 
-All v3 APIs continue to work in v4. The classic API remains supported
-for simple use cases:
+The classic entry points remain supported in v4:
 
 - `Unmarshal()` - Classic API (or use `Load()` for more flexibility)
 - `Marshal()` - Classic API (or use `Dump()` for more flexibility)
@@ -237,23 +271,64 @@ for simple use cases:
 - `NewEncoder()` - Classic API (or use `NewDumper()` for more flexibility)
 
 You can migrate incrementally:
+
 1. Update import path to v4
 2. Verify tests pass
 3. Optionally migrate to new API for additional features
-4. Update TypeError.Errors handling if applicable
+4. Review error handling and custom unmarshaler types
+
+Presets select compatibility defaults, including error formatting.
+They do not undo every v4 bug fix or reproduce every legacy code path.
+For example, `Unmarshal` retains legacy trailing-content handling beyond the
+settings selected by `WithV3Defaults()`.
+`NewEncoder` uses v3 output settings with the v4 error formatter.
+For v3 error presentation through the new API, select `WithV3Defaults()`.
+
+### Conversion errors
+
+Conversion failures now return `*yaml.LoadErrors`.
+Use `errors.As` rather than a direct type assertion when looking for legacy
+`*yaml.TypeError` values:
+
+```go
+var typeErr *yaml.TypeError
+if errors.As(err, &typeErr) {
+    for _, message := range typeErr.Errors {
+        fmt.Println(message)
+    }
+}
+```
+
+`TypeError.Errors` remains `[]string`.
+For structured details, use `errors.As` with `*yaml.LoadErrors` instead.
+
+### Custom unmarshalers across versions
+
+The `UnmarshalYAML(*yaml.Node) error` hook depends on the exact package's
+`Node` type.
+A v3 node-based hook does not satisfy the v4 `Unmarshaler` interface.
+However, v4 recognizes and invokes existing hooks using either
+`gopkg.in/yaml.v3.Node` or `go.yaml.in/yaml/v3.Node` at runtime.
+Those hooks can retain their signatures, including in libraries supporting
+multiple major versions.
+For new v4-specific implementations, use `go.yaml.in/yaml/v4.Node`.
+
+The legacy callback signature `UnmarshalYAML(func(any) error) error` is still
+recognized and can be used across v2, v3, and v4.
 
 ## Migration Strategies
 
 ### Strategy 1: Minimal Change (Fastest)
 
 1. Update import path
-2. If using TypeError.Errors directly, update that code
-3. Add `yaml.WithV3Defaults()` preset to maintain v3 formatting
-4. Done!
+2. Keep the classic entry points initially
+3. Review errors and custom unmarshaler types
+4. Run your application's tests, including output comparisons
 
 ```go
-// Only change needed for basic migration
-data, err := yaml.Dump(&config, yaml.WithV3Defaults())
+// Keep these calls while changing the package import to v4.
+err := yaml.Unmarshal(input, &config)
+data, err := yaml.Marshal(&config)
 ```
 
 ### Strategy 2: Adopt New API (Recommended)
@@ -261,13 +336,14 @@ data, err := yaml.Dump(&config, yaml.WithV3Defaults())
 1. Update import path
 2. Replace `Unmarshal` → `Load`, `Marshal` → `Dump`
 3. Replace `NewDecoder` → `NewLoader`, `NewEncoder` → `NewDumper`
-4. Test with v4 defaults or choose formatting explicitly
+4. Handle constructor errors before using loaders and dumpers
+5. Test with v4 defaults or choose formatting explicitly
 
 ### Strategy 3: Feature Adoption (Maximum Value)
 
 1. Follow Strategy 2
 2. Explore new functional options
-3. Leverage structured error information
+3. Use structured error information
 4. Adopt version presets for different use cases
 
 ## Testing Your Migration
@@ -279,21 +355,25 @@ go test ./...
 # Verify YAML output formatting
 # Use the go-yaml CLI tool to compare
 go install go.yaml.in/yaml/v4/cmd/go-yaml@latest
-./go-yaml -n < testfile.yaml
+go-yaml -n testfile.yaml
 ```
 
 ## Common Issues
 
 ### Issue: Output formatting changed
 
-**Solution:** Use `yaml.WithV3Defaults()` preset to maintain v3 formatting:
+**Solution:** Select v3 defaults and, when matching `Marshal`, disable wrapping:
 ```go
-yaml.Dump(&data, yaml.WithV3Defaults())
+output, err := yaml.Dump(&data,
+    yaml.WithV3Defaults(),
+    yaml.WithLineWidth(-1),
+)
 ```
 
 ### Issue: Want more flexibility from classic API
 
 **Solution:** Migrate to the new API for options support:
+
 - `Unmarshal` → `Load`
 - `Marshal` → `Dump`
 - `NewDecoder` → `NewLoader`
@@ -304,15 +384,15 @@ yaml.Dump(&data, yaml.WithV3Defaults())
 If you encounter issues during migration:
 
 - Check the [API documentation](https://pkg.go.dev/go.yaml.in/yaml/v4)
-- Browse [examples](example/)
+- Browse [examples](../example/README.md)
 - Open an [issue](https://github.com/yaml/go-yaml/issues)
 - Ask in [Slack](https://cloud-native.slack.com/archives/C08PPAT8PS7)
 
 ## Next Steps
 
 - Explore the new [functional options](#functional-options)
-- Review the [examples](example/) directory
+- Review the [examples](../example/README.md) directory
 - Read the [full API documentation](
   https://pkg.go.dev/go.yaml.in/yaml/v4)
-- Try the [go-yaml CLI tool](README.md#the-go-yaml-cli-tool) for
+- Try the [go-yaml CLI tool](../cmd/go-yaml/README.md) for
   debugging
