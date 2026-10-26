@@ -90,3 +90,24 @@
     <<<$'answer: [1, 2\n' go-yaml -C <(echo
     '{plugin: {error-format: {v4: {load-template: "DEMO: {{.Message}}"}}}}') -J
   fail: 'DEMO:'
+
+- make: *cli
+  desc: Disable YAML merge keys
+  cmnd: >-
+    <<<$'<<: {a: 1}\n' go-yaml
+    -C <(echo '{plugin: {merge-key: {disable: true}}}') -J
+  impl: merge-key
+
+- make: *cli
+  desc: Combine repeated merge directives
+  cmnd: >-
+    <<<$'<<: {x: 1, a: 1}\n<<: {x: 2, b: 2}\n' go-yaml
+    -C <(echo '{plugin: {merge-key: {multiple: combine}}}') -J
+  impl: merge-key
+
+- make: *cli
+  desc: Let the last merge source win
+  cmnd: >-
+    <<<$'<<: {x: 1, a: 1}\n<<: {x: 2, b: 2}\n' go-yaml
+    -C <(echo '{plugin: {merge-key: {multiple: combine, conflicts: last}}}') -J
+  impl: merge-key

@@ -9,6 +9,7 @@ import (
 	"go.yaml.in/yaml/v4/internal/libyaml"
 	pluginreg "go.yaml.in/yaml/v4/internal/plugin"
 	"go.yaml.in/yaml/v4/plugin/loaderlimits"
+	"go.yaml.in/yaml/v4/plugin/mergekey"
 )
 
 // ErrorFormatPlugin customizes how YAML load and dump errors are rendered.
@@ -92,6 +93,15 @@ type IndentConfig = libyaml.IndentConfig
 // TabIndentPlugin enables tab-aware structural indentation.
 type TabIndentPlugin = libyaml.TabIndentPlugin
 
+// MergeKeyConfig controls merge recognition, repeated directives, and conflicts.
+type MergeKeyConfig = libyaml.MergeKeyConfig
+
+// MergeKeyInput supplies read-only target and source mappings to an algorithm.
+type MergeKeyInput = libyaml.MergeKeyInput
+
+// MergeKeyPlugin chooses the effective mapping before value construction.
+type MergeKeyPlugin = libyaml.MergeKeyPlugin
+
 // PluginEvent carries source-independent YAML syntax information.
 type PluginEvent = libyaml.PluginEvent
 
@@ -106,6 +116,12 @@ type PluginRegistration = pluginreg.Registration
 type nativeParserPlugin struct{}
 
 var pluginRegistry = pluginreg.NewRegistry(
+	PluginRegistration{
+		API: pluginreg.MergeKeyAPI, Name: pluginreg.MergeKeyAPI, Default: true,
+		Factory: func(cfg map[string]any) (any, error) {
+			return mergekey.NewFromYAML(cfg)
+		},
+	},
 	PluginRegistration{
 		API: pluginreg.ErrorFormatAPI, Name: pluginreg.ErrorFormatAPI,
 		Default: true,

@@ -151,7 +151,8 @@ func inspectConfig(data []byte, external bool) (buildConfig, error) {
 				name = pluginreg.CanonicalName(api, name)
 			}
 			switch api {
-			case pluginreg.ErrorFormatAPI, pluginreg.LoaderLimitsAPI:
+			case pluginreg.ErrorFormatAPI, pluginreg.LoaderLimitsAPI,
+				pluginreg.MergeKeyAPI:
 				_, shortForm := value.(string)
 				if name != "" && name != api && !shortForm {
 					return selection, fmt.Errorf(

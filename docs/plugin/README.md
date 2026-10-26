@@ -8,6 +8,7 @@ Plugins are registered with `yaml.WithPlugin(...)`.
 
 | Plugin | Import Path | Use When |
 |---|---|---|
+| [Merge-Key](merge-key.md) | `go.yaml.in/yaml/v4/plugin/mergekey` | You need merge controls or a replacement merge algorithm. |
 | [Limit](limit.md) | `go.yaml.in/yaml/v4/plugin/loaderlimits` | You need to relax, tighten, or replace YAML depth and alias safety limits. |
 | [Error-format v3](error-format-v3.md) | `go.yaml.in/yaml/v4/plugin/errorformat/v3` | You need v3-compatible error strings like `yaml: line 2: message`. |
 | [Error-format v4](error-format-v4.md) | `go.yaml.in/yaml/v4/plugin/errorformat/v4` | You need the v4 error format, different position text, or custom error templates. |
@@ -55,5 +56,5 @@ err = yaml.Load(data, &out, opts)
 ## Third-Party Plugins
 
 Third-party plugins implement one of the public plugin interfaces, such as
-`yaml.LoaderLimitsPlugin` or `yaml.ErrorFormatPlugin`, and are passed to
-`yaml.WithPlugin(...)`.
+`yaml.LoaderLimitsPlugin`, `yaml.MergeKeyPlugin`, or `yaml.ErrorFormatPlugin`,
+and are passed to `yaml.WithPlugin(...)`.

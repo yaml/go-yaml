@@ -145,3 +145,27 @@ func TestErrorFormatOptions(t *testing.T) {
 		})
 	}
 }
+
+func TestMergeKeyOptions(t *testing.T) {
+	initOptionRegistry()
+	for _, tc := range []struct {
+		selector string
+		input    string
+		key      string
+	}{
+		{"merge-key", "<<: {x: 1}", "x"},
+		{"merge-key=disable", "<<: {x: 1}", "<<"},
+	} {
+		opts, err := buildOptions("", nil, tc.selector)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got map[string]any
+		if err := yaml.Load([]byte(tc.input), &got, opts...); err != nil {
+			t.Fatal(err)
+		}
+		if _, found := got[tc.key]; !found {
+			t.Fatalf("%s: %#v", tc.selector, got)
+		}
+	}
+}

@@ -14,6 +14,8 @@ const (
 	ErrorFormatAPI = "error-format"
 	// LoaderLimitsAPI is the loader-limits plugin API name.
 	LoaderLimitsAPI = "loader-limits"
+	// MergeKeyAPI is the Merge-Key plugin API name.
+	MergeKeyAPI = "merge-key"
 	// YAMLParserAPI is the YAML-parser plugin API name.
 	YAMLParserAPI = "yaml-parser"
 	// legacyLimitAPI exists for release-candidate compatibility.

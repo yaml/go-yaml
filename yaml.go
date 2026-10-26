@@ -293,6 +293,7 @@ type DepthContext = libyaml.DepthContext
 // Each plugin implements one or more plugin interfaces.
 // Currently supported plugin types:
 //   - LoaderLimitsPlugin: Controls depth and alias expansion limits
+//   - MergeKeyPlugin: Chooses effective mappings before construction
 //   - ParserPlugin: Supplies a complete YAML event stream
 //   - TabIndentPlugin: Enables tab-aware loading and tab-indented dumping
 //   - ErrorFormatPlugin: Customizes load and dump error message formatting
@@ -314,6 +315,16 @@ func WithPlugin(plugins ...any) Option {
 			if lp, ok := p.(LoaderLimitsPlugin); ok {
 				o.DepthCheck = lp.CheckDepth
 				o.AliasCheck = lp.CheckAlias
+				registered = true
+			}
+			if merger, ok := p.(MergeKeyPlugin); ok {
+				if o.MergeKey != nil {
+					return errors.New("yaml: multiple merge-key plugins")
+				}
+				if err := merger.MergeKeyConfig().Validate(); err != nil {
+					return err
+				}
+				o.MergeKey = merger
 				registered = true
 			}
 			if source, ok := p.(ParserPlugin); ok {
@@ -478,6 +489,13 @@ func OptsYAML(yamlStr string) (Option, error) {
 	}
 
 	for name, val := range plugins {
+		// Unlike optional plugins, disabling Merge-Key must select a policy
+		// that turns off the built-in behavior.
+		if name == "merge-key" {
+			if enabled, ok := val.(bool); ok && !enabled {
+				val = map[string]any{"disable": true}
+			}
+		}
 		var cfgMap map[string]any
 		switch v := val.(type) {
 		case bool:
@@ -493,12 +511,12 @@ func OptsYAML(yamlStr string) (Option, error) {
 					return nil, fmt.Errorf(
 						"yaml: plugin %q disable must be a boolean", name)
 				}
-				if disabled {
+				if disabled && name != "merge-key" {
 					continue
 				}
 				cfgMap = make(map[string]any, len(v)-1)
 				for key, value := range v {
-					if key != "disable" {
+					if key != "disable" || name == "merge-key" {
 						cfgMap[key] = value
 					}
 				}

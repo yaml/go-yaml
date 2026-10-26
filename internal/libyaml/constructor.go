@@ -57,12 +57,18 @@ type Constructor struct {
 	aliasCheck     func(aliasCount, constructCount int) error
 	formatError    func(*LoadError) string
 
-	mergedFields map[any]bool
+	mergePlugin  MergeKeyPlugin
+	mergeConfig  MergeKeyConfig
+	mergeAliases map[*Node]bool
 }
 
 // NewConstructor creates a new Constructor initialized with the provided
 // options.
 func NewConstructor(opts *Options) *Constructor {
+	plugin := opts.MergeKey
+	if plugin == nil {
+		plugin = DefaultMergeKey{}
+	}
 	return &Constructor{
 		stringMapType:  stringMapType,
 		generalMapType: generalMapType,
@@ -71,6 +77,8 @@ func NewConstructor(opts *Options) *Constructor {
 		aliases:        make(map[*Node]bool),
 		aliasCheck:     opts.AliasCheck,
 		formatError:    opts.FormatLoadError,
+		mergePlugin:    plugin,
+		mergeConfig:    plugin.MergeKeyConfig(),
 	}
 }
 
@@ -82,15 +90,11 @@ func NewConstructor(opts *Options) *Constructor {
 // handles alias expansion, custom unmarshalers, and type resolution.
 // Returns true if the construction was successful.
 func (c *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
-	c.constructCount++
-	if c.aliasDepth > 0 {
-		c.aliasCount++
+	if c.mergeAliases[n] {
+		c.aliasDepth++
+		defer func() { c.aliasDepth-- }()
 	}
-	if c.aliasCheck != nil {
-		if err := c.aliasCheck(c.aliasCount, c.constructCount); err != nil {
-			Fail(c.formatConstructorError(err, Mark{Line: n.Line, Column: n.Column}))
-		}
-	}
+	c.checkConstruction(n)
 	if out.Type() == nodeType {
 		out.Set(reflect.ValueOf(n).Elem())
 		return true
@@ -140,6 +144,18 @@ func (c *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
 		))
 	}
 	return good
+}
+
+func (c *Constructor) checkConstruction(n *Node) {
+	c.constructCount++
+	if c.aliasDepth > 0 {
+		c.aliasCount++
+	}
+	if c.aliasCheck != nil {
+		if err := c.aliasCheck(c.aliasCount, c.constructCount); err != nil {
+			Fail(c.formatConstructorError(err, Mark{Line: n.Line, Column: n.Column}))
+		}
+	}
 }
 
 // --------------------------------------------------------------------------
@@ -446,6 +462,7 @@ func (c *Constructor) constructMerge(n *Node, resolved any, out reflect.Value) b
 
 // document constructs a DocumentNode by processing its single content node.
 func (c *Constructor) document(n *Node, out reflect.Value) (good bool) {
+	c.mergeAliases = nil
 	if len(n.Content) == 1 {
 		c.doc = n
 		c.Construct(n.Content[0], out)
@@ -478,6 +495,14 @@ func (c *Constructor) alias(n *Node, out reflect.Value) (good bool) {
 // dispatching to the appropriate tag-specific constructor or using
 // TextUnmarshaler if available.
 func (c *Constructor) scalar(n *Node, out reflect.Value) bool {
+	if c.mergeConfig.Disable && isMerge(n) {
+		if n.Style&TaggedStyle != 0 {
+			c.mergeFailure(errors.New("merge-key: merge tag is disabled"), n)
+		}
+		copyNode := *n
+		copyNode.Tag = strTag
+		n = &copyNode
+	}
 	// Resolve the tag and value
 	var tag string
 	var resolved any
@@ -598,25 +623,24 @@ func (c *Constructor) sequence(n *Node, out reflect.Value) (good bool) {
 // It handles key uniqueness checking, merge keys, and type-appropriate
 // map construction (string-keyed vs general).
 func (c *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
-	l := len(n.Content)
-	if c.UniqueKeys {
-		nerrs := len(c.TypeErrors)
-		for i := 0; i < l; i += 2 {
-			ni := n.Content[i]
-			for j := i + 2; j < l; j += 2 {
-				nj := n.Content[j]
-				if ni.Kind == nj.Kind && ni.Value == nj.Value {
-					c.TypeErrors = append(c.TypeErrors, c.formatConstructorError(
-						fmt.Errorf("mapping key %#v already defined at line %d", nj.Value, ni.Line),
-						Mark{Line: nj.Line, Column: nj.Column},
-					))
-				}
-			}
-		}
-		if len(c.TypeErrors) > nerrs {
-			return false
+	stringMapping := isStringMap(n)
+	keyType := ifaceType
+	switch out.Kind() {
+	case reflect.Map:
+		keyType = out.Type().Key()
+	case reflect.Struct:
+		keyType = reflect.TypeOf("")
+	case reflect.Interface:
+		if stringMapping {
+			keyType = c.stringMapType.Key()
 		}
 	}
+	nerrs := len(c.TypeErrors)
+	n = c.effectiveMapping(n, keyType)
+	if len(c.TypeErrors) > nerrs {
+		return false
+	}
+	l := len(n.Content)
 	switch out.Kind() {
 	case reflect.Struct:
 		return c.mappingStruct(n, out)
@@ -624,7 +648,7 @@ func (c *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 		// okay
 	case reflect.Interface:
 		iface := out
-		if isStringMap(n) {
+		if stringMapping {
 			out = reflect.MakeMap(c.stringMapType)
 		} else {
 			out = reflect.MakeMap(c.generalMapType)
@@ -649,30 +673,14 @@ func (c *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 		}
 	}
 
-	mergedFields := c.mergedFields
-	c.mergedFields = nil
-
-	var mergeNode *Node
-
 	mapIsNew := false
 	if out.IsNil() {
 		out.Set(reflect.MakeMap(outt))
 		mapIsNew = true
 	}
 	for i := 0; i < l; i += 2 {
-		if isMerge(n.Content[i]) {
-			mergeNode = n.Content[i+1]
-			continue
-		}
 		k := reflect.New(kt).Elem()
 		if c.Construct(n.Content[i], k) {
-			if mergedFields != nil {
-				ki := k.Interface()
-				if c.getPossiblyUnhashableKey(mergedFields, ki, n.Content[i]) {
-					continue
-				}
-				c.setPossiblyUnhashableKey(mergedFields, ki, true, n.Content[i])
-			}
 			kkind := k.Kind()
 			if kkind == reflect.Interface {
 				kkind = k.Elem().Kind()
@@ -685,11 +693,6 @@ func (c *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 				out.SetMapIndex(k, e)
 			}
 		}
-	}
-
-	c.mergedFields = mergedFields
-	if mergeNode != nil {
-		c.merge(n, mergeNode, out)
 	}
 
 	c.stringMapType = stringMapType
@@ -721,9 +724,6 @@ func (c *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
 		c.prepare(n, field)
 	}
 
-	mergedFields := c.mergedFields
-	c.mergedFields = nil
-	var mergeNode *Node
 	var doneFields []bool
 	if c.UniqueKeys {
 		doneFields = make([]bool, len(sinfo.FieldsList))
@@ -732,20 +732,10 @@ func (c *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
 	l := len(n.Content)
 	for i := 0; i < l; i += 2 {
 		ni := n.Content[i]
-		if isMerge(ni) {
-			mergeNode = n.Content[i+1]
-			continue
-		}
 		if !c.Construct(ni, name) {
 			continue
 		}
 		sname := name.String()
-		if mergedFields != nil {
-			if mergedFields[sname] {
-				continue
-			}
-			mergedFields[sname] = true
-		}
 		if info, ok := sinfo.FieldsMap[sname]; ok {
 			if c.UniqueKeys {
 				if doneFields[info.Id] {
@@ -779,54 +769,7 @@ func (c *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
 		}
 	}
 
-	c.mergedFields = mergedFields
-	if mergeNode != nil {
-		c.merge(n, mergeNode, out)
-	}
 	return true
-}
-
-// merge processes a merge key (<<) by constructing the merge value into out.
-// The merge value can be a single mapping, an alias to a mapping, or a
-// sequence of mappings.
-// Fields from the parent mapping take precedence over merged fields.
-func (c *Constructor) merge(parent *Node, merge *Node, out reflect.Value) {
-	mergedFields := c.mergedFields
-	if mergedFields == nil {
-		c.mergedFields = make(map[any]bool)
-		for i := 0; i < len(parent.Content); i += 2 {
-			k := reflect.New(ifaceType).Elem()
-			if c.Construct(parent.Content[i], k) {
-				c.setPossiblyUnhashableKey(c.mergedFields, k.Interface(), true, parent.Content[i])
-			}
-		}
-	}
-
-	switch merge.Kind {
-	case MappingNode:
-		c.Construct(merge, out)
-	case AliasNode:
-		if merge.Alias != nil && merge.Alias.Kind != MappingNode {
-			c.failWantMap(merge.Alias)
-		}
-		c.Construct(merge, out)
-	case SequenceNode:
-		for i := 0; i < len(merge.Content); i++ {
-			ni := merge.Content[i]
-			if ni.Kind == AliasNode {
-				if ni.Alias != nil && ni.Alias.Kind != MappingNode {
-					c.failWantMap(ni.Alias)
-				}
-			} else if ni.Kind != MappingNode {
-				c.failWantMap(ni)
-			}
-			c.Construct(ni, out)
-		}
-	default:
-		c.failWantMap(merge)
-	}
-
-	c.mergedFields = mergedFields
 }
 
 // isStringMap checks if a MappingNode has only string or merge keys.
@@ -846,9 +789,11 @@ func isStringMap(n *Node) bool {
 	return true
 }
 
-// isMerge checks if a node is a merge key (!!merge tag).
+// isMerge recognizes resolved merge tags and unresolved plain << keys.
 func isMerge(n *Node) bool {
-	return n.Kind == ScalarNode && shortTag(n.Tag) == mergeTag
+	return n.Kind == ScalarNode && (shortTag(n.Tag) == mergeTag ||
+		n.Tag == "" && n.Value == "<<" &&
+			n.Style&(SingleQuotedStyle|DoubleQuotedStyle|LiteralStyle|FoldedStyle) == 0)
 }
 
 // failWantMap panics with a constructor error for invalid merge key values.
@@ -1111,28 +1056,6 @@ func settableValueOf(i any) reflect.Value {
 	sv := reflect.New(v.Type()).Elem()
 	sv.Set(v)
 	return sv
-}
-
-// setPossiblyUnhashableKey sets a map key, recovering from panics if the key
-// type is unhashable.
-func (c *Constructor) setPossiblyUnhashableKey(m map[any]bool, key any, value bool, n *Node) {
-	defer func() {
-		if recover() != nil {
-			c.failUnhashableKey(key, n)
-		}
-	}()
-	m[key] = value
-}
-
-// getPossiblyUnhashableKey gets a map key value, recovering from panics if
-// the key type is unhashable.
-func (c *Constructor) getPossiblyUnhashableKey(m map[any]bool, key any, n *Node) bool {
-	defer func() {
-		if recover() != nil {
-			c.failUnhashableKey(key, n)
-		}
-	}()
-	return m[key]
 }
 
 // formatConstructorError creates a LoadError for constructor-stage errors.
