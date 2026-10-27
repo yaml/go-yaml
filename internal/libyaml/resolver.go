@@ -63,7 +63,7 @@ func (r *Resolver) Resolve(n *Node) {
 			// Untagged scalars are unaffected: they keep being
 			// resolved from their value below.
 			if hint := resolveTable[n.Value[0]]; hint == 'D' || hint == 'S' {
-				if !yamlIntLiteral.MatchString(n.Value) {
+				if !yamlStyleInteger.MatchString(n.Value) {
 					Fail(formatResolverError(
 						fmt.Sprintf("cannot construct !!str `%s` as a !!int", n.Value),
 						Mark{},
@@ -229,13 +229,13 @@ var negativeZero = math.Copysign(0.0, -1.0)
 // scientific notation and numbers starting with a dot).
 var yamlStyleFloat = regexp.MustCompile(`^[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?$`)
 
-// yamlIntLiteral matches the integer literals accepted in a scalar
+// yamlStyleInteger matches the integer literals accepted in a scalar
 // carrying an explicit !!int tag: the YAML 1.2 core schema forms
 // (decimal, 0o octal and 0x hexadecimal, with an optional leading sign)
 // plus the legacy leading-zero octal form (052) that go-yaml has always
 // accepted. Go-only forms — the 0b binary prefix and underscore digit
 // separators — do not match.
-var yamlIntLiteral = regexp.MustCompile(`^[-+]?(?:0[xX][0-9a-fA-F]+|0[oO][0-7]+|[0-9]+)$`)
+var yamlStyleInteger = regexp.MustCompile(`^[-+]?(?:0[xX][0-9a-fA-F]+|0[oO][0-7]+|[0-9]+)$`)
 
 // allowedTimestampFormats lists the timestamp formats supported by the
 // resolver.
