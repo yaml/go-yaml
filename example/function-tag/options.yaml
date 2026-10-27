@@ -1,0 +1,8 @@
+plugin:
+  alias-data:
+    path: true
+  function-tag:
+    libraries:
+      aliases: alias-data
+    functions:
+      load: aliases/load

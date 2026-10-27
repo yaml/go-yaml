@@ -19,7 +19,8 @@ func TestAliasDataPathScope(t *testing.T) {
 		options []aliasdata.Option
 		stream  bool
 	}{
-		{"automatic", []aliasdata.Option{aliasdata.WithPath(true)}, true},
+		{"automatic", []aliasdata.Option{aliasdata.WithPath()}, true},
+		{"explicit true", []aliasdata.Option{aliasdata.WithPath(true)}, true},
 		{"explicit off last", []aliasdata.Option{
 			aliasdata.WithPath(true), aliasdata.WithStream(false),
 		}, false},

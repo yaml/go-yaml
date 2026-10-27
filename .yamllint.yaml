@@ -3,10 +3,13 @@
 
 extends: default
 
+# The function-tag input uses Alias-Data syntax unsupported by yamllint.
+# Validate that input with the go-yaml CLI instead.
 ignore: |
   /.cache/
   /repos/
   /**/testdata/
+  /example/function-tag/input.yaml
 
 rules:
   brackets:

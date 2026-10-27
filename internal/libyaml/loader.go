@@ -19,11 +19,12 @@ import (
 // A Loader reads and loads YAML values from an input stream with configurable
 // options.
 type Loader struct {
-	composer    *Composer
-	resolver    *Resolver
-	constructor *Constructor
-	options     *Options
-	docCount    int
+	composer         *Composer
+	resolver         *Resolver
+	constructor      *Constructor
+	options          *Options
+	docCount         int
+	constructionMemo map[*Node]preparedResult
 }
 
 // NewLoader returns a new Loader that reads from r with the given options.
@@ -130,6 +131,8 @@ func (l *Loader) Load(v any) (err error) {
 	}
 
 	// Stage 1: Compose - parse events into node tree (unresolved tags)
+	l.composer.deferAliases = l.options.FunctionTag != nil && l.options.AliasData != nil &&
+		reflect.TypeOf(v) != reflect.TypeOf((*Node)(nil))
 	node := l.composer.Compose() // *Node
 	if node == nil {
 		return io.EOF
@@ -137,7 +140,46 @@ func (l *Loader) Load(v any) (err error) {
 	l.docCount++
 
 	// Stage 2: Resolve - determine implicit types for untagged scalars
-	l.resolver.Resolve(node)
+	if l.options.YAMLRules != nil {
+		if err := ResolveRuleTree(node, l.options.YAMLRules); err != nil {
+			return RuleError(err, node, l.options.FormatLoadError)
+		}
+	} else {
+		l.resolver.Resolve(node)
+	}
+	if l.options.FunctionTag != nil && reflect.TypeOf(v) != reflect.TypeOf((*Node)(nil)) {
+		session := constructionSession{
+			c: l.constructor, plugin: l.options.FunctionTag, rules: l.options.YAMLRules,
+			memo: map[*Node]preparedResult{}, active: map[*Node]bool{},
+			options: l.options,
+		}
+		if l.composer.deferAliases {
+			if l.constructionMemo == nil {
+				l.constructionMemo = map[*Node]preparedResult{}
+			}
+			session.memo = l.constructionMemo
+			session.aliasData = l.composer.aliasData
+			if err := session.aliasData.BeginDocument(); err != nil {
+				return err
+			}
+		}
+		prepared, err := session.prepare(node, "root", nil)
+		if err != nil {
+			return l.constructor.formatConstructorError(err, Mark{Line: node.Line, Column: node.Column})
+		}
+		if session.aliasData != nil {
+			if err := session.aliasData.EndDocument(); err != nil {
+				return err
+			}
+		}
+		if prepared.control != nil {
+			if prepared.control.kind == "omit" {
+				return NoDocument
+			}
+			return l.constructor.formatConstructorError(errors.New("splicing is not supported at the document root"), Mark{Line: node.Line, Column: node.Column})
+		}
+		node = prepared.node
+	}
 
 	// Stage 3: Construct - convert node tree to Go values
 	out := reflect.ValueOf(v)
@@ -193,6 +235,9 @@ func loadAll(in []byte, out any, opts *Options) error {
 		// Create new element of slice's element type
 		elemPtr := reflect.New(elemType)
 		err := l.Load(elemPtr.Interface())
+		if errors.Is(err, NoDocument) {
+			continue
+		}
 		if err == io.EOF {
 			break
 		}
@@ -231,12 +276,16 @@ func loadSingle(in []byte, out any, opts *Options) error {
 			err:     errors.New(msg),
 		}}}
 	}
-	if err != nil {
+	omitted := errors.Is(err, NoDocument)
+	if err != nil && !omitted {
 		return err
 	}
 
 	// Skip trailing document check for legacy Unmarshal() compatibility
 	if opts.allowLegacyTrailingContent {
+		if omitted {
+			return NoDocument
+		}
 		return nil
 	}
 
@@ -257,6 +306,9 @@ func loadSingle(in []byte, out any, opts *Options) error {
 		}}}
 	}
 
+	if omitted {
+		return NoDocument
+	}
 	return nil
 }
 

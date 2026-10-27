@@ -1,0 +1,2 @@
+bar: 42
+hash2: {inherited: true, key: base}

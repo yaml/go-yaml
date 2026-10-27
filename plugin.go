@@ -5,6 +5,11 @@ package yaml
 
 import (
 	"errors"
+	"fmt"
+	"os"
+
+	"go.yaml.in/yaml/v4/plugin/functiontag"
+	"go.yaml.in/yaml/v4/plugin/yamlrules"
 
 	"go.yaml.in/yaml/v4/internal/libyaml"
 	pluginreg "go.yaml.in/yaml/v4/internal/plugin"
@@ -178,5 +183,88 @@ func WithNamedPlugin(api string) Option {
 			return err
 		}
 		return WithPlugin(p)(o)
+	}
+}
+
+// YAMLRulesPlugin resolves node tags and informs safe tag omission on dump.
+type YAMLRulesPlugin = libyaml.YAMLRulesPlugin
+
+// RuleInput supplies a read-only node, role, path, and mapping-entry context.
+type RuleInput = libyaml.RuleInput
+
+// RuleDecision assigns a node tag or both mapping-entry tags.
+type RuleDecision = libyaml.RuleDecision
+
+// FunctionTagPlugin constructs registered tags during loading only.
+type FunctionTagPlugin = libyaml.FunctionTagPlugin
+
+// FunctionTagInput provides the payload and operation-local decoding service.
+type FunctionTagInput = libyaml.FunctionTagInput
+
+// FunctionTagContext opts a typed function into construction services.
+type FunctionTagContext = libyaml.FunctionTagContext
+
+// ConstructionControl is an opaque construction instruction.
+type ConstructionControl = libyaml.ConstructionControl
+
+// Entry supplies an ordered entry for a mapping splice.
+type Entry = libyaml.Entry
+
+var (
+	// Omit removes an entry or item, or produces NoDocument at the root.
+	Omit = libyaml.Omit
+	// SpliceValue promotes a key's associated mapping into its parent mapping.
+	SpliceValue = libyaml.SpliceValue
+	// NoDocument reports an omitted root. It is distinct from [io.EOF] and null.
+	NoDocument = libyaml.NoDocument
+)
+
+// Splice inserts sequence items or mapping entries at this construction site.
+func Splice(value any) ConstructionControl { return libyaml.Splice(value) }
+
+func init() {
+	if err := functiontag.RegisterLibrary("alias-data", functiontag.Functions{
+		"load": aliasdata.Load,
+	}); err != nil {
+		panic(err)
+	}
+
+	for _, name := range yamlrules.Names() {
+		set := name
+		err := RegisterPlugin(PluginRegistration{
+			API: "yaml-rules", Name: set, Default: set == "go-yaml-v4",
+			Factory: func(config map[string]any) (any, error) {
+				if file, ok := config["file"]; ok {
+					path, ok := file.(string)
+					if !ok {
+						return nil, errors.New("yaml-rules: file must be a path")
+					}
+					data, err := os.ReadFile(path)
+					if err != nil {
+						return nil, err
+					}
+					var definition map[string]any
+					if err := Load(data, &definition); err != nil {
+						return nil, err
+					}
+					for key, value := range config {
+						if key != "file" {
+							definition[key] = value
+						}
+					}
+					config = definition
+				}
+				return yamlrules.New(set, config)
+			},
+		})
+		if err != nil {
+			panic(err)
+		}
+	}
+	if err := RegisterPlugin(PluginRegistration{
+		API: "function-tag", Name: "function-tag", Default: true,
+		Factory: func(config map[string]any) (any, error) { return functiontag.NewFromYAML(config) },
+	}); err != nil {
+		panic(fmt.Errorf("register function-tag: %w", err))
 	}
 }

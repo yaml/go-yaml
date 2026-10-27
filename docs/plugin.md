@@ -17,6 +17,8 @@ The current implementations are:
 | `loader-limits` | `loader-limits` | `plugin/loaderlimits` | yes |
 | `tab-indent` | `tab-indent` | `plugin/tabindent` | no |
 | `alias-data` | `alias-data` | `plugin/aliasdata` | yes |
+| `yaml-rules` | named rule sets | `plugin/yamlrules` | opt in |
+| `function-tag` | `function-tag` | `plugin/functiontag` | opt in |
 
 Tab indentation is opt-in.
 Default Alias-Data behavior keeps anchors within each document; explicitly
@@ -469,3 +471,7 @@ Run `make cli` afterward to restore the ordinary native CLI.
 
 See the [demo README](../cmd/go-yaml/demo/README.md) for interactive controls,
 dependencies, and executable overrides.
+
+See [YAML Rules](plugin/yaml-rules.md) and
+[Function-Tag](plugin/function-tag.md) for declarative node matching and
+load-time constructor functions.

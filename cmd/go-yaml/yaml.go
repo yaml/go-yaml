@@ -7,6 +7,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -50,6 +51,9 @@ func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []ya
 		for {
 			var node yaml.Node
 			err := loader.Load(&node)
+			if errors.Is(err, yaml.NoDocument) {
+				continue
+			}
 			if err != nil {
 				if err == io.EOF {
 					break
@@ -128,6 +132,9 @@ func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []ya
 		for {
 			var data any
 			err := loader.Load(&data)
+			if errors.Is(err, yaml.NoDocument) {
+				continue
+			}
 			if err != nil {
 				if err == io.EOF || err.Error() == "EOF" {
 					break

@@ -34,6 +34,10 @@ func (d *Desolver) Desolve(n *Node) {
 	if n == nil {
 		return
 	}
+	if d.opts != nil && d.opts.YAMLRules != nil {
+		d.desolveRules(n)
+		return
+	}
 
 	switch n.Kind {
 	case ScalarNode:

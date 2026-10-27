@@ -8,6 +8,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -38,6 +39,9 @@ func processJSONLoad(reader io.Reader, pretty bool, opts ...yaml.Option) error {
 		// Read each document
 		var data any
 		err := loader.Load(&data)
+		if errors.Is(err, yaml.NoDocument) {
+			continue
+		}
 		if err != nil {
 			if err.Error() == "EOF" {
 				break

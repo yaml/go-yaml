@@ -24,7 +24,8 @@ type AliasDataPlugin interface {
 // ResolveAlias must return a data node when found is true. External targets
 // must have resolved tags; locally defined targets are resolved by the host.
 // YAML null is represented by a scalar null node, never a nil pointer.
-// EndDocument is called only after successful composition.
+// EndDocument is called after successful composition, or after constructor
+// traversal when Function-Tag and Alias-Data are selected for a value load.
 // Contexts must not retain open resources; there is no teardown callback.
 type AliasDataContext interface {
 	BeginDocument() error

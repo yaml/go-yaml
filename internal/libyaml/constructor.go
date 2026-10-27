@@ -107,9 +107,27 @@ func (c *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
 		return c.alias(n, out)
 	}
 
+	if n.hasNativeValue {
+		return c.constructNative(n, out)
+	}
 	out, constructed, good := c.prepare(n, out)
 	if constructed {
 		return good
+	}
+	if n.baseRuleTag != "" {
+		valid := true
+		switch n.Kind {
+		case MappingNode:
+			valid = shortTag(n.Tag) == mapTag
+		case SequenceNode:
+			valid = shortTag(n.Tag) == seqTag
+		case ScalarNode:
+			_, valid = scalarConstructors[shortTag(n.Tag)]
+		}
+		if !valid {
+			c.tagError(n, n.Tag, out)
+			return false
+		}
 	}
 
 	// When out type implements [encoding.TextUnmarshaler], ensure the node
@@ -511,7 +529,11 @@ func (c *Constructor) scalar(n *Node, out reflect.Value) bool {
 		tag = strTag
 		resolved = n.Value
 	} else {
-		tag, resolved = resolve(n.Tag, n.Value, c.formatError)
+		if n.ruleSet != "" {
+			tag, resolved = resolveRuleScalar(n, c.formatError)
+		} else {
+			tag, resolved = resolve(n.Tag, n.Value, c.formatError)
+		}
 		if tag == binaryTag {
 			data, err := base64.StdEncoding.DecodeString(resolved.(string))
 			if err != nil {

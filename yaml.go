@@ -311,6 +311,20 @@ func WithPlugin(plugins ...any) Option {
 	return func(o *libyaml.Options) error {
 		for _, p := range plugins {
 			registered := false
+			if rules, ok := p.(YAMLRulesPlugin); ok {
+				if o.YAMLRules != nil {
+					return errors.New("yaml: multiple yaml-rules plugins")
+				}
+				o.YAMLRules = rules
+				registered = true
+			}
+			if functions, ok := p.(FunctionTagPlugin); ok {
+				if o.FunctionTag != nil {
+					return errors.New("yaml: multiple function-tag plugins")
+				}
+				o.FunctionTag = functions
+				registered = true
+			}
 			if _, ok := p.(nativeParserPlugin); ok {
 				registered = true
 			}

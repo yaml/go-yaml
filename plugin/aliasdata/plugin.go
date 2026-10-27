@@ -3,7 +3,7 @@
 
 // Package aliasdata supplies node-based YAML anchor and alias policies.
 // New without options explicitly selects retention of stream anchors.
-// Source options default to document scope; WithPath(true) enables stream scope.
+// Source options default to document scope; WithPath() enables stream scope.
 // WithStream explicitly overrides either default.
 // Without an explicit selection, go-yaml uses ordinary document scope.
 package aliasdata
@@ -57,9 +57,10 @@ func WithStream(enabled bool) Option {
 }
 
 // WithPath controls dotted mapping and sequence lookups in alias names.
+// With no argument it enables paths; pass false to disable them.
 // Enabling paths enables stream mode unless WithStream overrides that default.
-func WithPath(enabled bool) Option {
-	return func(p *Plugin) { p.path = enabled }
+func WithPath(enabled ...bool) Option {
+	return func(p *Plugin) { p.path = len(enabled) == 0 || enabled[0] }
 }
 
 // WithDisable rejects alias references while allowing anchor declarations.

@@ -21,6 +21,8 @@ type Composer struct {
 	event        Event
 	doc          *Node
 	aliasData    AliasDataContext
+	deferAliases bool
+	localAnchors map[string]*Node
 	doneInit     bool
 	Textless     bool
 	streamNodes  bool     // enable stream node emission
@@ -180,8 +182,11 @@ func (c *Composer) node(kind Kind, tag, value string) *Node {
 // document composes a document node by parsing its content between
 // DOCUMENT_START and DOCUMENT_END events.
 func (c *Composer) document() *Node {
-	if err := c.aliasData.BeginDocument(); err != nil {
-		c.failAliasData(err, c.event.StartMark)
+	c.localAnchors = map[string]*Node{}
+	if !c.deferAliases {
+		if err := c.aliasData.BeginDocument(); err != nil {
+			c.failAliasData(err, c.event.StartMark)
+		}
 	}
 
 	n := c.node(DocumentNode, "", "")
@@ -192,8 +197,10 @@ func (c *Composer) document() *Node {
 		n.FootComment = string(c.event.FootComment)
 	}
 	c.expect(DOCUMENT_END_EVENT)
-	if err := c.aliasData.EndDocument(); err != nil {
-		c.failAliasData(err, Mark{Line: n.Line, Column: n.Column})
+	if !c.deferAliases {
+		if err := c.aliasData.EndDocument(); err != nil {
+			c.failAliasData(err, Mark{Line: n.Line, Column: n.Column})
+		}
 	}
 
 	// If stream nodes enabled, prepare to return a stream node next
@@ -225,6 +232,11 @@ func (c *Composer) createStreamNode() *Node {
 // alias composes an alias node by resolving the referenced anchor.
 func (c *Composer) alias() *Node {
 	n := c.node(AliasNode, "", string(c.event.Anchor))
+	if c.deferAliases {
+		n.Alias = c.localAnchors[n.Value]
+		c.expect(ALIAS_EVENT)
+		return n
+	}
 	var found bool
 	var err error
 	n.Alias, found, err = c.aliasData.ResolveAlias(n.Value)
@@ -431,6 +443,10 @@ func (c *Composer) fail(err error) {
 func (c *Composer) anchor(n *Node, anchor []byte) {
 	if anchor != nil {
 		n.Anchor = string(anchor)
+		if c.deferAliases {
+			c.localAnchors[n.Anchor] = n
+			return
+		}
 		if err := c.aliasData.DefineAnchor(n.Anchor, n); err != nil {
 			c.failAliasData(err, Mark{Line: n.Line, Column: n.Column})
 		}

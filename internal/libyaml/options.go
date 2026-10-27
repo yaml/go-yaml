@@ -59,6 +59,10 @@ type Options struct {
 	// document-scoped anchors, rather than disabling aliases.
 	AliasData AliasDataPlugin
 
+	// In-process node policy plugins.
+	YAMLRules   YAMLRulesPlugin
+	FunctionTag FunctionTagPlugin
+
 	// IndentConfig enables tab-aware structural indentation.
 	IndentConfig *IndentConfig
 

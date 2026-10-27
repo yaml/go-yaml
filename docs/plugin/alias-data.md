@@ -189,9 +189,10 @@ err = yaml.Load([]byte("<<: *defaults\nsize: 5\n"), &value,
 ```
 
 Other options are `WithFile`, `WithEnv`, `WithPath`, and `WithDisable`.
-Use `aliasdata.WithPath(true)` for dotted paths.
+Use `aliasdata.WithPath()` for dotted paths.
+An explicit `false` disables paths; `true` is also accepted.
 `New()` explicitly selects stream mode.
-`WithPath(true)` enables stream retention by default, including plain aliases.
+`WithPath()` enables stream retention by default, including plain aliases.
 `WithStream(false)` explicitly selects document scope, regardless of option
 order.
 With only source options, use `WithStream(true)` to enable stream retention.
@@ -252,3 +253,21 @@ materializing external values.
 Default invocations keep the ordinary behavior of each mode.
 
 Alias-Data is an in-process policy API with no shared-library installation.
+
+## Constructor-defined aliases
+
+With Function-Tag selected, context-aware constructors can define aliases
+while loading values.
+`aliasdata.Load` is an import constructor that can be bound to any function tag.
+The `yaml` package registers it as `load` in the `alias-data` function library.
+The explicitly configured library provides
+[`!load` imports](function-tag.md#constructor-context-and-alias-imports).
+These definitions participate in the current document and its configured
+stream scope, with ordinary dotted lookups and mapping merges.
+
+For value loads using both plugins, Alias-Data lifecycle callbacks and alias
+lookups run during constructor traversal rather than composition.
+Definitions take effect in source order, and policies still receive live
+anchor nodes before their children are traversed.
+Composition-only operations retain their existing behavior and execute no
+function constructors.

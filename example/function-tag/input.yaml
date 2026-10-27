@@ -1,0 +1,8 @@
+!load vars: vars.yaml
+
+all: *vars
+foo: *vars.bar
+inherited: *vars.hash2.inherited
+map1:
+  <<: *vars.hash2
+  key: value

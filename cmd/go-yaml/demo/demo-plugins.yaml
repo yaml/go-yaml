@@ -216,3 +216,13 @@
     <<<$'items: &foo [zero, one]\nselected: *foo.01\n' go-yaml
     -C <(echo '{plugin: {alias-data: {path: true}}}') -J
   fail: sequence index must not have leading zeros
+
+- make: *cli
+  desc: Import alias data with a key constructor and merge a dotted lookup
+  cmnd: >-
+    printf %s
+    $'!load vars: example/function-tag/vars.yaml\nfoo: *vars.bar\n'
+    $'map1:\n  <<: *vars.hash2\n  key: value\n' |
+    go-yaml -C <(echo '{plugin: {alias-data: {path: true},
+    function-tag: {libraries: {aliases: alias-data}}}}') -J
+  impl: function-tag

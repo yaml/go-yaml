@@ -567,6 +567,7 @@ func main() {
 		}
 		defer inputFile.Close()
 		input = inputFile
+		opts = append(opts, withInputFile(args[0]))
 	} else {
 		// Multiple files not supported
 		fmt.Fprintf(os.Stderr, "Error: only one file argument supported\n")
@@ -672,6 +673,9 @@ func main() {
 			for {
 				var node yaml.Node
 				err := loader.Load(&node)
+				if errors.Is(err, yaml.NoDocument) {
+					continue
+				}
 				if errors.Is(err, io.EOF) {
 					break
 				}

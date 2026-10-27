@@ -157,6 +157,11 @@ type Stream struct {
 //	var person Node
 //	err := yaml.Unmarshal(data, &person)
 type Node struct {
+	nativeValue    any
+	hasNativeValue bool
+	baseRuleTag    string
+	ruleSet        string
+
 	// Kind defines whether the node is a document, a mapping, a sequence,
 	// a scalar value, or an alias to another node. The specific data type of
 	// scalar nodes may be obtained via the ShortTag and LongTag methods.
@@ -340,7 +345,47 @@ func (n *Node) Load(v any, opts ...Option) (err error) {
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
 		out = out.Elem()
 	}
-	d.Construct(n, out)
+	node := n
+	if o.YAMLRules != nil {
+		// Policy application must not mutate the caller's node tree.
+		var clone func(*Node) *Node
+		seen := map[*Node]*Node{}
+		clone = func(n *Node) *Node {
+			if n == nil {
+				return nil
+			}
+			if v, ok := seen[n]; ok {
+				return v
+			}
+			v := *n
+			seen[n] = &v
+			v.Content = nil
+			for _, child := range n.Content {
+				v.Content = append(v.Content, clone(child))
+			}
+			v.Alias = clone(n.Alias)
+			return &v
+		}
+		node = clone(n)
+		if err := ResolveRuleTree(node, o.YAMLRules); err != nil {
+			return RuleError(err, node, o.FormatLoadError)
+		}
+	}
+	if o.FunctionTag != nil {
+		session := constructionSession{c: d, plugin: o.FunctionTag, rules: o.YAMLRules, options: o, memo: map[*Node]preparedResult{}, active: map[*Node]bool{}}
+		prepared, err := session.prepare(node, "root", nil)
+		if err != nil {
+			return d.formatConstructorError(err, Mark{Line: node.Line, Column: node.Column})
+		}
+		if prepared.control != nil {
+			if prepared.control.kind == "omit" {
+				return NoDocument
+			}
+			return d.formatConstructorError(errors.New("splicing is not supported at the document root"), Mark{Line: node.Line, Column: node.Column})
+		}
+		node = prepared.node
+	}
+	d.Construct(node, out)
 	if len(d.TypeErrors) > 0 {
 		return &LoadErrors{Errors: d.TypeErrors}
 	}
