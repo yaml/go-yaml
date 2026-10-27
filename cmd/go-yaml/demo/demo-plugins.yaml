@@ -111,3 +111,103 @@
     <<<$'<<: {x: 1, a: 1}\n<<: {x: 2, b: 2}\n' go-yaml
     -C <(echo '{plugin: {merge-key: {multiple: combine, conflicts: last}}}') -J
   impl: merge-key
+
+- make: *cli
+  desc: Supply an external anchor through inline Alias-Data
+  cmnd: >-
+    <<<$'item: *defaults\n' go-yaml
+    -C <(echo '{plugin: {alias-data: {data: {defaults: {color: blue, size: 3}}}}}') -J
+  impl: alias-data
+
+- make: *cli
+  desc: Resolve an alias from a selected environment variable
+  cmnd: >-
+    <<<$'color: *PLUGIN_DEMO_COLOR\n' env PLUGIN_DEMO_COLOR=blue go-yaml
+    -C <(echo '{plugin: {alias-data: {env: PLUGIN_DEMO_COLOR}}}') -J
+  impl: alias-data
+
+- make: *cli
+  desc: Resolve an alias from an Alias-Data file
+  cmnd: >-
+    alias_file=$(mktemp) && trap 'rm -f "$alias_file"' EXIT &&
+    printf %s $'defaults: {color: blue, size: 3}\n' > "$alias_file" &&
+    <<<$'item: *defaults\n' go-yaml
+    -C <(printf 'plugin: {alias-data: {file: "%s"}}\n' "$alias_file") -J
+  impl: alias-data
+
+- make: *cli
+  desc: Reuse an anchor across documents with Alias-Data
+  cmnd: >-
+    <<<$'--- &defaults {color: blue}\n---\nitem: *defaults\n' go-yaml
+    --plugin=alias-data -J
+  impl: alias-data
+
+- make: *cli
+  desc: Keep ordinary aliases while disabling cross-document reuse
+  cmnd: >-
+    <<<$'local: &value 42\ncopy: *value\n' go-yaml
+    -C <(echo '{plugin: {alias-data: {stream: false}}}') -J
+  impl: alias-data
+
+- make: *cli
+  desc: Reject cross-document aliases with document scope
+  cmnd: >-
+    <<<$'--- &saved {value: 42}\n---\ncopy: *saved\n' go-yaml
+    -C <(echo '{plugin: {alias-data: {stream: false}}}') -J
+  fail: unknown anchor
+
+- make: *cli
+  desc: Reject aliases altogether with Alias-Data disable
+  cmnd: >-
+    <<<$'local: &value 42\ncopy: *value\n' go-yaml
+    -C <(echo '{plugin: {alias-data: {disable: true}}}') -J
+  fail: aliases are disabled
+
+- make: *cli
+  desc: Select a nested mapping value through a dotted anchor path
+  cmnd: >-
+    <<<$'settings: &x1 {foo: {bar: 42}}\nanswer: *x1.foo.bar\n' go-yaml
+    -C <(echo '{plugin: {alias-data: {path: true}}}') -J
+  impl: alias-data
+
+- make: *cli
+  desc: Select a sequence item and its mapping value through an anchor path
+  cmnd: >-
+    <<<$'items: &x2 [zero, one, two, {baz: found}]\nselected: *x2.3.baz\n' go-yaml
+    -C <(echo '{plugin: {alias-data: {path: true}}}') -J
+  impl: alias-data
+
+- make: *cli
+  desc: Reuse a dotted anchor path across documents automatically
+  cmnd: >-
+    <<<$'--- &saved {foo: {bar: 42}}\n---\ncopy: *saved.foo.bar\n' go-yaml
+    -C <(echo '{plugin: {alias-data: {path: true}}}') -J
+  impl: alias-data
+
+- make: *cli
+  desc: Keep dotted anchor paths within each document explicitly
+  cmnd: >-
+    <<<$'--- &saved {foo: 42}\n---\ncopy: *saved.foo\n' go-yaml
+    -C <(echo '{plugin: {alias-data: {path: true, stream: false}}}') -J
+  fail: unknown anchor
+
+- make: *cli
+  desc: Report the failing segment in a missing anchor path
+  cmnd: >-
+    <<<$'settings: &saved {foo: 42}\ncopy: *saved.missing\n' go-yaml
+    -C <(echo '{plugin: {alias-data: {path: true}}}') -J
+  fail: missing mapping key
+
+- make: *cli
+  desc: Select a numeric string mapping key using single quotes
+  cmnd: >-
+    <<<$'settings: &foo {\'42\': {bar: found}, \'042\': leading}\nselected: *foo.\'42\'.bar\nleading: *foo.\'042\'\n' go-yaml
+    -C <(echo '{plugin: {alias-data: {path: true}}}') -J
+  impl: alias-data
+
+- make: *cli
+  desc: Reject a sequence index with a leading zero
+  cmnd: >-
+    <<<$'items: &foo [zero, one]\nselected: *foo.01\n' go-yaml
+    -C <(echo '{plugin: {alias-data: {path: true}}}') -J
+  fail: sequence index must not have leading zeros

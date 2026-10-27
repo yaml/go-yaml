@@ -16,6 +16,7 @@ The current implementations are:
 | `merge-key` | `merge-key` | `plugin/mergekey` | yes |
 | `loader-limits` | `loader-limits` | `plugin/loaderlimits` | yes |
 | `tab-indent` | `tab-indent` | `plugin/tabindent` | yes |
+| `alias-data` | `alias-data` | `plugin/aliasdata` | yes |
 
 The reference YAML-parser package is a separate Go module.
 Importing the core `go.yaml.in/yaml/v4` module does not acquire its generated
@@ -63,6 +64,17 @@ type MergeKeyPlugin interface {
 
 type TabIndentPlugin interface {
     TabIndentConfig() IndentConfig
+}
+
+type AliasDataPlugin interface {
+    NewAliasDataContext(AliasDataServices) (AliasDataContext, error)
+}
+
+type AliasDataContext interface {
+    BeginDocument() error
+    DefineAnchor(name string, node *Node) error
+    ResolveAlias(name string) (*Node, bool, error)
+    EndDocument() error
 }
 ```
 
@@ -212,6 +224,32 @@ loader = yaml.NewLoader(data,
 | `AliasNone()` | Disable alias checking |
 | `AliasFunc(fn)` | Supply an alias policy function |
 
+## Alias-Data plugin
+
+[Alias-Data](plugin/alias-data.md) controls anchor storage and alias lookup.
+The default policy is active and preserves ordinary document-scoped aliases.
+An explicit bare selection enables anchor reuse across documents.
+Inline values, a source file, and selected environment variables can supply
+external anchors.
+Enable `path: true` to traverse string mapping keys and zero-based sequence
+indices, as in `*settings.server.port` or `*items.3.name`.
+Paths default to stream scope; explicit `stream: false` keeps document scope.
+The Go option is `aliasdata.WithPath(true)`.
+
+```yaml
+plugin:
+  alias-data:
+    data:
+      defaults: {color: blue}
+    env: APP_*
+    stream: false
+```
+
+For this API, `false`, `disable`, and `{disable: true}` select a policy that
+rejects all alias references while allowing anchor declarations.
+They do not fall back to ordinary aliases.
+Other plugin APIs retain their existing disabling behavior.
+
 ## Tab-indent plugin
 
 The tab-indent plugin enables tab-aware structural indentation while loading
@@ -266,6 +304,9 @@ settings.
 `disable: true` has the same effect as `false`, even when saved settings remain
 in the mapping.
 Null is invalid.
+
+Alias-Data has explicit rejection semantics for disabling forms, as described
+above; it is never removed from the default anchor-processing pipeline.
 
 The host removes `name`, `version`, and `disable` before calling the
 implementation factory.

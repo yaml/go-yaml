@@ -1,0 +1,756 @@
+# Copyright 2026 The go-yaml Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+- name: ordinary local aliases
+  yaml: |
+    value: &value {answer: 42}
+    copy: *value
+  want:
+    value: {answer: 42}
+    copy: {answer: 42}
+
+- name: default document scope
+  yaml: |
+    --- &saved {answer: 42}
+    ---
+    copy: *saved
+  all: true
+  error: unknown anchor 'saved'
+
+- name: explicit stream selection
+  config: |
+    plugin: {alias-data: true}
+  yaml: |
+    --- &saved {answer: 42}
+    ---
+    copy: *saved
+  all: true
+  want:
+  - {answer: 42}
+  - copy: {answer: 42}
+
+- name: explicit empty selection
+  config: |
+    plugin: {alias-data: {}}
+  yaml: |
+    --- &saved 42
+    --- *saved
+  all: true
+  want: [42, 42]
+
+- name: explicit document scope
+  config: |
+    plugin: {alias-data: {stream: false}}
+  yaml: |
+    --- &saved 42
+    --- *saved
+  all: true
+  error: unknown anchor 'saved'
+
+- name: named empty selection
+  config: |
+    plugin: {alias-data: alias-data}
+  yaml: |
+    --- &saved 42
+    --- *saved
+  all: true
+  want: [42, 42]
+
+- name: data selection defaults to document scope
+  config: |
+    plugin: {alias-data: {data: {external: 1}}}
+  yaml: |
+    --- &saved 42
+    --- *saved
+  all: true
+  error: unknown anchor 'saved'
+
+- name: inline data and merge
+  config: |
+    plugin:
+      alias-data:
+        data:
+          defaults: {color: blue, size: 3}
+  yaml: |
+    <<: *defaults
+    size: 5
+  want: {color: blue, size: 5}
+
+- name: null and false are found values
+  config: |
+    plugin: {alias-data: {data: {nothing: null, off: false}}}
+  yaml: |
+    nothing: *nothing
+    off: *off
+  want: {nothing: null, off: false}
+
+- name: local shadowing begins at definition
+  config: |
+    plugin: {alias-data: {data: {value: external}}}
+  yaml: |
+    before: *value
+    local: &value local
+    after: *value
+  want: {before: external, local: local, after: local}
+
+- name: inline data precedes prior documents
+  config: |
+    plugin: {alias-data: {stream: true, data: {value: external}}}
+  yaml: |
+    --- &value prior
+    --- *value
+  all: true
+  want: [prior, external]
+
+- name: prior anchors accumulate
+  config: |
+    plugin: {alias-data: {stream: true}}
+  yaml: |
+    --- &first 1
+    --- &second 2
+    --- [*first, *second]
+  all: true
+  want: [1, 2, [1, 2]]
+
+- name: latest prior definition wins
+  config: |
+    plugin: {alias-data: true}
+  yaml: |
+    --- &value 1
+    --- &value 2
+    --- *value
+  all: true
+  want: [1, 2, 2]
+
+- name: disable scalar
+  config: |
+    plugin: {alias-data: disable}
+  yaml: |
+    value: &value 1
+    copy: *value
+  error: aliases are disabled
+
+- name: disable boolean
+  config: |
+    plugin: {alias-data: false}
+  yaml: |
+    value: &value 1
+    copy: *value
+  error: aliases are disabled
+
+- name: disable mapping
+  config: |
+    plugin: {alias-data: {disable: true}}
+  yaml: |
+    value: &value 1
+    copy: *value
+  error: aliases are disabled
+
+- name: disabled merge reference
+  config: |
+    plugin: {alias-data: disable}
+  yaml: |
+    defaults: &defaults {color: blue}
+    value: {<<: *defaults}
+  error: aliases are disabled
+
+- name: disabled unknown reference
+  config: |
+    plugin: {alias-data: false}
+  yaml: |
+    value: *missing
+  error: aliases are disabled
+
+- name: disabling leaves anchor declarations valid
+  config: |
+    plugin: {alias-data: false}
+  yaml: |
+    value: &value 1
+    literal: '*value'
+  want: {value: 1, literal: '*value'}
+
+- name: disabling ignores saved sources and fields
+  config: |
+    plugin:
+      alias-data:
+        disable: true
+        name: missing
+        version: invalid
+        file: /not/a/real/file
+        env: [NOT_A_REAL_ALIAS_DATA_VARIABLE]
+        data: {bad.name: invalid}
+  yaml: |
+    value: &value 1
+  want: {value: 1}
+
+- name: disable false enables empty stream selection
+  config: |
+    plugin: {alias-data: {disable: false}}
+  yaml: |
+    --- &saved 42
+    --- *saved
+  all: true
+  want: [42, 42]
+
+- name: recursive alias remains an error
+  yaml: |
+    value: &value [*value]
+  error: contains itself
+
+- name: null selection invalid
+  config: |
+    plugin: {alias-data: null}
+  config-error: must be a mapping, string, or boolean
+
+- name: invalid data name
+  config: |
+    plugin: {alias-data: {data: {bad.name: value}}}
+  config-error: must match
+
+- name: invalid stream type
+  config: |
+    plugin: {alias-data: {stream: yes}}
+  config-error: stream must be a boolean
+
+- name: invalid disable type
+  config: |
+    plugin: {alias-data: {disable: yes}}
+  config-error: disable must be a boolean
+
+- name: invalid file type
+  config: |
+    plugin: {alias-data: {file: 42}}
+  config-error: file must be a non-empty string
+
+- name: invalid empty file
+  config: |
+    plugin: {alias-data: {file: ''}}
+  config-error: file must be a non-empty string
+
+- name: invalid data type
+  config: |
+    plugin: {alias-data: {data: [a, b]}}
+  config-error: data must be a mapping
+
+- name: unknown configuration key
+  config: |
+    plugin: {alias-data: {aliases: false}}
+  config-error: unknown key
+
+- name: missing implementation
+  config: |
+    plugin: {alias-data: {name: missing}}
+  config-error: unknown implementation
+
+- name: unversioned implementation
+  config: |
+    plugin: {alias-data: alias-data@v1.2.3}
+  config-error: unversioned
+
+- name: configured missing file deferred until load
+  config: |
+    plugin: {alias-data: {file: /not/a/real/file}}
+  yaml: |
+    value: 1
+  error: no such file
+
+- name: configured missing environment deferred until load
+  config: |
+    plugin: {alias-data: {env: NOT_A_REAL_ALIAS_DATA_VARIABLE}}
+  yaml: |
+    value: 1
+  error: is not set
+
+- name: dotted mapping path
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    base: &x1 {foo: {bar: 42}}
+    copy: *x1.foo.bar
+  want: {base: {foo: {bar: 42}}, copy: 42}
+
+- name: mixed sequence and mapping path
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    base: &x2 [{baz: zero}, {baz: one}, {baz: two}, {baz: three}]
+    copy: *x2.3.baz
+  want:
+    base: [{baz: zero}, {baz: one}, {baz: two}, {baz: three}]
+    copy: three
+
+- name: literal dotted anchor by default
+  yaml: |
+    base: &x.foo literal
+    copy: *x.foo
+  want: {base: literal, copy: literal}
+
+- name: explicit path false keeps dotted names literal
+  config: |
+    plugin: {alias-data: {path: false}}
+  yaml: |
+    base: &x.foo literal
+    copy: *x.foo
+  want: {base: literal, copy: literal}
+
+- name: path mode always traverses
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    base: &x {foo: nested}
+    literal: &x.foo literal
+    copy: *x.foo
+  want: {base: {foo: nested}, literal: literal, copy: nested}
+
+- name: plain aliases still work in path mode
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    base: &x 42
+    copy: *x
+  want: {base: 42, copy: 42}
+
+- name: path string mapping key
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    base: &x {'3': three}
+    copy: *x.'3'
+  want: {base: {'3': three}, copy: three}
+
+- name: path does not coerce integer mapping keys
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    base: &x {3: three}
+    copy: *x.'3'
+  error: missing mapping key
+
+- name: terminal null and false path values
+  config: |
+    plugin:
+      alias-data:
+        path: true
+        data:
+          x: {nothing: null, off: false}
+  yaml: |
+    nothing: *x.nothing
+    off: *x.off
+  want: {nothing: null, off: false}
+
+- name: path mode automatically retains stream anchors
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    --- &saved {foo: 42}
+    ---
+    copy: *saved.foo
+  all: true
+  want:
+  - {foo: 42}
+  - {copy: 42}
+
+- name: explicit stream false overrides path mode
+  config: |
+    plugin: {alias-data: {path: true, stream: false}}
+  yaml: |
+    --- &saved {foo: 42}
+    ---
+    copy: *saved.foo
+  all: true
+  error: unknown anchor
+
+- name: path lookup never falls back after choosing a source
+  config: |
+    plugin: {alias-data: {path: true, data: {x: {foo: external}}}}
+  yaml: |
+    local: &x {}
+    copy: *x.foo
+  error: missing mapping key
+
+- name: path through aliased value
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    leaf: &leaf {answer: 42}
+    base: &x {nested: *leaf}
+    copy: *x.nested.answer
+  want:
+    leaf: {answer: 42}
+    base: {nested: {answer: 42}}
+    copy: 42
+
+- name: path through merged mapping
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    defaults: &defaults {foo: inherited}
+    base: &x {<<: *defaults, extra: true}
+    copy: *x.foo
+  want:
+    defaults: {foo: inherited}
+    base: {foo: inherited, extra: true}
+    copy: inherited
+
+- name: explicit mapping key overrides merge for paths
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    defaults: &defaults {foo: inherited}
+    base: &x {<<: *defaults, foo: explicit}
+    copy: *x.foo
+  want:
+    defaults: {foo: inherited}
+    base: {foo: explicit}
+    copy: explicit
+
+- name: first merge sequence mapping wins for paths
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    first: &first {foo: first}
+    second: &second {foo: second}
+    base: &x {<<: [*first, *second]}
+    copy: *x.foo
+  want:
+    first: {foo: first}
+    second: {foo: second}
+    base: {foo: first}
+    copy: first
+
+- name: merge-like path segments violate the grammar
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    base: &x {'<<': literal}
+    copy: *x.<<
+  error: invalid path segment
+
+- name: missing path anchor
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    copy: *missing.foo
+  error: >-
+    segment "missing": unknown anchor
+
+- name: missing mapping path key
+  config: |
+    plugin: {alias-data: {path: true, data: {x: {foo: 42}}}}
+  yaml: |
+    copy: *x.missing
+  error: >-
+    segment "missing": missing mapping key
+
+- name: path cannot traverse null
+  config: |
+    plugin: {alias-data: {path: true, data: {x: {nothing: null}}}}
+  yaml: |
+    copy: *x.nothing.foo
+  error: >-
+    segment "foo": cannot traverse a scalar
+
+- name: path cannot traverse false
+  config: |
+    plugin: {alias-data: {path: true, data: {x: {off: false}}}}
+  yaml: |
+    copy: *x.off.foo
+  error: >-
+    segment "foo": cannot traverse a scalar
+
+- name: path cannot traverse environment strings
+  config: |
+    plugin: {alias-data: {path: true, env: PATH}}
+  yaml: |
+    copy: *PATH.foo
+  error: cannot traverse a scalar
+
+- name: negative sequence index rejected
+  config: |
+    plugin: {alias-data: {path: true, data: {x: [one]}}}
+  yaml: |
+    copy: *x.-1
+  error: sequence index must contain decimal digits
+
+- name: plus sequence index rejected
+  config: |
+    plugin: {alias-data: {path: true, data: {x: [one]}}}
+  yaml: |
+    copy: *x.+0
+  error: sequence index must contain decimal digits
+
+- name: nonnumeric sequence index rejected
+  config: |
+    plugin: {alias-data: {path: true, data: {x: [one]}}}
+  yaml: |
+    copy: *x.foo
+  error: sequence index must contain decimal digits
+
+- name: out of range sequence index rejected
+  config: |
+    plugin: {alias-data: {path: true, data: {x: [one]}}}
+  yaml: |
+    copy: *x.1
+  error: sequence index out of range
+
+- name: overflowing sequence index rejected
+  config: |
+    plugin: {alias-data: {path: true, data: {x: [one]}}}
+  yaml: |
+    copy: *x.999999999999999999999999999999999999999999
+  error: sequence index out of range
+
+- name: leading zero sequence index rejected
+  config: |
+    plugin: {alias-data: {path: true, data: {x: [one]}}}
+  yaml: |
+    copy: *x.0000000000000000000000000000000000000000000
+  error: sequence index must not have leading zeros
+
+- name: empty path base rejected
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    copy: *.foo
+  error: empty path segment
+
+- name: empty middle path segment rejected
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    copy: *x..foo
+  error: empty path segment
+
+- name: trailing path separator rejected
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    copy: *x.
+  error: empty path segment
+
+- name: disabled policy ignores saved path settings
+  config: |
+    plugin: {alias-data: {disable: true, path: invalid}}
+  yaml: |
+    copy: *x.foo
+  error: aliases are disabled
+
+- name: path flag must be boolean
+  config: |
+    plugin: {alias-data: {path: yes}}
+  config-error: path must be a boolean
+
+- name: path flag cannot be null
+  config: |
+    plugin: {alias-data: {path: null}}
+  config-error: path must be a boolean
+
+- name: root paths are not implemented
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    copy: */.foo
+  error: invalid path segment
+
+- name: cyclic merge traversal rejected
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    base: &x {<<: *x}
+    copy: *x.foo
+  error: cyclic merge
+
+- name: numeric string key with nested mapping
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    base: &foo {'42': {bar: 42}, '042': leading, '0': zero}
+    nested: *foo.'42'.bar
+    leading: *foo.'042'
+    zero: *foo.'0'
+  want:
+    base: {'42': {bar: 42}, '042': leading, '0': zero}
+    nested: 42
+    leading: leading
+    zero: zero
+
+- name: quoted mapping digits do not overflow
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    base: &foo {'9999999999999999999999999999999999999999': found}
+    copy: *foo.'9999999999999999999999999999999999999999'
+  want:
+    base: {'9999999999999999999999999999999999999999': found}
+    copy: found
+
+- name: mixed sequence index and quoted mapping key
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    base: &foo [{'42': {bar: 42}}]
+    copy: *foo.0.'42'.bar
+  want:
+    base: [{'42': {bar: 42}}]
+    copy: 42
+
+- name: quoted numeric key through merged mappings
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    defaults: &defaults {'42': {bar: 42}}
+    base: &foo {<<: *defaults}
+    copy: *foo.'42'.bar
+  want:
+    defaults: {'42': {bar: 42}}
+    base: {'42': {bar: 42}}
+    copy: 42
+
+- name: word plus and minus segments remain literal mapping keys
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    base: &foo {'-42': negative, '+42': plus, foo-bar+baz_1: name}
+    negative: *foo.-42
+    plus: *foo.+42
+    name: *foo.foo-bar+baz_1
+  want:
+    base: {'-42': negative, '+42': plus, foo-bar+baz_1: name}
+    negative: negative
+    plus: plus
+    name: name
+
+- name: base anchor names are not indices or quoted mapping keys
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    number: &01 {bar: 42}
+    quoted: &'42' {bar: 43}
+    first: *01.bar
+    second: *'42'.bar
+  want:
+    number: {bar: 42}
+    quoted: {bar: 43}
+    first: 42
+    second: 43
+
+- name: plain aliases bypass path grammar
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    base: &bad/name 42
+    copy: *bad/name
+  want: {base: 42, copy: 42}
+
+- name: disabled path mode preserves dotted punctuation names
+  config: |
+    plugin: {alias-data: {path: false}}
+  yaml: |
+    base: &bad/name.foo 42
+    copy: *bad/name.foo
+  want: {base: 42, copy: 42}
+
+- name: bare digits cannot select a string mapping key
+  config: |
+    plugin: {alias-data: {path: true, data: {foo: {'42': found}}}}
+  yaml: |
+    copy: *foo.42
+  error: numeric mapping keys must be single-quoted
+
+- name: quoted digits cannot index a sequence
+  config: |
+    plugin: {alias-data: {path: true, data: {foo: [found]}}}
+  yaml: |
+    copy: *foo.'0'
+  error: sequence index must contain decimal digits
+
+- name: double zero index rejected before anchor lookup
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    copy: *missing.00
+  error: sequence index must not have leading zeros
+
+- name: leading zero index cannot fall back to a mapping key
+  config: |
+    plugin: {alias-data: {path: true, data: {foo: {'01': found}}}}
+  yaml: |
+    copy: *foo.01
+  error: sequence index must not have leading zeros
+
+- name: leading zero decimal index rejected
+  config: |
+    plugin: {alias-data: {path: true, data: {foo: [found]}}}
+  yaml: |
+    copy: *foo.042
+  error: sequence index must not have leading zeros
+
+- name: quoted word rejected
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    copy: *missing.'word'
+  error: invalid path segment
+
+- name: quoted negative number rejected
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    copy: *missing.'-42'
+  error: invalid path segment
+
+- name: quoted signed number rejected
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    copy: *missing.'+42'
+  error: invalid path segment
+
+- name: quoted fraction rejected
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    copy: *missing.'4.2'
+  error: invalid path segment
+
+- name: quoted exponent rejected
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    copy: *missing.'4e2'
+  error: invalid path segment
+
+- name: double quoted digits rejected
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    copy: *missing."42"
+  error: invalid path segment
+
+- name: unterminated quote rejected
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    copy: *missing.'42
+  error: invalid path segment
+
+- name: unmatched closing quote rejected
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    copy: *missing.42'
+  error: invalid path segment
+
+- name: invalid base component rejected
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    copy: *bad/name.foo
+  error: invalid path segment
+
+- name: invalid path component rejected
+  config: |
+    plugin: {alias-data: {path: true}}
+  yaml: |
+    copy: *missing.foo/bar
+  error: invalid path segment

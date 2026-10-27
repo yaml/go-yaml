@@ -248,6 +248,89 @@ func TestConfiguredTabIndentCLI(t *testing.T) {
 	}
 }
 
+func TestConfiguredAliasDataCLI(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	goTool, err := exec.LookPath("go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory := t.TempDir()
+	config := filepath.Join(directory, "options.yaml")
+	binary := filepath.Join(directory, "go-yaml")
+	// Building and --help must not read the configured missing source file.
+	text := "plugin: {alias-data: {file: /not/a/real/file}}\n"
+	if err := os.WriteFile(config, []byte(text), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := buildCLI(root, config, binary, goTool, ""); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(binary, "-j")
+	cmd.Stdin = strings.NewReader("value: 1\n")
+	output, err := cmd.CombinedOutput()
+	if err == nil || !strings.Contains(string(output), "no such file") {
+		t.Fatalf("source not read at load time: %q, %v", output, err)
+	}
+	for _, selector := range []string{"alias-data", "alias-data=disable"} {
+		if err := buildCLIWithPlugins(root, "", selector,
+			binary, goTool, ""); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(binary, "-j")
+		cmd.Stdin = strings.NewReader("--- &a 1\n--- *a\n")
+		output, err := cmd.CombinedOutput()
+		if selector == "alias-data" {
+			if err != nil || string(output) != "1\n1\n" {
+				t.Fatalf("stream selection: %q, %v", output, err)
+			}
+		} else if err == nil || !strings.Contains(string(output), "aliases are disabled") {
+			t.Fatalf("disabled selection: %q, %v", output, err)
+		}
+	}
+	text = "plugin: {alias-data: {path: true, data: " +
+		"{settings: {port: 8080, '42': {bar: 42}}}}}\n"
+	if err := os.WriteFile(config, []byte(text), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := buildCLI(root, config, binary, goTool, ""); err != nil {
+		t.Fatal(err)
+	}
+	cmd = exec.Command(binary, "-j")
+	cmd.Stdin = strings.NewReader("--- &saved {foo: 42}\n---\n" +
+		"copy: *saved.foo\nport: *settings.port\nnumeric: *settings.'42'.bar\n")
+	output, err = cmd.CombinedOutput()
+	want := "{\"foo\":42}\n{\"copy\":42,\"numeric\":42,\"port\":8080}\n"
+	if err != nil || string(output) != want {
+		t.Fatalf("embedded path configuration: %q, %v", output, err)
+	}
+}
+
+func TestInspectAliasDataConfig(t *testing.T) {
+	for _, setting := range []string{
+		"true", "false", "disable", "{}", "{disable: true}",
+		"{stream: false}", "{data: {external: 42}}",
+		"{disable: true, file: /not/a/real/file}",
+		"{path: true}", "{path: true, stream: false}",
+		"{path: false}", "{disable: true, path: invalid}",
+	} {
+		config := "plugin: {alias-data: " + setting + "}"
+		if _, err := inspectConfig([]byte(config), false); err != nil {
+			t.Fatalf("%s: %v", setting, err)
+		}
+	}
+	for _, setting := range []string{
+		"{stream: wrong}", "{disable: wrong}", "{path: wrong}", "{path: null}",
+	} {
+		config := "plugin: {alias-data: " + setting + "}"
+		if _, err := inspectConfig([]byte(config), false); err == nil {
+			t.Fatalf("invalid build config accepted: %s", setting)
+		}
+	}
+}
+
 func TestConfiguredErrorFormatCLI(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
@@ -434,6 +517,30 @@ func TestConfiguredReferenceCLI(t *testing.T) {
 	run("-j")
 	run("-j", "--plugin=yaml-parser=reference@0.2.6")
 	run("-j", "--plugin=yaml-parser=go-yaml")
+	cmd := exec.Command(binary, "-j",
+		"--plugin=yaml-parser=reference,alias-data")
+	cmd.Stdin = strings.NewReader("--- &saved {x: 1}\n---\ncopy: *saved\n")
+	output, err := cmd.CombinedOutput()
+	if err != nil || string(output) != "{\"x\":1}\n{\"copy\":{\"x\":1}}\n" {
+		t.Fatalf("reference parser stream aliases: %q, %v", output, err)
+	}
+	cmd = exec.Command(binary, "-j",
+		"--plugin=yaml-parser=reference,alias-data=disable")
+	cmd.Stdin = strings.NewReader("[&a 1, *a]\n")
+	output, err = cmd.CombinedOutput()
+	if err == nil || !strings.Contains(string(output), "aliases are disabled") {
+		t.Fatalf("reference parser alias rejection: %q, %v", output, err)
+	}
+	write("plugin: {yaml-parser: reference, alias-data: {path: true, " +
+		"data: {numeric: {'42': {bar: 43}}}}}\n")
+	cmd = exec.Command(binary, "-j", "-C", config)
+	cmd.Stdin = strings.NewReader("--- &saved {foo: {bar: 42}}\n---\n" +
+		"copy: *saved.foo.bar\nnumeric: *numeric.'42'.bar\n")
+	output, err = cmd.CombinedOutput()
+	want := "{\"foo\":{\"bar\":42}}\n{\"copy\":42,\"numeric\":43}\n"
+	if err != nil || string(output) != want {
+		t.Fatalf("reference parser dotted path: %q, %v", output, err)
+	}
 	modules, err := exec.Command(goTool, "version", "-m", binary).CombinedOutput()
 	if err != nil || !bytes.Contains(modules, []byte(
 		"github.com/yamlstar/yamlstar-plugin-parser-reference\tv0.2.6")) {

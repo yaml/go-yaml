@@ -120,7 +120,14 @@ options.
 ## Plugin builds
 
 The ordinary command contains the built-in `go-yaml` parser, loader-limits,
-tab-indent, and error-format plugins.
+tab-indent, alias-data, and error-format plugins.
+Alias-Data preserves ordinary document-scoped aliases by default.
+An explicit `--plugin=alias-data` enables stream anchors.
+Use `plugin: {alias-data: {stream: false}}` for document scope or
+`plugin: {alias-data: disable}` to reject alias references.
+Set `plugin: {alias-data: {path: true}}` in an options file for dotted paths
+such as `*settings.server.port` and `*items.3.name`.
+This also enables stream anchors unless `stream: false` is explicit.
 Optional plugin implementations must be selected while building the command.
 
 `PLUGIN` contains only the plugin selector DSL:

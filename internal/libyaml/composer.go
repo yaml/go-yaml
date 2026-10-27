@@ -9,6 +9,7 @@ package libyaml
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 )
@@ -19,7 +20,7 @@ type Composer struct {
 	source       *EventReader
 	event        Event
 	doc          *Node
-	anchors      map[string]*Node
+	aliasData    AliasDataContext
 	doneInit     bool
 	Textless     bool
 	streamNodes  bool     // enable stream node emission
@@ -179,8 +180,9 @@ func (c *Composer) node(kind Kind, tag, value string) *Node {
 // document composes a document node by parsing its content between
 // DOCUMENT_START and DOCUMENT_END events.
 func (c *Composer) document() *Node {
-	// Anchors are scoped to a single document.
-	c.resetAnchors()
+	if err := c.aliasData.BeginDocument(); err != nil {
+		c.failAliasData(err, c.event.StartMark)
+	}
 
 	n := c.node(DocumentNode, "", "")
 	c.doc = n
@@ -190,6 +192,9 @@ func (c *Composer) document() *Node {
 		n.FootComment = string(c.event.FootComment)
 	}
 	c.expect(DOCUMENT_END_EVENT)
+	if err := c.aliasData.EndDocument(); err != nil {
+		c.failAliasData(err, Mark{Line: n.Line, Column: n.Column})
+	}
 
 	// If stream nodes enabled, prepare to return a stream node next
 	if c.streamNodes {
@@ -220,8 +225,20 @@ func (c *Composer) createStreamNode() *Node {
 // alias composes an alias node by resolving the referenced anchor.
 func (c *Composer) alias() *Node {
 	n := c.node(AliasNode, "", string(c.event.Anchor))
-	n.Alias = c.anchors[n.Value]
-	if n.Alias == nil {
+	var found bool
+	var err error
+	n.Alias, found, err = c.aliasData.ResolveAlias(n.Value)
+	if err != nil {
+		c.failAliasData(err, Mark{Line: n.Line, Column: n.Column})
+	}
+	if found && (n.Alias == nil ||
+		(n.Alias.Kind == AliasNode && n.Alias.Alias == nil) ||
+		(n.Alias.Kind != ScalarNode && n.Alias.Kind != SequenceNode &&
+			n.Alias.Kind != MappingNode && n.Alias.Kind != AliasNode)) {
+		c.failAliasData(fmt.Errorf("alias-data: invalid node for %q", n.Value),
+			Mark{Line: n.Line, Column: n.Column})
+	}
+	if !found {
 		msg := fmt.Sprintf("unknown anchor '%s' referenced", n.Value)
 		Fail(c.formatComposerError(msg, Mark{
 			Line:   n.Line,
@@ -321,7 +338,21 @@ func (c *Composer) init() {
 	if c.doneInit {
 		return
 	}
-	c.resetAnchors()
+	opts := c.opts
+	if opts == nil {
+		opts = DefaultOptions
+	}
+	c.aliasData = NewAliasDataPolicy(AliasDataSources{})
+	if opts.AliasData != nil {
+		context, err := opts.AliasData.NewAliasDataContext(aliasDataServices(opts))
+		if err != nil {
+			c.failAliasData(err, Mark{})
+		}
+		if context == nil {
+			c.failAliasData(errors.New("alias-data: nil context"), Mark{})
+		}
+		c.aliasData = context
+	}
 	// Peek to get the encoding from STREAM_START_EVENT
 	if c.peek() == STREAM_START_EVENT {
 		c.encoding = c.event.GetEncoding()
@@ -333,10 +364,6 @@ func (c *Composer) init() {
 	if c.streamNodes {
 		c.returnStream = true
 	}
-}
-
-func (c *Composer) resetAnchors() {
-	c.anchors = make(map[string]*Node)
 }
 
 // Destroy cleans up the composer by deleting any pending event and the
@@ -404,7 +431,9 @@ func (c *Composer) fail(err error) {
 func (c *Composer) anchor(n *Node, anchor []byte) {
 	if anchor != nil {
 		n.Anchor = string(anchor)
-		c.anchors[n.Anchor] = n
+		if err := c.aliasData.DefineAnchor(n.Anchor, n); err != nil {
+			c.failAliasData(err, Mark{Line: n.Line, Column: n.Column})
+		}
 	}
 }
 
@@ -477,6 +506,12 @@ func (c *Composer) formatComposerErrorContext(context string, contextMark Mark, 
 		Message:     message,
 		formatter:   formatter,
 	}
+}
+
+func (c *Composer) failAliasData(err error, mark Mark) {
+	failure := c.formatComposerError(err.Error(), mark)
+	failure.err = err
+	Fail(failure)
 }
 
 func (c *Composer) nextEvent() error {

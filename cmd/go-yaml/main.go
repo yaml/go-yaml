@@ -513,6 +513,12 @@ func main() {
 	if optionErr != nil {
 		log.Fatal(optionErr)
 	}
+	if configured.AliasData != nil &&
+		(*tokenMode || *tokenProfuseMode || *eventMode || *eventProfuseMode ||
+			*yamlPreserveMode || unmarshalMode || decodeMode) {
+		log.Fatal("explicit alias-data policies are unsupported with token, " +
+			"event, preserving, or legacy loading modes")
+	}
 	if configured.Parser != nil &&
 		(*tokenMode || *tokenProfuseMode || unmarshalMode || decodeMode) {
 		log.Fatal("yaml-parser plugins are not supported with token output " +

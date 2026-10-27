@@ -492,6 +492,13 @@ func processStructuredInput(input *structuredInput, target stageKind, profuse,
 		}
 		return processEventStream(events, target, profuse, compact, preserve, opts)
 	case stageNode:
+		configured, err := libyaml.ApplyOptions(opts...)
+		if err != nil {
+			return err
+		}
+		if configured.AliasData != nil {
+			return errors.New("alias-data is not supported with precomposed node input")
+		}
 		if target == stageNode {
 			return writeNodeContract(input.nodes, profuse)
 		}
