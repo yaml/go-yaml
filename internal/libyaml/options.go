@@ -55,6 +55,10 @@ type Options struct {
 	// MergeKey selects the mapping merge algorithm.
 	MergeKey MergeKeyPlugin
 
+	// AliasData supplies per-stream anchor policy. Nil selects ordinary
+	// document-scoped anchors, rather than disabling aliases.
+	AliasData AliasDataPlugin
+
 	// IndentConfig enables tab-aware structural indentation.
 	IndentConfig *IndentConfig
 

@@ -10,6 +10,8 @@ import (
 )
 
 const (
+	// AliasDataAPI is the anchor policy plugin API name.
+	AliasDataAPI = "alias-data"
 	// ErrorFormatAPI is the error-format plugin API name.
 	ErrorFormatAPI = "error-format"
 	// LoaderLimitsAPI is the loader-limits plugin API name.
@@ -21,6 +23,20 @@ const (
 	// legacyLimitAPI exists for release-candidate compatibility.
 	legacyLimitAPI = "limit"
 )
+
+// AliasDataDisabled recognizes the three explicit alias rejection forms.
+func AliasDataDisabled(value any) bool {
+	switch setting := value.(type) {
+	case bool:
+		return !setting
+	case string:
+		return setting == "disable"
+	case map[string]any:
+		disabled, _ := setting["disable"].(bool)
+		return disabled
+	}
+	return false
+}
 
 // Selection identifies one plugin API, implementation, and optional version.
 type Selection struct {

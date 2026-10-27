@@ -8,6 +8,7 @@ import (
 
 	"go.yaml.in/yaml/v4/internal/libyaml"
 	pluginreg "go.yaml.in/yaml/v4/internal/plugin"
+	"go.yaml.in/yaml/v4/plugin/aliasdata"
 	"go.yaml.in/yaml/v4/plugin/loaderlimits"
 	"go.yaml.in/yaml/v4/plugin/mergekey"
 )
@@ -58,6 +59,15 @@ type LoaderLimitsPlugin interface {
 //
 // Deprecated: use LoaderLimitsPlugin.
 type LimitPlugin = LoaderLimitsPlugin
+
+// AliasDataPlugin creates per-stream anchor and alias policies.
+type AliasDataPlugin = libyaml.AliasDataPlugin
+
+// AliasDataContext owns node-based anchor storage and alias lookup.
+type AliasDataContext = libyaml.AliasDataContext
+
+// AliasDataServices supplies source snapshots and node conversions.
+type AliasDataServices = libyaml.AliasDataServices
 
 // ParserPlugin supplies a complete event stream in place of native parsing.
 type ParserPlugin = libyaml.ParserPlugin
@@ -120,6 +130,13 @@ var pluginRegistry = pluginreg.NewRegistry(
 		API: pluginreg.MergeKeyAPI, Name: pluginreg.MergeKeyAPI, Default: true,
 		Factory: func(cfg map[string]any) (any, error) {
 			return mergekey.NewFromYAML(cfg)
+		},
+	},
+	PluginRegistration{
+		API: pluginreg.AliasDataAPI, Name: pluginreg.AliasDataAPI,
+		Default: true,
+		Factory: func(cfg map[string]any) (any, error) {
+			return aliasdata.NewFromYAML(cfg)
 		},
 	},
 	PluginRegistration{

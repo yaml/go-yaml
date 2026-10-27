@@ -125,6 +125,9 @@ func inspectConfig(data []byte, external bool) (buildConfig, error) {
 			return selection, err
 		}
 		for api, value := range plugins {
+			if api == pluginreg.AliasDataAPI && pluginreg.AliasDataDisabled(value) {
+				continue
+			}
 			setting, disabled, err := pluginConfig(api, value)
 			if err != nil {
 				return selection, err
@@ -151,7 +154,7 @@ func inspectConfig(data []byte, external bool) (buildConfig, error) {
 				name = pluginreg.CanonicalName(api, name)
 			}
 			switch api {
-			case pluginreg.ErrorFormatAPI, pluginreg.LoaderLimitsAPI,
+			case pluginreg.AliasDataAPI, pluginreg.ErrorFormatAPI, pluginreg.LoaderLimitsAPI,
 				pluginreg.MergeKeyAPI:
 				_, shortForm := value.(string)
 				if name != "" && name != api && !shortForm {

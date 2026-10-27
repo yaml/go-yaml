@@ -9,6 +9,11 @@
 //
 // # Available Plugins
 //
+// Alias-Data plugin (plugin/aliasdata), API alias-data:
+//   - Per-stream anchor policy, external data, and optional stream scope
+//   - Default document scope preserves ordinary v4 aliases
+//   - Disabling the API rejects references, not anchor declarations
+//
 // Loader-limits plugin (plugin/loaderlimits), API loader-limits:
 //   - Configurable depth and alias expansion limits
 //   - The former plugin/limit module is deprecated

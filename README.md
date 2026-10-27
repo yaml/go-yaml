@@ -213,6 +213,7 @@ These are the current plugin APIs, with many more to come:
 | Plugin API | Purpose | Supplied implementations |
 |---|---|---|
 | `loader-limits` | Control nesting and alias limits | Core loader-limits plugin |
+| `alias-data` | Control anchor sources and scope | Core alias-data plugin |
 | `error-format` | Choose how structured errors are presented | Core v3 and v4 formatters |
 | `yaml-parser` | Replace the parser behind the node pipeline | Built-in Go parser; optional reference parser module |
 | `tab-indent` | Enable and configure tab-indented input | Core opt-in tab-indent plugin |
