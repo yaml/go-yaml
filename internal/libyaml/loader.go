@@ -249,7 +249,9 @@ func loadSingle(in []byte, out any, opts *Options) error {
 			return err
 		}
 		// Successfully loaded a second document - this is an error in strict mode
-		msg := "yaml: expected single document, found multiple"
+		msg := "yaml: expected single document, found multiple" +
+			" (if loading multiple documents is required," +
+			" use the WithAllDocuments() option)"
 		return &LoadErrors{Errors: []*LoadError{{
 			Stage:   ConstructorStage,
 			Message: msg,

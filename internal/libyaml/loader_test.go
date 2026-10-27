@@ -307,4 +307,5 @@ func TestLoad_MultipleDocuments(t *testing.T) {
 	err := Load(input, &config)
 	assert.NotNil(t, err)
 	assert.ErrorMatches(t, ".*expected single document, found multiple.*", err)
+	assert.ErrorMatches(t, ".*WithAllDocuments\\(\\) option.*", err)
 }
