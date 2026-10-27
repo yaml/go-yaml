@@ -9,6 +9,7 @@ package libyaml
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"go.yaml.in/yaml/v4/internal/testutil/assert"
@@ -22,6 +23,57 @@ func TestScanner(t *testing.T) {
 		"char-predicate":       runCharPredicateTest,
 		"char-convert":         runCharConvertTest,
 	})
+}
+
+// TestScanCommentsWithCRLFLineEndings checks that comments are folded
+// the same way whether the stream uses LF or CRLF line endings. A CRLF
+// pair is a single line break, so the LF half must not be scanned as a
+// second break: doing so filed the first comment line as a foot comment
+// and padded the rest with blank lines (#182).
+func TestScanCommentsWithCRLFLineEndings(t *testing.T) {
+	inputs := []string{
+		"a: 1\n# Hello.\nb: 2\n",
+		"a: 1\n# one\n# two\n# three\nb: 2\n",
+		"a: 1\n\n# Hello.\n\nb: 2\n",
+		"a: 1\n# trailing\n",
+	}
+	for _, lf := range inputs {
+		crlf := strings.ReplaceAll(lf, "\n", "\r\n")
+		want := scanAllComments(t, lf)
+		got := scanAllComments(t, crlf)
+		assert.Equalf(t, len(want), len(got),
+			"comment count differs for CRLF input %q", crlf)
+		for i := range want {
+			assert.Equalf(t, string(want[i].Head), string(got[i].Head),
+				"comment %d Head differs for CRLF input %q", i, crlf)
+			assert.Equalf(t, string(want[i].Line), string(got[i].Line),
+				"comment %d Line differs for CRLF input %q", i, crlf)
+			assert.Equalf(t, string(want[i].Foot), string(got[i].Foot),
+				"comment %d Foot differs for CRLF input %q", i, crlf)
+			assert.Equalf(t, want[i].StartMark.Line, got[i].StartMark.Line,
+				"comment %d StartMark.Line differs for CRLF input %q", i, crlf)
+			assert.Equalf(t, want[i].EndMark.Line, got[i].EndMark.Line,
+				"comment %d EndMark.Line differs for CRLF input %q", i, crlf)
+		}
+	}
+}
+
+// scanAllComments scans the whole stream and returns the folded comments.
+//
+//nolint:thelper // because this function is the real helper
+func scanAllComments(t *testing.T, input string) []Comment {
+	parser := NewParser()
+	parser.SetInputString([]byte(input))
+	for {
+		var token Token
+		if err := parser.Scan(&token); err != nil {
+			t.Fatalf("Scan() failed for %q: %v", input, err)
+		}
+		if token.Type == STREAM_END_TOKEN {
+			break
+		}
+	}
+	return parser.comments
 }
 
 // runScanTokensTest tests the scanTokens function.

@@ -1982,6 +1982,14 @@ func (parser *Parser) scanComments(scan_mark Mark) error {
 		if isBlank(parser.buffer, parser.buffer_pos+peek) {
 			continue
 		}
+		if peek > 0 && parser.buffer[parser.buffer_pos+peek] == '\n' &&
+			parser.buffer[parser.buffer_pos+peek-1] == '\r' {
+			// The LF half of a CRLF pair is the same line break as the
+			// CR before it, not a second one. Skip it so the break is
+			// accounted for only once, as it is for a lone LF.
+			column = 1
+			continue
+		}
 		c := parser.buffer[parser.buffer_pos+peek]
 		close_flow := parser.flow_level > 0 && (c == ']' || c == '}')
 		if close_flow || isBreakOrZero(parser.buffer, parser.buffer_pos+peek) {
