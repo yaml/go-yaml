@@ -252,7 +252,8 @@
     plugin: {alias-data: {file: /not/a/real/file}}
   yaml: |
     value: 1
-  error: no such file
+  error: 'alias-data: file'
+  not-exist: true
 
 - name: configured missing environment deferred until load
   config: |

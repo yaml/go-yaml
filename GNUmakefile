@@ -17,6 +17,13 @@ endif
 include $(MAKES)/init.mk
 include $(MAKES)/shellcheck.mk
 include $(MAKES)/perl.mk
+include $(MAKES)/uv.mk
+
+YAMLLINT-VERSION ?= 1.38.0
+export UV_CACHE_DIR := $(LOCAL-CACHE)/uv
+export UV_PYTHON_INSTALL_DIR := $(LOCAL-ROOT)/uv-python
+export UV_TOOL_DIR := $(LOCAL-ROOT)/uv-tools
+export UV_TOOL_BIN_DIR := $(LOCAL-BIN)
 
 # Auto-install go unless GO_YAML_PATH is set:
 ifdef GO_YAML_PATH
@@ -117,6 +124,7 @@ check:
 	$(MAKE) fmt
 	$(MAKE) tidy
 	$(MAKE) lint
+	$(MAKE) lint-yaml
 	$(MAKE) test
 
 test-main: $(GO-DEPS)
@@ -169,6 +177,9 @@ fmt: $(GOLANGCI-LINT-VERSIONED)
 
 lint: $(GOLANGCI-LINT-VERSIONED)
 	$< run $(GO-PACKAGES)
+
+lint-yaml: $(UV)
+	$(UV) tool run --from yamllint==$(YAMLLINT-VERSION) yamllint .
 
 tidy: $(GO-DEPS)
 	go mod tidy

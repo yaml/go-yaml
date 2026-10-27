@@ -179,11 +179,11 @@ func walkAliasPath(name string, node *Node, segments []string) (*Node, error) {
 					return nil, lookup.fail("sequence index must contain decimal digits")
 				}
 			}
-			index, err := strconv.ParseUint(segment, 10, 64)
-			if err != nil || index >= uint64(len(node.Content)) {
+			index, err := strconv.Atoi(segment)
+			if err != nil || index >= len(node.Content) {
 				return nil, lookup.fail("sequence index out of range")
 			}
-			node = node.Content[int(index)]
+			node = node.Content[index]
 		default:
 			return nil, lookup.fail("cannot traverse a scalar")
 		}
