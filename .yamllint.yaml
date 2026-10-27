@@ -4,6 +4,8 @@
 extends: default
 
 ignore: |
+  /.cache/
+  /repos/
   /**/testdata/
 
 rules:

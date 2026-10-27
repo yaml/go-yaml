@@ -271,7 +271,7 @@ func TestConfiguredAliasDataCLI(t *testing.T) {
 	cmd := exec.Command(binary, "-j")
 	cmd.Stdin = strings.NewReader("value: 1\n")
 	output, err := cmd.CombinedOutput()
-	if err == nil || !strings.Contains(string(output), "no such file") {
+	if err == nil || !strings.Contains(string(output), "alias-data: file") {
 		t.Fatalf("source not read at load time: %q, %v", output, err)
 	}
 	for _, selector := range []string{"alias-data", "alias-data=disable"} {

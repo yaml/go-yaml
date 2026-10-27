@@ -116,7 +116,8 @@
   desc: Supply an external anchor through inline Alias-Data
   cmnd: >-
     <<<$'item: *defaults\n' go-yaml
-    -C <(echo '{plugin: {alias-data: {data: {defaults: {color: blue, size: 3}}}}}') -J
+    -C <(echo '{plugin: {alias-data:
+    {data: {defaults: {color: blue, size: 3}}}}}') -J
   impl: alias-data
 
 - make: *cli
@@ -173,7 +174,8 @@
 - make: *cli
   desc: Select a sequence item and its mapping value through an anchor path
   cmnd: >-
-    <<<$'items: &x2 [zero, one, two, {baz: found}]\nselected: *x2.3.baz\n' go-yaml
+    <<<$'items: &x2 [zero, one, two, {baz: found}]\nselected: *x2.3.baz\n'
+    go-yaml
     -C <(echo '{plugin: {alias-data: {path: true}}}') -J
   impl: alias-data
 
@@ -201,7 +203,10 @@
 - make: *cli
   desc: Select a numeric string mapping key using single quotes
   cmnd: >-
-    <<<$'settings: &foo {\'42\': {bar: found}, \'042\': leading}\nselected: *foo.\'42\'.bar\nleading: *foo.\'042\'\n' go-yaml
+    printf %s
+    $'settings: &foo {\'42\': {bar: found}, \'042\': leading}\n'
+    $'selected: *foo.\'42\'.bar\nleading: *foo.\'042\'\n' |
+    go-yaml
     -C <(echo '{plugin: {alias-data: {path: true}}}') -J
   impl: alias-data
 

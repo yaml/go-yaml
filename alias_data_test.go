@@ -30,6 +30,7 @@ func TestAliasDataCases(t *testing.T) {
 		All                bool
 		Want               any
 		Error              string
+		NotExist           bool   `yaml:"not-exist"`
 		ConfigError        string `yaml:"config-error"`
 	}
 	if err := yaml.Load(data, &cases); err != nil {
@@ -59,6 +60,9 @@ func TestAliasDataCases(t *testing.T) {
 				got = documents
 			} else {
 				err = yaml.Load([]byte(tc.YAML), &got, option)
+			}
+			if tc.NotExist && !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("load error: %v, want os.ErrNotExist", err)
 			}
 			if tc.Error != "" {
 				if err == nil || !strings.Contains(err.Error(), tc.Error) {
