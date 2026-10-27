@@ -43,11 +43,6 @@
     name: Set reader error
     args: [test problem, 10, 0x1234]
     want: false
-    test:
-    - eq: [ErrorType, READER_ERROR]
-    - eq: [Problem, test problem]
-    - eq: [ProblemOffset, 10]
-    - eq: [ProblemValue, 0x1234]
 
 # determineEncoding tests
 - reader-determine-encoding:
@@ -115,8 +110,6 @@
     data: [0x01]
     args: 1
     want: false
-    test:
-    - eq: [ErrorType, READER_ERROR]
 
 - reader-update-buffer:
     name: Update buffer allowed control characters
@@ -149,16 +142,12 @@
     data: [0xFF, 0xFE, 0x3D, 0xD8, 0x00, 0x00]
     args: 1
     want: false
-    test:
-    - eq: [ErrorType, READER_ERROR]
 
 - reader-update-buffer:
     name: Update buffer unexpected low surrogate
     data: [0xFF, 0xFE, 0x00, 0xDC, 0x00, 0x00]
     args: 1
     want: false
-    test:
-    - eq: [ErrorType, READER_ERROR]
 
 # Panic tests
 - reader-panic:

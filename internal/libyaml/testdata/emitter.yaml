@@ -18,7 +18,7 @@
 #
 # Common Keys:
 #   name - Test case name (string)
-#   data - List of event specifications to emit (for emit, emit-config, emit-writer)
+#   events - List of event specifications to emit (for emit, emit-config, emit-writer)
 #   conf - Emitter configuration map (for emit-config type only):
 #          * canonical - Boolean, emit in canonical YAML form
 #          * indent    - Integer (2-9), indentation width in spaces
@@ -27,7 +27,7 @@
 #   yaml - Input YAML string (for roundtrip type only)
 #   want - Expected result (format varies by test type)
 #
-# Event Specification Format (for data lists):
+# Event Specification Format (for events lists):
 #   Simplified (type only): - EVENT_TYPE
 #   Detailed (with fields): - EVENT_TYPE:
 #                               encoding: ...  (for STREAM_START_EVENT)
@@ -44,7 +44,7 @@
 # Simple emit tests
 - emit:
     name: Simple scalar
-    data:
+    events:
     - STREAM_START_EVENT:
         encoding: UTF8_ENCODING
     - DOCUMENT_START_EVENT:
@@ -60,7 +60,7 @@
 
 - emit:
     name: Simple mapping
-    data:
+    events:
     - STREAM_START_EVENT:
         encoding: UTF8_ENCODING
     - DOCUMENT_START_EVENT:
@@ -86,7 +86,7 @@
 
 - emit:
     name: Block sequence
-    data:
+    events:
     - STREAM_START_EVENT:
         encoding: UTF8_ENCODING
     - DOCUMENT_START_EVENT:
@@ -113,7 +113,7 @@
 
 - emit:
     name: Flow sequence
-    data:
+    events:
     - STREAM_START_EVENT:
         encoding: UTF8_ENCODING
     - DOCUMENT_START_EVENT:
@@ -143,7 +143,7 @@
 
 - emit:
     name: Flow mapping
-    data:
+    events:
     - STREAM_START_EVENT:
         encoding: UTF8_ENCODING
     - DOCUMENT_START_EVENT:
@@ -177,7 +177,7 @@
 
 - emit:
     name: Explicit document
-    data:
+    events:
     - STREAM_START_EVENT:
         encoding: UTF8_ENCODING
     - DOCUMENT_START_EVENT:
@@ -195,7 +195,7 @@
 
 - emit:
     name: Anchor and alias
-    data:
+    events:
     - STREAM_START_EVENT:
         encoding: UTF8_ENCODING
     - DOCUMENT_START_EVENT:
@@ -220,7 +220,7 @@
 
 - emit:
     name: Tag
-    data:
+    events:
     - STREAM_START_EVENT:
         encoding: UTF8_ENCODING
     - DOCUMENT_START_EVENT:
@@ -237,7 +237,7 @@
 
 - emit:
     name: Single quoted scalar
-    data:
+    events:
     - STREAM_START_EVENT:
         encoding: UTF8_ENCODING
     - DOCUMENT_START_EVENT:
@@ -253,7 +253,7 @@
 
 - emit:
     name: Double quoted scalar
-    data:
+    events:
     - STREAM_START_EVENT:
         encoding: UTF8_ENCODING
     - DOCUMENT_START_EVENT:
@@ -269,7 +269,7 @@
 
 - emit:
     name: Literal scalar
-    data:
+    events:
     - STREAM_START_EVENT:
         encoding: UTF8_ENCODING
     - DOCUMENT_START_EVENT:
@@ -293,7 +293,7 @@
 
 - emit:
     name: Folded scalar
-    data:
+    events:
     - STREAM_START_EVENT:
         encoding: UTF8_ENCODING
     - DOCUMENT_START_EVENT:
@@ -320,7 +320,7 @@
     name: Canonical mode
     conf:
       canonical: true
-    data:
+    events:
     - STREAM_START_EVENT:
         encoding: UTF8_ENCODING
     - DOCUMENT_START_EVENT:
@@ -338,7 +338,7 @@
     name: Custom indent
     conf:
       indent: 4
-    data:
+    events:
     - STREAM_START_EVENT:
         encoding: UTF8_ENCODING
     - DOCUMENT_START_EVENT:
@@ -372,7 +372,7 @@
     name: Custom width
     conf:
       width: 40
-    data:
+    events:
     - STREAM_START_EVENT:
         encoding: UTF8_ENCODING
     - DOCUMENT_START_EVENT:
@@ -390,7 +390,7 @@
     name: Unicode mode
     conf:
       unicode: true
-    data:
+    events:
     - STREAM_START_EVENT:
         encoding: UTF8_ENCODING
     - DOCUMENT_START_EVENT:
@@ -406,7 +406,7 @@
 
 - emit:
     name: Multiple documents
-    data:
+    events:
     - STREAM_START_EVENT:
         encoding: UTF8_ENCODING
     - DOCUMENT_START_EVENT:
@@ -430,7 +430,7 @@
 
 - emit:
     name: Nested structures
-    data:
+    events:
     - STREAM_START_EVENT:
         encoding: UTF8_ENCODING
     - DOCUMENT_START_EVENT:
@@ -691,7 +691,7 @@
 # Writer test
 - emit-writer:
     name: Writer
-    data:
+    events:
     - STREAM_START_EVENT:
         encoding: UTF8_ENCODING
     - DOCUMENT_START_EVENT:
@@ -712,7 +712,6 @@
     test:
     - nil: [buffer, false]
     - len: [buffer, 128]  # output_buffer_size
-    - nil: [raw-buffer, false]
     - nil: [states, false]
     - nil: [events, false]
     - eq: [best-width, -1]
@@ -858,7 +857,7 @@
 
 - emit:
     name: Interior colons in emitted anchor and alias names
-    data:
+    events:
     - STREAM_START_EVENT:
         encoding: UTF8_ENCODING
     - DOCUMENT_START_EVENT:

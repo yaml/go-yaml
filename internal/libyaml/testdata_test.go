@@ -63,16 +63,16 @@ type TestCase struct {
 	WantTokens []TokenSpec // Populated from Want for detailed tests
 
 	// emit tests
-	Events       []EventSpec   `yaml:"data"`
+	Events       []EventSpec   `yaml:"events"`
 	WantContains []string      // Populated from Want for emit tests
 	Config       EmitterConfig `yaml:"conf"`
-
-	// style_accessor tests (must come before Checks due to shared yaml:"test" tag)
-	StyleTest []any `yaml:"test"` // [Method, STYLE] where Method is string and STYLE is int or string constant
 
 	// api_new tests
 	Constructor string       `yaml:"with"`
 	Checks      []FieldCheck `yaml:"test"`
+
+	// style_accessor tests
+	StyleTest []any `yaml:"style"` // [Method, STYLE] where Method is string and STYLE is int or string constant
 
 	// encoding_detect tests
 	WantEncoding string `yaml:"want_encoding"`

@@ -20,7 +20,7 @@
 #          Type: ScalarStyle | TokenType | EventType | ParserState
 #          VALUE: integer or constant name
 #   want - Expected result (for enum-string): string representing the expected String() output
-#   test - Style accessor method and value (for style-accessor): [Method, STYLE]
+#   style - Style accessor method and value (for style-accessor): [Method, STYLE]
 #          Method: ScalarStyle | SequenceStyle | MappingStyle
 #          STYLE: style constant name
 
@@ -121,12 +121,12 @@
 # Event style accessor tests
 - style-accessor:
     name: Event scalar style
-    test: [ScalarStyle, DOUBLE_QUOTED_SCALAR_STYLE]
+    style: [ScalarStyle, DOUBLE_QUOTED_SCALAR_STYLE]
 
 - style-accessor:
     name: Event sequence style
-    test: [SequenceStyle, FLOW_SEQUENCE_STYLE]
+    style: [SequenceStyle, FLOW_SEQUENCE_STYLE]
 
 - style-accessor:
     name: Event mapping style
-    test: [MappingStyle, BLOCK_MAPPING_STYLE]
+    style: [MappingStyle, BLOCK_MAPPING_STYLE]
