@@ -406,6 +406,96 @@ func (n *Node) Dump(v any, opts ...Option) (err error) {
 	return nil
 }
 
+// Pairs returns the mapping's effective key/value pairs, with merge
+// keys applied. It returns nil if the node is not a mapping.
+//
+// The raw [Node.Content] of a mapping holds a `<<` key as an ordinary
+// entry and not the pairs it brings in, so anything walking the tree
+// otherwise has to reimplement the YAML 1.1 merge key rules. Pairs
+// expands each merge key in place: its value may be a mapping, an
+// alias to one, or a sequence of mappings and aliases, and merged
+// mappings may themselves contain merge keys.
+//
+// Pairs appear in document order. A key is never duplicated: an
+// explicit key wins over a merged one wherever each is written, and
+// among merged sources the earlier one wins. Keys are identified by
+// their tag and value; non-scalar keys cannot be compared safely and
+// are always kept.
+//
+// Merge keys are recognized exactly as decoding recognizes them, so
+// Pairs expects a resolved tree, as produced by loading into a Node.
+func (n *Node) Pairs() [][2]*Node {
+	if n == nil || n.Kind != MappingNode {
+		return nil
+	}
+	return n.pairs(make(map[*Node]bool))
+}
+
+// scalarKey identifies a scalar key node by its resolved tag and value.
+type scalarKey struct {
+	tag   string
+	value string
+}
+
+// pairs implements [Node.Pairs]. expanded tracks the mappings already
+// expanded so a mapping that merges itself, directly or through
+// aliases, terminates instead of recursing forever.
+func (n *Node) pairs(expanded map[*Node]bool) [][2]*Node {
+	if expanded[n] {
+		return nil
+	}
+	expanded[n] = true
+
+	var out [][2]*Node
+	positions := make(map[scalarKey]int)
+
+	// add appends a pair unless its scalar key is already present.
+	// With replace, an existing pair's value is overwritten in place:
+	// explicit pairs override merged ones, while a merged pair never
+	// overrides anything.
+	add := func(key, value *Node, replace bool) {
+		if key.Kind == ScalarNode {
+			id := scalarKey{tag: key.ShortTag(), value: key.Value}
+			if i, ok := positions[id]; ok {
+				if replace {
+					out[i][1] = value
+				}
+				return
+			}
+			positions[id] = len(out)
+		}
+		out = append(out, [2]*Node{key, value})
+	}
+
+	var merge func(value *Node)
+	merge = func(value *Node) {
+		switch value.Kind {
+		case MappingNode:
+			for _, pair := range value.pairs(expanded) {
+				add(pair[0], pair[1], false)
+			}
+		case AliasNode:
+			if value.Alias != nil {
+				merge(value.Alias)
+			}
+		case SequenceNode:
+			for _, item := range value.Content {
+				merge(item)
+			}
+		}
+	}
+
+	for i := 0; i+1 < len(n.Content); i += 2 {
+		key, value := n.Content[i], n.Content[i+1]
+		if isMerge(key) {
+			merge(value)
+		} else {
+			add(key, value, true)
+		}
+	}
+	return out
+}
+
 // Marshaler interface may be implemented by types to customize their
 // behavior when being marshaled into a YAML document.
 type Marshaler interface {
