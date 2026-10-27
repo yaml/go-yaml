@@ -116,6 +116,12 @@ var (
 	// When called without arguments, defaults to true.
 	WithKnownFields = libyaml.WithKnownFields
 
+	// WithoutImplicitTimestamps disables the implicit resolution of
+	// plain scalars to timestamps while loading, leaving such scalars
+	// as strings. Scalars carrying an explicit !!timestamp tag still
+	// load as timestamps.
+	WithoutImplicitTimestamps = libyaml.WithoutImplicitTimestamps
+
 	// WithSingleDocument configures the Loader to only process the first
 	// document in a YAML stream. After the first document is loaded,
 	// subsequent calls to Load will return [io.EOF].

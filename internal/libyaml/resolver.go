@@ -35,6 +35,12 @@ func NewResolver(opts *Options) *Resolver {
 	return &Resolver{opts: opts}
 }
 
+// implicitTimestamps reports whether plain scalars may resolve to
+// !!timestamp. It is disabled by the WithoutImplicitTimestamps option.
+func (r *Resolver) implicitTimestamps() bool {
+	return r == nil || r.opts == nil || !r.opts.DisableImplicitTimestamps
+}
+
 // Resolve walks the node tree and resolves tags for untagged nodes.
 // This is called after composition to:
 // - Default quoted scalars to !!str
@@ -54,7 +60,7 @@ func (r *Resolver) Resolve(n *Node) {
 				n.Tag = strTag
 			} else {
 				// Plain scalars: resolve type from value
-				n.Tag, _ = resolve("", n.Value, r.formatError())
+				n.Tag, _ = resolveWithFlags("", n.Value, r.formatError(), r.implicitTimestamps())
 			}
 		}
 
@@ -90,6 +96,13 @@ func (r *Resolver) Resolve(n *Node) {
 // If the tag is already specified and non-resolvable, it returns the input
 // unchanged.
 func resolve(tag string, in string, formatter func(*LoadError) string) (rtag string, out any) {
+	return resolveWithFlags(tag, in, formatter, true)
+}
+
+// resolveWithFlags is resolve with control over implicit resolution.
+// When implicitTimestamp is false, a plain scalar is never resolved to
+// !!timestamp; an explicit !!timestamp tag is still honored.
+func resolveWithFlags(tag string, in string, formatter func(*LoadError) string, implicitTimestamp bool) (rtag string, out any) {
 	tag = shortTag(tag)
 	if !resolvableTag(tag) {
 		return tag, in
@@ -155,7 +168,7 @@ func resolve(tag string, in string, formatter func(*LoadError) string) (rtag str
 			// Int, float, or timestamp.
 			// Only try values as a timestamp if the value is
 			// unquoted or there's an explicit !!timestamp tag.
-			if tag == "" || tag == timestampTag {
+			if tag == timestampTag || (tag == "" && implicitTimestamp) {
 				t, ok := parseTimestamp(in)
 				if ok {
 					return timestampTag, t

@@ -18,6 +18,9 @@ type Options struct {
 
 	// KnownFields enforces strict field checking when loading into structs.
 	KnownFields bool
+	// DisableImplicitTimestamps keeps plain scalars that look like
+	// timestamps as !!str instead of resolving them to !!timestamp.
+	DisableImplicitTimestamps bool
 	// SingleDocument controls whether only the first document is loaded from a stream.
 	SingleDocument bool
 	// UniqueKeys enforces that mapping keys are unique when loading.
@@ -179,6 +182,22 @@ func WithKnownFields(knownFields ...bool) Option {
 	val := len(knownFields) == 0 || knownFields[0]
 	return func(o *Options) error {
 		o.KnownFields = val
+		return nil
+	}
+}
+
+// WithoutImplicitTimestamps disables the implicit resolution of plain
+// scalars to timestamps while loading.
+//
+// By default, an untagged plain scalar that looks like a timestamp (for
+// example 2026-01-01) is resolved to !!timestamp and loaded as a
+// [time.Time]. YAML 1.2's core schema has no timestamp type, so a data
+// model with no place for one (such as JSON's) may prefer to keep such
+// scalars as strings. With this option they resolve to !!str instead.
+// Scalars carrying an explicit !!timestamp tag are unaffected.
+func WithoutImplicitTimestamps() Option {
+	return func(o *Options) error {
+		o.DisableImplicitTimestamps = true
 		return nil
 	}
 }

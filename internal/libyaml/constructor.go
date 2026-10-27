@@ -49,13 +49,15 @@ type Constructor struct {
 	stringMapType  reflect.Type
 	generalMapType reflect.Type
 
-	KnownFields    bool
-	UniqueKeys     bool
-	constructCount int
-	aliasCount     int
-	aliasDepth     int
-	aliasCheck     func(aliasCount, constructCount int) error
-	formatError    func(*LoadError) string
+	KnownFields bool
+	UniqueKeys  bool
+
+	disableImplicitTimestamps bool
+	constructCount            int
+	aliasCount                int
+	aliasDepth                int
+	aliasCheck                func(aliasCount, constructCount int) error
+	formatError               func(*LoadError) string
 
 	mergedFields map[any]bool
 }
@@ -68,9 +70,11 @@ func NewConstructor(opts *Options) *Constructor {
 		generalMapType: generalMapType,
 		KnownFields:    opts.KnownFields,
 		UniqueKeys:     opts.UniqueKeys,
-		aliases:        make(map[*Node]bool),
-		aliasCheck:     opts.AliasCheck,
-		formatError:    opts.FormatLoadError,
+
+		disableImplicitTimestamps: opts.DisableImplicitTimestamps,
+		aliases:                   make(map[*Node]bool),
+		aliasCheck:                opts.AliasCheck,
+		formatError:               opts.FormatLoadError,
 	}
 }
 
@@ -484,7 +488,7 @@ func (c *Constructor) scalar(n *Node, out reflect.Value) bool {
 		tag = strTag
 		resolved = n.Value
 	} else {
-		tag, resolved = resolve(n.Tag, n.Value, c.formatError)
+		tag, resolved = resolveWithFlags(n.Tag, n.Value, c.formatError, !c.disableImplicitTimestamps)
 		if tag == binaryTag {
 			data, err := base64.StdEncoding.DecodeString(resolved.(string))
 			if err != nil {
