@@ -356,7 +356,8 @@ func (c *Constructor) constructFloat(n *Node, resolved any, out reflect.Value) b
 		}
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		// Allow float to int conversion if lossless
-		if fval, ok := resolved.(float64); ok {
+		isDuration := out.Type() == durationType
+		if fval, ok := resolved.(float64); ok && !isDuration {
 			if fval >= math.MinInt64 && fval <= math.MaxInt64 {
 				intVal := int64(fval)
 				if float64(intVal) == fval && !out.OverflowInt(intVal) {
