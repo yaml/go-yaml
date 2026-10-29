@@ -111,7 +111,10 @@ directives.
 merges through the selected algorithm.
 `Key(node)` constructs a comparable key using the destination's key type.
 Use it to compare keys consistently with typed maps and struct fields.
-It returns construction errors for invalid keys.
+Unconstructible keys are reported as `*LoadErrors`; any conversion diagnostics
+are already recorded by the loader for aggregate reporting.
+The default algorithm skips those entries and constructs the remaining data.
+Other errors, such as unhashable keys or alias-limit failures, abort loading.
 
 Input node graphs are read-only.
 The callback is valid only during the call; retain no operation-local state.

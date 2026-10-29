@@ -59,7 +59,7 @@ type Constructor struct {
 
 	mergePlugin  MergeKeyPlugin
 	mergeConfig  MergeKeyConfig
-	mergeAliases map[*Node]bool
+	mergeAliases map[*Node]*Node
 }
 
 // NewConstructor creates a new Constructor initialized with the provided
@@ -90,7 +90,7 @@ func NewConstructor(opts *Options) *Constructor {
 // handles alias expansion, custom unmarshalers, and type resolution.
 // Returns true if the construction was successful.
 func (c *Constructor) Construct(n *Node, out reflect.Value) (good bool) {
-	if c.mergeAliases[n] {
+	if c.mergeAliases[n] != nil {
 		c.aliasDepth++
 		defer func() { c.aliasDepth-- }()
 	}
@@ -474,7 +474,8 @@ func (c *Constructor) document(n *Node, out reflect.Value) (good bool) {
 // alias constructs an AliasNode by following the alias reference and
 // tracking alias depth to detect circular references.
 func (c *Constructor) alias(n *Node, out reflect.Value) (good bool) {
-	if c.aliases[n] {
+	identity := c.originalMergeNode(n)
+	if c.aliases[identity] {
 		// TODO this could actually be allowed in some circumstances.
 		Fail(&LoadError{
 			Stage:     ComposerStage,
@@ -483,11 +484,11 @@ func (c *Constructor) alias(n *Node, out reflect.Value) (good bool) {
 			formatter: c.formatError,
 		})
 	}
-	c.aliases[n] = true
+	c.aliases[identity] = true
 	c.aliasDepth++
 	good = c.Construct(n.Alias, out)
 	c.aliasDepth--
-	delete(c.aliases, n)
+	delete(c.aliases, identity)
 	return good
 }
 
@@ -635,15 +636,15 @@ func (c *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 			keyType = c.stringMapType.Key()
 		}
 	}
-	nerrs := len(c.TypeErrors)
+	original := n
 	n = c.effectiveMapping(n, keyType)
-	if len(c.TypeErrors) > nerrs {
+	if n == nil {
 		return false
 	}
 	l := len(n.Content)
 	switch out.Kind() {
 	case reflect.Struct:
-		return c.mappingStruct(n, out)
+		return c.mappingStruct(n, original, out)
 	case reflect.Map:
 		// okay
 	case reflect.Interface:
@@ -706,7 +707,7 @@ func (c *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 // mappingStruct constructs a MappingNode into a struct value.
 // It handles field matching by name, inline fields, inline maps, merge keys,
 // and enforces known fields and unique keys when configured.
-func (c *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
+func (c *Constructor) mappingStruct(n, original *Node, out reflect.Value) (good bool) {
 	sinfo, err := getStructInfo(out.Type())
 	if err != nil {
 		panic(err)
@@ -720,8 +721,8 @@ func (c *Constructor) mappingStruct(n *Node, out reflect.Value) (good bool) {
 	}
 
 	for _, index := range sinfo.InlineConstructors {
-		field := c.fieldByIndex(n, out, index)
-		c.prepare(n, field)
+		field := c.fieldByIndex(original, out, index)
+		c.prepare(original, field)
 	}
 
 	var doneFields []bool
