@@ -59,6 +59,11 @@ type LoaderLimitsPlugin interface {
 // Deprecated: use LoaderLimitsPlugin.
 type LimitPlugin = LoaderLimitsPlugin
 
+// V4MigrationPlugin adapts destinations when migrating from another YAML API.
+// Native v4 hooks and portable callback hooks take precedence.
+// Enable migration explicitly with [WithPlugin].
+type V4MigrationPlugin = libyaml.V4MigrationPlugin
+
 // ParserPlugin supplies a complete event stream in place of native parsing.
 type ParserPlugin = libyaml.ParserPlugin
 

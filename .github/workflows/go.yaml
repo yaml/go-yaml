@@ -40,6 +40,14 @@ jobs:
       with: {persist-credentials: false}
     - run: make test-v3-hooks
 
+  test-v4-migration:
+    name: Test opt-in v4 migration
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with: {persist-credentials: false}
+    - run: make test-v4-migration lint-v4-migration opts=-race
+
   test-cross-platform:
     name: Test on ${{ matrix.GOOS }}/${{ matrix.GOARCH }}
     runs-on: ${{ matrix.os }}

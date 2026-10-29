@@ -297,6 +297,7 @@ type DepthContext = libyaml.DepthContext
 //   - ParserPlugin: Supplies a complete YAML event stream
 //   - TabIndentPlugin: Enables tab-aware loading and tab-indented dumping
 //   - ErrorFormatPlugin: Customizes load and dump error message formatting
+//   - V4MigrationPlugin: Adapts construction for explicitly enabled migrations
 //
 // Example:
 //
@@ -344,6 +345,12 @@ func WithPlugin(plugins ...any) Option {
 					return err
 				}
 				o.IndentConfig = &config
+				registered = true
+			}
+			if migration, ok := p.(V4MigrationPlugin); ok {
+				// Copy before appending: options can be reused independently.
+				migrations := append([]V4MigrationPlugin(nil), o.V4Migrations...)
+				o.V4Migrations = append(migrations, migration)
 				registered = true
 			}
 			if ep, ok := p.(ErrorFormatPlugin); ok {

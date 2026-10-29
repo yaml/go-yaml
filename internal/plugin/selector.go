@@ -18,6 +18,8 @@ const (
 	MergeKeyAPI = "merge-key"
 	// YAMLParserAPI is the YAML-parser plugin API name.
 	YAMLParserAPI = "yaml-parser"
+	// V4MigrationAPI is the opt-in migration plugin API name.
+	V4MigrationAPI = "v4-migration"
 	// legacyLimitAPI exists for release-candidate compatibility.
 	legacyLimitAPI = "limit"
 )

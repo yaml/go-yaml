@@ -26,6 +26,16 @@ type legacyConstructor interface {
 	UnmarshalYAML(construct func(any) error) error
 }
 
+// V4MigrationPlugin adapts construction for a migration from another API.
+// Implementations must support independent concurrent calls.
+type V4MigrationPlugin interface {
+	// TryUnmarshalYAML receives an initialized destination pointer and a node.
+	// Return false, nil without changing target to decline construction.
+	// Any error stops migration dispatch and is reported as a load error.
+	// Native node hooks and portable callback hooks take precedence.
+	TryUnmarshalYAML(target any, node *Node) (handled bool, err error)
+}
+
 // constructorAdapter is an interface that wraps the root package's Unmarshaler
 // interface.
 // This allows the constructor to call constructors that expect *yaml.Node
@@ -56,6 +66,7 @@ type Constructor struct {
 	aliasDepth     int
 	aliasCheck     func(aliasCount, constructCount int) error
 	formatError    func(*LoadError) string
+	v4Migrations   []V4MigrationPlugin
 
 	mergePlugin  MergeKeyPlugin
 	mergeConfig  MergeKeyConfig
@@ -79,6 +90,7 @@ func NewConstructor(opts *Options) *Constructor {
 		formatError:    opts.FormatLoadError,
 		mergePlugin:    plugin,
 		mergeConfig:    plugin.MergeKeyConfig(),
+		v4Migrations:   opts.V4Migrations,
 	}
 }
 
@@ -846,6 +858,22 @@ func (c *Constructor) prepare(n *Node, out reflect.Value) (newout reflect.Value,
 			if u, ok := outi.(legacyConstructor); ok {
 				good = c.callLegacyConstructor(n, u)
 				return out, true, good
+			}
+			for _, migration := range c.v4Migrations {
+				handled, err := migration.TryUnmarshalYAML(outi, n)
+				if err != nil {
+					if issues, ok := err.(*LoadErrors); ok {
+						c.TypeErrors = append(c.TypeErrors, issues.Errors...)
+					} else {
+						c.TypeErrors = append(c.TypeErrors,
+							c.formatConstructorError(err,
+								Mark{Line: n.Line, Column: n.Column}))
+					}
+					return out, true, false
+				}
+				if handled {
+					return out, true, true
+				}
 			}
 			if nodeType := v3NodeHook(out.Addr().Type()); nodeType != nil {
 				err := fmt.Errorf(

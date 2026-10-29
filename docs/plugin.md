@@ -4,7 +4,7 @@ The go-yaml v4 plugin system lets applications replace selected processing
 stages without adding optional dependencies to the core module.
 
 A plugin API defines a role such as `yaml-parser`,
-`loader-limits`, `merge-key`, `tab-indent`, or `error-format`.
+`loader-limits`, `merge-key`, `tab-indent`, `error-format`, or `v4-migration`.
 Each API can have several named implementations.
 The current implementations are:
 
@@ -16,9 +16,10 @@ The current implementations are:
 | `merge-key` | `merge-key` | `plugin/mergekey` | yes |
 | `loader-limits` | `loader-limits` | `plugin/loaderlimits` | yes |
 | `tab-indent` | `tab-indent` | `plugin/tabindent` | yes |
+| `v4-migration` | `from-v3`, `from-gopkg-v3` | `plugin/v4migration` | no |
 
-The reference YAML-parser package is a separate Go module.
-Importing the core `go.yaml.in/yaml/v4` module does not acquire its generated
+The reference YAML-parser and V4-Migration packages are separate Go modules.
+Importing the core `go.yaml.in/yaml/v4` module does not acquire their optional
 code or dependencies.
 
 ## Direct Go use
@@ -63,6 +64,10 @@ type MergeKeyPlugin interface {
 
 type TabIndentPlugin interface {
     TabIndentConfig() IndentConfig
+}
+
+type V4MigrationPlugin interface {
+    TryUnmarshalYAML(target any, node *Node) (handled bool, err error)
 }
 ```
 
@@ -306,6 +311,13 @@ import reference "go.yaml.in/yaml/v4/plugin/yamlparser/reference"
 var value any
 err := yaml.Load(input, &value, yaml.WithPlugin(reference.New()))
 ```
+
+### V4-Migration implementations
+
+See [V4-Migration](plugin/v4-migration.md) for safe opt-in v3 node-hook
+adapters and optional classic-style wrappers that accept options.
+Migration adapters run after supported hooks, in registration order.
+No adapter is selected by default.
 
 ## CLI build selection
 

@@ -313,6 +313,11 @@ them or silently decoding the struct without its hook.
 This applies to classic APIs and version presets as well as `Load`.
 For v4-specific implementations, use `go.yaml.in/yaml/v4.Node`.
 
+For targeted migrations retaining existing v3 hooks, explicitly enable an
+adapter from the optional [V4-Migration module](plugin/v4-migration.md).
+Its classic-style wrappers also accept options without changing core
+`Unmarshal` and `NewDecoder` signatures.
+
 The legacy callback signature `UnmarshalYAML(func(any) error) error` is still
 recognized and can be used across v2, v3, and v4.
 
