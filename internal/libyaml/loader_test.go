@@ -308,3 +308,25 @@ func TestLoad_MultipleDocuments(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.ErrorMatches(t, ".*expected single document, found multiple.*", err)
 }
+
+// TestLoadNodePropagatesOptions checks that loading into a node preserves
+// the loader options for subsequent Node.Decode calls.
+func TestLoadNodePropagatesOptions(t *testing.T) {
+	type target struct {
+		Name string `yaml:"name"`
+	}
+
+	input := []byte("name: Alice\nunknown_field: oops\n")
+	loader, err := NewLoader(bytes.NewReader(input), WithKnownFields())
+	assert.NoError(t, err)
+
+	var node Node
+	err = loader.Load(&node)
+	assert.NoError(t, err)
+	assert.NotNil(t, node.options)
+
+	var v target
+	err = node.Decode(&v)
+	assert.NotNil(t, err)
+	assert.ErrorMatches(t, ".*unknown_field.*", err)
+}
