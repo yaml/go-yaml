@@ -1794,3 +1794,26 @@
     want:
       source: cat
       cat: dog
+
+# Durations: strings, plus the plain int 0
+
+- decode:
+    name: Duration string
+    yaml: 'a: 3s'
+    type: map[string]time.Duration
+    want:
+      a: 3s
+
+- decode:
+    name: Zero Duration as a string
+    yaml: "a: '0'"
+    type: map[string]time.Duration
+    want:
+      a: 0s
+
+- decode:
+    name: Zero Duration as an int
+    yaml: 'a: 0'
+    type: map[string]time.Duration
+    want:
+      a: 0s

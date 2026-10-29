@@ -417,22 +417,6 @@ var unmarshalTests = []struct {
 			"Line separator\u2028Paragraph separator\u2029",
 	},
 
-	// Duration
-	{
-		"a: 3s",
-		map[string]time.Duration{"a": 3 * time.Second},
-	},
-	// Zero duration as a string.
-	{
-		"a: '0'",
-		map[string]time.Duration{"a": 0},
-	},
-	// Zero duration as an int.
-	{
-		"a: 0",
-		map[string]time.Duration{"a": 0},
-	},
-
 	// Binary data.
 	{
 		"a: !!binary gIGC\n",
@@ -941,13 +925,6 @@ func TestUnmarshalNaN(t *testing.T) {
 	err := yaml.Unmarshal([]byte("notanum: .NaN"), &value)
 	assert.NoError(t, err)
 	assert.True(t, math.IsNaN(value["notanum"].(float64)))
-}
-
-func TestUnmarshalDurationInt(t *testing.T) {
-	// Don't accept plain ints as durations as it's unclear (issue #200).
-	var d time.Duration
-	err := yaml.Unmarshal([]byte("123"), &d)
-	assert.ErrorMatches(t, "yaml: construct errors: line 1: cannot construct !!int `123` into time.Duration", err)
 }
 
 func TestUnmarshalErrorsFromYAML(t *testing.T) {
