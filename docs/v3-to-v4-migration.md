@@ -307,11 +307,11 @@ For structured details, use `errors.As` with `*yaml.LoadErrors` instead.
 The `UnmarshalYAML(*yaml.Node) error` hook depends on the exact package's
 `Node` type.
 A v3 node-based hook does not satisfy the v4 `Unmarshaler` interface.
-However, v4 recognizes and invokes existing hooks using either
-`gopkg.in/yaml.v3.Node` or `go.yaml.in/yaml/v3.Node` at runtime.
-Those hooks can retain their signatures, including in libraries supporting
-multiple major versions.
-For new v4-specific implementations, use `go.yaml.in/yaml/v4.Node`.
+V4 detects hooks using `gopkg.in/yaml.v3.Node` or
+`go.yaml.in/yaml/v3.Node` and returns a migration error instead of invoking
+them or silently decoding the struct without its hook.
+This applies to classic APIs and version presets as well as `Load`.
+For v4-specific implementations, use `go.yaml.in/yaml/v4.Node`.
 
 The legacy callback signature `UnmarshalYAML(func(any) error) error` is still
 recognized and can be used across v2, v3, and v4.

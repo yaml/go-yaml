@@ -837,11 +837,6 @@ func (c *Constructor) prepare(n *Node, out reflect.Value) (newout reflect.Value,
 			again = true
 		}
 		if out.CanAddr() {
-			// Try yaml.Unmarshaler (from root package) first
-			if called, good := c.tryCallYAMLConstructor(n, out); called {
-				return out, true, good
-			}
-
 			outi := out.Addr().Interface()
 			// Check for libyaml.constructor
 			if u, ok := outi.(constructor); ok {
@@ -851,6 +846,17 @@ func (c *Constructor) prepare(n *Node, out reflect.Value) (newout reflect.Value,
 			if u, ok := outi.(legacyConstructor); ok {
 				good = c.callLegacyConstructor(n, u)
 				return out, true, good
+			}
+			if nodeType := v3NodeHook(out.Addr().Type()); nodeType != nil {
+				err := fmt.Errorf(
+					"%s implements UnmarshalYAML(*%s.Node); "+
+						"v4 cannot invoke v3 Node hooks by default; "+
+						"migrate to *go.yaml.in/yaml/v4.Node or use "+
+						"UnmarshalYAML(func(any) error) error",
+					out.Addr().Type(), nodeType.Elem().PkgPath())
+				c.TypeErrors = append(c.TypeErrors, c.formatConstructorError(
+					err, Mark{Line: n.Line, Column: n.Column}))
+				return out, true, false
 			}
 		}
 	}
@@ -877,77 +883,6 @@ func (c *Constructor) fieldByIndex(n *Node, v reflect.Value, index []int) (field
 		v = v.Field(num)
 	}
 	return v
-}
-
-// tryCallYAMLConstructor checks if the value has an UnmarshalYAML method that
-// takes a *Node from an allowlisted v3 yaml package and calls it if found.
-// This handles backward compatibility with types that implement the v3
-// yaml.Unmarshaler interface instead of the native libyaml.constructor.
-func (c *Constructor) tryCallYAMLConstructor(n *Node, out reflect.Value) (called bool, good bool) {
-	if !out.CanAddr() {
-		return false, false
-	}
-
-	addr := out.Addr()
-	// Check for UnmarshalYAML method
-	method := addr.MethodByName("UnmarshalYAML")
-	if !method.IsValid() {
-		return false, false
-	}
-
-	// Check method signature: func(*yaml.Node) error
-	mtype := method.Type()
-	if mtype.NumIn() != 1 || mtype.NumOut() != 1 {
-		return false, false
-	}
-
-	// Check if parameter is a pointer to a Node-like struct
-	paramType := mtype.In(0)
-	if paramType.Kind() != reflect.Pointer {
-		return false, false
-	}
-
-	elemType := paramType.Elem()
-	if elemType.Kind() != reflect.Struct {
-		return false, false
-	}
-
-	// Only accept *Node from allowlisted v3 yaml packages whose Node type
-	// is assumed to have a compatible memory layout with libyaml.Node.
-	// The unsafe pointer cast below is only safe for these packages.
-	if elemType.Name() != "Node" || !isYAMLNodePkg(elemType.PkgPath()) {
-		return false, false
-	}
-
-	// Return type must be error
-	retType := mtype.Out(0)
-	if retType.Kind() != reflect.Interface || retType.Name() != "error" {
-		return false, false
-	}
-
-	// Call the method with a converted node.
-	// The allowlisted v3 packages define their own Node type that is
-	// assumed to have a compatible memory layout with libyaml.Node.
-	nodeValue := reflect.NewAt(elemType, reflect.ValueOf(n).UnsafePointer())
-
-	results := method.Call([]reflect.Value{nodeValue})
-	err := results[0].Interface()
-
-	if err == nil {
-		return true, true
-	}
-
-	switch e := err.(type) {
-	case *LoadErrors:
-		c.TypeErrors = append(c.TypeErrors, e.Errors...)
-		return true, false
-	default:
-		c.TypeErrors = append(c.TypeErrors, c.formatConstructorError(
-			err.(error),
-			Mark{Line: n.Line, Column: n.Column},
-		))
-		return true, false
-	}
 }
 
 // callConstructor invokes the UnmarshalYAML method on a value implementing
