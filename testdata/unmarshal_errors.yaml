@@ -206,3 +206,29 @@
     type: testStructA_TextUnmarshalerPtrPtr
     yaml: 'a: [foo, bar]'
     want: 'yaml: construct errors: line 1: cannot construct !!seq into yaml_test.simpleTextUnmarshaler (TextUnmarshaler)'
+
+# Duration errors: plain numbers other than 0 are refused, floats included
+
+- unmarshal-error:
+    name: Whole float 123.0 into a Duration
+    type: map[string]time.Duration
+    yaml: 'a: 123.0'
+    want: 'yaml: construct errors: line 1: cannot construct !!float `123.0` into time.Duration'
+
+- unmarshal-error:
+    name: Whole float -2.0 into a Duration
+    type: map[string]time.Duration
+    yaml: 'a: -2.0'
+    want: 'yaml: construct errors: line 1: cannot construct !!float `-2.0` into time.Duration'
+
+- unmarshal-error:
+    name: Whole float 1e9 into a Duration
+    type: map[string]time.Duration
+    yaml: 'a: 1e9'
+    want: 'yaml: construct errors: line 1: cannot construct !!float `1e9` into time.Duration'
+
+- unmarshal-error:
+    name: Whole float 5 into a Duration
+    type: map[string]time.Duration
+    yaml: 'a: !!float 5'
+    want: 'yaml: construct errors: line 1: cannot construct !!float `5` into time.Duration'
