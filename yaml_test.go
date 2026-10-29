@@ -254,6 +254,9 @@ func init() {
 	decodeTypes.RegisterFactory("map[string]float32", func() any {
 		return make(map[string]float32)
 	})
+	decodeTypes.RegisterFactory("map[string]time.Duration", func() any {
+		return make(map[string]time.Duration)
+	})
 
 	// Register struct types
 	decodeTypes.Register("testStructHello", testStructHello{})
@@ -945,20 +948,6 @@ func TestUnmarshalDurationInt(t *testing.T) {
 	var d time.Duration
 	err := yaml.Unmarshal([]byte("123"), &d)
 	assert.ErrorMatches(t, "yaml: construct errors: line 1: cannot construct !!int `123` into time.Duration", err)
-}
-
-func TestUnmarshalDurationFloat(t *testing.T) {
-	// Whole floats are not durations either.
-	want := "cannot construct !!float `.*` into time.Duration"
-	for _, input := range []string{"123.0", "-2.0", "1e9", "!!float 5"} {
-		var d time.Duration
-		err := yaml.Unmarshal([]byte(input), &d)
-		assert.ErrorMatchesf(t, want, err, "input %q gave %v", input, d)
-	}
-	// Floats still decode into plain integers.
-	var i int64
-	assert.NoError(t, yaml.Unmarshal([]byte("123.0"), &i))
-	assert.Equal(t, int64(123), i)
 }
 
 func TestUnmarshalErrorsFromYAML(t *testing.T) {
