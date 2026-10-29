@@ -70,7 +70,9 @@ func Merge[T any](groups [][]Entry[T], conflicts string) ([]T, error) {
 	var result []T
 	for group, entries := range groups {
 		for _, entry := range entries {
-			if owners[entry.Key] == group {
+			owner, found := owners[entry.Key]
+			// Non-reflexive keys such as NaN cannot conflict with any key.
+			if !found || owner == group {
 				result = append(result, entry.Value)
 			}
 		}

@@ -35,6 +35,8 @@ With `-i`, readline displays each command for editing before execution:
 The first selected demo builds the CLI with the reference parser and external
 JSON-comments, RapidYAML, and TOML adapters.
 The build runs once per invocation.
+Build output appears live in the pager while dependencies are installed and
+the CLI is compiled.
 Makes installs build dependencies, and Go modules fetch the plugin packages.
 The RapidYAML adapter downloads its shared library when first needed.
 Bash, GNU Make, curl, Git, and `less` must be available.

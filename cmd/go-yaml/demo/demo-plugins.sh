@@ -33,6 +33,7 @@ Unexpected errors count as failures, and the remaining demos still run.
 Demo definitions come from the sister demo-plugins.yaml file, using ys.
 A demo with a make field builds its executable before its first use.
 Each distinct build runs once per invocation.
+Build output is streamed as it runs.
 Build dependencies and shared libraries are downloaded automatically.
 No repos/* checkouts are needed.
 Use --list to inspect the commands without building the executables.
@@ -189,7 +190,7 @@ execute_command() {
   if [[ $line == "$planned_command" && -n ${demo_builds[number]} ]]; then
     printf -v make_word 'make -C %q' "$root"
     if bash -o pipefail -c \
-      "$make_word ${demo_builds[number]}" > "$work/output" 2>&1; then
+      "$make_word ${demo_builds[number]}" 2>&1; then
       built_commands+=("${demo_builds[number]}")
       line=${demo_bodies[number]}
     else
@@ -197,7 +198,6 @@ execute_command() {
     fi
   fi
   if (( status != 0 )); then
-    cat "$work/output"
     printf 'FAIL: build exited %d\n' "$status"
     failed=$((failed + 1))
     return 0
