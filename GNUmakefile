@@ -285,16 +285,8 @@ test-v3-hooks: $(GO-DEPS)
 	cd internal/libyaml/testdata/v3hooks && \
 	  GOWORK=off go test ./...$(TEST-OPTS)
 
-V4-MIGRATION-WORK := $(CURDIR)/.cache/v4-migration/$(GO-VERSION)/go.work
+test-v4-migration: $(GO-DEPS)
+	cd plugin/v4migration && GOWORK=off go test ./...$(TEST-OPTS)
 
-$(V4-MIGRATION-WORK): $(GO-DEPS) go.mod plugin/v4migration/go.mod
-	mkdir -p $(dir $@)
-	test -f $@ || GOWORK=$@ go work init
-	GOWORK=$@ go work use . ./plugin/v4migration
-
-test-v4-migration: $(V4-MIGRATION-WORK)
-	GOWORK=$(V4-MIGRATION-WORK) go test ./plugin/v4migration/...$(TEST-OPTS)
-
-lint-v4-migration: $(V4-MIGRATION-WORK) $(GOLANGCI-LINT-VERSIONED)
-	GOWORK=$(V4-MIGRATION-WORK) $(GOLANGCI-LINT-VERSIONED) \
-	  run ./plugin/v4migration/...
+lint-v4-migration: $(GO-DEPS) $(GOLANGCI-LINT-VERSIONED)
+	cd plugin/v4migration && GOWORK=off $(GOLANGCI-LINT-VERSIONED) run ./...
