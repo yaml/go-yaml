@@ -280,13 +280,7 @@ test-limit: $(PERL) $(GO-DEPS)
 	  'exit 1 unless /"Deprecated":\s*"use .*loaderlimits instead\."/'
 	@echo 'LIMIT MODULE DEPRECATION PASS'
 
-# Real v3 types are confined to a test-only module.
-V3-HOOK-WORK := $(CURDIR)/.cache/v3-hooks/$(GO-VERSION)/go.work
-
-$(V3-HOOK-WORK): $(GO-DEPS) go.mod internal/testcompat/v3hooks/go.mod
-	mkdir -p $(dir $@)
-	test -f $@ || GOWORK=$@ go work init
-	GOWORK=$@ go work use . ./internal/testcompat/v3hooks
-
-test-v3-hooks: $(V3-HOOK-WORK)
-	GOWORK=$(V3-HOOK-WORK) go test ./internal/testcompat/v3hooks/...$(TEST-OPTS)
+# Real v3 types are confined to a test-only module under testdata.
+test-v3-hooks: $(GO-DEPS)
+	cd internal/libyaml/testdata/v3hooks && \
+	  GOWORK=off go test ./...$(TEST-OPTS)
