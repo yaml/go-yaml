@@ -58,6 +58,9 @@ type Options struct {
 	// IndentConfig enables tab-aware structural indentation.
 	IndentConfig *IndentConfig
 
+	// V4Migrations adapt destinations after native hooks decline.
+	V4Migrations []V4MigrationPlugin
+
 	// Error formatting (set by WithPlugin with an error-format plugin).
 	FormatLoadError func(*LoadError) string
 	FormatDumpError func(*DumpError) string

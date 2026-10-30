@@ -29,6 +29,10 @@
 // ErrorFormat plugins (plugin/errorformat/v3 and plugin/errorformat/v4):
 //   - Versioned YAML load and dump error message formatting
 //
+// V4-Migration plugin (plugin/v4migration), API v4-migration:
+//   - Optional safe adapters for hooks using either v3 Node package
+//   - Option-aware classic wrappers without changing core signatures
+//
 // # Usage
 //
 // Import the plugin you need and register it with WithPlugin:

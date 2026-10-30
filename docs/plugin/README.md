@@ -13,6 +13,10 @@ Plugins are registered with `yaml.WithPlugin(...)`.
 | [Error-format v3](error-format-v3.md) | `go.yaml.in/yaml/v4/plugin/errorformat/v3` | You need v3-compatible error strings like `yaml: line 2: message`. |
 | [Error-format v4](error-format-v4.md) | `go.yaml.in/yaml/v4/plugin/errorformat/v4` | You need the v4 error format, different position text, or custom error templates. |
 
+The optional [V4-Migration](v4-migration.md) module adapts existing node hooks
+from either v3 package path.
+Migration is explicitly enabled and does not change classic core signatures.
+
 ## Registering Plugins
 
 ```go
