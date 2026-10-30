@@ -38,6 +38,12 @@ YTS-URL ?= https://github.com/yaml/yaml-test-suite
 YTS-TAG ?= data-2022-01-17
 YTS-DIR := yts/testdata/$(YTS-TAG)
 
+INTEGRATION-CONFIG ?= testdata/integration/projects.yaml
+INTEGRATION-PROJECT ?=
+INTEGRATION-REF ?=
+INTEGRATION-TIMEOUT ?= 30m
+INTEGRATION-REPORT ?= go-yaml-v4-projects.md
+
 CLI-BINARY := go-yaml
 
 # README recording tools are installed only when explicitly requested.
@@ -92,6 +98,7 @@ MAKES-REALCLEAN := $(dir $(YTS-DIR))
 SHELL-SCRIPTS = \
   util/common.bash \
   cmd/go-yaml/demo/demo-plugins.sh \
+  util/integration/common.bash \
   $(shell grep -rl '^.!/usr/bin/env bash' util | \
           grep -v '\.sw')
 
@@ -139,6 +146,25 @@ test-internal: $(GO-DEPS)
 	go test ./internal/...$(TEST-OPTS)
 	@echo 'ALL INTERNAL FILES PASS'
 
+INTEGRATION-ARGS = \
+  -config '$(INTEGRATION-CONFIG)' \
+  -project '$(INTEGRATION-PROJECT)' \
+  -ref '$(INTEGRATION-REF)' \
+  -timeout '$(INTEGRATION-TIMEOUT)' $(if $v,-v)
+
+test-integration: $(GO-DEPS)
+	go run ./util/integration $(INTEGRATION-ARGS)
+
+test-integration-%: $(GO-DEPS)
+	$(MAKE) test-integration INTEGRATION-PROJECT=$*
+
+integration-list integration-matrix integration-report: $(GO-DEPS)
+	@go run ./util/integration $(INTEGRATION-ARGS) \
+	  -mode $(patsubst integration-%,%,$@) -report '$(INTEGRATION-REPORT)'
+
+test-integration-runner: $(GO-DEPS)
+	go test ./util/integration
+
 test-cover: $(GO-DEPS)
 	go test . $(COVER-TESTS) -vet=off --cover$(TEST-OPTS)
 
@@ -169,7 +195,7 @@ golangci-lint-install: $(GOLANGCI-LINT)
 
 # Keep related checkouts and their fixtures outside core checks.
 GO-PACKAGES := . ./cmd/... ./internal/... ./plugin/... ./yts/... ./example/... \
-  ./util/build-cli/...
+  ./util/build-cli/... ./util/integration/...
 export GOLANGCI_LINT_CACHE := $(CURDIR)/.cache/golangci-lint
 
 fmt: $(GOLANGCI-LINT-VERSIONED)

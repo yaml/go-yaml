@@ -100,6 +100,121 @@ foo: &a1 bar
 - Add new tests for new functionality
 - Update existing tests when modifying functionality
 
+### Downstream Integration Testing
+
+Run `make test-integration` to assess downstream upgrades against this checkout,
+including uncommitted library changes.
+Select one project with `make test-integration-yq`, or several with
+`make test-integration INTEGRATION-PROJECT=yq,dasel`.
+On a terminal, the default display scrolls the current check's last 10 output
+lines in place and updates its elapsed time while it runs.
+Each completed check leaves a colored status line with its runtime and exit
+code.
+Each project's run is enclosed in start and finish banners.
+Every line of the finish block starts with `> `, including the overall status,
+so `grep '^> '` extracts a condensed report from captured output.
+Set `NO_COLOR=1` to disable colors.
+Redirected output uses plain start and completion lines without cursor controls.
+Use `v=1` to stream full output and request verbose Go tests.
+Full output is always preserved in the log files.
+Integration tests run separately from `make test`, with one CI job per enabled
+project.
+In GitHub Actions, manually run the **Integration Test** workflow and select the
+branch to test.
+
+`testdata/integration/projects.yaml` is the project catalog and report source.
+Each top-level key identifies a project, with `repo`, `vref`, and informational
+metadata such as `star` and `time` beneath it.
+Set `skip: true` on a project to exclude it from default runs and the CI matrix.
+Explicit selection with `INTEGRATION-PROJECT` or `make test-integration-<project>`
+runs the project even when `skip: true` is set.
+It remains visible in listings and the generated report.
+Run `make integration-list` to list all projects and their enabled/skipped state.
+Run `make integration-report` to regenerate `go-yaml-v4-projects.md`.
+Makes supplies the Go toolchain for these commands.
+
+Each run resolves the configured upstream revision and prints its commit SHA.
+Moving revisions are fetched each time; full SHAs reuse cached source.
+To reproduce a run:
+
+```bash
+make test-integration-yq INTEGRATION-REF=<full-commit-sha>
+```
+
+`INTEGRATION-REF` requires one selected project and also accepts upstream branches
+or tags.
+`INTEGRATION-CONFIG` overrides the catalog path.
+`INTEGRATION-TIMEOUT` defaults to `30m` per baseline/candidate phase.
+The default Go version comes from Makes; use `GO-VERSION` when an upstream
+revision needs a newer toolchain.
+
+Managed sources and logs live under `.cache/integration/`.
+The runner creates disposable, independent baseline and candidate clones at the
+same commit, leaving `repos/` untouched.
+The baseline uses the downstream's existing dependency.
+A temporary Go workspace overrides that dependency with this checkout for the
+candidate, and the runner verifies module resolution.
+Both phases run even if the baseline fails.
+
+Project scripts live at `util/integration/<project>.bash`.
+Each accepts `prepare` or `test`, followed by its disposable source directory.
+The runner supplies `INTEGRATION_ROOT`, `INTEGRATION_PROJECT`,
+`INTEGRATION_PHASE`, `INTEGRATION_LOG_DIR`, `INTEGRATION_RESULTS`, and
+`INTEGRATION_COMPLETION`.
+Scripts source `common.bash`, use `check` for named commands, and call `finish`
+after reporting every check.
+Commands run in strict Bash shells, and failures do not stop later checks.
+
+Scripts own upstream setup, tool provisioning, environment settings, and test
+commands.
+The shared `makes` helper installs a selected module's target and imports its
+exported tool environment.
+For example, `makes node.mk NODE` supplies Node and npm.
+An empty module selects a project rule, such as
+`makes '' GOLANGCI-LINT`.
+Call provisioning from both actions when its exported environment is needed.
+Tool installation failures are errors.
+Use `check-if` only for unavailable host capabilities, such as a Docker daemon.
+Use `pending` to report CI validation whose local setup is not yet implemented;
+these entries remain visible as `setup-needed` and do not fail the run.
+The scripts retain the upstream validation inventory, including unfinished
+container, VM, security, frontend, and documentation checks.
+They do not invoke publication or deployment workflows.
+
+Each run prints a results directory containing `results.json`, `summary.md`,
+and per-project baseline/candidate logs and named check results.
+JSON and Markdown include check runtimes and exit codes; checks that did not
+execute show no exit code.
+CI also includes the summary in the job report and saves those files as an
+artifact.
+Results distinguish:
+
+- `upgrade-blocked`: a named check passes its baseline and fails the candidate.
+- `baseline-failed`: existing-dependency checks already fail, so those checks
+  cannot establish upgrade compatibility.
+- `setup-error` or `candidate-failed`: setup or execution needs investigation.
+- `partial`: executed checks pass, with skipped host capability checks or
+  unfinished CI setup.
+- `no-coverage`: no checks executed.
+- `skipped`: excluded by the catalog.
+
+Executed failures and setup errors return a nonzero exit status.
+Capability skips and pending CI setup do not fail the aggregate, but remain
+visible.
+A zero-coverage selection is explicitly reported and does not establish
+compatibility.
+Passing available checks alone does not imply all upstream CI is covered.
+
+Reviewed yq test accommodations remain in `testdata/integration/yq/*.patch`.
+The yq script applies them equally to both disposable clones.
+The current patch corrects a stale malformed-JSON error expectation that also
+fails with the existing dependency.
+It does not accommodate cross-document alias behavior; those failures remain
+upgrade blockers.
+
+Run `make test-integration-runner` and `make test-shell` when changing the
+integration harness or project scripts.
+
 
 ## Development Process
 
