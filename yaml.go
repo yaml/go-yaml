@@ -504,8 +504,8 @@ func OptsYAML(yamlStr string) (Option, error) {
 				val = map[string]any{"disable": true}
 			}
 		}
-		// Disabling the default anchor policy rejects references. Other APIs
-		// retain the ordinary host behavior of skipping disabled selections.
+		// Disabling the default anchor policy rejects references instead of
+		// restoring ordinary document-scoped aliases.
 		if name == pluginreg.AliasDataAPI && pluginreg.AliasDataDisabled(val) {
 			p, err := namedPlugin(name, map[string]any{"disable": true})
 			if err != nil {

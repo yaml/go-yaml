@@ -134,3 +134,23 @@ func TestAliasDataCLIBypassModes(t *testing.T) {
 		}
 	}
 }
+
+func TestAliasDataCLIComposedEventInput(t *testing.T) {
+	generate := exec.Command(testBinary, "-e")
+	generate.Stdin = strings.NewReader("copy: *external\n")
+	events, err := generate.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := filepath.Join(t.TempDir(), "options.yaml")
+	text := "plugin: {alias-data: {data: {external: 42}}}\n"
+	if err := os.WriteFile(config, []byte(text), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(testBinary, "--from=event", "-y", "-C", config)
+	cmd.Stdin = strings.NewReader(string(events))
+	output, err := cmd.CombinedOutput()
+	if err != nil || string(output) != "copy: 42\n" {
+		t.Fatalf("alias policy was reapplied after composition: %q, %v", output, err)
+	}
+}

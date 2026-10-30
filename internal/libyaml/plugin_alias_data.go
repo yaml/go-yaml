@@ -37,6 +37,7 @@ type AliasDataContext interface {
 // NewNode copies node graphs and converts Go values through the representer.
 // LoadFile loads exactly one mapping document with the selected parser and
 // ordinary document-scoped aliases, without consulting external alias data.
+// Its copied nodes retain tags, styles, and scalar text; root merges are applied.
 type AliasDataServices struct {
 	NewNode     func(any) (*Node, error)
 	LoadFile    func(string) (*Node, error)
@@ -121,13 +122,14 @@ func aliasDataServices(opts *Options) AliasDataServices {
 			node = NewRepresenter(opts).Represent("", reflect.ValueOf(value))
 			return copyAliasDataNode(node, opts)
 		},
-		LoadFile: func(path string) (*Node, error) {
+		LoadFile: func(path string) (root *Node, err error) {
+			defer handleErr(&err)
 			data, err := os.ReadFile(path)
 			if err != nil {
 				return nil, err
 			}
-			var value any
-			err = Load(data, &value, func(o *Options) error {
+			var document Node
+			err = Load(data, &document, func(o *Options) error {
 				*o = *opts
 				o.AliasData = nil
 				o.AllDocuments = false
@@ -139,11 +141,18 @@ func aliasDataServices(opts *Options) AliasDataServices {
 			if err != nil {
 				return nil, err
 			}
-			doc := NewRepresenter(opts).Represent("", reflect.ValueOf(value))
-			if len(doc.Content) != 1 || doc.Content[0].Kind != MappingNode {
+			if document.Kind != DocumentNode || len(document.Content) != 1 ||
+				document.Content[0].Kind != MappingNode {
 				return nil, errors.New("alias-data: file root must be a mapping")
 			}
-			return copyAliasDataNode(doc.Content[0], opts)
+			// Expand only the root's merge directives. Keep values as resolved
+			// nodes so destination decoding sees their tags, styles, and text.
+			constructor := NewConstructor(opts)
+			root = constructor.effectiveMapping(document.Content[0], ifaceType)
+			if len(constructor.TypeErrors) > 0 {
+				return nil, &LoadErrors{Errors: constructor.TypeErrors}
+			}
+			return copyAliasDataNode(root, opts)
 		},
 		Environment: func() map[string]string {
 			values := map[string]string{}
@@ -159,6 +168,7 @@ func aliasDataServices(opts *Options) AliasDataServices {
 type aliasDataVisit struct {
 	typeOf reflect.Type
 	ptr    uintptr
+	length int
 }
 
 // Check Go containers before representing them, since the ordinary representer
@@ -187,7 +197,12 @@ func checkAliasDataValue(value reflect.Value, opts *Options,
 		if value.IsNil() {
 			return nil
 		}
-		visit := aliasDataVisit{value.Type(), uintptr(value.UnsafePointer())}
+		visit := aliasDataVisit{
+			typeOf: value.Type(), ptr: uintptr(value.UnsafePointer()),
+		}
+		if value.Kind() == reflect.Slice {
+			visit.length = value.Len()
+		}
 		if active[visit] {
 			return errors.New("alias-data: cyclic Go value")
 		}

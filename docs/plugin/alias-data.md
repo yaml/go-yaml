@@ -5,6 +5,38 @@ The default policy is active and behaves like ordinary go-yaml v4:
 anchors belong to one document and unknown aliases are errors.
 Dumping behavior is unchanged.
 
+For example, supply an anchor named `defaults` in `options.yaml`:
+
+```yaml
+plugin:
+  alias-data:
+    data:
+      defaults: {color: blue, size: 3}
+```
+
+An `input.yaml` file can reference that value without declaring an anchor:
+
+```yaml
+item: *defaults
+```
+
+```console
+$ go-yaml --config=options.yaml -j input.yaml
+{"item":{"color":"blue","size":3}}
+```
+
+Use mapping settings such as `{stream: true}` and `{disable: true}` when
+explicit configuration is easiest to read.
+The shorter forms below follow the shared plugin configuration convention:
+`true` selects the default implementation, an implementation-name string
+selects a named implementation, and a mapping supplies settings.
+The built-in implementation is named `alias-data`, just as a parser
+implementation can be named `go-yaml` or `reference`.
+`disable` is an Alias-Data rejection shorthand, also usable in the CLI's
+string-only selector syntax as `--plugin=alias-data=disable`.
+`false` and `{disable: true}` select the same rejection policy because
+ordinary YAML alias processing is otherwise active by default.
+
 | Configuration under `plugin.alias-data` | Behavior |
 |---|---|
 | Omitted | Ordinary document-scoped aliases |
@@ -35,6 +67,11 @@ plugin:
 `data` maps anchor names to arbitrary values.
 `file` names exactly one mapping document, parsed with the selected parser and
 ordinary aliases, without external alias sources.
+Values retain their YAML tags, scalar spellings, styles, and alias edges until
+destination decoding.
+This supports values such as `!!binary` and application tags used by custom
+unmarshalers.
+Root merge directives are applied before validating the resulting anchor names.
 Relative paths use the working directory.
 
 `env` accepts `true` for the full environment, `false` to select nothing, a
@@ -208,6 +245,8 @@ make cli CONFIG=options.yaml
 Normal JSON, YAML, and composed-node loading support Alias-Data.
 Explicit policies are rejected in token/event output, preserving output,
 legacy loading modes, and precomposed node input.
+`yaml.Node.Load` also rejects explicit Alias-Data options; a node graph has
+already passed composition, so its anchor policy cannot be applied again.
 Those paths either bypass composition or preserve alias spellings instead of
 materializing external values.
 Default invocations keep the ordinary behavior of each mode.

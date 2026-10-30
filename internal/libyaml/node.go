@@ -8,6 +8,7 @@
 package libyaml
 
 import (
+	"errors"
 	"reflect"
 	"strings"
 	"unicode"
@@ -310,6 +311,8 @@ func (n *Node) Decode(v any) (err error) {
 
 // Load decodes the node and stores its data into the value pointed to by v,
 // applying the given options.
+// Explicit Alias-Data policies are rejected because composition has already
+// occurred and the policy cannot be applied to this node graph.
 //
 // This method is useful when you need to preserve options like WithKnownFields()
 // inside custom UnmarshalYAML implementations.
@@ -326,6 +329,9 @@ func (n *Node) Load(v any, opts ...Option) (err error) {
 	o, err := ApplyOptions(opts...)
 	if err != nil {
 		return err
+	}
+	if o.AliasData != nil {
+		return errors.New("yaml: alias-data is not supported with precomposed node input")
 	}
 	d := NewConstructor(o)
 	out := reflect.ValueOf(v)

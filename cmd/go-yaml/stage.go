@@ -691,7 +691,14 @@ func processEventStream(events []libyaml.Event, target stageKind, profuse,
 		if err != nil {
 			return err
 		}
-		return writeNodesAsYAML(nodes, false, opts)
+		// Composition has already applied the alias policy. Node.Load must
+		// receive construction options without requesting that policy again.
+		constructOpts := append([]yaml.Option(nil), opts...)
+		constructOpts = append(constructOpts, func(o *libyaml.Options) error {
+			o.AliasData = nil
+			return nil
+		})
+		return writeNodesAsYAML(nodes, false, constructOpts)
 	default:
 		return fmt.Errorf("unsupported event conversion to %s", target)
 	}
