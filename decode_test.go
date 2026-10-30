@@ -955,6 +955,16 @@ var unmarshalerTests = []struct {
 	{"_: [1,A]", "!!seq", []interface{}{1, "A"}},
 	{"_: 10", "!!int", 10},
 	{"_: null", "!!null", nil},
+	{"_: ~", "!!null", nil},
+	{"_:", "!!null", nil},
+	{"_: !!null 'null'", "!!null", nil},
+	{"_: !!null '~'", "!!null", nil},
+	{`_: 'null'`, "!!str", "null"},
+	{`_: "null"`, "!!str", "null"},
+	{`_: '~'`, "!!str", "~"},
+	{`_: "~"`, "!!str", "~"},
+	{"_: !!str null", "!!str", "null"},
+	{"_: !!str ~", "!!str", "~"},
 	{`_: BAR!`, "!!str", "BAR!"},
 	{`_: "BAR!"`, "!!str", "BAR!"},
 	{"_: !!foo 'BAR!'", "!!foo", "BAR!"},
@@ -985,6 +995,55 @@ type unmarshalerPointer struct {
 
 type unmarshalerValue struct {
 	Field unmarshalerType "_"
+}
+
+type validatedString string
+
+func (v *validatedString) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var s string
+	if err := unmarshal(&s); err != nil {
+		return err
+	}
+	if s != "valid" {
+		return errors.New("invalid value")
+	}
+	*v = validatedString(s)
+	return nil
+}
+
+func TestUnmarshalerStringValidation(t *testing.T) {
+	tests := []struct {
+		data, want, error string
+	}{
+		{"valid", "valid", ""},
+		{"invalid", "", "invalid value"},
+		{`'null'`, "", "invalid value"},
+		{`"null"`, "", "invalid value"},
+		{`'~'`, "", "invalid value"},
+		{`"~"`, "", "invalid value"},
+		{"!!str null", "", "invalid value"},
+		{"!!str ~", "", "invalid value"},
+		{"null", "", ""},
+		{"~", "", ""},
+		{"!!null 'null'", "", ""},
+		{"!!null '~'", "", ""},
+	}
+	for _, test := range tests {
+		t.Run(test.data, func(t *testing.T) {
+			var value validatedString
+			err := yaml.Unmarshal([]byte(test.data), &value)
+			if test.error == "" {
+				if err != nil {
+					t.Fatalf("Unmarshal() returned error: %v", err)
+				}
+			} else if err == nil || err.Error() != test.error {
+				t.Fatalf("Unmarshal() returned error %v, want %q", err, test.error)
+			}
+			if string(value) != test.want {
+				t.Fatalf("Unmarshal() returned %q, want %q", value, test.want)
+			}
+		})
+	}
 }
 
 func TestUnmarshalerPointerField(t *testing.T) {
