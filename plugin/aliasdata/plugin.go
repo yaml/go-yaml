@@ -189,7 +189,12 @@ func (p *Plugin) NewAliasDataContext(
 		sources.File = map[string]*libyaml.Node{}
 		for i := 0; i < len(root.Content); i += 2 {
 			key := root.Content[i]
-			if key.Kind != libyaml.ScalarNode || key.ShortTag() != "!!str" {
+			seen := map[*libyaml.Node]bool{}
+			for key != nil && key.Kind == libyaml.AliasNode && !seen[key] {
+				seen[key] = true
+				key = key.Alias
+			}
+			if key == nil || key.Kind != libyaml.ScalarNode || key.ShortTag() != "!!str" {
 				return nil, errors.New("alias-data: file keys must be strings")
 			}
 			if err := validName(key.Value); err != nil {
