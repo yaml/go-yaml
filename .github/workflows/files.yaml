@@ -46,7 +46,7 @@ jobs:
         persist-credentials: false
 
     - name: ls-lint
-      uses: ls-lint/action@02e380fe8733d499cbfc9e22276de5085508a5bd  # v2.3.1
+      uses: ls-lint/action@a87c5eb4fb26d7af1bd0adba203dd1e76f7e94eb  # v2.3.2
       with:
         config: .ls-lint.yaml
 
