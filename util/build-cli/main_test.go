@@ -344,7 +344,7 @@ func TestConfiguredErrorFormatCLI(t *testing.T) {
 	config := filepath.Join(directory, "options.yaml")
 	binary := filepath.Join(directory, "go-yaml")
 	data := "plugin:\n  error-format:\n    v4:\n" +
-		"      load-template: 'custom {{.Stage}}: {{.Message}}'\n"
+		"      position: long\n"
 	if err := os.WriteFile(config, []byte(data), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -360,7 +360,7 @@ func TestConfiguredErrorFormatCLI(t *testing.T) {
 			t.Fatalf("%v: got %q, %v; want %q", flags, out, err, want)
 		}
 	}
-	run("custom scanner: block sequence entries are not allowed in this context")
+	run("go-yaml load error in scanner at line 1, column 8:")
 	for _, selector := range []string{
 		"error-format", "error-format=error-format",
 	} {

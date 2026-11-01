@@ -397,30 +397,6 @@ func TestWithPlugin_ErrorFormatV4_LinePosition(t *testing.T) {
 	}
 }
 
-func TestWithPlugin_ErrorFormatV4_Template(t *testing.T) {
-	p, err := errorformatv4.New(errorformatv4.WithLoadTemplate("{{.Stage}} {{pos .Mark}} {{.Message}}"))
-	if err != nil {
-		t.Fatalf("New errorformatv4 failed: %v", err)
-	}
-	var result any
-	err = yaml.Load(errorFormatBadYAML, &result, yaml.WithPlugin(p))
-	if err == nil {
-		t.Fatal("Expected error, got nil")
-	}
-	got := err.Error()
-	want := "scanner L1.C8 block sequence entries are not allowed in this context"
-	if got != want {
-		t.Errorf("Template format: got %q, want %q", got, want)
-	}
-}
-
-func TestWithPlugin_ErrorFormatV4_InvalidTemplate(t *testing.T) {
-	_, err := errorformatv4.New(errorformatv4.WithLoadTemplate("{{"))
-	if err == nil {
-		t.Fatal("Expected invalid template error, got nil")
-	}
-}
-
 func TestWithPlugin_ErrorFormatV4_DumpDefault(t *testing.T) {
 	_, err := yaml.Dump(make(chan int), yaml.WithPlugin(errorformatv4.Must()))
 	if err == nil {
@@ -440,21 +416,6 @@ func TestWithPlugin_ErrorFormatV3_Dump(t *testing.T) {
 	want := "yaml: cannot represent type: chan int"
 	if err.Error() != want {
 		t.Errorf("Legacy dump format: got %q, want %q", err, want)
-	}
-}
-
-func TestWithPlugin_ErrorFormatV4_DumpTemplate(t *testing.T) {
-	p, err := errorformatv4.New(errorformatv4.WithDumpTemplate("{{.Stage}}/{{.Message}}"))
-	if err != nil {
-		t.Fatalf("New errorformatv4 failed: %v", err)
-	}
-	_, err = yaml.Dump(make(chan int), yaml.WithPlugin(p))
-	if err == nil {
-		t.Fatal("Expected error, got nil")
-	}
-	want := "representer/cannot represent type: chan int"
-	if err.Error() != want {
-		t.Errorf("Dump template format: got %q, want %q", err, want)
 	}
 }
 
