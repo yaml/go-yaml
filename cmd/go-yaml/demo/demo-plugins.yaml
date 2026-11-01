@@ -85,11 +85,11 @@
   fail: at line
 
 - make: *cli
-  desc: Customize the v4 error template
+  desc: Show line-only positions in v4 errors
   cmnd: >-
     <<<$'answer: [1, 2\n' go-yaml -C <(echo
-    '{plugin: {error-format: {v4: {load-template: "DEMO: {{.Message}}"}}}}') -J
-  fail: 'DEMO:'
+    '{plugin: {error-format: {v4: {position: line}}}}') -J
+  fail: 'at line 1-line 2:'
 
 - make: *cli
   desc: Disable YAML merge keys

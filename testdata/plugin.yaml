@@ -162,11 +162,11 @@
     want: 'go-yaml load error in scanner (while increasing flow level) at line 1, column 6: exceeded max depth of 5'
 
 - plugin-error:
-    name: error-format v4 template on scanner error
+    name: error-format v4 line position on scanner error
     plugin:
       error-format:
         v4:
-          load-template: '{{.Stage}} {{pos .Mark}} {{.Message}}'
+          position: line
       loader-limits:
         depth: 5
     data:
@@ -174,7 +174,7 @@
       - loop: ['[', 6]
       - text: 'x'
       - loop: [']', 6]
-    want: 'scanner L1.C6 exceeded max depth of 5'
+    want: 'go-yaml load error in scanner (while increasing flow level) at line 1: exceeded max depth of 5'
 
 - plugin-pass:
     name: error-format default format (no-op)
