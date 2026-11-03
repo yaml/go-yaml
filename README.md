@@ -1,3 +1,9 @@
+> **Maintenance status:** This `v2` branch is in **security-only maintenance**.
+> Its API is frozen, and only fixes for verified critical security vulnerabilities
+> are accepted. Submit new features, general bug fixes, and improvements to
+> [`main`](https://github.com/yaml/go-yaml/tree/main), which contains `v4`. See
+> [CONTRIBUTING.md](CONTRIBUTING.md) for branch contribution rules.
+
 # YAML support for the Go language
 
 Introduction
@@ -128,4 +134,3 @@ b:
   - 3
   - 4
 ```
-
