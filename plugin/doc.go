@@ -42,14 +42,14 @@
 //	import errorformatv3 "go.yaml.in/yaml/v4/plugin/errorformat/v3"
 //
 //	// Disable alias checking for documents with many aliases
-//	loader, err := yaml.NewLoader(data,
+//	loader, err := yaml.NewLoader(reader,
 //	    yaml.WithPlugin(loaderlimits.New(loaderlimits.AliasNone())))
 //	if err != nil {
 //	    return err
 //	}
 //
 //	// Use legacy error format (yaml: line N: msg)
-//	loader, err = yaml.NewLoader(data, yaml.WithPlugin(errorformatv3.New()))
+//	loader, err = yaml.NewLoader(reader, yaml.WithPlugin(errorformatv3.New()))
 //	if err != nil {
 //	    return err
 //	}

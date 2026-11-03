@@ -29,7 +29,7 @@ func main() {
 	out, _ := yaml.Dump(&cfg, yaml.WithV2Defaults())
 	fmt.Print(string(out))
 
-	// v3 options - 4-space indent (default), non-compact sequences
+	// v3 options - 4-space indent, non-compact sequences
 	fmt.Println("=== yaml.WithV3Defaults() - 4-space indent, non-compact sequences ===")
 	out, _ = yaml.Dump(&cfg, yaml.WithV3Defaults())
 	fmt.Print(string(out))

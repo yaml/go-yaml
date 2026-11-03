@@ -29,12 +29,10 @@ Update all import statements throughout your codebase.
 
 ## Compatibility with go-yaml
 
-When migrating from [go-yaml/yaml](https://github.com/go-yaml/yaml/) ensure
-that YAML module imports are updated in all dependent projects transitively,
-because unmarshaller interface types `gopkg.in/yaml.v{version}.Unmarshaler` and
-`go.yaml.in/yaml/v{version}.Unmarshaler` are different types and thus are
-incompatible. Custom unmarshallers would not be called if executed with the
-parser from the different library.
+Node-based custom unmarshaler hooks depend on the exact imported `Node`
+type.
+Review [custom unmarshalers across versions](#custom-unmarshalers-across-versions)
+when updating dependencies that implement these hooks.
 
 ## API Changes
 
@@ -173,7 +171,7 @@ yaml.Load(data, &config,
 Available dump options:
 - `WithIndent(n)` - Set indentation spaces
 - `WithCompactSeqIndent(bool)` - Compact sequence indentation
-- `WithLineWidth(n)` - Maximum line width
+- `WithLineWidth(n)` - Preferred line width
 - `WithUnicode(bool)` - Use Unicode characters
 - `WithCanonical(bool)` - Canonical output format
 - `WithLineBreak(lb)` - Line break style (LN, CR, CRLN)

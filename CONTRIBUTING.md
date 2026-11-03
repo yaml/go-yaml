@@ -58,6 +58,7 @@ Here is an example of using it on a small piece of YAML:
 ./go-yaml -t <<< '
 foo: &a1 bar
 *a1: baz
+'
 ```
 
 
@@ -166,10 +167,10 @@ make shell GO-VERSION=1.23.4
 The repository's makefile (`GNUmakefile`) provides a number of useful targets:
 
 - `make test` runs all tests including yaml-test-suite tests
-- `make test-unit` runs just the unit tests
+- `make test-main` runs just the unit tests
 - `make test-internal` runs just the internal tests
 - `make test-yts` runs just the yaml-test-suite tests
-- `make test v=1 count=3` runs the tests with options
+- `make test v=1 opts='-count=3'` runs the tests with options
 - `make test GO-VERSION=1.23.4` runs the tests with a specific Go version
 - `make test GO_YAML_PATH=/path/to/go/bin` uses your own Go installation
 - `make shell` opens a shell with the project's dependencies set up

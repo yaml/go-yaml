@@ -79,7 +79,7 @@ func main() {
 
 	// No argument provided - show comparison of different indent levels
 	fmt.Println("Example: Dumper with Different Indent Levels")
-	fmt.Println("(Run with argument to test specific indent: go run dumper_indent_comparison.go 3)")
+	fmt.Println("(Run with argument to test specific indent: go run ./example/dumper_indent_comparison 3)")
 
 	indentLevels := []int{2, 4, 8}
 
@@ -122,5 +122,5 @@ func main() {
 
 	fmt.Print(buf.String())
 	fmt.Println("\nTip: Run with a specific indent value as an argument:")
-	fmt.Println("  go run example/dumper_indent_comparison.go 3")
+	fmt.Println("  go run ./example/dumper_indent_comparison 3")
 }

@@ -8,15 +8,19 @@ A plugin API defines a role such as `yaml-parser`,
 Each API can have several named implementations.
 The current implementations are:
 
-| API | Implementation | Package | Default |
+| API | Implementation | Package | Selected by default |
 |---|---|---|---|
 | `yaml-parser` | `go-yaml` | core | yes |
 | `yaml-parser` | `reference` | `plugin/yamlparser/reference` | no |
 | `error-format` | `error-format` | `plugin/errorformat/v3` and `plugin/errorformat/v4` | yes |
 | `merge-key` | `merge-key` | `plugin/mergekey` | yes |
 | `loader-limits` | `loader-limits` | `plugin/loaderlimits` | yes |
-| `tab-indent` | `tab-indent` | `plugin/tabindent` | yes |
+| `tab-indent` | `tab-indent` | `plugin/tabindent` | no |
 | `alias-data` | `alias-data` | `plugin/aliasdata` | yes |
+
+Tab indentation is opt-in.
+Default Alias-Data behavior keeps anchors within each document; explicitly
+selecting its empty configuration enables stream scope.
 
 The reference YAML-parser package is a separate Go module.
 Importing the core `go.yaml.in/yaml/v4` module does not acquire its generated
@@ -208,10 +212,11 @@ The built-in defaults remain active unless another loader-limits implementation
 is selected.
 
 ```go
-loader := yaml.NewLoader(data, yaml.WithPlugin(loaderlimits.New()))
-loader = yaml.NewLoader(data,
+loader, err := yaml.NewLoader(reader, yaml.WithPlugin(loaderlimits.New()))
+// Alternative policies:
+loader, err = yaml.NewLoader(reader,
     yaml.WithPlugin(loaderlimits.New(loaderlimits.AliasNone())))
-loader = yaml.NewLoader(data,
+loader, err = yaml.NewLoader(reader,
     yaml.WithPlugin(loaderlimits.New(loaderlimits.DepthValue(50))))
 ```
 
@@ -248,7 +253,8 @@ plugin:
 For this API, `false`, `disable`, and `{disable: true}` select a policy that
 rejects all alias references while allowing anchor declarations.
 They do not fall back to ordinary aliases.
-Other plugin APIs retain their existing disabling behavior.
+Merge-Key disabling forms turn off merging.
+Other APIs leave the plugin unselected.
 
 ## Tab-indent plugin
 
@@ -298,7 +304,8 @@ Versions with and without the leading `v` are accepted.
 Documentation and Git tags use the `v` prefix.
 
 `true` selects the API's default implementation with its defaults.
-`false` leaves the plugin disabled.
+`false` leaves optional plugins unselected.
+Merge-Key instead disables merging, and Alias-Data rejects alias references.
 A mapping can contain `name`, `version`, `disable`, and implementation
 settings.
 `disable: true` has the same effect as `false`, even when saved settings remain
@@ -308,8 +315,9 @@ Null is invalid.
 Alias-Data has explicit rejection semantics for disabling forms, as described
 above; it is never removed from the default anchor-processing pipeline.
 
-The host removes `name`, `version`, and `disable` before calling the
-implementation factory.
+The host removes `name` and `version` before calling the implementation factory.
+It handles `disable` itself except for Merge-Key, which receives that policy
+setting.
 A requested version must match the linked implementation exactly.
 
 Disabling `loader-limits` leaves the core safety limits active.
@@ -415,6 +423,9 @@ make cli \
   PLUGIN=yaml-parser=custom
 ./go-yaml --plugin=yaml-parser=custom -j data.yaml
 ```
+
+For a concrete JSON-comments build, see the
+[CLI guide](../cmd/go-yaml/README.md#external-plugin-packages).
 
 Use a comma-separated list to link multiple packages:
 

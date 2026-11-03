@@ -22,7 +22,7 @@ import (
 // Example usage:
 //
 //	import errorformatv3 "go.yaml.in/yaml/v4/plugin/errorformat/v3"
-//	loader := yaml.NewLoader(data, yaml.WithPlugin(errorformatv3.New()))
+//	loader, err := yaml.NewLoader(reader, yaml.WithPlugin(errorformatv3.New()))
 type ErrorFormatPlugin interface {
 	// FormatLoadError returns the string representation of a LoadError.
 	// The returned string is used as the error message.
@@ -42,7 +42,7 @@ type ErrorFormatPlugin interface {
 // Example usage:
 //
 //	import "go.yaml.in/yaml/v4/plugin/loaderlimits"
-//	loader := yaml.NewLoader(data,
+//	loader, err := yaml.NewLoader(reader,
 //	    yaml.WithPlugin(loaderlimits.New(loaderlimits.AliasNone())))
 type LoaderLimitsPlugin interface {
 	// CheckDepth is called when the parser increases nesting depth.

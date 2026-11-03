@@ -1,7 +1,7 @@
 # Loader-Limits Plugin
 
-The loader-limits plugin controls YAML loading safety checks for nesting depth and
-alias expansion.
+The loader-limits plugin controls YAML loading safety checks for nesting depth
+and alias expansion.
 The default go-yaml limits are conservative and are enabled automatically.
 Use this plugin when you need stricter limits, looser limits, or custom policy.
 
@@ -19,7 +19,13 @@ if err != nil {
 }
 ```
 
-With no options, `loaderlimits.New()` uses the same limits as go-yaml defaults.
+With no options, `loaderlimits.New()` uses the same limits as go-yaml defaults:
+a nesting limit of 10,000 and a ratio-based alias expansion check.
+The alias check counts construction work through aliases rather than alias
+references in the input.
+Depth checks apply while parsing source or validating parser-plugin events,
+not when constructing values from a precomposed node graph.
+`Node.Load` and `Node.Decode` retain default alias expansion protection.
 
 ## Depth Limits
 
@@ -59,7 +65,7 @@ loader, err := yaml.NewLoader(r,
 
 ## Alias Limits
 
-Set a simple maximum alias count:
+Set a fixed threshold for construction work performed through aliases:
 
 ```go
 loader, err := yaml.NewLoader(r,
@@ -117,7 +123,7 @@ plugin:
   loader-limits: true
 ```
 
-## Third-Party Limit Plugins
+## Third-Party Loader-Limits Plugins
 
 You can implement `yaml.LoaderLimitsPlugin` directly:
 
