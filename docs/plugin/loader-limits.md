@@ -1,6 +1,6 @@
-# Limit Plugin
+# Loader-Limits Plugin
 
-The limit plugin controls YAML loading safety checks for nesting depth and
+The loader-limits plugin controls YAML loading safety checks for nesting depth and
 alias expansion.
 The default go-yaml limits are conservative and are enabled automatically.
 Use this plugin when you need stricter limits, looser limits, or custom policy.

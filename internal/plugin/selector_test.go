@@ -75,26 +75,54 @@ func TestConfigValue(t *testing.T) {
 	}
 }
 
-func TestLoaderLimitsAliases(t *testing.T) {
-	got, err := ParseSelectors("limit=limit")
+func TestSelectorsPreservePluginNames(t *testing.T) {
+	got, err := ParseSelectors("limit=limit,loader-limits=limit")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []Selection{{API: "loader-limits", Name: "loader-limits"}}
+	want := []Selection{
+		{API: "limit", Name: "limit"},
+		{API: "loader-limits", Name: "limit"},
+	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %#v, want %#v", got, want)
 	}
-
-	plugins := map[string]any{"limit": true}
-	if err := NormalizeConfig(plugins); err != nil {
+	config, err := ConfigValue("loader-limits", "limit")
+	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(plugins, map[string]any{"loader-limits": true}) {
-		t.Fatalf("got %#v", plugins)
+	if !reflect.DeepEqual(config, map[string]any{"name": "limit"}) {
+		t.Fatalf("got %#v", config)
 	}
-	if err := NormalizeConfig(map[string]any{
-		"limit": true, "loader-limits": true,
-	}); err == nil {
-		t.Fatal("accepted both legacy and canonical loader-limits APIs")
+}
+
+func TestRegistryPreservesPluginNames(t *testing.T) {
+	registry := NewRegistry()
+	for _, tc := range []struct {
+		api, name, value string
+	}{
+		{LoaderLimitsAPI, LoaderLimitsAPI, "default"},
+		{"limit", "limit", "custom API"},
+		{LoaderLimitsAPI, "limit", "custom implementation"},
+	} {
+		value := tc.value
+		if err := registry.Register(Registration{
+			API: tc.api, Name: tc.name,
+			Factory: func(map[string]any) (any, error) { return value, nil },
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, tc := range []struct {
+		api, name, want string
+	}{
+		{LoaderLimitsAPI, LoaderLimitsAPI, "default"},
+		{"limit", "limit", "custom API"},
+		{LoaderLimitsAPI, "limit", "custom implementation"},
+	} {
+		got, err := registry.Create(tc.api, map[string]any{"name": tc.name})
+		if err != nil || got != tc.want {
+			t.Fatalf("%s=%s: got %v, %v; want %q", tc.api, tc.name, got, err, tc.want)
+		}
 	}
 }
