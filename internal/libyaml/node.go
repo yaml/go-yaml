@@ -203,9 +203,16 @@ type Node struct {
 
 	// Stream holds stream metadata (non-nil only when Kind == StreamNode).
 	Stream *Stream
+
+	// options is set by propagateLoadOptions when a Loader produces this node. It carries
+	// the loader options so that Decode can inherit them in custom UnmarshalYAML functions.
+	// Is typically nil for user-constructed nodes.
+	options *Options
 }
 
-// IsZero returns whether the node has all of its fields unset.
+// IsZero returns whether the node has all of its user-visible fields unset.
+// The unexported options field is intentionally excluded: it is set by loader
+// infrastructure and does not represent user-visible content.
 func (n *Node) IsZero() bool {
 	return n.Kind == 0 && n.Style == 0 && n.Tag == "" && n.Value == "" && n.Anchor == "" && n.Alias == nil && n.Content == nil &&
 		n.HeadComment == "" && n.LineComment == "" && n.FootComment == "" && n.Line == 0 && n.Column == 0 &&
@@ -296,8 +303,12 @@ func (n *Node) SetString(s string) {
 //
 // [yaml.Unmarshal]: https://pkg.go.dev/go.yaml.in/yaml/v4#Unmarshal
 func (n *Node) Decode(v any) (err error) {
-	d := NewConstructor(DefaultOptions)
 	defer handleErr(&err)
+	opts := DefaultOptions
+	if n.options != nil {
+		opts = n.options
+	}
+	d := NewConstructor(opts)
 	out := reflect.ValueOf(v)
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
 		out = out.Elem()
@@ -314,8 +325,10 @@ func (n *Node) Decode(v any) (err error) {
 // Explicit Alias-Data policies are rejected because composition has already
 // occurred and the policy cannot be applied to this node graph.
 //
-// This method is useful when you need to preserve options like WithKnownFields()
-// inside custom UnmarshalYAML implementations.
+// Unlike Decode, Load does not inherit options from the loader that produced
+// this node; the caller must supply all required options explicitly.
+// This method is useful when you need explicit control over options like
+// WithKnownFields() inside custom UnmarshalYAML implementations.
 //
 // Maps and pointers (to a struct, string, int, etc) are accepted as v
 // values. If an internal pointer within a struct is not initialized,
