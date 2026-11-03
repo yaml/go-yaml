@@ -5,36 +5,39 @@ on:
     branches: [ v3 ]
   pull_request:
     branches: [ v3 ]
+
+permissions:
+  contents: read
+
 jobs:
   fmt:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Go
-      uses: actions/setup-go@v5
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        persist-credentials: false
+    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7
       with:
         go-version: stable
-    - name: Run go fmt
-      run: go fmt ./...
-    - name: Check if working tree is dirty
-      run: |
-        if [[ $(git diff --stat) ]]; then
-          git --no-pager diff
-          echo 'Run go fmt ./... and commit changes.'
-          exit 1
-        fi
-  build:
+    - run: go fmt ./...
+    - name: Check formatting
+      run: git diff --exit-code
+
+  test:
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-versions: [1.21.x, 1.22.x, 1.23.x, 1.24.x]
-    runs-on: ubuntu-latest
+        go-version:
+        - stable
+        - oldstable
+        - ''  # Falls back to go-version-file below.
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Go
-      uses: actions/setup-go@v5
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
-        go-version: ${{ matrix.go-versions }}
-    - name: Run go vet
-      run: go vet ./...
-    - name: Run go test
-      run: GO111MODULE=on go test -v -race ./...
+        persist-credentials: false
+    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7
+      with:
+        go-version: ${{ matrix.go-version }}
+        # yamllint disable-line rule:line-length
+        go-version-file: go.mod  # Tests the minimum supported Go version when go-version is empty.
+    - run: go test ./...
