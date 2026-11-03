@@ -73,8 +73,19 @@ func TestInspectConfig(t *testing.T) {
 			config: "plugin: {errfmt: false}",
 		},
 		{
-			name:   "old limit API",
-			config: "plugin: {limit: true}",
+			name:    "old limit API",
+			config:  "plugin: {limit: true}",
+			invalid: true,
+		},
+		{
+			name:    "old limit implementation",
+			config:  "plugin: {loader-limits: limit}",
+			invalid: true,
+		},
+		{
+			name:    "old explicit limit implementation",
+			config:  "plugin: {loader-limits: {name: limit}}",
+			invalid: true,
 		},
 		{
 			name:    "limit API conflict",

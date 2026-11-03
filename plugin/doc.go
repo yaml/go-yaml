@@ -16,7 +16,6 @@
 //
 // Loader-limits plugin (plugin/loaderlimits), API loader-limits:
 //   - Configurable depth and alias expansion limits
-//   - The former plugin/limit module is deprecated
 //
 // Merge-Key plugin (plugin/mergekey), API merge-key:
 //   - Disable merging, combine repeated directives, and select conflict policy

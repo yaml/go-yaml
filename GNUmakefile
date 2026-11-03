@@ -116,7 +116,7 @@ $(if $(fuzz), --fuzz=FuzzEncodeFromJSON --fuzztime=$(time))\
 $(if $(opts), $(opts))\
 
 # Test rules:
-test: test-main test-internal test-cmd test-cli-build test-limit test-v3-hooks \
+test: test-main test-internal test-cmd test-cli-build test-v3-hooks \
   test-yts-all test-shell
 	@echo 'ALL TESTS PASS'
 
@@ -283,13 +283,6 @@ test-reference-parser: prepare-reference-parser
 
 test-cli-build: $(GO-DEPS)
 	go test ./util/build-cli$(TEST-OPTS)
-
-test-limit: $(PERL) $(GO-DEPS)
-	cd plugin/limit && GOWORK=off go test ./...$(TEST-OPTS)
-	cd plugin/limit && GOWORK=off go mod edit -json | \
-	  $(PERL) -0777 -ne \
-	  'exit 1 unless /"Deprecated":\s*"use .*loaderlimits instead\."/'
-	@echo 'LIMIT MODULE DEPRECATION PASS'
 
 # Real v3 types are confined to a test-only module under testdata.
 test-v3-hooks: $(GO-DEPS)

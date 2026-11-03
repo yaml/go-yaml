@@ -55,11 +55,6 @@ type LoaderLimitsPlugin interface {
 	CheckAlias(aliasCount, constructCount int) error
 }
 
-// LimitPlugin is the former name of [LoaderLimitsPlugin].
-//
-// Deprecated: use LoaderLimitsPlugin.
-type LimitPlugin = LoaderLimitsPlugin
-
 // AliasDataPlugin creates per-stream anchor and alias policies.
 type AliasDataPlugin = libyaml.AliasDataPlugin
 

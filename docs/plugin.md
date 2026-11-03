@@ -316,21 +316,6 @@ Disabling `loader-limits` leaves the core safety limits active.
 The loader-limits implementation accepts integer `depth` and `alias` settings.
 A null setting disables that one check.
 
-### Release-candidate compatibility
-
-Use `loader-limits` and `LoaderLimitsPlugin` in new code.
-For migration from earlier v4 release candidates, the `limit` configuration
-key and implementation name are accepted as deprecated aliases.
-Configuring both `limit` and `loader-limits` is an error.
-The deprecated `LimitPlugin` type alias also remains available.
-
-The previously published `go.yaml.in/yaml/v4/plugin/limit` import path is
-retained as a module deprecation marker.
-Its original implementation remains available to users pinned to an earlier
-release candidate.
-Migrate imports to `go.yaml.in/yaml/v4/plugin/loaderlimits`.
-The former `parser` name is not an alias for `yaml-parser`.
-
 ## Optional implementations
 
 ### Reference YAML-parser implementation
@@ -410,10 +395,9 @@ JSON, YAML, node, and event modes support YAML-parser plugins.
 Token and legacy loading modes reject external parsers because those modes do
 not consume YAML-parser plugin events.
 
-Run the optional module checks with:
+Run the optional reference-parser checks with:
 
 ```bash
-make test-limit
 make test-reference-parser
 ```
 

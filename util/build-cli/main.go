@@ -121,9 +121,6 @@ func inspectConfig(data []byte, external bool) (buildConfig, error) {
 		if !ok {
 			return selection, errors.New("plugin configuration must be a mapping")
 		}
-		if err := pluginreg.NormalizeConfig(plugins); err != nil {
-			return selection, err
-		}
 		for api, value := range plugins {
 			if api == pluginreg.AliasDataAPI && pluginreg.AliasDataDisabled(value) {
 				continue
@@ -151,7 +148,6 @@ func inspectConfig(data []byte, external bool) (buildConfig, error) {
 					return selection, fmt.Errorf(
 						"plugin %q name must be a non-empty string", api)
 				}
-				name = pluginreg.CanonicalName(api, name)
 			}
 			switch api {
 			case pluginreg.AliasDataAPI, pluginreg.ErrorFormatAPI, pluginreg.LoaderLimitsAPI,
@@ -227,9 +223,6 @@ func mergePluginDSL(data []byte, specs string) ([]byte, error) {
 		plugins, ok = value.(map[string]any)
 		if !ok {
 			return nil, errors.New("plugin configuration must be a mapping")
-		}
-		if err := pluginreg.NormalizeConfig(plugins); err != nil {
-			return nil, err
 		}
 	}
 	selections, err := pluginreg.ParseSelectors(specs)
