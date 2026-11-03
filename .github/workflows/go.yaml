@@ -1,0 +1,45 @@
+name: Go
+
+on:
+  push:
+    branches: [ v2 ]
+  pull_request:
+    branches: [ v2 ]
+
+permissions:
+  contents: read
+
+jobs:
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        persist-credentials: false
+    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7
+      with:
+        go-version: stable
+    - name: Check formatting
+      continue-on-error: true
+      run: |
+        go fmt ./...
+        git diff --exit-code
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version:
+        - stable
+        - oldstable
+        - ''  # Falls back to go-version-file below.
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        persist-credentials: false
+    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7
+      with:
+        go-version: ${{ matrix.go-version }}
+        # yamllint disable-line rule:line-length
+        go-version-file: go.mod  # Tests the minimum supported Go version when go-version is empty.
+    - run: go test ./...
