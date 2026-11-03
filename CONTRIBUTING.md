@@ -182,6 +182,25 @@ The repository's makefile (`GNUmakefile`) provides a number of useful targets:
 - `make distclean` cleans the project completely
 
 
+## Preparing a GitHub Release
+
+Write and review the announcement in `docs/releases/vVERSION.md`.
+After the annotated tag is available on GitHub, run from the repository root:
+
+```bash
+make release v=4.0.0
+```
+
+Makes installs the GitHub CLI automatically.
+Authenticate it with an account that can create releases in `yaml/go-yaml`.
+The target requires an unprefixed stable version, a matching remote tag, and
+nonempty release notes.
+It creates an unpublished draft and prints its URL.
+Review the rendered announcement on GitHub, then publish it as a stable release
+marked **Latest**.
+Run `make test-release` to check the target using a mock GitHub CLI.
+
+
 ## Getting Help
 
 If you need help, you can:
