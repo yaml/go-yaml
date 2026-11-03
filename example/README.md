@@ -8,52 +8,52 @@ go-yaml library.
 Each example can be run directly:
 
 ```bash
-go run example/basic_loader.go
+go run ./example/basic_loader
 ```
 
 Or from within the example directory:
 
 ```bash
-cd example
-go run basic_loader.go
+cd example/basic_loader
+go run .
 ```
 
 ## Basic Examples
 
 ### Loading YAML
 
-**`basic_loader.go`** - Simple YAML loading with Loader
+**`basic_loader/main.go`** - Simple YAML loading with Loader
 - Creates a Loader from a reader
 - Loads YAML into Go structs
 - Basic unmarshaling example
 
-**`load_into_node.go`** - Load YAML into Node representation
+**`load_into_node/main.go`** - Load YAML into Node representation
 - Uses Node type for low-level YAML access
 - Demonstrates working with the YAML AST
 
-**`multi_document_loader.go`** - Load multiple YAML documents
+**`multi_document_loader/main.go`** - Load multiple YAML documents
 - Processes multi-document streams
 - Loops through documents until EOF
 
-**`single_document_loader.go`** - Load only first document
+**`single_document_loader/main.go`** - Load only first document
 - Uses WithSingleDocument option
 - Subsequent Load() calls return EOF
 
 ### Dumping YAML
 
-**`basic_dumper.go`** - Simple YAML dumping with Dumper
+**`basic_dumper/main.go`** - Simple YAML dumping with Dumper
 - Creates a Dumper to a writer
 - Dumps Go structs to YAML
 
-**`multi_document_dumper.go`** - Dump multiple YAML documents
+**`multi_document_dumper/main.go`** - Dump multiple YAML documents
 - Creates a multi-document stream
 - Multiple Dump() calls separated by `---`
 
-**`dumper_with_indent.go`** - Custom indentation
+**`dumper_with_indent/main.go`** - Custom indentation
 - Uses WithIndent option
 - Demonstrates formatting control
 
-**`dumper_indent_comparison.go`** - Compare different indent levels
+**`dumper_indent_comparison/main.go`** - Compare different indent levels
 - Shows output with 2, 4, and 8-space indentation
 
 ## Options System Examples
@@ -61,14 +61,14 @@ go run basic_loader.go
 **`with_v4_option.go`** - Using v4 option presets
 - Demonstrates yaml.WithV4Defaults()
 - Shows v4 defaults (2-space indent)
-- Compares with default (v3) output
+- Compares v3 presets with v4 defaults
 
 **`with_v4_override.go`** - Overriding option presets
 - Combines version presets with individual options
 - Demonstrates left-to-right option application
 - Shows how later options override earlier ones
 
-**`multiple_options_loader.go`** - Combining multiple options
+**`multiple_options_loader/main.go`** - Combining multiple options
 - Uses WithSingleDocument and WithKnownFields together
 - Demonstrates strict field checking
 - Shows error handling for unknown fields
@@ -77,19 +77,19 @@ go run basic_loader.go
 
 **`node_load_strict_unmarshaler/main.go`** - Strict field checking in custom
 unmarshalers
-- Solves Issue #460 - preserving options in custom UnmarshalYAML
+- Applies strict checking explicitly inside custom UnmarshalYAML
 - Uses node.Load() with WithKnownFields()
 - Demonstrates proper error handling for unknown fields
 
 **`node_dump_with_options/main.go`** - Encoding nodes with different options
-- Shows node.Dump() with various formatting options
-- Compares default, v3, and custom indent styles
-- Demonstrates explicit start markers
+- Builds nodes with stored quoting and flow styles
+- Applies indentation when serializing the nodes
+- Demonstrates explicit start markers at serialization time
 
 **`node_load_decode_comparison/main.go`** - Compare Decode() vs Load()
 - Side-by-side comparison of old and new approaches
-- Shows how node.Decode() loses options
-- Demonstrates why node.Load() solves Issue #460
+- Shows that node.Decode() uses its own defaults
+- Demonstrates passing WithKnownFields() to node.Load()
 
 **`node_programmatic_build/main.go`** - Build YAML programmatically
 - Build complex Node structures with options
@@ -98,7 +98,7 @@ unmarshalers
 
 ## Complete Demo
 
-**`loader_dumper_demo.go`** - Comprehensive feature demonstration
+**`loader_dumper_demo/main.go`** - Comprehensive feature demonstration
 - Covers Loader, Dumper, and options
 - Multiple examples in one file
 - Good overview of library capabilities
@@ -148,5 +148,5 @@ dumper, _ := yaml.NewDumper(writer,
 
 - See the [main package documentation](https://pkg.go.dev/go.yaml.in/yaml/v4)
   for API reference
-- Run `make doc-serve` from the project root to view local documentation
+- Run `make doc-http` from the project root to view local documentation
 - Check individual example source code for detailed comments

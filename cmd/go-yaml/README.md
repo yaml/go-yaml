@@ -120,7 +120,7 @@ options.
 ## Plugin builds
 
 The ordinary command contains the built-in `go-yaml` parser, loader-limits,
-tab-indent, alias-data, and error-format plugins.
+tab-indent, alias-data, merge-key, and error-format plugins.
 Alias-Data preserves ordinary document-scoped aliases by default.
 An explicit `--plugin=alias-data` enables stream anchors.
 Use `plugin: {alias-data: {stream: false}}` for document scope or
@@ -196,9 +196,12 @@ An empty configuration mapping selects ordinary defaults while leaving compiled
 implementations available to `--plugin`.
 
 A plugin value may be a mapping, short string, or boolean.
-`true` uses the API default, and `false` disables that API.
-Mappings can use `disable: true` to retain settings without selecting the
-plugin.
+`true` uses the API default.
+For optional plugins, `false` or a mapping with `disable: true` leaves the plugin
+unselected.
+For Merge-Key, disabling turns off merging; for Alias-Data, it rejects alias
+references.
+Disabling loader-limits leaves the core safety limits active.
 Null plugin values are invalid.
 Versions may be entered with or without `v`, but documentation and Git tags use
 the prefix.
@@ -230,6 +233,18 @@ make cli \
   PLUGIN-PACKAGE=example.org/custom-parser/goyaml@v1.2.3 \
   PLUGIN=yaml-parser=custom
 ```
+
+For example, build the published JSON-comments adapter, then select it at
+runtime:
+
+```bash
+make cli \
+  PLUGIN-PACKAGE=github.com/yamlstar/yamlstar-plugin-parser-json-comments/goyaml@v0.1.1
+./go-yaml --plugin=yaml-parser=json-comments -J - <<<'a: b // c'
+```
+
+A native build reports an unknown implementation for `json-comments`.
+Runtime selection cannot add packages to that executable.
 
 Package versions may include release suffixes such as `v1.2.3-rc.1`.
 Local paths, unversioned packages, and `@latest` are not supported.

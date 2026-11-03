@@ -30,11 +30,10 @@ data, _ := yaml.Dump(&config, yaml.WithIndent(4))  // v4 with custom indent
 The names `Dump` and `Load` are from the YAML specification and also the most
 common names used for these actions in actual YAML implementations.
 
-**Note**: Marshal, Unmarshal, Encode and Decode are not part of the standard
-YAML vocabulary, but the are still fitting because go-yaml v2 and v3 did not
-provide a full Dump and Load stack.
-Those involve the Represent (for Dump) and Construct (for Load) YAML stack
-stages and v4 will offer those (optionally) for Dump and Load.
+The Load pipeline composes nodes, resolves tags, and constructs Go values.
+The Dump pipeline represents Go values as nodes, removes inferable tags, and
+serializes them.
+Classic APIs use these pipelines with compatibility settings.
 
 ### Classic API
 
@@ -44,7 +43,7 @@ interface:
 - They work **without options** and use **v3 semantics** (4-space
   indent, non-compact sequences)
 - They're perfect for simple use cases and upgrading existing v3 code
-- For new code, use `Dump`/`Load` instead—they can replicate the same behavior
+- For new code, use `Dump`/`Load` instead - they can replicate the same behavior
   with added flexibility
 
 ### Flexibility
@@ -60,12 +59,15 @@ With `Dump` and `Load`, you can choose your starting point:
   yaml.WithExplicitStart())`
 
 This means `Dump` and `Load` default to modern v4 formatting, but can easily
-replicate what `Marshal`/`Unmarshal` do, while also giving you complete control
-when you need it.
+select compatibility defaults while giving you control when you need it.
+Presets do not reproduce every legacy behavior.
+`Marshal` disables wrapping; use `WithLineWidth(-1)` after `WithV3Defaults()`
+when matching it.
+`Load` validates trailing documents, unlike `Unmarshal`.
 
 ## API Overview
 
-go-yaml provides five main API functions for dumping and loading YAML:
+go-yaml provides these entry points for dumping and loading YAML:
 
 | Reader | Writer | Configurable | Use Case |
 |--------|--------|--------------|----------|
@@ -172,7 +174,10 @@ at a time with custom configuration.
 Create a dumper that writes to any `io.Writer`:
 
 ```go
-file, _ := os.Create("output.yaml")
+file, err := os.Create("output.yaml")
+if err != nil {
+    log.Fatal(err)
+}
 defer file.Close()
 
 dumper, err := yaml.NewDumper(file, yaml.WithIndent(2))
@@ -208,7 +213,10 @@ This call can be deferred.**
 Create a loader that reads from any `io.Reader`:
 
 ```go
-file, _ := os.Open("config.yaml")
+file, err := os.Open("config.yaml")
+if err != nil {
+    log.Fatal(err)
+}
 defer file.Close()
 
 loader, err := yaml.NewLoader(file, yaml.WithKnownFields())
@@ -225,7 +233,10 @@ if err := loader.Load(&config); err != nil {
 Process multi-document streams:
 
 ```go
-loader, _ := yaml.NewLoader(reader)
+loader, err := yaml.NewLoader(reader)
+if err != nil {
+    log.Fatal(err)
+}
 
 for {
     var doc map[string]any
@@ -271,11 +282,12 @@ data, err := yaml.Marshal(&config)
 // enabled: true
 ```
 
-**Equivalent using Dump with v3 semantics to match Marshal:**
+**Using Dump with classic Marshal formatting settings:**
 
 ```go
 config := Config{Name: "myapp", Port: 8080, Enabled: true}
-data, err := yaml.Dump(&config, yaml.WithV3Defaults())
+data, err := yaml.Dump(&config,
+    yaml.WithV3Defaults(), yaml.WithLineWidth(-1))
 // Same output as Marshal (4-space indent, non-compact)
 ```
 
@@ -293,7 +305,7 @@ err := yaml.Unmarshal(yamlData, &config)
 fmt.Println(config.Name)  // "myapp"
 ```
 
-**Equivalent using Load with v3 semantics to match Unmarshal:**
+**Using Load with v3 defaults for a single document:**
 
 ```go
 var config Config
@@ -314,7 +326,10 @@ Simple functions for encoding/decoding streams.
 Encode values to an `io.Writer`:
 
 ```go
-file, _ := os.Create("output.yaml")
+file, err := os.Create("output.yaml")
+if err != nil {
+    log.Fatal(err)
+}
 defer file.Close()
 
 encoder := yaml.NewEncoder(file)
@@ -334,18 +349,23 @@ name: second
 name: third
 ```
 
-**Equivalent using NewDumper with v3 semantics to match Encoder:**
+**Using NewDumper with classic Encoder output settings:**
 
 ```go
-file, _ := os.Create("output.yaml")
+file, err := os.Create("output.yaml")
+if err != nil {
+    log.Fatal(err)
+}
 defer file.Close()
 
-dumper, _ := yaml.NewDumper(file, yaml.WithV3Defaults())
+dumper, _ := yaml.NewDumper(file,
+    yaml.WithV3Defaults(), yaml.WithPlugin(errorformatv4.Must()))
 dumper.Dump(&doc1)
 dumper.Dump(&doc2)
 dumper.Dump(&doc3)
 dumper.Close()
-// Same output as NewEncoder (4-space indent, non-compact)
+// Import errorformatv4 from go.yaml.in/yaml/v4/plugin/errorformat/v4.
+// NewEncoder uses v3 output settings and v4 error formatting.
 ```
 
 ### Decode
@@ -353,7 +373,10 @@ dumper.Close()
 Decode values from an `io.Reader`:
 
 ```go
-file, _ := os.Open("config.yaml")
+file, err := os.Open("config.yaml")
+if err != nil {
+    log.Fatal(err)
+}
 defer file.Close()
 
 decoder := yaml.NewDecoder(file)
@@ -374,7 +397,10 @@ for {
 **Equivalent using NewLoader with v3 semantics to match Decoder:**
 
 ```go
-file, _ := os.Open("config.yaml")
+file, err := os.Open("config.yaml")
+if err != nil {
+    log.Fatal(err)
+}
 defer file.Close()
 
 loader, _ := yaml.NewLoader(file, yaml.WithV3Defaults())
@@ -411,7 +437,7 @@ yaml.NewDumper(w,
 )
 
 yaml.NewLoader(r,
-    yaml.WithKnownFields(),          // Strict field checking (defaults to true)
+    yaml.WithKnownFields(),          // Reject unknown fields (off by default)
     yaml.WithSingleDocument(),       // Only load first doc
     yaml.WithUniqueKeys(),           // Error on duplicate keys (defaults to true)
 )
@@ -463,7 +489,7 @@ if err != nil {
 data, err := yaml.Dump(&config, opts)
 ```
 
-See [Options Guide](options.md) for complete option reference.
+See [Options Guide](../options.md) for complete option reference.
 
 ## Node-Level Load and Dump
 
@@ -473,7 +499,10 @@ When working with the Node API directly, you can also use options through the
 ### Node.Load() - Load with Options
 
 The `Node.Load()` method is particularly useful inside custom `UnmarshalYAML`
-implementations where you need to preserve options like `WithKnownFields()`.
+implementations that need options such as `WithKnownFields()`.
+Each call starts with fresh defaults, independently of the outer loader.
+Pass construction options explicitly; parser options cannot affect a graph
+that has already been composed.
 
 ```go
 type Config struct {
@@ -483,14 +512,14 @@ type Config struct {
 
 func (c *Config) UnmarshalYAML(node *yaml.Node) error {
     type plain Config
-    // Use Load to preserve KnownFields option
+    // Enable strict checking explicitly for this construction
     return node.Load((*plain)(c), yaml.WithKnownFields())
 }
 ```
 
-**Solves Issue #460:** Before `node.Load()`, calling `node.Decode()` in custom
-unmarshalers would create a new decoder without options, losing strict field
-validation.
+`node.Decode()` uses its own compatibility defaults and cannot accept options.
+`node.Load()` lets the hook explicitly enable strict field checking.
+Neither method inherits the calling loader's options.
 
 **Usage example:**
 
@@ -517,13 +546,13 @@ trees programmatically:
 config := Config{Name: "myapp", Port: 8080}
 
 var node yaml.Node
-err := node.Dump(&config,
-    yaml.WithIndent(2),
-    yaml.WithExplicitStart(),
-)
+err := node.Dump(&config)
+if err != nil {
+    return err
+}
 
-// Now marshal the node to YAML
-data, _ := yaml.Marshal(&node)
+// Apply output formatting when serializing the node to YAML.
+data, err := yaml.Dump(&node, yaml.WithIndent(2), yaml.WithExplicitStart())
 fmt.Println(string(data))
 // Output:
 // ---
@@ -531,11 +560,16 @@ fmt.Println(string(data))
 // port: 8080
 ```
 
+A node retains scalar and collection styles, but it does not store output
+indentation or document-marker settings.
+Apply those settings again when serializing the node.
+
 **When to use:**
+
 - Custom unmarshalers that need strict validation (`node.Load()`)
 - Building Node trees with specific formatting (`node.Dump()`)
 - Programmatic YAML manipulation with options
-- Preserving options through the full load/dump pipeline
+- Applying options explicitly at each relevant stage
 
 ## Examples
 
@@ -550,7 +584,7 @@ func LoadConfig(filename string) (*Config, error) {
 
     var config Config
     err = yaml.Load(data, &config,
-        yaml.WithKnownFields(),       // Catch typos (defaults to true)
+        yaml.WithKnownFields(),       // Reject unknown fields (off by default)
     )
     return &config, err
 }
@@ -570,7 +604,10 @@ func GeneratePipeline(stages []Stage) ([]byte, error) {
 
 ```go
 func ProcessYAMLLogs(reader io.Reader) error {
-    loader, _ := yaml.NewLoader(reader)
+    loader, err := yaml.NewLoader(reader)
+    if err != nil {
+        return err
+    }
 
     for {
         var entry LogEntry
@@ -593,9 +630,14 @@ func MergeConfigs(files []string) ([]byte, error) {
     var allDocs []any
 
     for _, f := range files {
-        data, _ := os.ReadFile(f)
+        data, err := os.ReadFile(f)
+        if err != nil {
+            return nil, err
+        }
         var docs []any
-        _ = yaml.Load(data, &docs, yaml.WithAllDocuments())
+        if err := yaml.Load(data, &docs, yaml.WithAllDocuments()); err != nil {
+            return nil, err
+        }
         allDocs = append(allDocs, docs...)
     }
 
@@ -605,6 +647,6 @@ func MergeConfigs(files []string) ([]byte, error) {
 
 ## See Also
 
-- [Options Guide](options.md) - Complete option reference
+- [Options Guide](../options.md) - Complete option reference
 - [API Documentation](https://pkg.go.dev/go.yaml.in/yaml/v4) - Full API
   reference

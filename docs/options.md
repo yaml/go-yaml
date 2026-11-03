@@ -21,8 +21,13 @@ That's where options come in.
 
 ## Individual Options
 
-**Note:** All options work with both package-level functions (`Load`, `Dump`,
-`NewLoader`, `NewDumper`) and node-level methods (`node.Load()`, `node.Dump()`).
+**Note:** Options affect the stages that use them.
+Loading options do not configure dumping, and dumping options do not configure
+loading.
+`node.Load()` constructs Go values from an already composed graph, so parser
+settings do not apply and explicit Alias-Data policies are rejected.
+`node.Dump()` builds a node; apply indentation and document-marker options again
+when serializing that node to YAML.
 
 You can tweak specific settings with individual option functions:
 
@@ -38,8 +43,9 @@ dumper, _ := yaml.NewDumper(writer,
 #### Dumper (Encoding) Options
 
 **Boolean Options:** All boolean options support variadic arguments.
-Call without arguments to enable (defaults to `true`), or pass `false` to
-explicitly disable:
+Call without arguments to enable, or pass `false` to disable.
+This argument shorthand does not indicate whether the option is enabled in the
+library defaults:
 
 ```go
 yaml.WithExplicitStart()       // Enable (same as WithExplicitStart(true))
@@ -98,14 +104,14 @@ yaml.NewDumper(w,
 **Example:**
 
 ```yaml
-# compact=true (v4 default)
+# WithIndent(4), compact=true
 items:
   - name: first
     value: 1
   - name: second
     value: 2
 
-# compact=false (v3 style)
+# WithIndent(4), compact=false (v3 preset)
 items:
     - name: first
       value: 1
@@ -113,13 +119,16 @@ items:
       value: 2
 ```
 
+With the v4 defaults (`WithIndent(2)` and compact sequences), the `-` indicator
+is not indented beneath `items:`.
+
 ##### `yaml.WithLineWidth(width int)`
 
 Sets the preferred line width for wrapping long strings.
 Use -1 or 0 for unlimited width.
 
 ```go
-// Wrap at 40 characters
+// Prefer wrapping at 40 characters
 yaml.NewDumper(w, yaml.WithLineWidth(40))
 
 // Unlimited width (no wrapping)
@@ -130,13 +139,15 @@ yaml.NewDumper(w, yaml.WithLineWidth(-1))
 
 ```yaml
 # LineWidth=40
-description: |
-  This is a long description
-  that wraps to multiple lines.
+description: This is a long description that
+  stays on one line
 
 # LineWidth=-1
 description: This is a long description that stays on one line
 ```
+
+Wrapping preserves the scalar value; it does not insert content newlines.
+Long words may exceed the preferred width.
 
 **Default:** 80 characters
 
@@ -159,7 +170,7 @@ yaml.NewDumper(w, yaml.WithUnicode(false))
 name: café
 
 # WithUnicode(false)
-name: "caf\u00e9"
+name: "caf\xE9"
 ```
 
 **Use case:** Set to false for ASCII-only output required by legacy systems.
@@ -168,8 +179,14 @@ name: "caf\u00e9"
 
 ##### `yaml.WithCanonical(...bool)`
 
-Forces strictly canonical YAML output with explicit tags.
-Primarily for debugging and spec testing.
+Selects the emitter's canonical layout, with explicit document starts, flow
+collections, and quoted scalars.
+Tags still depend on the node graph and desolver; this option alone does not
+force an explicit tag on every value.
+Primarily for debugging.
+In this mode, an integer such as `30` can reload as a string because its tag
+was removed before the emitter quoted it.
+Use ordinary output for type-preserving round trips.
 
 ```go
 yaml.NewDumper(w, yaml.WithCanonical(true))
@@ -178,16 +195,17 @@ yaml.NewDumper(w, yaml.WithCanonical(true))
 **Example:**
 
 ```yaml
-# Normal output
+# Normal output for a struct with name and age fields
 name: John
 age: 30
 
-# Canonical output
-!!map {
-  ? !!str "name"
-  : !!str "John",
-  ? !!str "age"
-  : !!int "30",
+# WithCanonical(true)
+---
+{
+  ? "name"
+  : "John",
+  ? "age"
+  : "30",
 }
 ```
 
@@ -276,20 +294,23 @@ yaml.NewDumper(w, yaml.WithFlowSimpleCollections())
 # WithFlowSimpleCollections(true)
 config:
   tags: [web, api, prod]
-  metadata: {version: 1.0, author: admin}
+  metadata: {version: v1, author: admin}
   nested:  # Not simple - has nested collections
     items:
-      - name: foo
+    - {name: foo}
 
 # WithFlowSimpleCollections(false) - default
 config:
   tags:
-    - web
-    - api
-    - prod
+  - web
+  - api
+  - prod
   metadata:
-    version: 1.0
+    version: v1
     author: admin
+  nested:
+    items:
+    - name: foo
 ```
 
 **Use case:** Compact output for simple data structures, JSON-like formatting.
@@ -303,6 +324,7 @@ Controls which type of quotes to use when quoting is required by the YAML spec.
 **Important:** This option only affects strings that *require* quoting. Plain strings that don't need quoting remain unquoted regardless of this setting.
 
 Quoting is required for:
+
 - Strings that look like other YAML types (true, false, null, 123, etc.)
 - Strings with leading/trailing whitespace
 - Strings containing special YAML syntax characters
@@ -353,8 +375,9 @@ spaces: ' hello'   # Leading space, gets single quotes
 #### Loader (Decoding) Options
 
 **Boolean Options:** All boolean options support variadic arguments.
-Call without arguments to enable (defaults to `true`), or pass `false` to
-explicitly disable:
+Call without arguments to enable, or pass `false` to disable.
+This argument shorthand does not indicate whether the option is enabled in the
+library defaults:
 
 ```go
 yaml.WithKnownFields()       // Enable (same as WithKnownFields(true))
@@ -383,6 +406,9 @@ err := loader.Load(&config)
 ```
 
 **Great for:** Catching typos in config files, enforcing strict schemas.
+
+**Default:** false.
+Unknown struct fields are ignored unless strict checking is enabled.
 
 ##### `yaml.WithSingleDocument(...bool)`
 
@@ -448,6 +474,48 @@ override security-critical keys.
 
 **Default:** true (enabled)
 
+##### `yaml.WithAllDocuments(...bool)`
+
+Package-level `Load` can load every document into a slice:
+
+```go
+var docs []Config
+err := yaml.Load(input, &docs, yaml.WithAllDocuments())
+```
+
+Package-level `Dump` can write a slice as a document stream:
+
+```go
+data, err := yaml.Dump(docs, yaml.WithAllDocuments())
+```
+
+The loading target must be a pointer to a slice; the dumping input must be a
+slice.
+An empty stream loads as an empty slice in this mode.
+For incremental processing, use `NewLoader` or `NewDumper` and call their
+methods once per document.
+
+**Default:** false.
+
+##### `yaml.WithStreamNodes(...bool)`
+
+When loading into `yaml.Node`, include stream boundary nodes alongside document
+nodes to inspect encoding and directives:
+
+```go
+loader, err := yaml.NewLoader(reader, yaml.WithStreamNodes())
+if err != nil {
+    return err
+}
+```
+
+Read nodes until `io.EOF`.
+Stream nodes carry metadata in `Node.Stream`; ordinary document nodes carry
+content in `Node.Content`.
+See the [migration guide](v3-to-v4-migration.md#stream-nodes) for a full loop.
+
+**Default:** false.
+
 ## Version-Specific Option Presets
 
 Instead of setting options one by one, you can use version presets that match
@@ -462,9 +530,10 @@ go-yaml v2, v3, or v4 behavior.
 | Line Width            | 80      | 80      | 80     |
 | Unicode               | Yes     | Yes     | Yes    |
 | Unique Keys           | Yes     | Yes     | Yes    |
+| Known Fields          | No      | No      | No     |
 | Quote Preference      | Legacy  | Legacy  | Single |
 
-**Note:** v4 uses compact sequences (modern YAML standard) while v2/v3 preserve
+**Note:** v4 uses compact sequences while the v2/v3 presets select
 the historical non-compact behavior for backward compatibility.
 
 ### Using v2 Options
@@ -554,12 +623,19 @@ dumper, _ := yaml.NewDumper(writer, opts)
 - `explicit-start` - Boolean
 - `explicit-end` - Boolean
 - `flow-simple-coll` - Boolean
-- `quote-preference` - String (single, double, legacy)
 - `known-fields` - Boolean
 - `single-document` - Boolean
 - `unique-keys` - Boolean
 
-**Any field not in your config uses the version's defaults.**
+Unspecified fields leave earlier options unchanged.
+Without earlier overrides, they use the defaults.
+To clear an earlier single-document setting, apply `WithSingleDocument(false)`
+after the parsed configuration.
+`quote-preference` is not accepted by `OptsYAML`; use `WithQuotePreference` in
+Go.
+The CLI can select quote behavior through the `v2`, `v3`, and `v4` presets.
+Stream-node and all-document processing are selected through Go options or
+the CLI's `-o` flags, rather than through `OptsYAML`.
 
 ## Real-World Examples
 
@@ -607,7 +683,9 @@ func GenerateCI(config *CIConfig) ([]byte, error) {
     if err := dumper.Dump(config); err != nil {
         return nil, err
     }
-    dumper.Close()
+    if err := dumper.Close(); err != nil {
+        return nil, err
+    }
 
     return buf.Bytes(), nil
 }
@@ -631,9 +709,16 @@ func FormatYAML(input []byte, userPrefs string) ([]byte, error) {
 
     // Reformat with user preferences
     var buf bytes.Buffer
-    dumper, _ := yaml.NewDumper(&buf, opts)
-    dumper.Dump(&node)
-    dumper.Close()
+    dumper, err := yaml.NewDumper(&buf, opts)
+    if err != nil {
+        return nil, err
+    }
+    if err := dumper.Dump(&node); err != nil {
+        return nil, err
+    }
+    if err := dumper.Close(); err != nil {
+        return nil, err
+    }
 
     return buf.Bytes(), nil
 }
@@ -644,7 +729,7 @@ func FormatYAML(input []byte, userPrefs string) ([]byte, error) {
 ```go
 func ProcessMultiDocs(reader io.Reader) error {
     loader, err := yaml.NewLoader(reader,
-        yaml.WithKnownFields(false),  // Allow unknown fields (override default)
+        yaml.WithKnownFields(false),  // Allow unknown fields (the default)
     )
     if err != nil {
         return err
@@ -718,7 +803,7 @@ format.
 
 ## See Also
 
-- [Dumping and Loading API Guide](dump-load-api.md) - Complete guide to Dump/Load APIs
+- [Dumping and Loading API Guide](dev/dump-load-api.md) - Complete guide to Dump/Load APIs
 - [API Documentation](https://pkg.go.dev/go.yaml.in/yaml/v4) - Full API
   reference
 - [Examples](../example/README.md) - Runnable code examples

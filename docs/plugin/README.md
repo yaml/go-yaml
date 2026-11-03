@@ -2,7 +2,8 @@
 
 go-yaml plugins customize specific parts of YAML loading and dumping while
 keeping the main API stable.
-Plugins are registered with `yaml.WithPlugin(...)`.
+Pass plugin values with `yaml.WithPlugin(...)`.
+Named factories for configuration use `yaml.RegisterPlugin` instead.
 
 ## Available Plugins
 
@@ -12,15 +13,17 @@ Plugins are registered with `yaml.WithPlugin(...)`.
 | [Alias-Data](alias-data.md) | `go.yaml.in/yaml/v4/plugin/aliasdata` | You need external anchor values, stream scope, or rejection of aliases. |
 | [Loader-Limits](loader-limits.md) | `go.yaml.in/yaml/v4/plugin/loaderlimits` | You need to relax, tighten, or replace YAML depth and alias safety limits. |
 | [Error-format v3](error-format-v3.md) | `go.yaml.in/yaml/v4/plugin/errorformat/v3` | You need v3-compatible error strings like `yaml: line 2: message`. |
-| [Error-format v4](error-format-v4.md) | `go.yaml.in/yaml/v4/plugin/errorformat/v4` | You need the v4 error format, different position text, or custom error templates. |
+| [Error-format v4](error-format-v4.md) | `go.yaml.in/yaml/v4/plugin/errorformat/v4` | You need the v4 error format, different position text, or a starting point for custom formatters. |
+| [Tab-indent](../plugin.md#tab-indent-plugin) | `go.yaml.in/yaml/v4/plugin/tabindent` | You need tab-aware input or output indentation. |
+| [Reference YAML-parser](../plugin.md#reference-yaml-parser-implementation) | `go.yaml.in/yaml/v4/plugin/yamlparser/reference` | You need the optional reference parser in place of the built-in parser. |
 
-## Registering Plugins
+## Selecting Plugins
 
 ```go
 loader, err := yaml.NewLoader(r, yaml.WithPlugin(pluginValue))
 ```
 
-Multiple plugins may be registered at once:
+Multiple plugins may be passed at once:
 
 ```go
 loader, err := yaml.NewLoader(r,

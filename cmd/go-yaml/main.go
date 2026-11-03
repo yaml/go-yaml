@@ -791,8 +791,8 @@ It reads YAML input text from stdin or a file and writes results to stdout.
 
 The go-yaml API has three sets of functions for reading/writing YAML:
   - Load/Dump (default, new API with options support - v4 defaults)
-  - Decode/Encode (deprecated, no options)
-  - Unmarshal/Marshal (deprecated, no options)
+  - Decode/Encode (classic, no options)
+  - Unmarshal/Marshal (classic, no options)
 
 
 Usage:
@@ -828,10 +828,10 @@ Formatting Options:
 
 API Selection Options:
   --plugin=SPEC    Select plugins with API[=NAME][@VERSION] syntax
-  --unmarshal      Use Unmarshal API for input (deprecated, v3 defaults)
-  --decode         Use Decode API for input (deprecated)
-  --marshal        Use Marshal API for output (deprecated)
-  --encode         Use Encode API for output (deprecated)
+  --unmarshal      Use Unmarshal API for input (classic, v3 defaults)
+  --decode         Use Decode API for input (classic)
+  --marshal        Use Marshal API for output (classic)
+  --encode         Use Encode API for output (classic)
 
 Configuration:
   -C, --config     Load options from YAML config file

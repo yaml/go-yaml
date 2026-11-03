@@ -1,8 +1,7 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-// Node Dump With Options demonstrates dumping Nodes with custom options.
-
+// Node Dump With Options demonstrates node styles and output formatting.
 package main
 
 import (
@@ -12,59 +11,43 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-type ServerConfig struct {
-	Host string `yaml:"host"`
-	Port int    `yaml:"port"`
-	TLS  bool   `yaml:"tls"`
-}
-
 func main() {
-	config := ServerConfig{
-		Host: "localhost",
-		Port: 8080,
-		TLS:  true,
+	config := map[string]any{
+		"service": map[string]any{
+			"host": "localhost",
+			"port": 8080,
+		},
+		"enabled": "true",
 	}
 
-	fmt.Println("=== Node.Dump() with Different Options ===")
-
-	// Example 1: Default (v4 style - 2-space indent, compact)
-	var node1 yaml.Node
-	if err := node1.Dump(&config); err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("1. Default (v4):")
-	printNode(&node1)
-
-	// Example 2: With 4-space indent
-	var node2 yaml.Node
-	if err := node2.Dump(&config, yaml.WithIndent(4)); err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("2. With 4-space indent:")
-	printNode(&node2)
-
-	// Example 3: With v3 preset
-	var node3 yaml.Node
-	if err := node3.Dump(&config, yaml.WithV3Defaults()); err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("3. With V3 preset:")
-	printNode(&node3)
-
-	// Example 4: Multiple options combined
-	var node4 yaml.Node
-	if err := node4.Dump(&config,
-		yaml.WithIndent(2),
-		yaml.WithExplicitStart(),
+	// Quote styles are stored on the nodes built by Node.Dump.
+	var node yaml.Node
+	if err := node.Dump(config,
+		yaml.WithQuotePreference(yaml.QuoteDouble),
 	); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("4. With explicit start marker:")
-	printNode(&node4)
+
+	fmt.Println("1. Stored double-quoted style, default output indentation:")
+	printNode(&node)
+
+	// Indentation and document markers must be set at serialization time.
+	fmt.Println("2. Same node, 4-space indentation and explicit start:")
+	printNode(&node, yaml.WithIndent(4), yaml.WithExplicitStart())
+
+	// Collection styles can also be stored on nodes.
+	var flowNode yaml.Node
+	if err := flowNode.Dump(config,
+		yaml.WithFlowSimpleCollections(),
+	); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("3. Flow style for the simple service mapping:")
+	printNode(&flowNode)
 }
 
-func printNode(node *yaml.Node) {
-	data, err := yaml.Dump(node)
+func printNode(node *yaml.Node, opts ...yaml.Option) {
+	data, err := yaml.Dump(node, opts...)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -16,24 +16,24 @@ type Config struct {
 	Port int    `yaml:"port"`
 }
 
-// DecodeUnmarshaler uses node.Decode() (loses options)
+// DecodeUnmarshaler uses node.Decode() (compatibility defaults)
 type DecodeUnmarshaler struct {
-	Config
+	Config `yaml:",inline"`
 }
 
 func (d *DecodeUnmarshaler) UnmarshalYAML(node *yaml.Node) error {
 	type plain DecodeUnmarshaler
-	return node.Load((*plain)(d)) // Options lost!
+	return node.Decode((*plain)(d)) // Strict checking is off by default.
 }
 
-// LoadUnmarshaler uses node.Load() (preserves options)
+// LoadUnmarshaler uses node.Load() (explicit strict checking)
 type LoadUnmarshaler struct {
-	Config
+	Config `yaml:",inline"`
 }
 
 func (l *LoadUnmarshaler) UnmarshalYAML(node *yaml.Node) error {
 	type plain LoadUnmarshaler
-	return node.Load((*plain)(l), yaml.WithKnownFields()) // Options preserved!
+	return node.Load((*plain)(l), yaml.WithKnownFields()) // Enable checking explicitly.
 }
 
 func main() {
@@ -47,7 +47,7 @@ unknown: field
 	fmt.Println("=== Comparing node.Decode() vs node.Load() ===")
 
 	// Test 1: Using node.Decode() - unknown field ignored
-	fmt.Println("1. Using node.Decode() (old way):")
+	fmt.Println("1. Using node.Decode() (compatibility defaults):")
 	var config1 DecodeUnmarshaler
 	err := yaml.Load([]byte(yamlData), &config1)
 	if err != nil {
@@ -60,7 +60,7 @@ unknown: field
 	fmt.Println()
 
 	// Test 2: Using node.Load() with WithKnownFields() - unknown field rejected
-	fmt.Println("2. Using node.Load() with WithKnownFields() (new way):")
+	fmt.Println("2. Using node.Load() with WithKnownFields() (explicit checking):")
 	var config2 LoadUnmarshaler
 	err = yaml.Load([]byte(yamlData), &config2)
 	if err != nil {

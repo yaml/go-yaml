@@ -97,7 +97,7 @@ The Reader handles UTF-8, UTF-16LE, and UTF-16BE encoding.
 Lexical units produced by the Scanner.
 Examples: `BLOCK_MAPPING_START_TOKEN`, `SCALAR_TOKEN`, `KEY_TOKEN`, `VALUE_TOKEN`, `ANCHOR_TOKEN`.
 
-Tokens have no nested structure — they're a flat stream that describes
+Tokens have no nested structure;  they're a flat stream that describes
 YAML syntax at the character level (indentation, indicators, scalars).
 
 ### Events
@@ -134,6 +134,8 @@ This is what application code works with.
 ### 1. Reader (Raw Bytes → Code Points)
 
 **File**: `internal/libyaml/reader.go`
+
+The reader and scanner use methods and fields on the shared `Parser` type.
 
 The Reader handles input encoding:
 - Detects encoding (UTF-8, UTF-16LE, UTF-16BE) via BOM or heuristics
@@ -175,8 +177,7 @@ The Parser applies YAML grammar:
 - Validates structure according to YAML grammar rules
 - Produces a cleaner event stream
 
-**This is what "parsing" actually means** — applying grammar rules to a
-token stream.
+Parsing applies grammar rules to a token stream.
 
 **Example events** for `foo: bar`:
 - `STREAM_START_EVENT`
@@ -252,7 +253,8 @@ The Desolver removes inferable tags (NEW in v4, inverse of Resolver):
 - Removes tags that can be inferred during parsing
 - Preserves explicit tags when content would be misresolved
 - Produces cleaner YAML output without unnecessary type annotations
-- **Example:** `!!str "hello"` becomes `hello`, but `!!str "42"` keeps the tag
+- **Example:** a string tagged `!!str` with value `hello` becomes `hello`;
+  a string with value `42` is quoted to preserve its type
 
 ### 3. Serializer (Nodes → Events)
 
@@ -261,7 +263,7 @@ The Desolver removes inferable tags (NEW in v4, inverse of Resolver):
 The Serializer linearizes the node tree:
 - Walks the node tree depth-first
 - Produces a stream of events
-- Handles anchor assignment for sharing/circular references
+- Emits anchors and aliases represented explicitly in the node graph
 - Determines whether collections should use flow style
 - Pushes events to the Emitter
 
@@ -303,9 +305,12 @@ The `go-yaml` CLI tool leverages this to show tokens, events, and nodes.
 
 ### Extensibility
 
-A plugin system allows hooking into any stage to customize behavior.
-Want custom tag resolution? Hook the Resolver.
-Want custom output formatting? Hook the Emitter.
+Public plugins customize YAML parsing, loader limits, merge keys, anchor
+lookup, tab indentation, and error presentation.
+There are no public resolver or emitter plugin interfaces.
+Use options, node styles, and custom marshalers or unmarshalers for additional
+control.
+See the [plugin guide](../plugin.md) for supported extension points.
 
 ### Spec Compliance
 
@@ -332,7 +337,7 @@ go-yaml -n <<< 'foo: bar'
 This is invaluable for understanding what's happening at each stage and
 debugging parsing issues.
 
-See the [main README](../README.md#the-go-yaml-cli-tool) for more details
+See the [main README](../../README.md#the-go-yaml-cli) for more details
 on using the CLI tool.
 
 ## Summary
