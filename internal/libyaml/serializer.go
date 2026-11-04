@@ -96,17 +96,27 @@ func (s *Serializer) Finish() {
 // This is the core of the serializer stage - it walks the tree and produces
 // events.
 func (s *Serializer) node(node *Node, tail string) {
+	canonical := s.Emitter.canonical
 	// Zero nodes behave as nil.
 	if node.Kind == 0 && node.IsZero() {
-		s.emitScalar("null", "", "", PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
+		tag := ""
+		if canonical {
+			tag = nullTag
+		}
+		s.emitScalar("null", "", tag, PLAIN_SCALAR_STYLE, nil, nil, nil, nil)
 		return
 	}
 
 	// Tags have been processed by Desolver:
 	// - Empty tag = can be inferred or style handles it
 	// - Non-empty tag = emit explicitly
+	// Canonical output keeps all tags, including inferable ones.
 	// Style has also been set by Desolver for quoting needs
 	tag := node.Tag
+	if canonical && tag == "" &&
+		(node.Kind == MappingNode || node.Kind == SequenceNode) {
+		tag = node.ShortTag()
+	}
 	var forceQuoting bool
 	if tag == "" && node.Kind == ScalarNode {
 		// Empty tag with quoting style means the string type needs to
@@ -217,6 +227,14 @@ func (s *Serializer) node(node *Node, tail string) {
 			// and represent it as base64.
 			tag = binaryTag
 			value = encodeBase64(value)
+		}
+		if canonical && tag == "" {
+			// Resolve untagged node input before canonical quoting changes
+			// the presentation that would otherwise determine its type.
+			tag = strTag
+			if !node.indicatedString() {
+				tag, _ = resolve("", value, nil)
+			}
 		}
 
 		style := PLAIN_SCALAR_STYLE

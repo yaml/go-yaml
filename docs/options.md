@@ -183,6 +183,7 @@ name: John
 age: 30
 
 # Canonical output
+---
 !!map {
   ? !!str "name"
   : !!str "John",
