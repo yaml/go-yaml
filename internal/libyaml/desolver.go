@@ -30,8 +30,12 @@ func NewDesolver(opts *Options) *Desolver {
 //
 // For collection nodes (maps/sequences): default tags (!!map, !!seq) are
 // removed since they're implied by the structure.
+// Canonical output retains tags because every scalar is double-quoted.
 func (d *Desolver) Desolve(n *Node) {
 	if n == nil {
+		return
+	}
+	if d.opts != nil && d.opts.Canonical {
 		return
 	}
 

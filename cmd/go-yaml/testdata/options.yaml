@@ -129,11 +129,11 @@
     num: 42
   canonical-yaml: |
     ---
-    {
-      ? "foo"
-      : "bar",
-      ? "num"
-      : "42",
+    !!map {
+      ? !!str "foo"
+      : !!str "bar",
+      ? !!str "num"
+      : !!int "42",
     }
 
 - name: Explicit markers
@@ -162,9 +162,9 @@
     foo: bar
   canonical-explicit-yaml: |
     ---
-    {
-      ? "foo"
-      : "bar",
+    !!map {
+      ? !!str "foo"
+      : !!str "bar",
     }
     ...
 
