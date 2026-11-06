@@ -1919,7 +1919,7 @@ func (emitter *Emitter) writeSingleQuotedScalar(value []byte, allow_breaks bool)
 			breaks = false
 		}
 	}
-	if breaks {
+	if breaks && !emitter.root_context {
 		if err := emitter.writeIndent(); err != nil {
 			return err
 		}

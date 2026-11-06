@@ -252,7 +252,7 @@
     want: "'"
 
 - emit:
-    name: Single quoted scalar closing quote indented after trailing line breaks
+    name: Single quoted scalar keeps top-level closing quote after line breaks
     data:
     - STREAM_START_EVENT:
         encoding: UTF8_ENCODING
@@ -266,10 +266,10 @@
     - DOCUMENT_END_EVENT:
         implicit: true
     - STREAM_END_EVENT
-    want: "  '"
+    want: "' Get quacked.\n\n  - Duck\n\n'\n"
 
 - emit:
-    name: Single quoted scalar closing quote indented short lines
+    name: Single quoted scalar keeps top-level closing quote after short lines
     data:
     - STREAM_START_EVENT:
         encoding: UTF8_ENCODING
@@ -283,7 +283,54 @@
     - DOCUMENT_END_EVENT:
         implicit: true
     - STREAM_END_EVENT
-    want: "  '"
+    want: "'a\n\n  b\n\n'\n"
+
+- emit:
+    name: Single quoted scalar keeps top-level closing quote for a line break
+    data:
+    - STREAM_START_EVENT:
+        encoding: UTF8_ENCODING
+    - DOCUMENT_START_EVENT:
+        implicit: true
+    - SCALAR_EVENT:
+        value: "\n"
+        implicit: true
+        quoted_implicit: true
+        style: SINGLE_QUOTED_SCALAR_STYLE
+    - DOCUMENT_END_EVENT:
+        implicit: true
+    - STREAM_END_EVENT
+    want: "'\n\n'\n"
+
+- roundtrip:
+    name: Single quoted scalar closing quote in a block sequence
+    yaml: "- 'a\n\n  b\n\n  '\n"
+    want: "- 'a\n\n  b\n\n  '\n"
+
+- roundtrip:
+    name: Single quoted scalar closing quote in a block mapping value
+    yaml: "key: 'a\n\n  b\n\n  '\n"
+    want: "key: 'a\n\n  b\n\n  '\n"
+
+- roundtrip:
+    name: Single quoted scalar closing quote in a flow sequence
+    yaml: "['a\n\n  b\n\n  ']\n"
+    want: "['a\n\n    b\n\n    ']\n"
+
+- roundtrip:
+    name: Single quoted scalar closing quote in a flow mapping value
+    yaml: "{key: 'a\n\n  b\n\n  '}\n"
+    want: "{key: 'a\n\n    b\n\n    '}\n"
+
+- roundtrip:
+    name: Single quoted scalar closing quote in a nested block sequence
+    yaml: "- - 'a\n\n    b\n\n    '\n"
+    want: "- - 'a\n\n    b\n\n    '\n"
+
+- roundtrip:
+    name: Single quoted scalar closing quote in an explicit mapping key
+    yaml: "? 'a\n\n  b\n\n  '\n: value\n"
+    want: "? 'a\n\n  b\n\n  '\n: value\n"
 
 - emit:
     name: Double quoted scalar
