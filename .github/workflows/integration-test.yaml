@@ -1,0 +1,54 @@
+# Copyright 2026 The go-yaml Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+name: Integration Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration-projects:
+    name: List downstream integration projects
+    runs-on: ubuntu-latest
+    outputs:
+      projects: ${{ steps.projects.outputs.projects }}
+
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with: {persist-credentials: false}
+
+    - name: Read enabled projects from the catalog
+      id: projects
+      run: |
+        make integration-list
+        echo "projects=$(make -s integration-matrix)" >> "$GITHUB_OUTPUT"
+
+  test-integration:
+    name: Test downstream ${{ matrix.project }}
+    needs: integration-projects
+    if: needs.integration-projects.outputs.projects != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJSON(needs.integration-projects.outputs.projects) }}
+
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with: {persist-credentials: false}
+
+    - name: Run baseline and upgrade checks
+      run: make test-integration-${{ matrix.project }} v=1
+
+    - name: Save downstream logs and reports
+      if: always()
+      # actions/upload-artifact v7.0.2
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: integration-${{ matrix.project }}
+        path: .cache/integration/runs/
+        include-hidden-files: true
