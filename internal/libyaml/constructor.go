@@ -621,13 +621,13 @@ func (c *Constructor) sequence(n *Node, out reflect.Value) (good bool) {
 }
 
 // constructKey constructs a mapping key into the key type being filled.
-// Construct refuses a null that the key type cannot hold without reporting
-// anything, so the error for it comes from here.
-// Every other key the type cannot hold is a type error, and so is this one.
+// It reports a type error when the key does not fit that type.
 func (c *Constructor) constructKey(n *Node, out reflect.Value) bool {
 	if c.Construct(n, out) {
 		return true
 	}
+	// Construct emits its own error for every key it refuses but a null, so
+	// only the null is reported here.
 	if n.ShortTag() == nullTag {
 		c.tagError(n, nullTag, out)
 	}
