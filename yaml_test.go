@@ -1914,6 +1914,32 @@ func TestUnmarshalNull(t *testing.T) {
 	}
 }
 
+// A null mapping key names nothing, so a map whose key type cannot hold it
+// loses the entry.
+// That is a type error, however the null is spelled, rather than a document
+// coming back smaller than it was written.
+func TestUnmarshalNullMappingKey(t *testing.T) {
+	for _, input := range []string{
+		"~: 1\na: 2\n",
+		"null: 1\na: 2\n",
+		": 1\na: 2\n",
+		"!!null ~: 1\na: 2\n",
+	} {
+		var m map[string]int
+		err := yaml.Unmarshal([]byte(input), &m)
+		const want = "yaml: construct errors: " +
+			"line 1: cannot construct !!null `.*` into string"
+		assert.ErrorMatchesf(t, want, err, "input %q", input)
+		assert.DeepEqual(t, map[string]int{"a": 2}, m)
+	}
+
+	// A key type that can hold the null keeps the entry.
+	var general map[any]any
+	err := yaml.Unmarshal([]byte("~: 1\na: 2\n"), &general)
+	assert.NoError(t, err)
+	assert.DeepEqual(t, map[any]any{nil: 1, "a": 2}, general)
+}
+
 func TestUnmarshalPreservesData(t *testing.T) {
 	var v struct {
 		A, B int
