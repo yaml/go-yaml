@@ -621,9 +621,9 @@ func (c *Constructor) sequence(n *Node, out reflect.Value) (good bool) {
 }
 
 // constructKey constructs a mapping key into the key type being filled.
-// A null key that the key type cannot hold does not construct, and reports no
-// error either, which would drop the entry without a diagnostic.
-// Every other key the type cannot hold is a type error, so this one is too.
+// Construct refuses a null that the key type cannot hold without reporting
+// anything, so the error for it comes from here.
+// Every other key the type cannot hold is a type error, and so is this one.
 func (c *Constructor) constructKey(n *Node, out reflect.Value) bool {
 	if c.Construct(n, out) {
 		return true
