@@ -215,6 +215,25 @@
     - STREAM_END_EVENT
 
 - parse-events-detailed:
+    name: Reserved directive
+    yaml: |
+      %FOO bar baz
+      ---
+      key: value
+    want:
+    - STREAM_START_EVENT
+    - DOCUMENT_START_EVENT:
+        implicit: false
+    - MAPPING_START_EVENT
+    - SCALAR_EVENT:
+        value: key
+    - SCALAR_EVENT:
+        value: value
+    - MAPPING_END_EVENT
+    - DOCUMENT_END_EVENT
+    - STREAM_END_EVENT
+
+- parse-events-detailed:
     name: Tag directive
     yaml: |
       %TAG !yaml! tag:yaml.org,2002:

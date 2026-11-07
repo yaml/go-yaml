@@ -2098,7 +2098,7 @@ func (parser *Parser) scanComments(scan_mark Mark) error {
 	return nil
 }
 
-// scanDirective scans a directive (%YAML or %TAG).
+// scanDirective scans a directive (%YAML, %TAG or a reserved one).
 func (parser *Parser) scanDirective(token *Token) error {
 	// Eat '%'.
 	start_mark := parser.mark
@@ -2146,10 +2146,18 @@ func (parser *Parser) scanDirective(token *Token) error {
 			prefix:    prefix,
 		}
 
-		// Unknown directive.
+		// Reserved directive.
 	} else {
-		return parser.formatScannerErrorContext("while scanning a directive", start_mark,
-			"found unknown directive name", parser.mark)
+		end_mark, err := parser.skipDirectiveParameters()
+		if err != nil {
+			return err
+		}
+		*token = Token{
+			Type:      RESERVED_DIRECTIVE_TOKEN,
+			StartMark: start_mark,
+			EndMark:   end_mark,
+			Value:     name,
+		}
 	}
 
 	// Eat the rest of the line including any comments.
@@ -2204,6 +2212,39 @@ func (parser *Parser) scanDirective(token *Token) error {
 	}
 
 	return nil
+}
+
+// skipDirectiveParameters skips the parameters of a reserved directive and
+// returns the mark after the last one.
+func (parser *Parser) skipDirectiveParameters() (Mark, error) {
+	end_mark := parser.mark
+	for {
+		if parser.unread < 1 {
+			if err := parser.updateBuffer(1); err != nil {
+				return end_mark, err
+			}
+		}
+		for isBlank(parser.buffer, parser.buffer_pos) {
+			parser.skip()
+			if parser.unread < 1 {
+				if err := parser.updateBuffer(1); err != nil {
+					return end_mark, err
+				}
+			}
+		}
+		if isBreakOrZero(parser.buffer, parser.buffer_pos) || parser.buffer[parser.buffer_pos] == '#' {
+			return end_mark, nil
+		}
+		for !isBlankOrZero(parser.buffer, parser.buffer_pos) {
+			parser.skip()
+			if parser.unread < 1 {
+				if err := parser.updateBuffer(1); err != nil {
+					return end_mark, err
+				}
+			}
+		}
+		end_mark = parser.mark
+	}
 }
 
 // Scan the directive name.

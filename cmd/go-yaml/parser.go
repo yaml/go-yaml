@@ -121,6 +121,9 @@ func (p *Parser) Next() (*Token, error) {
 		token.Type = "TAG-DIRECTIVE"
 		token.Handle = string(yamlToken.Value)
 		token.Prefix = yamlToken.GetPrefix()
+	case libyaml.RESERVED_DIRECTIVE_TOKEN:
+		token.Type = "RESERVED-DIRECTIVE"
+		token.Value = string(yamlToken.Value)
 	default:
 		token.Type = "UNKNOWN"
 	}
