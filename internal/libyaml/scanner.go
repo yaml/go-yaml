@@ -704,6 +704,16 @@ func isBlankOrZero(b []byte, i int) bool {
 		b[i] == 0)
 }
 
+// isDocumentIndicator reports whether a '---' or '...' marker starts at the
+// current position. The buffer must hold at least 4 characters.
+func (parser *Parser) isDocumentIndicator() bool {
+	buf, pos := parser.buffer, parser.buffer_pos
+	return parser.mark.Column == 1 &&
+		(buf[pos] == '-' && buf[pos+1] == '-' && buf[pos+2] == '-' ||
+			buf[pos] == '.' && buf[pos+1] == '.' && buf[pos+2] == '.') &&
+		isBlankOrZero(buf, pos+3)
+}
+
 func isEndOfScalarInFlowContentChar(b []byte, i int) bool {
 	switch b[i] {
 	// ",", "[", "]", "{" and "}"
@@ -1763,6 +1773,14 @@ func (parser *Parser) scanBlockScalar(token *Token, literal bool) error {
 	var leading_blank, trailing_blank bool
 	for parser.mark.Column == indent && !isZeroChar(parser.buffer, parser.buffer_pos) {
 		// We are at the beginning of a non-empty line.
+		if parser.unread < 4 {
+			if err := parser.updateBuffer(4); err != nil {
+				return err
+			}
+		}
+		if parser.isDocumentIndicator() {
+			break
+		}
 
 		// Is it a trailing whitespace?
 		trailing_blank = isBlank(parser.buffer, parser.buffer_pos)
@@ -2269,14 +2287,7 @@ func (parser *Parser) scanFlowScalar(token *Token, single bool) error {
 			}
 		}
 
-		if parser.mark.Column == 1 &&
-			((parser.buffer[parser.buffer_pos+0] == '-' &&
-				parser.buffer[parser.buffer_pos+1] == '-' &&
-				parser.buffer[parser.buffer_pos+2] == '-') ||
-				(parser.buffer[parser.buffer_pos+0] == '.' &&
-					parser.buffer[parser.buffer_pos+1] == '.' &&
-					parser.buffer[parser.buffer_pos+2] == '.')) &&
-			isBlankOrZero(parser.buffer, parser.buffer_pos+3) {
+		if parser.isDocumentIndicator() {
 			return parser.formatScannerErrorContext("while scanning a quoted scalar", start_mark,
 				"found unexpected document indicator", parser.mark)
 		}
@@ -2595,14 +2606,7 @@ func (parser *Parser) scanPlainScalar(token *Token) error {
 				return err
 			}
 		}
-		if parser.mark.Column == 1 &&
-			((parser.buffer[parser.buffer_pos+0] == '-' &&
-				parser.buffer[parser.buffer_pos+1] == '-' &&
-				parser.buffer[parser.buffer_pos+2] == '-') ||
-				(parser.buffer[parser.buffer_pos+0] == '.' &&
-					parser.buffer[parser.buffer_pos+1] == '.' &&
-					parser.buffer[parser.buffer_pos+2] == '.')) &&
-			isBlankOrZero(parser.buffer, parser.buffer_pos+3) {
+		if parser.isDocumentIndicator() {
 			break
 		}
 
