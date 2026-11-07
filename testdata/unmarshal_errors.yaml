@@ -246,7 +246,7 @@
     want: 'yaml: construct errors: line 1: cannot construct !!float `5` into time.Duration'
 
 # Null mapping keys: a key type that cannot hold a null reports a type error,
-# however the null is spelled (issue #494)
+# whether the key is ~, null, an explicit !!null, or left empty (issue #494)
 
 - unmarshal-error:
     name: Null key written as a tilde

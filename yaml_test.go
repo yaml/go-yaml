@@ -1918,8 +1918,8 @@ func TestUnmarshalNull(t *testing.T) {
 // loses the entry.
 // That is a type error, rather than a document coming back smaller than it
 // was written.
-// The error each spelling of the null reports is in
-// testdata/unmarshal_errors.yaml.
+// testdata/unmarshal_errors.yaml has the error for a key written as ~, as
+// null, as an explicit !!null, and left empty.
 func TestUnmarshalNullMappingKey(t *testing.T) {
 	var m map[string]int
 	err := yaml.Unmarshal([]byte("~: 1\na: 2\n"), &m)
