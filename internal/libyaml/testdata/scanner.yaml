@@ -1003,6 +1003,40 @@
     data: a
     want: false
 
+# isDocumentIndicator tests
+- char-predicate:
+    name: Is document indicator - document start
+    func: isDocumentIndicator
+    data: "---\n"
+
+- char-predicate:
+    name: Is document indicator - document end
+    func: isDocumentIndicator
+    data: "... "
+
+- char-predicate:
+    name: Is document indicator - at end of input
+    func: isDocumentIndicator
+    data: [0x2E, 0x2E, 0x2E, 0x00]
+
+- char-predicate:
+    name: Is document indicator - four dashes
+    func: isDocumentIndicator
+    data: '----'
+    want: false
+
+- char-predicate:
+    name: Is document indicator - dots then text
+    func: isDocumentIndicator
+    data: '...x'
+    want: false
+
+- char-predicate:
+    name: Is document indicator - mixed
+    func: isDocumentIndicator
+    data: "-.-\n"
+    want: false
+
 # Converter functions - asDigit tests
 - char-convert:
     name: As digit - zero

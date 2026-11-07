@@ -704,14 +704,11 @@ func isBlankOrZero(b []byte, i int) bool {
 		b[i] == 0)
 }
 
-// isDocumentIndicator reports whether a '---' or '...' marker starts at the
-// current position. The buffer must hold at least 4 characters.
-func (parser *Parser) isDocumentIndicator() bool {
-	buf, pos := parser.buffer, parser.buffer_pos
-	return parser.mark.Column == 1 &&
-		(buf[pos] == '-' && buf[pos+1] == '-' && buf[pos+2] == '-' ||
-			buf[pos] == '.' && buf[pos+1] == '.' && buf[pos+2] == '.') &&
-		isBlankOrZero(buf, pos+3)
+// Check if the characters are a '---' or '...' document indicator.
+func isDocumentIndicator(b []byte, i int) bool {
+	return (b[i] == '-' && b[i+1] == '-' && b[i+2] == '-' ||
+		b[i] == '.' && b[i+1] == '.' && b[i+2] == '.') &&
+		isBlankOrZero(b, i+3)
 }
 
 func isEndOfScalarInFlowContentChar(b []byte, i int) bool {
@@ -1778,7 +1775,8 @@ func (parser *Parser) scanBlockScalar(token *Token, literal bool) error {
 				return err
 			}
 		}
-		if parser.isDocumentIndicator() {
+		if parser.mark.Column == 1 &&
+			isDocumentIndicator(parser.buffer, parser.buffer_pos) {
 			break
 		}
 
@@ -2287,7 +2285,8 @@ func (parser *Parser) scanFlowScalar(token *Token, single bool) error {
 			}
 		}
 
-		if parser.isDocumentIndicator() {
+		if parser.mark.Column == 1 &&
+			isDocumentIndicator(parser.buffer, parser.buffer_pos) {
 			return parser.formatScannerErrorContext("while scanning a quoted scalar", start_mark,
 				"found unexpected document indicator", parser.mark)
 		}
@@ -2606,7 +2605,8 @@ func (parser *Parser) scanPlainScalar(token *Token) error {
 				return err
 			}
 		}
-		if parser.isDocumentIndicator() {
+		if parser.mark.Column == 1 &&
+			isDocumentIndicator(parser.buffer, parser.buffer_pos) {
 			break
 		}
 
