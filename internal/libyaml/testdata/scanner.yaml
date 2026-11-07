@@ -252,6 +252,44 @@
     - STREAM_END_TOKEN
 
 - scan-tokens-detailed:
+    name: Literal scalar ends at document end marker
+    yaml: |
+      --- |
+      text
+      ...
+      --- next
+    want:
+    - STREAM_START_TOKEN
+    - DOCUMENT_START_TOKEN
+    - SCALAR_TOKEN:
+        style: LITERAL_SCALAR_STYLE
+        value: "text\n"
+    - DOCUMENT_END_TOKEN
+    - DOCUMENT_START_TOKEN
+    - SCALAR_TOKEN:
+        value: next
+    - STREAM_END_TOKEN
+
+- scan-tokens-detailed:
+    name: Folded scalar ends at document start marker
+    yaml: |
+      --- >
+      folded
+      text
+      ---
+      next
+    want:
+    - STREAM_START_TOKEN
+    - DOCUMENT_START_TOKEN
+    - SCALAR_TOKEN:
+        style: FOLDED_SCALAR_STYLE
+        value: "folded text\n"
+    - DOCUMENT_START_TOKEN
+    - SCALAR_TOKEN:
+        value: next
+    - STREAM_END_TOKEN
+
+- scan-tokens-detailed:
     name: Version directive
     yaml: |
       %YAML 1.1
