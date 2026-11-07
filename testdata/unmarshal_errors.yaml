@@ -244,3 +244,38 @@
     type: map[string]time.Duration
     yaml: 'a: !!float 5'
     want: 'yaml: construct errors: line 1: cannot construct !!float `5` into time.Duration'
+
+# Null mapping keys: a key type that cannot hold a null reports a type error,
+# whether the key is ~, null, an explicit !!null, or left empty (issue #494)
+
+- unmarshal-error:
+    name: Null key written as a tilde
+    type: map[string]int
+    yaml: |
+      ~: 1
+      a: 2
+    want: 'yaml: construct errors: line 1: cannot construct !!null `~` into string'
+
+- unmarshal-error:
+    name: Null key written as null
+    type: map[string]int
+    yaml: |
+      null: 1
+      a: 2
+    want: 'yaml: construct errors: line 1: cannot construct !!null `null` into string'
+
+- unmarshal-error:
+    name: Null key left empty
+    type: map[string]int
+    yaml: |
+      : 1
+      a: 2
+    want: 'yaml: construct errors: line 1: cannot construct !!null `` into string'
+
+- unmarshal-error:
+    name: Null key tagged explicitly
+    type: map[string]int
+    yaml: |
+      !!null ~: 1
+      a: 2
+    want: 'yaml: construct errors: line 1: cannot construct !!null `~` into string'
