@@ -274,7 +274,7 @@ func validatePluginEvents(events []PluginEvent, depthCheck func(int, *DepthConte
 			return bad()
 		}
 		if e.Version != nil && (e.Type != "document_start" ||
-			e.Version.Major != 1 || (e.Version.Minor != 1 && e.Version.Minor != 2)) {
+			!isSupportedVersion(e.Version.Major, e.Version.Minor)) {
 			return fmt.Errorf("unsupported parser version directive at event %d", i)
 		}
 	}

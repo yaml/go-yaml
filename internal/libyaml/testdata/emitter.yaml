@@ -479,6 +479,17 @@
     - value
     - item1
 
+- roundtrip:
+    name: Version directive 1.2
+    yaml: |
+      %YAML 1.2
+      ---
+      key: value
+    want: |
+      %YAML 1.2
+      ---
+      key: value
+
 # Regression test for https://github.com/google/yamlfmt/issues/110: a foot
 # comment attached to a flow mapping must not add a superfluous trailing
 # comma before the closing '}'.
