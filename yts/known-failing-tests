@@ -1,5 +1,3 @@
-TestYAMLSuite/27NA/EventComparisonTest
-TestYAMLSuite/27NA/LoadTest
 TestYAMLSuite/2JQS/LoadTest
 TestYAMLSuite/2LFX/EventComparisonTest
 TestYAMLSuite/2LFX/LoadTest
@@ -11,12 +9,10 @@ TestYAMLSuite/6BFJ/LoadTest
 TestYAMLSuite/6LVF/EventComparisonTest
 TestYAMLSuite/6LVF/LoadTest
 TestYAMLSuite/6PBE/LoadTest
-TestYAMLSuite/6ZKB/EventComparisonTest
 TestYAMLSuite/8XYN/EventComparisonTest
 TestYAMLSuite/8XYN/LoadTest
 TestYAMLSuite/9C9N/EventComparisonTest
 TestYAMLSuite/9C9N/LoadTest
-TestYAMLSuite/9DXL/EventComparisonTest
 TestYAMLSuite/9MMW/LoadTest
 TestYAMLSuite/9MQT-01/JSONComparisonTest
 TestYAMLSuite/BEC7/EventComparisonTest
@@ -25,8 +21,6 @@ TestYAMLSuite/DK95-01/EventComparisonTest
 TestYAMLSuite/DK95-01/JSONComparisonTest
 TestYAMLSuite/DK95-01/LoadTest
 TestYAMLSuite/DK95-06/JSONComparisonTest
-TestYAMLSuite/DK95-07/EventComparisonTest
-TestYAMLSuite/DK95-07/LoadTest
 TestYAMLSuite/KK5P/LoadTest
 TestYAMLSuite/LX3P/LoadTest
 TestYAMLSuite/M2N8-00/LoadTest
@@ -40,8 +34,6 @@ TestYAMLSuite/Q9WF/LoadTest
 TestYAMLSuite/QB6E/EventComparisonTest
 TestYAMLSuite/QB6E/LoadTest
 TestYAMLSuite/QLJ7/LoadTest
-TestYAMLSuite/RTP8/EventComparisonTest
-TestYAMLSuite/RTP8/LoadTest
 TestYAMLSuite/RZP5/LoadTest
 TestYAMLSuite/S98Z/EventComparisonTest
 TestYAMLSuite/S98Z/LoadTest
@@ -49,8 +41,6 @@ TestYAMLSuite/SBG9/LoadTest
 TestYAMLSuite/UGM3/JSONComparisonTest
 TestYAMLSuite/UGM3/MarshalTest
 TestYAMLSuite/V9D5/LoadTest
-TestYAMLSuite/W4TN/EventComparisonTest
-TestYAMLSuite/W4TN/LoadTest
 TestYAMLSuite/W5VH/EventComparisonTest
 TestYAMLSuite/W5VH/LoadTest
 TestYAMLSuite/X38W/LoadTest

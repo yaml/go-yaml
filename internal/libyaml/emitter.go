@@ -1305,7 +1305,7 @@ func (emitter *Emitter) processFootComment() error {
 
 // Check if a %YAML directive is valid.
 func (emitter *Emitter) analyzeVersionDirective(version_directive *VersionDirective) error {
-	if version_directive.major != 1 || version_directive.minor != 1 {
+	if !isSupportedVersion(version_directive.Major(), version_directive.Minor()) {
 		return EmitterError{
 			Message: "incompatible %YAML directive",
 		}

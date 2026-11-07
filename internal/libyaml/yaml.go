@@ -31,6 +31,10 @@ func (v *VersionDirective) Major() int { return int(v.major) }
 // Minor returns the minor version number.
 func (v *VersionDirective) Minor() int { return int(v.minor) }
 
+func isSupportedVersion(major, minor int) bool {
+	return major == 1 && (minor == 1 || minor == 2)
+}
+
 // TagDirective holds the YAML tag directive data.
 type TagDirective struct {
 	handle []byte // The tag handle.
