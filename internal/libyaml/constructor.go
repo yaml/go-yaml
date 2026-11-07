@@ -620,6 +620,20 @@ func (c *Constructor) sequence(n *Node, out reflect.Value) (good bool) {
 	return true
 }
 
+// constructKey constructs a mapping key into the key type being filled.
+// Nothing constructs a null into a type that cannot hold one, and nothing is
+// reported either, so the entry would leave the mapping without a word.
+// Every other key the type cannot hold is a type error, so this one is too.
+func (c *Constructor) constructKey(n *Node, out reflect.Value) bool {
+	if c.Construct(n, out) {
+		return true
+	}
+	if n.ShortTag() == nullTag {
+		c.tagError(n, nullTag, out)
+	}
+	return false
+}
+
 // mapping constructs a MappingNode into a Go map, struct, or interface.
 // It handles key uniqueness checking, merge keys, and type-appropriate
 // map construction (string-keyed vs general).
@@ -681,7 +695,7 @@ func (c *Constructor) mapping(n *Node, out reflect.Value) (good bool) {
 	}
 	for i := 0; i < l; i += 2 {
 		k := reflect.New(kt).Elem()
-		if c.Construct(n.Content[i], k) {
+		if c.constructKey(n.Content[i], k) {
 			kkind := k.Kind()
 			if kkind == reflect.Interface {
 				kkind = k.Elem().Kind()
