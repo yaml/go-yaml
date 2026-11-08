@@ -326,6 +326,8 @@ const (
 	SCALAR_TOKEN
 	// COMMENT_TOKEN represents a COMMENT token.
 	COMMENT_TOKEN
+	// RESERVED_DIRECTIVE_TOKEN represents a RESERVED-DIRECTIVE token.
+	RESERVED_DIRECTIVE_TOKEN
 )
 
 // String returns a string representation of the token type.
@@ -377,6 +379,8 @@ func (tt TokenType) String() string {
 		return "SCALAR_TOKEN"
 	case COMMENT_TOKEN:
 		return "COMMENT_TOKEN"
+	case RESERVED_DIRECTIVE_TOKEN:
+		return "RESERVED_DIRECTIVE_TOKEN"
 	}
 	return "<unknown token>"
 }
@@ -392,8 +396,9 @@ type Token struct {
 	// The stream encoding (for STREAM_START_TOKEN).
 	encoding Encoding
 
-	// The alias/anchor/scalar Value or tag/tag directive handle
-	// (for ALIAS_TOKEN, ANCHOR_TOKEN, SCALAR_TOKEN, TAG_TOKEN, TAG_DIRECTIVE_TOKEN).
+	// The alias/anchor/scalar Value, tag/tag directive handle or reserved
+	// directive name (for ALIAS_TOKEN, ANCHOR_TOKEN, SCALAR_TOKEN, TAG_TOKEN,
+	// TAG_DIRECTIVE_TOKEN, RESERVED_DIRECTIVE_TOKEN).
 	Value []byte
 
 	// The tag suffix (for TAG_TOKEN).

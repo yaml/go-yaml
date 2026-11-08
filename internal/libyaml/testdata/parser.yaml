@@ -22,6 +22,7 @@
 #          * For parse-error: boolean (defaults to true if omitted; set to false if no error expected)
 #          * For parse-events: list of event type names (scalars or type-as-key format)
 #          * For parse-events-detailed: list of event specifications (type-as-key format)
+#   like - Regex the parse-error message must match (optional)
 #
 # Event Specification Format (for want lists):
 #   Simplified (type only): - EVENT_TYPE
@@ -215,6 +216,25 @@
     - STREAM_END_EVENT
 
 - parse-events-detailed:
+    name: Reserved directive
+    yaml: |
+      %FOO bar baz
+      ---
+      key: value
+    want:
+    - STREAM_START_EVENT
+    - DOCUMENT_START_EVENT:
+        implicit: false
+    - MAPPING_START_EVENT
+    - SCALAR_EVENT:
+        value: key
+    - SCALAR_EVENT:
+        value: value
+    - MAPPING_END_EVENT
+    - DOCUMENT_END_EVENT
+    - STREAM_END_EVENT
+
+- parse-events-detailed:
     name: Tag directive
     yaml: |
       %TAG !yaml! tag:yaml.org,2002:
@@ -232,6 +252,36 @@
     - SCALAR_EVENT:
         value: value
     - MAPPING_END_EVENT
+    - DOCUMENT_END_EVENT
+    - STREAM_END_EVENT
+
+- parse-events-detailed:
+    name: Version, reserved and tag directives together
+    yaml: |
+      %YAML 1.1
+      %FOO bar baz
+      %TAG !yaml! tag:yaml.org,2002:
+      ---
+      a
+      ...
+      %FOO
+      ---
+      b
+    want:
+    - STREAM_START_EVENT
+    - DOCUMENT_START_EVENT:
+        version-directive:
+          major: 1
+          minor: 1
+        tag-directives:
+        - handle: '!yaml!'
+          prefix: 'tag:yaml.org,2002:'
+    - SCALAR_EVENT:
+        value: a
+    - DOCUMENT_END_EVENT
+    - DOCUMENT_START_EVENT
+    - SCALAR_EVENT:
+        value: b
     - DOCUMENT_END_EVENT
     - STREAM_END_EVENT
 
@@ -419,6 +469,75 @@
 - parse-error:
     name: Content after leading document-end marker
     yaml: "...\tinvalid\n"
+
+- parse-error:
+    name: Duplicate version directive
+    yaml: |
+      %YAML 1.1
+      %YAML 1.1
+      ---
+      a
+    like: found duplicate %YAML directive
+
+- parse-error:
+    name: Incompatible version directive
+    yaml: |
+      %YAML 2.0
+      ---
+      a
+    like: found incompatible YAML document
+
+- parse-error:
+    name: Duplicate tag directive
+    yaml: |
+      %TAG !a! tag:a,2000:
+      %TAG !a! tag:b,2000:
+      ---
+      a
+    like: found duplicate %TAG directive
+
+- parse-error:
+    name: Reserved directive without document start
+    yaml: |
+      %FOO bar
+      a
+    like: did not find expected <document start>
+
+- parse-error:
+    name: Version directive after document without document end
+    yaml: |
+      a: b
+      %YAML 1.1
+      ---
+      c
+    like: did not find expected <document end> before directive
+
+- parse-error:
+    name: Tag directive after document without document end
+    yaml: |
+      a: b
+      %TAG !a! tag:a,2000:
+      ---
+      c
+    like: did not find expected <document end> before directive
+
+- parse-error:
+    name: Reserved directive right after document start
+    yaml: |
+      ---
+      %FOO
+      ---
+      a
+    like: did not find expected <document end> before directive
+
+- parse-error:
+    name: Reserved directive after document without document end
+    yaml: |
+      a: b
+      %FOO bar
+      ---
+      c
+    like: did not find expected <document end> before directive
 
 - parse-error:
     name: Error state

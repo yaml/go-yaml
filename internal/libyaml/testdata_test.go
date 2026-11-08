@@ -556,6 +556,8 @@ func ParseTokenType(t *testing.T, s string) TokenType {
 		return TAG_TOKEN
 	case "SCALAR_TOKEN":
 		return SCALAR_TOKEN
+	case "RESERVED_DIRECTIVE_TOKEN":
+		return RESERVED_DIRECTIVE_TOKEN
 	default:
 		t.Fatalf("unknown token type: %s", s)
 		return NO_TOKEN
