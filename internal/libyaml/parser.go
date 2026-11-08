@@ -553,9 +553,7 @@ func (parser *Parser) parseDocumentStart(event *Event, implicit bool) error {
 		}
 	}
 
-	if implicit && token.Type != VERSION_DIRECTIVE_TOKEN &&
-		token.Type != TAG_DIRECTIVE_TOKEN &&
-		token.Type != RESERVED_DIRECTIVE_TOKEN &&
+	if implicit && !isDirective(token.Type) &&
 		token.Type != DOCUMENT_START_TOKEN &&
 		token.Type != STREAM_END_TOKEN {
 		// Parse an implicit document.
@@ -650,9 +648,7 @@ func (parser *Parser) parseDocumentContent(event *Event) error {
 		return err
 	}
 
-	if token.Type == VERSION_DIRECTIVE_TOKEN ||
-		token.Type == TAG_DIRECTIVE_TOKEN ||
-		token.Type == RESERVED_DIRECTIVE_TOKEN ||
+	if isDirective(token.Type) ||
 		token.Type == DOCUMENT_START_TOKEN ||
 		token.Type == DOCUMENT_END_TOKEN ||
 		token.Type == STREAM_END_TOKEN {
@@ -679,15 +675,16 @@ func (parser *Parser) parseDocumentEnd(event *Event) error {
 	end_mark := token.StartMark
 
 	implicit := true
-	switch token.Type {
-	case DOCUMENT_END_TOKEN:
+	switch {
+	case token.Type == DOCUMENT_END_TOKEN:
 		end_mark = token.EndMark
 		parser.skipToken()
 		implicit = false
-	case VERSION_DIRECTIVE_TOKEN, TAG_DIRECTIVE_TOKEN, RESERVED_DIRECTIVE_TOKEN:
+	case isDirective(token.Type):
 		return parser.formatParserError(
 			"did not find expected <document end> before directive", token.StartMark)
-	case DOCUMENT_START_TOKEN, STREAM_END_TOKEN:
+	case token.Type == DOCUMENT_START_TOKEN ||
+		token.Type == STREAM_END_TOKEN:
 		// Document ended properly.
 		// https://github.com/yaml/go-yaml/pull/410
 	default:
@@ -715,6 +712,13 @@ func (parser *Parser) parseDocumentEnd(event *Event) error {
 	return nil
 }
 
+// isDirective reports whether typ is a %YAML, %TAG or reserved directive.
+func isDirective(typ TokenType) bool {
+	return typ == VERSION_DIRECTIVE_TOKEN ||
+		typ == TAG_DIRECTIVE_TOKEN ||
+		typ == RESERVED_DIRECTIVE_TOKEN
+}
+
 // Parse directives.
 func (parser *Parser) processDirectives(version_directive_ref **VersionDirective, tag_directives_ref *[]TagDirective) error {
 	var version_directive *VersionDirective
@@ -725,8 +729,7 @@ func (parser *Parser) processDirectives(version_directive_ref **VersionDirective
 		return err
 	}
 
-	for token.Type == VERSION_DIRECTIVE_TOKEN || token.Type == TAG_DIRECTIVE_TOKEN ||
-		token.Type == RESERVED_DIRECTIVE_TOKEN {
+	for isDirective(token.Type) {
 		switch token.Type {
 		case VERSION_DIRECTIVE_TOKEN:
 			if version_directive != nil {
