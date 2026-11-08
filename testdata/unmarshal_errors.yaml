@@ -244,3 +244,18 @@
     type: map[string]time.Duration
     yaml: 'a: !!float 5'
     want: 'yaml: construct errors: line 1: cannot construct !!float `5` into time.Duration'
+
+- unmarshal-error:
+    name: Tab indenting a block sequence after an explicit key indicator
+    yaml: "? \t- a"
+    want: 'yaml: line 1: found a tab character where an indentation space is expected'
+
+- unmarshal-error:
+    name: Tab indenting a block mapping after an explicit key indicator
+    yaml: "? \ta: b"
+    want: 'yaml: line 1: found a tab character where an indentation space is expected'
+
+- unmarshal-error:
+    name: Tab indenting a block sequence after an omitted key's colon
+    yaml: ":\t- a"
+    want: 'yaml: line 1: found a tab character where an indentation space is expected'
