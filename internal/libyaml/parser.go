@@ -750,6 +750,10 @@ func (parser *Parser) processDirectives(version_directive_ref **VersionDirective
 				return err
 			}
 			tag_directives = append(tag_directives, value)
+		case RESERVED_DIRECTIVE_TOKEN:
+			// Reserved directives are ignored (spec 6.8).
+		default:
+			panic("invalid directive token: " + token.Type.String())
 		}
 
 		parser.skipToken()
