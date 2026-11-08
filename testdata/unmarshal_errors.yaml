@@ -244,3 +244,30 @@
     type: map[string]time.Duration
     yaml: 'a: !!float 5'
     want: 'yaml: construct errors: line 1: cannot construct !!float `5` into time.Duration'
+
+- unmarshal-error:
+    name: Omitted key with a block mapping value on the same line
+    yaml: ': b: c'
+    want: 'yaml: line 1: mapping values are not allowed in this context'
+
+- unmarshal-error:
+    name: Omitted keys nested on the same line
+    yaml: ': : :'
+    want: 'yaml: line 1: mapping values are not allowed in this context'
+
+- unmarshal-error:
+    name: Omitted key after another entry with a same-line block mapping value
+    yaml: |
+      x: 1
+      : : bad
+    want: 'yaml: line 2: mapping values are not allowed in this context'
+
+- unmarshal-error:
+    name: Omitted key with a block sequence value on the same line
+    yaml: ': - a'
+    want: 'yaml: line 1: block sequence entries are not allowed in this context'
+
+- unmarshal-error:
+    name: Omitted key in a sequence entry with a same-line block mapping value
+    yaml: '- : b: c'
+    want: 'yaml: line 1: mapping values are not allowed in this context'
