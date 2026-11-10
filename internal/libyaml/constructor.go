@@ -606,7 +606,9 @@ func (c *Constructor) sequence(n *Node, out reflect.Value) (good bool) {
 	j := 0
 	for i := 0; i < l; i++ {
 		e := reflect.New(et).Elem()
-		if ok := c.Construct(n.Content[i], e); ok {
+		child := n.Content[i]
+		// Null still occupies a position for non-nillable element types.
+		if ok := c.Construct(child, e); ok || child.ShortTag() == nullTag {
 			out.Index(j).Set(e)
 			j++
 		}
