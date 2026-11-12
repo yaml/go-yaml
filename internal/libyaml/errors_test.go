@@ -13,6 +13,12 @@ import (
 	"go.yaml.in/yaml/v4/internal/testutil/assert"
 )
 
+type otherError string
+
+func (e otherError) Error() string {
+	return "otherError: " + string(e)
+}
+
 func TestErrors(t *testing.T) {
 	RunTestCases(t, "errors.yaml", map[string]TestHandler{
 		"load-error":     runLoadErrorTest,
@@ -190,7 +196,9 @@ func runLoadErrorsAsTest(t *testing.T, tc TestCase) {
 				assert.Equalf(t, wantStr, target.Errors[i], "TypeError.Errors[%d] mismatch", i)
 			}
 		}
-
+	case "otherError":
+		var target otherError
+		assert.ErrorAs(t, err, &target)
 	default:
 		t.Fatalf("unknown as type: %s", tc.As)
 	}
@@ -289,11 +297,22 @@ func buildLoadErrorList(t *testing.T, spec map[string]any) []*LoadError {
 		line := getInt(t, errMap, "line")
 		message := getString(t, errMap, "message")
 
+		var err error
+
+		switch t := getString(t, errMap, "type"); t {
+		case "otherError":
+			err = otherError(message)
+		case "":
+			err = errors.New(message)
+		default:
+			panic("unexpected error type " + t)
+		}
+
 		result = append(result, &LoadError{
 			Stage:   ConstructorStage,
 			Mark:    Mark{Line: line},
 			Message: message,
-			err:     errors.New(message),
+			err:     err,
 		})
 	}
 

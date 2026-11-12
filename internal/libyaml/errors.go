@@ -265,6 +265,13 @@ func (e *LoadErrors) As(target any) bool {
 		*t = &TypeError{Errors: msgs}
 		return true
 	}
+
+	for _, err := range e.Errors {
+		if errors.As(err, target) {
+			return true
+		}
+	}
+
 	return false
 }
 

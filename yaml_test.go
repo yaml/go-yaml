@@ -1447,7 +1447,13 @@ func TestLegacyUnmarshalerWrappedErrorNoCycle(t *testing.T) {
 		"expected to extract *yaml.LoadError from %v", err)
 }
 
-var errFailing = errors.New("failingErr")
+type failingError string
+
+func (e failingError) Error() string {
+	return "failingErr: " + string(e)
+}
+
+var errFailing = failingError("foobar")
 
 type failingUnmarshaler struct{}
 
@@ -1473,6 +1479,11 @@ func TestUnmarshalerError(t *testing.T) {
 	assert.Equal(t, 123, dst.Foo)
 	assert.DeepEqual(t, &failingUnmarshaler{}, dst.Bar)
 	assert.Equal(t, "test", dst.Spam)
+	// check error unwrapping
+	assert.ErrorIs(t, err, errFailing)
+	var target failingError
+	assert.ErrorAs(t, err, &target)
+	assert.Equal(t, errFailing, target)
 }
 
 type legacyFailingUnmarshaler struct{}
@@ -1499,6 +1510,11 @@ func TestLegacyUnmarshalerError(t *testing.T) {
 	assert.Equal(t, 123, dst.Foo)
 	assert.DeepEqual(t, &legacyFailingUnmarshaler{}, dst.Bar)
 	assert.Equal(t, "test", dst.Spam)
+	// check error unwrapping
+	assert.ErrorIs(t, err, errFailing)
+	var target failingError
+	assert.ErrorAs(t, err, &target)
+	assert.Equal(t, errFailing, target)
 }
 
 type failingTextUnmarshaler struct{}
@@ -1527,6 +1543,11 @@ func TestTextUnmarshalerError(t *testing.T) {
 	assert.Equal(t, 123, dst.Foo)
 	assert.DeepEqual(t, &failingTextUnmarshaler{}, dst.Bar)
 	assert.Equal(t, "test", dst.Spam)
+	// check error unwrapping
+	assert.ErrorIs(t, err, errFailing)
+	var target failingError
+	assert.ErrorAs(t, err, &target)
+	assert.Equal(t, errFailing, target)
 }
 
 func TestUnmarshalError_Unwrapping(t *testing.T) {
