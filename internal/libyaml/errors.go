@@ -246,9 +246,10 @@ func (e *LoadErrors) Error() string {
 	return b.String()
 }
 
-// As implements [errors.As] for Go versions prior to 1.20 that don't support
-// the Unwrap() []error interface. It allows [LoadErrors] to match against
-// *LoadError or *TypeError targets.
+// As implements [errors.As] by unwrapping the inner Errors slice.
+//
+// Additionally, it allows [LoadErrors] to match against *LoadError or
+// *TypeError targets.
 func (e *LoadErrors) As(target any) bool {
 	switch t := target.(type) {
 	case **LoadError:
@@ -265,11 +266,17 @@ func (e *LoadErrors) As(target any) bool {
 		*t = &TypeError{Errors: msgs}
 		return true
 	}
+
+	for _, err := range e.Errors {
+		if errors.As(err, target) {
+			return true
+		}
+	}
+
 	return false
 }
 
-// Is implements [errors.Is] for Go versions prior to 1.20 that don't support
-// the Unwrap() []error interface. It checks if any wrapped error matches
+// Is implements [errors.Is] by checking if any wrapped error matches
 // the target error.
 func (e *LoadErrors) Is(target error) bool {
 	for _, err := range e.Errors {

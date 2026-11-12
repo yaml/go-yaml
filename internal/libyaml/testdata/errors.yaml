@@ -236,6 +236,18 @@
     - 'line 3: first error'
     - 'line 7: second error'
 
+- load-errors-as:
+    name: As other error
+    from:
+      errors:
+      - line: 1
+        type: otherError
+        message: the only error
+    as: otherError
+    want_as: true
+    want_messages:
+    - 'line 1: the only error'
+
 # LoadErrors.Is tests
 
 - load-errors-is:
