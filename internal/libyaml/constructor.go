@@ -450,11 +450,12 @@ func (c *Constructor) constructNull(n *Node, resolved any, out reflect.Value) bo
 	return c.null(out)
 }
 
-// constructMerge handles !!merge tagged keys.
-// Merge keys are directives, not values, so construction always fails.
-// They are handled specially by the mapping() function.
+// constructMerge handles !!merge tagged nodes.
+// A merge key is a directive and only has a meaning in key position, where
+// the mapping() function handles it. Everywhere else the node is the plain
+// string "<<", so it is constructed as a string.
 func (c *Constructor) constructMerge(n *Node, resolved any, out reflect.Value) bool {
-	return false
+	return c.constructStr(n, resolved, out)
 }
 
 // --------------------------------------------------------------------------
