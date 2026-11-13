@@ -210,10 +210,6 @@ type Node struct {
 	// It must remain the last field and unexported: the leading fields have
 	// to stay a layout-compatible prefix for the v3 Node (see
 	// tryCallYAMLConstructor).
-	//
-	// Any field makes Node 8 bytes larger, which rounds up from the 160 byte
-	// to the 176 byte allocation size class. The bool does not add anything
-	// for the garbage collector to scan, because it follows the last pointer.
 	knownFields bool
 }
 
