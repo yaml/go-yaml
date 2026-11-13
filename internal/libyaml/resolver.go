@@ -205,18 +205,12 @@ var negativeZero = math.Copysign(0.0, -1.0)
 // scientific notation and numbers starting with a dot).
 var yamlStyleFloat = regexp.MustCompile(`^[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?$`)
 
-// allowedTimestampFormats lists the timestamp formats supported by the
-// resolver.
-// This is a subset of the formats allowed by the regular expression
-// defined at http://yaml.org/type/timestamp.html.
-var allowedTimestampFormats = []string{
-	"2006-1-2T15:4:5.999999999Z07:00", // RCF3339Nano with short date fields.
-	"2006-1-2t15:4:5.999999999Z07:00", // RFC3339Nano with short date fields and lower-case "t".
-	"2006-1-2 15:4:5.999999999",       // space separated with no time zone
-	"2006-1-2",                        // date only
-	// Notable exception: time.Parse cannot handle: "2001-12-14 21:59:43.10 -5"
-	// from the set of examples.
-}
+var yaml11TimestampRegexp = regexp.MustCompile(
+	`^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})` +
+		`(?:(?:[Tt]|[ \t]+)([0-9]{1,2}):([0-9]{1,2}):` +
+		`([0-9]{1,2})(?:\.([0-9]*))?` +
+		`(?:[ \t]*(Z|[-+][0-9]{1,2}(?::[0-9]{2})?))?)?$`,
+)
 
 // init initializes the resolveTable with character class mappings for tag resolution.
 func init() {
@@ -294,9 +288,6 @@ func encodeBase64(s string) string {
 // returns the timestamp and reports whether it succeeded.
 // Timestamp formats are defined at http://yaml.org/type/timestamp.html
 func parseTimestamp(s string) (time.Time, bool) {
-	// TODO write code to check all the formats supported by
-	// http://yaml.org/type/timestamp.html instead of using time.Parse.
-
 	// Quick check: all date formats start with YYYY-.
 	i := 0
 	for ; i < len(s); i++ {
@@ -307,12 +298,59 @@ func parseTimestamp(s string) (time.Time, bool) {
 	if i != 4 || i == len(s) || s[i] != '-' {
 		return time.Time{}, false
 	}
-	for _, format := range allowedTimestampFormats {
-		if t, err := time.Parse(format, s); err == nil {
-			return t, true
+
+	if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
+		return t, true
+	}
+	// Use layout string for compatibility with Go 1.18.
+	// time.DateOnly was introduced in Go 1.20.
+	if t, err := time.Parse("2006-01-02", s); err == nil {
+		return t, true
+	}
+
+	matches := yaml11TimestampRegexp.FindStringSubmatch(s)
+	if matches == nil {
+		return time.Time{}, false
+	}
+
+	date := matches[1] + "-" + padTimestampComponent(matches[2]) + "-" +
+		padTimestampComponent(matches[3])
+	timePart := "00:00:00"
+	if matches[4] != "" {
+		timePart = padTimestampComponent(matches[4]) + ":" +
+			padTimestampComponent(matches[5]) + ":" +
+			padTimestampComponent(matches[6])
+		if matches[7] != "" {
+			timePart += "." + matches[7]
 		}
 	}
-	return time.Time{}, false
+
+	normalized := date + "T" + timePart + normalizeTimestampZone(matches[8])
+	t, err := time.Parse(time.RFC3339Nano, normalized)
+	if err != nil {
+		return time.Time{}, false
+	}
+	return t, true
+}
+
+func padTimestampComponent(s string) string {
+	if len(s) == 1 {
+		return "0" + s
+	}
+	return s
+}
+
+func normalizeTimestampZone(zone string) string {
+	if zone == "" || zone == "Z" {
+		return "Z"
+	}
+
+	parts := strings.SplitN(zone[1:], ":", 2)
+	minute := "00"
+	if len(parts) == 2 {
+		minute = parts[1]
+	}
+	return zone[:1] + padTimestampComponent(parts[0]) + ":" + minute
 }
 
 // formatResolverError creates a LoadError for resolver-stage errors.
