@@ -524,7 +524,9 @@ of the load that produced the node (`Decoder.KnownFields(true)` or
 keep strict field checking (issues #321 and go-yaml/yaml#460). All other
 options have their default values.
 `node.Load()` does not inherit anything and applies exactly the options passed
-to it.
+to it. These options apply to the target value only: nested `UnmarshalYAML`
+methods that call `node.Decode()` still use the setting of the load that
+produced their node.
 
 **Usage example:**
 

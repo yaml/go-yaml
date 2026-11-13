@@ -1,7 +1,8 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-// Example: Node Load Decode Comparison compares loading vs decoding with Nodes.
+// Example: Node Load Decode Comparison compares node.Load() without and with
+// WithKnownFields().
 
 package main
 
@@ -44,7 +45,7 @@ port: 8080
 unknown: field
 `
 
-	fmt.Println("=== Comparing node.Decode() vs node.Load() ===")
+	fmt.Println("=== Comparing node.Load() without and with options ===")
 
 	// Test 1: Using node.Decode() - unknown field ignored
 	fmt.Println("1. Using node.Decode() (compatibility defaults):")

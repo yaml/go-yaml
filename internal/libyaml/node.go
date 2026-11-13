@@ -335,9 +335,10 @@ func (n *Node) Decode(v any) (err error) {
 // Unlike [Node.Decode], Load does not inherit anything from the load that
 // produced the node and applies exactly the given options. This is useful
 // inside custom UnmarshalYAML implementations that need to set options
-// independent of how they are being loaded. Nested UnmarshalYAML methods
-// that call Decode still apply the KnownFields setting of the load that
-// produced their node.
+// independent of how they are being loaded. The options apply to v only:
+// nested UnmarshalYAML methods that call Decode still apply the KnownFields
+// setting of the load that produced their node.
+// Parser settings do not apply to this already composed graph.
 //
 // Maps and pointers (to a struct, string, int, etc) are accepted as v
 // values. If an internal pointer within a struct is not initialized,
