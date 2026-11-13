@@ -991,8 +991,7 @@ func TestNodeDecodeKnownFields(t *testing.T) {
 }
 
 // TestNodeDecodeKnownFieldsToggle checks that the KnownFields setting in
-// effect when a document is decoded decides, and not the one of an earlier
-// or later document.
+// effect when a document is read decides, whatever it was for other documents.
 func TestNodeDecodeKnownFieldsToggle(t *testing.T) {
 	input := "name: a\nextra: 1\n---\nname: b\nextra: 2\n---\nname: c\nextra: 3\n"
 	dec := yaml.NewDecoder(bytes.NewReader([]byte(input)))
