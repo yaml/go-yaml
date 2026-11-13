@@ -925,6 +925,8 @@ func NewDecoder(r io.Reader) *Decoder {
 
 // KnownFields ensures that the keys in decoded mappings to
 // exist as fields in the struct being decoded into.
+// The setting also applies to [Node.Decode] calls made by UnmarshalYAML
+// methods of the decoded values.
 func (dec *Decoder) KnownFields(enable bool) {
 	dec.loader.SetLegacyLoaderKnownFields(enable)
 }

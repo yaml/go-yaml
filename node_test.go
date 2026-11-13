@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"sync"
 	"testing"
 
 	"go.yaml.in/yaml/v4"
@@ -841,6 +840,7 @@ func TestNodeDumpInvalidOptions(t *testing.T) {
 	assert.ErrorMatches(t, ".*indent must be.*", err)
 }
 
+// nodeDecodeTarget delegates to Node.Decode, the pattern from issue #321.
 type nodeDecodeTarget struct {
 	Name string `yaml:"name"`
 }
@@ -850,12 +850,14 @@ func (t *nodeDecodeTarget) UnmarshalYAML(node *yaml.Node) error {
 	return node.Decode((*plain)(t))
 }
 
-type nodeDecodeChildInner struct {
+// nodePlainTarget has no UnmarshalYAML method.
+type nodePlainTarget struct {
 	Name string `yaml:"name"`
 }
 
+// nodeDecodeChildOuter decodes a child node of the node it receives.
 type nodeDecodeChildOuter struct {
-	Inner nodeDecodeChildInner
+	Inner nodePlainTarget
 }
 
 func (o *nodeDecodeChildOuter) UnmarshalYAML(node *yaml.Node) error {
@@ -867,130 +869,162 @@ func (o *nodeDecodeChildOuter) UnmarshalYAML(node *yaml.Node) error {
 	return nil
 }
 
-func TestNodeDecodeInheritsKnownFields(t *testing.T) {
-	t.Run("known fields rejected", func(t *testing.T) {
-		input := "name: Alice\nunknown_field: oops\n"
-		var v nodeDecodeTarget
-		err := yaml.Load([]byte(input), &v, yaml.WithKnownFields())
-		assert.NotNil(t, err)
-		assert.ErrorMatches(t, ".*unknown_field.*", err)
-	})
-
-	t.Run("unknown fields ignored without option", func(t *testing.T) {
-		input := "name: Alice\nunknown_field: oops\n"
-		var v nodeDecodeTarget
-		err := yaml.Unmarshal([]byte(input), &v)
-		assert.NoError(t, err)
-		assert.Equal(t, "Alice", v.Name)
-	})
-
-	t.Run("user-constructed node uses default options", func(t *testing.T) {
-		node := &yaml.Node{
-			Kind: yaml.MappingNode,
-			Tag:  "!!map",
-			Content: []*yaml.Node{
-				{Kind: yaml.ScalarNode, Tag: "!!str", Value: "name"},
-				{Kind: yaml.ScalarNode, Tag: "!!str", Value: "Bob"},
-				{Kind: yaml.ScalarNode, Tag: "!!str", Value: "extra"},
-				{Kind: yaml.ScalarNode, Tag: "!!str", Value: "ignored"},
-			},
-		}
-		var v nodeDecodeChildInner
-		err := node.Decode(&v)
-		assert.NoError(t, err)
-		assert.Equal(t, "Bob", v.Name)
-	})
-
-	t.Run("child node inherits known fields", func(t *testing.T) {
-		input := "inner:\n  name: Carol\n  unknown_field: oops\n"
-		var v nodeDecodeChildOuter
-		err := yaml.Load([]byte(input), &v, yaml.WithKnownFields())
-		assert.NotNil(t, err)
-		assert.ErrorMatches(t, ".*unknown_field.*", err)
-	})
-
-	t.Run("known fields via decoder api", func(t *testing.T) {
-		input := "name: Alice\nunknown_field: oops\n"
-		var v nodeDecodeTarget
-		dec := yaml.NewDecoder(bytes.NewReader([]byte(input)))
-		dec.KnownFields(true)
-		err := dec.Decode(&v)
-		assert.NotNil(t, err)
-		assert.ErrorMatches(t, ".*unknown_field.*", err)
-	})
-
-	t.Run("known fields enforced on all documents", func(t *testing.T) {
-		input := "name: Alice\n---\nname: Bob\nunknown_field: oops\n"
-		dec := yaml.NewDecoder(bytes.NewReader([]byte(input)))
-		dec.KnownFields(true)
-
-		var v1 nodeDecodeTarget
-		err := dec.Decode(&v1)
-		assert.NoError(t, err)
-		assert.Equal(t, "Alice", v1.Name)
-
-		var v2 nodeDecodeTarget
-		err = dec.Decode(&v2)
-		assert.NotNil(t, err)
-		assert.ErrorMatches(t, ".*unknown_field.*", err)
-	})
-
-	t.Run("known fields can be disabled between documents", func(t *testing.T) {
-		input := "name: Alice\n---\nname: Bob\nunknown_field: ok\n"
-		dec := yaml.NewDecoder(bytes.NewReader([]byte(input)))
-		dec.KnownFields(true)
-
-		var v1 nodeDecodeTarget
-		err := dec.Decode(&v1)
-		assert.NoError(t, err)
-		assert.Equal(t, "Alice", v1.Name)
-
-		dec.KnownFields(false)
-
-		var v2 nodeDecodeTarget
-		err = dec.Decode(&v2)
-		assert.NoError(t, err)
-		assert.Equal(t, "Bob", v2.Name)
-	})
+// nodeDecodeNestedOuter holds a field that is a custom unmarshaler itself.
+type nodeDecodeNestedOuter struct {
+	Inner nodeDecodeTarget `yaml:"inner"`
 }
 
-type raceDecodeTarget struct {
-	Name     string `yaml:"name"`
-	onDecode func()
+func (o *nodeDecodeNestedOuter) UnmarshalYAML(node *yaml.Node) error {
+	type plain nodeDecodeNestedOuter
+	return node.Decode((*plain)(o))
 }
 
-func (t *raceDecodeTarget) UnmarshalYAML(node *yaml.Node) error {
-	if t.onDecode != nil {
-		t.onDecode()
-	}
-	type plain struct {
-		Name string `yaml:"name"`
-	}
-	var p plain
-	if err := node.Decode(&p); err != nil {
-		return err
-	}
-	t.Name = p.Name
-	return nil
+// nodeLoadTarget uses Node.Load without options, nodeLoadStrictTarget with
+// WithKnownFields.
+type (
+	nodeLoadTarget       struct{ Name string }
+	nodeLoadStrictTarget struct{ Name string }
+)
+
+func (t *nodeLoadTarget) UnmarshalYAML(node *yaml.Node) error {
+	type plain nodeLoadTarget
+	return node.Load((*plain)(t))
 }
 
-// TestSetKnownFieldsRaceWithNodeDecode checks for a data race between Decoder.KnownFields()
-// and Node.Decode() inside UnmarshalYAML (run with '-race')
-func TestSetKnownFieldsRaceWithNodeDecode(t *testing.T) {
-	input := "name: Alice\n"
+func (t *nodeLoadStrictTarget) UnmarshalYAML(node *yaml.Node) error {
+	type plain nodeLoadStrictTarget
+	return node.Load((*plain)(t), yaml.WithKnownFields())
+}
+
+func decodeWithDecoder(input string, knownFields bool, v any) error {
 	dec := yaml.NewDecoder(bytes.NewReader([]byte(input)))
-	dec.KnownFields(true)
+	dec.KnownFields(knownFields)
+	return dec.Decode(v)
+}
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	v := &raceDecodeTarget{
-		onDecode: func() {
-			go func() {
-				defer wg.Done()
-				dec.KnownFields(false)
-			}()
+// TestNodeDecodeKnownFields checks that Node.Decode called from within an
+// UnmarshalYAML method applies KnownFields of the decoder that produced the
+// node (issue #321).
+func TestNodeDecodeKnownFields(t *testing.T) {
+	const unknown = ".*field extra not found.*"
+
+	tests := []struct {
+		name    string
+		decode  func() error
+		wantErr string // empty: no error expected
+	}{
+		{
+			name: "decoder known fields",
+			decode: func() error {
+				return decodeWithDecoder("name: a\nextra: b\n", true, &nodeDecodeTarget{})
+			},
+			wantErr: unknown,
+		},
+		{
+			name: "decoder default",
+			decode: func() error {
+				return decodeWithDecoder("name: a\nextra: b\n", false, &nodeDecodeTarget{})
+			},
+		},
+		{
+			name: "load with known fields",
+			decode: func() error {
+				return yaml.Load([]byte("name: a\nextra: b\n"), &nodeDecodeTarget{}, yaml.WithKnownFields())
+			},
+			wantErr: unknown,
+		},
+		{
+			name: "unmarshal",
+			decode: func() error {
+				return yaml.Unmarshal([]byte("name: a\nextra: b\n"), &nodeDecodeTarget{})
+			},
+		},
+		{
+			name: "load all documents with known fields",
+			decode: func() error {
+				var v []nodeDecodeTarget
+				return yaml.Load([]byte("name: a\n---\nname: b\nextra: c\n"), &v,
+					yaml.WithAllDocuments(), yaml.WithKnownFields())
+			},
+			wantErr: unknown,
+		},
+		{
+			name: "child node",
+			decode: func() error {
+				return decodeWithDecoder("inner:\n  name: a\n  extra: b\n", true, &nodeDecodeChildOuter{})
+			},
+			wantErr: unknown,
+		},
+		{
+			name: "nested unmarshalers",
+			decode: func() error {
+				return decodeWithDecoder("inner:\n  name: a\n  extra: b\n", true, &nodeDecodeNestedOuter{})
+			},
+			wantErr: unknown,
+		},
+		{
+			name: "node load does not inherit",
+			decode: func() error {
+				return decodeWithDecoder("name: a\nextra: b\n", true, &nodeLoadTarget{})
+			},
+		},
+		{
+			name: "node load with explicit known fields",
+			decode: func() error {
+				return decodeWithDecoder("name: a\nextra: b\n", false, &nodeLoadStrictTarget{})
+			},
+			wantErr: unknown,
 		},
 	}
-	_ = dec.Decode(v)
-	wg.Wait()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.decode()
+			if tt.wantErr == "" {
+				assert.NoError(t, err)
+				return
+			}
+			assert.NotNil(t, err)
+			assert.ErrorMatches(t, tt.wantErr, err)
+		})
+	}
+}
+
+// TestNodeDecodeKnownFieldsToggle checks that the KnownFields setting in
+// effect when a document is decoded decides, and not the one of an earlier
+// or later document.
+func TestNodeDecodeKnownFieldsToggle(t *testing.T) {
+	input := "name: a\nextra: 1\n---\nname: b\nextra: 2\n---\nname: c\nextra: 3\n"
+	dec := yaml.NewDecoder(bytes.NewReader([]byte(input)))
+
+	for _, known := range []bool{true, false, true} {
+		dec.KnownFields(known)
+		err := dec.Decode(&nodeDecodeTarget{})
+		if known {
+			assert.NotNil(t, err)
+			assert.ErrorMatches(t, ".*field extra not found.*", err)
+		} else {
+			assert.NoError(t, err)
+		}
+	}
+}
+
+// TestNodeDecodeKnownFieldsKeptNode documents that a node remembers the
+// KnownFields setting of the decode that produced it, also when it is kept
+// around and decoded later, and that Node.Encode resets it.
+func TestNodeDecodeKnownFieldsKeptNode(t *testing.T) {
+	input := "name: a\nextra: b\n"
+
+	var strict yaml.Node
+	assert.NoError(t, decodeWithDecoder(input, true, &strict))
+	err := strict.Decode(&nodePlainTarget{})
+	assert.NotNil(t, err)
+	assert.ErrorMatches(t, ".*field extra not found.*", err)
+
+	var lenient yaml.Node
+	assert.NoError(t, decodeWithDecoder(input, false, &lenient))
+	assert.NoError(t, lenient.Decode(&nodePlainTarget{}))
+
+	assert.NoError(t, strict.Encode(map[string]string{"name": "a", "extra": "b"}))
+	assert.NoError(t, strict.Decode(&nodePlainTarget{}))
 }

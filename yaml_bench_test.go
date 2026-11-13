@@ -17,8 +17,8 @@ type benchPlain struct {
 	Fields map[string]string `yaml:",inline"`
 }
 
-// benchCustom is a decode target whose UnmarshalYAML calls node.Decode —
-// the path that will inherit loader options after the tree-stamp fix.
+// benchCustom is a decode target whose UnmarshalYAML calls node.Decode,
+// the path that inherits KnownFields from the decoder.
 type benchCustom struct {
 	Fields map[string]string `yaml:",inline"`
 }
