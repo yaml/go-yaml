@@ -183,6 +183,55 @@
       tag: '!!timestamp'
 
 - resolve-infer:
+    name: Infer timestamp tag from date only
+    node:
+      value: '2002-12-14'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from space separated date and time
+    node:
+      value: '2001-12-15 02:59:43'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from space separated date and fractional time
+    node:
+      value: '2001-12-15 02:59:43.1'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from uppercase T date and time with UTC zone
+    node:
+      value: '2001-12-15T02:59:43.1Z'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from uppercase T date and time with offset
+    node:
+      value: '2001-12-14T21:59:43.10-05:00'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from lowercase t date and time with UTC zone
+    node:
+      value: '2001-12-15t02:59:43.1Z'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from lowercase t date and time with offset
+    node:
+      value: '2001-12-14t21:59:43.10-05:00'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
     name: Infer str tag from plain text
     node:
       value: 'hello world'
