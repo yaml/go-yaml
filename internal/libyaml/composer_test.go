@@ -6,6 +6,7 @@
 package libyaml
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 )
@@ -149,4 +150,44 @@ func TestComposer(t *testing.T) {
 			checkComposedNode(t, node, wantMap, "root")
 		},
 	})
+}
+
+func TestComposerKnownFields(t *testing.T) {
+	input := []byte("a: [b, c]\n")
+	tests := []struct {
+		name string
+		new  func(opts *Options) *Composer
+	}{
+		{"from bytes", func(opts *Options) *Composer { return NewComposer(input, opts) }},
+		{"from reader", func(opts *Options) *Composer {
+			return NewComposerFromReader(bytes.NewReader(input), opts)
+		}},
+	}
+	for _, tt := range tests {
+		for _, known := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/known=%v", tt.name, known), func(t *testing.T) {
+				opts, err := ApplyOptions(WithKnownFields(known))
+				if err != nil {
+					t.Fatal(err)
+				}
+				c := tt.new(opts)
+				defer c.Destroy()
+				var walk func(n *Node)
+				count := 0
+				walk = func(n *Node) {
+					count++
+					if n.knownFields != known {
+						t.Errorf("node kind %v: knownFields = %v; want %v", n.Kind, n.knownFields, known)
+					}
+					for _, child := range n.Content {
+						walk(child)
+					}
+				}
+				walk(c.Compose())
+				if count < 5 {
+					t.Errorf("checked %d nodes; want at least 5", count)
+				}
+			})
+		}
+	}
 }
