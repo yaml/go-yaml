@@ -300,9 +300,11 @@ func (n *Node) SetString(s string) {
 // Decode decodes the node and stores its data into the value pointed to by v.
 //
 // If the node was loaded with KnownFields enabled (see Decoder.KnownFields and
-// WithKnownFields), Decode applies it as well. Therefore, calling Decode from
-// an UnmarshalYAML method keeps strict field checking. All other options have
-// their default values, use [Node.Load] to set options explicitly.
+// WithKnownFields), Decode applies it as well.
+// Therefore, calling Decode from an UnmarshalYAML method keeps strict field
+// checking.
+// All other options have their default values, use [Node.Load] to set options
+// explicitly.
 //
 // See the documentation for [yaml.Unmarshal] for details about the
 // conversion of YAML into a Go value.
@@ -329,9 +331,10 @@ func (n *Node) Decode(v any) (err error) {
 // occurred and the policy cannot be applied to this node graph.
 //
 // Unlike [Node.Decode], Load does not inherit anything from the load that
-// produced the node and applies exactly the given options. This is useful
-// inside custom UnmarshalYAML implementations that need to set options
-// independent of how they are being loaded. The options apply to v only:
+// produced the node and applies exactly the given options.
+// This is useful inside custom UnmarshalYAML implementations that need to set
+// options independent of how they are being loaded.
+// The options apply to v only:
 // nested UnmarshalYAML methods that call Decode still apply the KnownFields
 // setting of the load that produced their node.
 // Parser settings do not apply to this already composed graph.

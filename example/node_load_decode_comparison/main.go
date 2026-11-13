@@ -47,7 +47,7 @@ unknown: field
 	fmt.Println("=== Comparing node.Decode() vs node.Load() ===")
 
 	// Test 1: Using node.Decode() - unknown field ignored
-	fmt.Println("1. Using node.Decode() (outer load without WithKnownFields()):")
+	fmt.Println("1. Using node.Decode() (outer load without known fields):")
 	var config1 DecodeUnmarshaler
 	err := yaml.Load([]byte(yamlData), &config1)
 	if err != nil {
