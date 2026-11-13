@@ -1,8 +1,7 @@
 // Copyright 2025 The go-yaml Project Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-// Example: Node Load Decode Comparison compares node.Load() without and with
-// WithKnownFields().
+// Example: Node Load Decode Comparison compares loading vs decoding with Nodes.
 
 package main
 
@@ -17,14 +16,14 @@ type Config struct {
 	Port int    `yaml:"port"`
 }
 
-// DecodeUnmarshaler uses node.Decode() (compatibility defaults)
+// DecodeUnmarshaler uses node.Decode() (follows the outer load)
 type DecodeUnmarshaler struct {
 	Config `yaml:",inline"`
 }
 
 func (d *DecodeUnmarshaler) UnmarshalYAML(node *yaml.Node) error {
 	type plain DecodeUnmarshaler
-	return node.Decode((*plain)(d)) // Strict checking is off by default.
+	return node.Decode((*plain)(d)) // Strict only if the outer load is.
 }
 
 // LoadUnmarshaler uses node.Load() (explicit strict checking)
@@ -45,10 +44,10 @@ port: 8080
 unknown: field
 `
 
-	fmt.Println("=== Comparing node.Load() without and with options ===")
+	fmt.Println("=== Comparing node.Decode() vs node.Load() ===")
 
 	// Test 1: Using node.Decode() - unknown field ignored
-	fmt.Println("1. Using node.Decode() (compatibility defaults):")
+	fmt.Println("1. Using node.Decode() (outer load without WithKnownFields()):")
 	var config1 DecodeUnmarshaler
 	err := yaml.Load([]byte(yamlData), &config1)
 	if err != nil {
