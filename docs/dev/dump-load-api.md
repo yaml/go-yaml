@@ -498,8 +498,9 @@ When working with the Node API directly, you can also use options through the
 
 ### Node.Load() - Load with Options
 
-The `Node.Load()` method is particularly useful inside custom `UnmarshalYAML`
-implementations that need options such as `WithKnownFields()`.
+The `Node.Load()` method is useful inside custom `UnmarshalYAML`
+implementations that need to set options independent of how they are being
+loaded.
 Each call starts with fresh defaults, independently of the outer loader.
 Pass construction options explicitly; parser options cannot affect a graph
 that has already been composed.
@@ -517,9 +518,13 @@ func (c *Config) UnmarshalYAML(node *yaml.Node) error {
 }
 ```
 
-`node.Decode()` uses its own compatibility defaults and cannot accept options.
-`node.Load()` lets the hook explicitly enable strict field checking.
-Neither method inherits the calling loader's options.
+`node.Decode()` cannot accept options. It applies the `KnownFields` setting
+of the load that produced the node (`Decoder.KnownFields(true)` or
+`yaml.WithKnownFields()`), so a custom unmarshaler can simply delegate to it and
+keep strict field checking (issues #321 and go-yaml/yaml#460). All other
+options have their default values.
+`node.Load()` does not inherit anything and applies exactly the options passed
+to it.
 
 **Usage example:**
 
@@ -566,7 +571,7 @@ Apply those settings again when serializing the node.
 
 **When to use:**
 
-- Custom unmarshalers that need strict validation (`node.Load()`)
+- Custom unmarshalers that need to set options themselves (`node.Load()`)
 - Building Node trees with specific formatting (`node.Dump()`)
 - Programmatic YAML manipulation with options
 - Applying options explicitly at each relevant stage
