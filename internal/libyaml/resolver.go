@@ -210,16 +210,26 @@ var yamlStyleFloat = regexp.MustCompile(`^[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(
 // This is a subset of the formats allowed by the regular expression
 // defined at http://yaml.org/type/timestamp.html.
 var allowedTimestampFormats = []string{
-	"2006-1-2T15:4:5.999999999Z07:00",  // RCF3339Nano with short date fields.
-	"2006-1-2T15:4:5.999999999-07",     // uppercase T with hour-only time zone
-	"2006-1-2t15:4:5.999999999-07",     // lowercase t with hour-only time zone
-	"2006-1-2t15:4:5.999999999Z07:00",  // RFC3339Nano with short date fields and lower-case "t".
-	"2006-1-2 15:4:5.999999999 -07",    // space separated with hour-only time zone, with second space separation
-	"2006-1-2 15:4:5.999999999-07",     // space separated with hour-only time zone, without double space
-	"2006-1-2 15:4:5.999999999 -07:00", // space separated with hour and minutes, with second space separation
-	"2006-1-2 15:4:5.999999999-07:00",  // space separated with hour and minutes time zone, with second space separation
-	"2006-1-2 15:4:5.999999999",        // space separated with no time zone
-	"2006-1-2",                         // date only
+	"2006-1-2T15:4:5.999999999Z07:00", // RCF3339Nano with short date fields.
+	"2006-1-2T15:4:5.999999999-07",    // uppercase T with hour-only time zone
+	"2006-1-2t15:4:5.999999999-07",    // lowercase t with hour-only time zone
+	"2006-1-2t15:4:5.999999999Z07:00", // RFC3339Nano with short date fields and lower-case "t".
+	// Date and time separated by a tab.
+	"2006-1-2\t15:4:5.999999999-07",
+	"2006-1-2\t15:4:5.999999999 -07",
+	"2006-1-2\t15:4:5.999999999\t-07",
+	"2006-1-2\t15:4:5.999999999-07:00",
+	"2006-1-2\t15:4:5.999999999 -07:00",
+	"2006-1-2\t15:4:5.999999999\t-07:00",
+	"2006-1-2\t15:4:5.999999999",
+	"2006-1-2 15:4:5.999999999 -07",     // space separated with hour-only time zone, with second space separation
+	"2006-1-2 15:4:5.999999999\t-07",    // space separated with hour-only time zone, with tab before time zone
+	"2006-1-2 15:4:5.999999999-07",      // space separated with hour-only time zone, without double space
+	"2006-1-2 15:4:5.999999999 -07:00",  // space separated with hour and minutes, with second space separation
+	"2006-1-2 15:4:5.999999999\t-07:00", // space separated with hour and minutes, with second space separation
+	"2006-1-2 15:4:5.999999999-07:00",   // space separated with hour and minutes time zone, with second space separation
+	"2006-1-2 15:4:5.999999999",         // space separated with no time zone
+	"2006-1-2",                          // date only
 }
 
 // init initializes the resolveTable with character class mappings for tag resolution.
