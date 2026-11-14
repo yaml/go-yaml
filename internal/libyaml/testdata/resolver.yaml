@@ -302,6 +302,20 @@
       tag: '!!timestamp'
 
 - resolve-infer:
+    name: Infer timestamp tag with space before offset with minutes
+    node:
+      value: '2001-12-14 21:59:43.10 +5:30'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag with tab before offset with minutes
+    node:
+      value: "2001-12-14 21:59:43.10\t+5:30"
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
     name: Infer timestamp tag from positive two digit hour offset
     node:
       value: '2001-12-14 21:59:43.10+10'
