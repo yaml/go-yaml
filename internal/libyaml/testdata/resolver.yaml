@@ -232,6 +232,76 @@
       tag: '!!timestamp'
 
 - resolve-infer:
+    name: Infer timestamp tag from negative single digit hour offset
+    node:
+      value: '2001-12-14 21:59:43.10-5'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from positive single digit hour offset
+    node:
+      value: '2001-12-14 21:59:43.10+5'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from positive zero hour offset
+    node:
+      value: '2001-12-14 21:59:43.10+0'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from negative zero hour offset
+    node:
+      value: '2001-12-14 21:59:43.10-0'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from positive short hour offset with minutes
+    node:
+      value: '2001-12-14 21:59:43.10+5:30'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from negative short hour offset with minutes
+    node:
+      value: '2001-12-14 21:59:43.10-5:30'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from uppercase T with short hour offset
+    node:
+      value: '2001-12-14T21:59:43.10+5'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from lowercase t with short hour offset
+    node:
+      value: '2001-12-14t21:59:43.10+5'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from positive two digit hour offset
+    node:
+      value: '2001-12-14 21:59:43.10+10'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from negative two digit hour offset
+    node:
+      value: '2001-12-14 21:59:43.10-10'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
     name: Infer str tag from plain text
     node:
       value: 'hello world'
