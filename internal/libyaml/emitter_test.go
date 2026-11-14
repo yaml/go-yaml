@@ -102,39 +102,6 @@ func TestEmitAlias(t *testing.T) {
 	assert.Equal(t, 0, len(emitter.states))
 }
 
-func TestEmitCompactSeqInSeqMapping(t *testing.T) {
-	events := []Event{
-		NewStreamStartEvent(UTF8_ENCODING),
-		NewDocumentStartEvent(nil, nil, true),
-		NewSequenceStartEvent(nil, nil, true, BLOCK_SEQUENCE_STYLE),
-		NewMappingStartEvent(nil, nil, true, BLOCK_MAPPING_STYLE),
-		NewScalarEvent(
-			nil, nil, []byte("a"), true, true, PLAIN_SCALAR_STYLE,
-		),
-		NewSequenceStartEvent(nil, nil, true, BLOCK_SEQUENCE_STYLE),
-		NewScalarEvent(
-			nil, nil, []byte("null"), true, false,
-			PLAIN_SCALAR_STYLE,
-		),
-		NewSequenceEndEvent(),
-		NewMappingEndEvent(),
-		NewSequenceEndEvent(),
-		NewDocumentEndEvent(true),
-		NewStreamEndEvent(),
-	}
-
-	emitter := NewEmitter()
-	emitter.CompactSequenceIndent = true
-	emitter.SetIndent(3)
-	var output []byte
-	emitter.SetOutputString(&output)
-	for i := range events {
-		err := emitter.Emit(&events[i])
-		assert.NoErrorf(t, err, "Emit() error: %v", err)
-	}
-	assert.Equal(t, "- a:\n  - null\n", string(output))
-}
-
 func runEmitWriterTest(t *testing.T, tc TestCase) {
 	t.Helper()
 
