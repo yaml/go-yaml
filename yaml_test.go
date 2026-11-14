@@ -2998,6 +2998,61 @@ func TestCompactSequenceWithSetIndent(t *testing.T) {
 `, buf.String())
 }
 
+func TestCompactSequenceNestedInSequenceMapping(t *testing.T) {
+	input := []any{map[string]any{"a": []any{nil}}}
+
+	out, err := yaml.Dump(input, yaml.WithIndent(3))
+	assert.NoError(t, err)
+	assert.Equal(t, "- a:\n  - null\n", string(out))
+
+	var unmarshaled any
+	assert.NoError(t, yaml.Unmarshal(out, &unmarshaled))
+	assert.DeepEqual(t, input, unmarshaled)
+
+	var loaded any
+	assert.NoError(t, yaml.Load(out, &loaded))
+	assert.DeepEqual(t, input, loaded)
+
+	nonCompact, err := yaml.Dump(
+		input,
+		yaml.WithIndent(3),
+		yaml.WithCompactSeqIndent(false),
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, "- a:\n   - null\n", string(nonCompact))
+
+	var encBuf bytes.Buffer
+	enc := yaml.NewEncoder(&encBuf)
+	enc.CompactSeqIndent()
+	enc.SetIndent(3)
+	assert.NoError(t, enc.Encode(input))
+	assert.NoError(t, enc.Close())
+	assert.Equal(t, "- a:\n  - null\n", encBuf.String())
+
+	for indent := 2; indent <= 9; indent++ {
+		for depth := 1; depth <= 5; depth++ {
+			name := fmt.Sprintf("indent=%d/depth=%d", indent, depth)
+			t.Run(name, func(t *testing.T) {
+				inner := map[string]any{"b": []any{1, 2}}
+				nested := any(map[string]any{
+					"a": []any{nil, inner},
+					"c": "ok",
+				})
+				for i := 0; i < depth; i++ {
+					nested = []any{nested}
+				}
+				opt := yaml.WithIndent(indent)
+				dumped, err := yaml.Dump(nested, opt)
+				assert.NoError(t, err)
+
+				var got any
+				assert.NoError(t, yaml.Load(dumped, &got))
+				assert.DeepEqual(t, nested, got)
+			})
+		}
+	}
+}
+
 type (
 	normal  string
 	compact string
