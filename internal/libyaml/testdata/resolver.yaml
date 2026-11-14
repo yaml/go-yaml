@@ -183,6 +183,202 @@
       tag: '!!timestamp'
 
 - resolve-infer:
+    name: Infer timestamp tag from date only
+    node:
+      value: '2002-12-14'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from space separated date and time
+    node:
+      value: '2001-12-15 02:59:43'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from space separated date and fractional time
+    node:
+      value: '2001-12-15 02:59:43.1'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from uppercase T date and time with UTC zone
+    node:
+      value: '2001-12-15T02:59:43.1Z'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from uppercase T date and time with offset
+    node:
+      value: '2001-12-14T21:59:43.10-05:00'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from lowercase t date and time with UTC zone
+    node:
+      value: '2001-12-15t02:59:43.1Z'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from lowercase t date and time with offset
+    node:
+      value: '2001-12-14t21:59:43.10-05:00'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from negative single digit hour offset
+    node:
+      value: '2001-12-14 21:59:43.10-5'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from positive single digit hour offset
+    node:
+      value: '2001-12-14 21:59:43.10+5'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from positive zero hour offset
+    node:
+      value: '2001-12-14 21:59:43.10+0'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from negative zero hour offset
+    node:
+      value: '2001-12-14 21:59:43.10-0'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from positive short hour offset with minutes
+    node:
+      value: '2001-12-14 21:59:43.10+5:30'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from negative short hour offset with minutes
+    node:
+      value: '2001-12-14 21:59:43.10-5:30'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from uppercase T with short hour offset
+    node:
+      value: '2001-12-14T21:59:43.10+5'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from lowercase t with short hour offset
+    node:
+      value: '2001-12-14t21:59:43.10+5'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from timestamp string with double space separation
+    node:
+      value: '2001-12-14 21:59:43.10 +5'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag with tab before time zone
+    node:
+      value: "2001-12-14 21:59:43.10\t+5"
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag with space before offset with minutes
+    node:
+      value: '2001-12-14 21:59:43.10 +5:30'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag with tab before offset with minutes
+    node:
+      value: "2001-12-14 21:59:43.10\t+5:30"
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from positive two digit hour offset
+    node:
+      value: '2001-12-14 21:59:43.10+10'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag from negative two digit hour offset
+    node:
+      value: '2001-12-14 21:59:43.10-10'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag with tab between date and time without zone
+    node:
+      value: "2001-12-14\t21:59:43.10"
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag with tab and adjacent hour offset
+    node:
+      value: "2001-12-14\t21:59:43.10-5"
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag with tab and space before hour offset
+    node:
+      value: "2001-12-14\t21:59:43.10 +5"
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag with tabs before time and hour offset
+    node:
+      value: "2001-12-14\t21:59:43.10\t+5"
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag with tab and adjacent offset with minutes
+    node:
+      value: "2001-12-14\t21:59:43.10-5:30"
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag with tab and space before offset with minutes
+    node:
+      value: "2001-12-14\t21:59:43.10 +5:30"
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
+    name: Infer timestamp tag with tabs before time and offset with minutes
+    node:
+      value: "2001-12-14\t21:59:43.10\t-5:30"
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
     name: Infer str tag from plain text
     node:
       value: 'hello world'
