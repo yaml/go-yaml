@@ -288,6 +288,13 @@
       tag: '!!timestamp'
 
 - resolve-infer:
+    name: Infer timestamp tag from timestamp string with double space separation
+    node:
+      value: '2001-12-14 21:59:43.10 +5'
+    want:
+      tag: '!!timestamp'
+
+- resolve-infer:
     name: Infer timestamp tag from positive two digit hour offset
     node:
       value: '2001-12-14 21:59:43.10+10'
