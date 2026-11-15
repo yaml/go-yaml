@@ -250,15 +250,15 @@ func (c *Constructor) checkMappingKeys(n *Node) bool {
 	type seenKeys struct{ merge, plain *Node }
 	seen := make(map[keyID]*seenKeys, len(n.Content)/2)
 	nerrs := len(c.TypeErrors)
-	for j := 0; j < len(n.Content); j += 2 {
-		nj := n.Content[j]
-		id := keyID{nj.Kind, nj.Value}
+	for i := 0; i < len(n.Content); i += 2 {
+		nk := n.Content[i]
+		id := keyID{nk.Kind, nk.Value}
 		e := seen[id]
 		if e == nil {
 			e = &seenKeys{}
 			seen[id] = e
 		}
-		isMergeKey := !c.mergeConfig.Disable && isMerge(nj)
+		isMergeKey := !c.mergeConfig.Disable && isMerge(nk)
 		var first *Node
 		if isMergeKey && e.merge != nil &&
 			c.mergeConfig.Multiple != "combine" &&
@@ -266,27 +266,23 @@ func (c *Constructor) checkMappingKeys(n *Node) bool {
 			first = e.merge
 		}
 		if first == nil && c.UniqueKeys {
-			if isMergeKey {
-				first = e.plain
-			} else {
-				first = e.plain
-				if e.merge != nil && (first == nil || e.merge.Line < first.Line) {
-					first = e.merge
-				}
+			first = e.plain
+			if !isMergeKey && e.merge != nil && (first == nil || e.merge.Line < first.Line) {
+				first = e.merge
 			}
 		}
 		if first != nil {
 			c.TypeErrors = append(c.TypeErrors, c.formatConstructorError(
-				fmt.Errorf("mapping key %#v already defined at line %d", nj.Value, first.Line),
-				Mark{Line: nj.Line, Column: nj.Column},
+				fmt.Errorf("mapping key %#v already defined at line %d", nk.Value, first.Line),
+				Mark{Line: nk.Line, Column: nk.Column},
 			))
 		}
 		if isMergeKey {
 			if e.merge == nil {
-				e.merge = nj
+				e.merge = nk
 			}
 		} else if e.plain == nil {
-			e.plain = nj
+			e.plain = nk
 		}
 	}
 	return len(c.TypeErrors) == nerrs
