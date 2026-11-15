@@ -231,28 +231,58 @@ func (c *Constructor) checkMergeKey(value any, n *Node) {
 	_ = map[any]bool{}[value]
 }
 
+// checkMappingKeys reports keys that repeat an earlier key of the same
+// mapping. It runs in linear time: keys are looked up in a hash set instead of
+// being compared with every earlier key, and a key that repeats gets one error
+// that names the first earlier occurrence, so a mapping with n identical keys
+// produces n-1 errors rather than n*(n-1)/2.
 func (c *Constructor) checkMappingKeys(n *Node) bool {
 	if !c.UniqueKeys && c.mergeConfig.Multiple != "error" {
 		return true
 	}
+	type keyID struct {
+		kind  Kind
+		value string
+	}
+	// For one key, the first earlier occurrence that is a merge key and the
+	// first that is not. Two merge keys are checked under the merge rules,
+	// any other pair under UniqueKeys.
+	type seenKeys struct{ merge, plain *Node }
+	seen := make(map[keyID]*seenKeys, len(n.Content)/2)
 	nerrs := len(c.TypeErrors)
 	for i := 0; i < len(n.Content); i += 2 {
-		ni := n.Content[i]
-		for j := i + 2; j < len(n.Content); j += 2 {
-			nj := n.Content[j]
-			merges := !c.mergeConfig.Disable && isMerge(ni) && isMerge(nj)
-			if merges && c.mergeConfig.Multiple == "combine" {
-				continue
+		nk := n.Content[i]
+		id := keyID{nk.Kind, nk.Value}
+		e := seen[id]
+		if e == nil {
+			e = &seenKeys{}
+			seen[id] = e
+		}
+		isMergeKey := !c.mergeConfig.Disable && isMerge(nk)
+		var first *Node
+		if isMergeKey && e.merge != nil &&
+			c.mergeConfig.Multiple != "combine" &&
+			(c.UniqueKeys || c.mergeConfig.Multiple == "error") {
+			first = e.merge
+		}
+		if first == nil && c.UniqueKeys {
+			first = e.plain
+			if !isMergeKey && e.merge != nil && (first == nil || e.merge.Line < first.Line) {
+				first = e.merge
 			}
-			if !c.UniqueKeys && !(merges && c.mergeConfig.Multiple == "error") {
-				continue
+		}
+		if first != nil {
+			c.TypeErrors = append(c.TypeErrors, c.formatConstructorError(
+				fmt.Errorf("mapping key %#v already defined at line %d", nk.Value, first.Line),
+				Mark{Line: nk.Line, Column: nk.Column},
+			))
+		}
+		if isMergeKey {
+			if e.merge == nil {
+				e.merge = nk
 			}
-			if ni.Kind == nj.Kind && ni.Value == nj.Value {
-				c.TypeErrors = append(c.TypeErrors, c.formatConstructorError(
-					fmt.Errorf("mapping key %#v already defined at line %d", nj.Value, ni.Line),
-					Mark{Line: nj.Line, Column: nj.Column},
-				))
-			}
+		} else if e.plain == nil {
+			e.plain = nk
 		}
 	}
 	return len(c.TypeErrors) == nerrs
