@@ -8,6 +8,7 @@ package libyaml
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -189,5 +190,56 @@ func TestComposerKnownFields(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestComposerSetLegacyKnownFields(t *testing.T) {
+	// Each document is composed after the setting was changed, so the
+	// marks of consecutive documents must follow the sequence of calls.
+	tests := []struct {
+		name    string
+		initial bool
+		calls   []bool
+	}{
+		{"enable disable enable", false, []bool{true, false, true, false}},
+		{"disable enable disable", true, []bool{false, true, false, true}},
+		{"repeated calls", false, []bool{true, true, false, false}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts, err := ApplyOptions(WithKnownFields(tt.initial))
+			if err != nil {
+				t.Fatal(err)
+			}
+			// input yaml documents, one for each call
+			input := []byte(strings.Repeat("---\na: [b]\n", len(tt.calls)))
+
+			c := NewComposer(input, opts)
+			defer c.Destroy()
+
+			for i, enable := range tt.calls {
+				c.SetLegacyKnownFields(enable)
+				doc := c.Compose()
+				if doc == nil {
+					t.Fatalf("document %d: Compose returned nil", i)
+				}
+				count := 0
+				var walk func(n *Node)
+				walk = func(n *Node) {
+					count++
+					if n.knownFields != enable {
+						t.Errorf("document %d, node kind %v: knownFields = %v; want %v",
+							i, n.Kind, n.knownFields, enable)
+					}
+					for _, child := range n.Content {
+						walk(child)
+					}
+				}
+				walk(doc)
+				if count < 5 {
+					t.Errorf("document %d: checked %d nodes; want at least 5", i, count)
+				}
+			}
+		})
 	}
 }

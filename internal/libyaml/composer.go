@@ -386,9 +386,12 @@ func (c *Composer) SetStreamNodes(enable bool) {
 	c.streamNodes = enable
 }
 
-// SetKnownFields sets the KnownFields mark for the nodes of all documents
-// composed from now on.
-func (c *Composer) SetKnownFields(enable bool) {
+// SetLegacyKnownFields sets the KnownFields mark for the nodes of all
+// documents composed from now on.
+//
+// This method is only provided for the legacy Decoder API, which can change
+// the setting after the composer was created.
+func (c *Composer) SetLegacyKnownFields(enable bool) {
 	c.knownFields = enable
 }
 
