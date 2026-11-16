@@ -5,6 +5,7 @@ package yaml
 
 import (
 	"errors"
+	"sync"
 
 	"go.yaml.in/yaml/v4/internal/libyaml"
 	pluginreg "go.yaml.in/yaml/v4/internal/plugin"
@@ -120,54 +121,74 @@ type PluginRegistration = pluginreg.Registration
 
 type nativeParserPlugin struct{}
 
-var pluginRegistry = pluginreg.NewRegistry(
-	PluginRegistration{
-		API: pluginreg.MergeKeyAPI, Name: pluginreg.MergeKeyAPI, Default: true,
-		Factory: func(cfg map[string]any) (any, error) {
-			return mergekey.NewFromYAML(cfg)
-		},
-	},
-	PluginRegistration{
-		API: pluginreg.AliasDataAPI, Name: pluginreg.AliasDataAPI,
-		Default: true,
-		Factory: func(cfg map[string]any) (any, error) {
-			return aliasdata.NewFromYAML(cfg)
-		},
-	},
-	PluginRegistration{
-		API: pluginreg.ErrorFormatAPI, Name: pluginreg.ErrorFormatAPI,
-		Default: true,
-		Factory: newErrorFormatPluginFromYAML,
-	},
-	PluginRegistration{
-		API:     pluginreg.LoaderLimitsAPI,
-		Name:    pluginreg.LoaderLimitsAPI,
-		Default: true,
-		Factory: func(cfg map[string]any) (any, error) {
-			return loaderlimits.NewFromYAML(cfg)
-		},
-	},
-	PluginRegistration{
-		API: pluginreg.YAMLParserAPI, Name: "go-yaml", Default: true,
-		Factory: func(cfg map[string]any) (any, error) {
-			if len(cfg) != 0 {
-				return nil, errors.New(
-					"yaml: go-yaml parser configuration must be empty")
-			}
-			return nativeParserPlugin{}, nil
-		},
-	},
+var (
+	pluginRegistryOnce sync.Once
+	pluginRegistryVal  *pluginreg.Registry
 )
+
+// pluginRegistry builds the registry on first use rather than in a
+// package-level initializer. Package initializers always run, so an eager
+// registry kept every built-in factory (and the configuration parsers they
+// call) in every binary, including programs that never call [RegisterPlugin],
+// [WithNamedPlugin] or [OptsYAML]. Built lazily, the linker can drop them.
+//
+// Do not replace this with a package-level [sync.OnceValue] variable: that
+// call is itself a package initializer and keeps newPluginRegistry reachable.
+func pluginRegistry() *pluginreg.Registry {
+	pluginRegistryOnce.Do(func() { pluginRegistryVal = newPluginRegistry() })
+	return pluginRegistryVal
+}
+
+func newPluginRegistry() *pluginreg.Registry {
+	return pluginreg.NewRegistry(
+		PluginRegistration{
+			API: pluginreg.MergeKeyAPI, Name: pluginreg.MergeKeyAPI, Default: true,
+			Factory: func(cfg map[string]any) (any, error) {
+				return mergekey.NewFromYAML(cfg)
+			},
+		},
+		PluginRegistration{
+			API: pluginreg.AliasDataAPI, Name: pluginreg.AliasDataAPI,
+			Default: true,
+			Factory: func(cfg map[string]any) (any, error) {
+				return aliasdata.NewFromYAML(cfg)
+			},
+		},
+		PluginRegistration{
+			API: pluginreg.ErrorFormatAPI, Name: pluginreg.ErrorFormatAPI,
+			Default: true,
+			Factory: newErrorFormatPluginFromYAML,
+		},
+		PluginRegistration{
+			API:     pluginreg.LoaderLimitsAPI,
+			Name:    pluginreg.LoaderLimitsAPI,
+			Default: true,
+			Factory: func(cfg map[string]any) (any, error) {
+				return loaderlimits.NewFromYAML(cfg)
+			},
+		},
+		PluginRegistration{
+			API: pluginreg.YAMLParserAPI, Name: "go-yaml", Default: true,
+			Factory: func(cfg map[string]any) (any, error) {
+				if len(cfg) != 0 {
+					return nil, errors.New(
+						"yaml: go-yaml parser configuration must be empty")
+				}
+				return nativeParserPlugin{}, nil
+			},
+		},
+	)
+}
 
 // RegisterPlugin registers a named implementation for [OptsYAML] and
 // [WithNamedPlugin]. Register during application startup, before parsing
 // configuration. Duplicate API and implementation name pairs are errors.
 func RegisterPlugin(registration PluginRegistration) error {
-	return pluginRegistry.Register(registration)
+	return pluginRegistry().Register(registration)
 }
 
 func namedPlugin(api string, cfg map[string]any) (any, error) {
-	return pluginRegistry.Create(api, cfg)
+	return pluginRegistry().Create(api, cfg)
 }
 
 // WithNamedPlugin selects the implementation whose name matches the API.
