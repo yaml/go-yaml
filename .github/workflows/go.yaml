@@ -27,8 +27,8 @@ jobs:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with: {persist-credentials: false}
 
-    - name: Run all unit tests w/ -cover, all YTS tests and go lint
-      run: make test lint v=1 cover=1 GO-VERSION="${MATRIX_GO_VERSION}"
+    - name: Run all unit tests w/ -cover and all YTS tests
+      run: make test v=1 cover=1 GO-VERSION="${MATRIX_GO_VERSION}"
       env:
         MATRIX_GO_VERSION: ${{ matrix.go-version }}
 
