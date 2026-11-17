@@ -11,6 +11,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -18,6 +20,7 @@ import (
 	"go.yaml.in/yaml/v4/internal/libyaml"
 	"go.yaml.in/yaml/v4/internal/testutil/assert"
 	"go.yaml.in/yaml/v4/internal/testutil/datatest"
+	"go.yaml.in/yaml/v4/plugin/aliasdata"
 )
 
 func assertNodeEqual(t *testing.T, want *yaml.Node, got *yaml.Node) {
@@ -908,6 +911,24 @@ func decodeWithDecoder(input string, knownFields bool, v any) error {
 func TestNodeDecodeKnownFields(t *testing.T) {
 	const unknown = ".*field extra not found.*"
 
+	// Alias targets that do not come from the document itself.
+	external := map[string]any{"name": "a", "extra": "b"}
+	aliasData := func(options ...aliasdata.Option) yaml.Option {
+		p, err := aliasdata.New(options...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return yaml.WithPlugin(p)
+	}
+	dataPlugin := aliasData(aliasdata.WithData(map[string]any{
+		"ext": external, "nested": map[string]any{"inner": external},
+	}))
+	file := filepath.Join(t.TempDir(), "alias.yaml")
+	if err := os.WriteFile(file, []byte("ext:\n  name: a\n  extra: b\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	filePlugin := aliasData(aliasdata.WithFile(file))
+
 	tests := []struct {
 		name    string
 		decode  func() error
@@ -959,6 +980,38 @@ func TestNodeDecodeKnownFields(t *testing.T) {
 			name: "nested unmarshalers",
 			decode: func() error {
 				return decodeWithDecoder("inner:\n  name: a\n  extra: b\n", true, &nodeDecodeNestedOuter{})
+			},
+			wantErr: unknown,
+		},
+		{
+			name: "alias data with known fields",
+			decode: func() error {
+				var v map[string]nodeDecodeTarget
+				return yaml.Load([]byte("cfg: *ext\n"), &v, yaml.WithKnownFields(), dataPlugin)
+			},
+			wantErr: unknown,
+		},
+		{
+			name: "alias data default",
+			decode: func() error {
+				var v map[string]nodeDecodeTarget
+				return yaml.Load([]byte("cfg: *ext\n"), &v, dataPlugin)
+			},
+		},
+		{
+			name: "alias data descendants",
+			decode: func() error {
+				var v map[string]nodeDecodeNestedOuter
+				return yaml.Load([]byte("cfg: *nested\n"), &v, yaml.WithKnownFields(), dataPlugin)
+			},
+			wantErr: unknown,
+		},
+		{
+			// Load already stamps file nodes: a regression guard.
+			name: "alias data file with known fields",
+			decode: func() error {
+				var v map[string]nodeDecodeTarget
+				return yaml.Load([]byte("cfg: *ext\n"), &v, yaml.WithKnownFields(), filePlugin)
 			},
 			wantErr: unknown,
 		},
