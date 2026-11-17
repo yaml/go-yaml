@@ -114,6 +114,8 @@ var (
 	// When enabled, loading will return an error if the YAML input contains
 	// fields that do not correspond to any fields in the target struct.
 	// Calling WithKnownFields() enables checking; it is disabled by default.
+	// When set while loading with Load or a Loader, the setting also applies
+	// to Node.Decode calls made by UnmarshalYAML methods of the loaded values.
 	WithKnownFields = libyaml.WithKnownFields
 
 	// WithSingleDocument configures the Loader to only process the first
@@ -925,6 +927,8 @@ func NewDecoder(r io.Reader) *Decoder {
 
 // KnownFields ensures that the keys in decoded mappings to
 // exist as fields in the struct being decoded into.
+// The setting also applies to Node.Decode calls made by UnmarshalYAML
+// methods of the decoded values.
 func (dec *Decoder) KnownFields(enable bool) {
 	dec.loader.SetLegacyLoaderKnownFields(enable)
 }

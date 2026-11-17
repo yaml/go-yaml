@@ -6,7 +6,9 @@
 package libyaml
 
 import (
+	"bytes"
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -149,4 +151,105 @@ func TestComposer(t *testing.T) {
 			checkComposedNode(t, node, wantMap, "root")
 		},
 	})
+}
+
+func TestComposerKnownFields(t *testing.T) {
+	input := []byte("a: [b, c]\n")
+	tests := []struct {
+		name string
+		new  func(t *testing.T, opts *Options) *Composer
+	}{
+		{"from bytes", func(_ *testing.T, opts *Options) *Composer {
+			return NewComposer(input, opts)
+		}},
+		{"from reader", func(_ *testing.T, opts *Options) *Composer {
+			return NewComposerFromReader(bytes.NewReader(input), opts)
+		}},
+		{"from events", func(t *testing.T, opts *Options) *Composer {
+			t.Helper()
+			events, ok := parseEventsDetailed(string(input))
+			if !ok {
+				t.Fatal("parsing events failed")
+			}
+			return NewComposerFromEvents(events, opts)
+		}},
+	}
+	for _, tt := range tests {
+		for _, known := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/known=%v", tt.name, known), func(t *testing.T) {
+				opts, err := ApplyOptions(WithKnownFields(known))
+				if err != nil {
+					t.Fatal(err)
+				}
+				c := tt.new(t, opts)
+				defer c.Destroy()
+				var walk func(n *Node)
+				count := 0
+				walk = func(n *Node) {
+					count++
+					if n.knownFields != known {
+						t.Errorf("node kind %v: knownFields = %v; want %v", n.Kind, n.knownFields, known)
+					}
+					for _, child := range n.Content {
+						walk(child)
+					}
+				}
+				walk(c.Compose())
+				if count < 5 {
+					t.Errorf("checked %d nodes; want at least 5", count)
+				}
+			})
+		}
+	}
+}
+
+func TestComposerSetLegacyKnownFields(t *testing.T) {
+	// Each document is composed after the setting was changed, so the
+	// marks of consecutive documents must follow the sequence of calls.
+	tests := []struct {
+		name    string
+		initial bool
+		calls   []bool
+	}{
+		{"enable disable enable", false, []bool{true, false, true, false}},
+		{"disable enable disable", true, []bool{false, true, false, true}},
+		{"repeated calls", false, []bool{true, true, false, false}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts, err := ApplyOptions(WithKnownFields(tt.initial))
+			if err != nil {
+				t.Fatal(err)
+			}
+			// input yaml documents, one for each call
+			input := []byte(strings.Repeat("---\na: [b]\n", len(tt.calls)))
+
+			c := NewComposer(input, opts)
+			defer c.Destroy()
+
+			for i, enable := range tt.calls {
+				c.SetLegacyKnownFields(enable)
+				doc := c.Compose()
+				if doc == nil {
+					t.Fatalf("document %d: Compose returned nil", i)
+				}
+				count := 0
+				var walk func(n *Node)
+				walk = func(n *Node) {
+					count++
+					if n.knownFields != enable {
+						t.Errorf("document %d, node kind %v: knownFields = %v; want %v",
+							i, n.Kind, n.knownFields, enable)
+					}
+					for _, child := range n.Content {
+						walk(child)
+					}
+				}
+				walk(doc)
+				if count < 5 {
+					t.Errorf("document %d: checked %d nodes; want at least 5", i, count)
+				}
+			}
+		})
+	}
 }

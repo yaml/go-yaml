@@ -88,7 +88,8 @@ unmarshalers
 
 **`node_load_decode_comparison/main.go`** - Compare Decode() vs Load()
 - Side-by-side comparison of old and new approaches
-- Shows that node.Decode() uses its own defaults
+- Shows that node.Decode() follows the KnownFields setting of the outer load
+  (off here)
 - Demonstrates passing WithKnownFields() to node.Load()
 
 **`node_programmatic_build/main.go`** - Build YAML programmatically
