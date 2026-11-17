@@ -157,11 +157,21 @@ func TestComposerKnownFields(t *testing.T) {
 	input := []byte("a: [b, c]\n")
 	tests := []struct {
 		name string
-		new  func(opts *Options) *Composer
+		new  func(t *testing.T, opts *Options) *Composer
 	}{
-		{"from bytes", func(opts *Options) *Composer { return NewComposer(input, opts) }},
-		{"from reader", func(opts *Options) *Composer {
+		{"from bytes", func(_ *testing.T, opts *Options) *Composer {
+			return NewComposer(input, opts)
+		}},
+		{"from reader", func(_ *testing.T, opts *Options) *Composer {
 			return NewComposerFromReader(bytes.NewReader(input), opts)
+		}},
+		{"from events", func(t *testing.T, opts *Options) *Composer {
+			t.Helper()
+			events, ok := parseEventsDetailed(string(input))
+			if !ok {
+				t.Fatal("parsing events failed")
+			}
+			return NewComposerFromEvents(events, opts)
 		}},
 	}
 	for _, tt := range tests {
@@ -171,7 +181,7 @@ func TestComposerKnownFields(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				c := tt.new(opts)
+				c := tt.new(t, opts)
 				defer c.Destroy()
 				var walk func(n *Node)
 				count := 0

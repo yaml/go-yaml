@@ -78,6 +78,7 @@ func NewComposerFromEvents(events []Event, opts *Options) *Composer {
 	}
 	c.Parser.SetInputEvents(events)
 	if opts != nil {
+		c.knownFields = opts.KnownFields
 		c.Parser.depthCheck = opts.DepthCheck
 		c.Parser.formatError = opts.FormatLoadError
 	}
