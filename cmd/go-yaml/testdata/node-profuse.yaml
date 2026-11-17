@@ -63,7 +63,7 @@
     node: Document
     content:
     - node: Mapping
-      style: Plain
+      style: Block
       tag: '!!map'
       content:
       - node: Scalar
@@ -74,3 +74,70 @@
         style: Plain
         tag: '!!str'
         value: value
+
+- name: Block mapping with block sequence
+  text: |
+    foo:
+    - bar
+  node: |
+    mapping:
+    - plain: foo
+    - sequence:
+      - plain: bar
+  NODE: |
+    node: Document
+    content:
+    - node: Mapping
+      style: Block
+      tag: '!!map'
+      content:
+      - node: Scalar
+        style: Plain
+        tag: '!!str'
+        value: foo
+      - node: Sequence
+        style: Block
+        tag: '!!seq'
+        content:
+        - node: Scalar
+          style: Plain
+          tag: '!!str'
+          value: bar
+
+- name: Block mapping with flow collections
+  text: |
+    foo: [{bar: baz}]
+  node: |
+    mapping:
+    - plain: foo
+    - sequence:
+      - mapping:
+        - plain: bar
+        - plain: baz
+  NODE: |
+    node: Document
+    content:
+    - node: Mapping
+      style: Block
+      tag: '!!map'
+      content:
+      - node: Scalar
+        style: Plain
+        tag: '!!str'
+        value: foo
+      - node: Sequence
+        style: Flow
+        tag: '!!seq'
+        content:
+        - node: Mapping
+          style: Flow
+          tag: '!!map'
+          content:
+          - node: Scalar
+            style: Plain
+            tag: '!!str'
+            value: bar
+          - node: Scalar
+            style: Plain
+            tag: '!!str'
+            value: baz

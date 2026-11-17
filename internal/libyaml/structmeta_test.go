@@ -36,7 +36,7 @@ type foreignNode struct {
 }
 
 // foreignNodeReceiver has an UnmarshalYAML method that takes a
-// *foreignNode — this must NOT be treated as a yaml.Unmarshaler.
+// *foreignNode ; this must NOT be treated as a yaml.Unmarshaler.
 type foreignNodeReceiver struct {
 	Value string
 }
@@ -47,7 +47,7 @@ func (f *foreignNodeReceiver) UnmarshalYAML(n *foreignNode) error {
 }
 
 // yamlNodeReceiver has an UnmarshalYAML method that takes the real
-// *Node from this package — this MUST be accepted.
+// *Node from this package ; this MUST be accepted.
 type yamlNodeReceiver struct {
 	Value string
 }
@@ -60,19 +60,19 @@ func (y *yamlNodeReceiver) UnmarshalYAML(n *Node) error {
 }
 
 func TestForeignNodeRejected(t *testing.T) {
-	// hasConstructYAMLMethod must return false for foreignNodeReceiver.
+	// v3NodeHook must return nil for foreignNodeReceiver.
 	ft := reflect.TypeOf(foreignNodeReceiver{})
-	if hasConstructYAMLMethod(reflect.PointerTo(ft)) {
-		t.Error("hasConstructYAMLMethod accepted foreignNodeReceiver")
+	if v3NodeHook(reflect.PointerTo(ft)) != nil {
+		t.Error("v3NodeHook accepted foreignNodeReceiver")
 	}
 }
 
 func TestRealNodeNotInAllowlist(t *testing.T) {
-	// v4 types (this package) are no longer in the allowlist — they use
-	// the native constructor interface instead of the unsafe cast path.
+	// v4 types (this package) are no longer in the allowlist ; they use
+	// the native constructor interface instead of v3 hook detection.
 	yt := reflect.TypeOf(yamlNodeReceiver{})
-	if hasConstructYAMLMethod(reflect.PointerTo(yt)) {
-		t.Error("hasConstructYAMLMethod should not match v4 types")
+	if v3NodeHook(reflect.PointerTo(yt)) != nil {
+		t.Error("v3NodeHook should not match v4 types")
 	}
 }
 

@@ -21,8 +21,8 @@ type Config struct {
 // UnmarshalYAML implements custom unmarshaling with strict field checking
 func (c *Config) UnmarshalYAML(node *yaml.Node) error {
 	type plain Config
-	// Use node.Load() to preserve WithKnownFields option
-	// This solves Issue #460 - node.Decode() would lose this option
+	// Enable strict checking for this construction.
+	// Node.Load does not inherit options from the outer loader.
 	return node.Load((*plain)(c), yaml.WithKnownFields())
 }
 

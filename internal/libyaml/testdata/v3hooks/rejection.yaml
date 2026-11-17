@@ -1,0 +1,67 @@
+# Every case runs against both real v3 packages and every loading API.
+- rejection:
+    name: Direct value
+    shape: direct
+    yaml: |
+      value: input
+    line: 1
+- rejection:
+    name: Nil pointer
+    shape: pointer
+    yaml: |
+      value: input
+    line: 1
+- rejection:
+    name: Nested value
+    shape: nested
+    yaml: |
+      item:
+        value: input
+    line: 2
+- rejection:
+    name: Nested pointer
+    shape: nested-pointer
+    yaml: |
+      item:
+        value: input
+    line: 2
+- rejection:
+    name: Slice element
+    shape: slice
+    yaml: |
+      - value: input
+    line: 1
+- rejection:
+    name: Map value
+    shape: map
+    yaml: |
+      item:
+        value: input
+    line: 2
+- rejection:
+    name: Inline value
+    shape: inline
+    yaml: |
+      value: input
+    line: 1
+- rejection:
+    name: Inline pointer
+    shape: inline-pointer
+    yaml: |
+      value: input
+    line: 1
+- rejection:
+    name: Nested inline value
+    shape: deep-inline
+    yaml: |
+      value: input
+    line: 1
+- rejection:
+    name: Alias target
+    shape: alias
+    yaml: |
+      base: &base
+        value: input
+      item: *base
+    # The mapping starts at its anchor on line 1.
+    line: 1

@@ -26,7 +26,7 @@ func TestAssertDeepEqual_Success(t *testing.T) {
 }
 
 func TestErrorMatches_Success(t *testing.T) {
-	err := fmt.Errorf("http 404: not found")
+	err := errors.New("http 404: not found")
 	ErrorMatches(t, `http \d+: not found`, err)
 }
 
@@ -54,7 +54,7 @@ func TestIsNil_NotNil_Success(t *testing.T) {
 
 func TestPanicMatches_Success(t *testing.T) {
 	PanicMatches(t, `boom \d+`, func() { panic("boom 123") })
-	PanicMatches(t, `fail xyz`, func() { panic(fmt.Errorf("fail xyz")) })
+	PanicMatches(t, `fail xyz`, func() { panic(errors.New("fail xyz")) })
 }
 
 func TestAssertTrueAndFalse_Success(t *testing.T) {
@@ -142,23 +142,23 @@ func TestErrorMatches_Fails(t *testing.T) {
 
 	// invalid regexp (message may include parser details; check prefix)
 	mockTB2 := &fakeTB{}
-	ErrorMatches(mockTB2, `(`, fmt.Errorf("x"))
+	ErrorMatches(mockTB2, `(`, errors.New("x"))
 	assertFailureMessageMatches(t, mockTB2, `^invalid regexp "`)
 
 	// no match
 	mockTB3 := &fakeTB{}
-	ErrorMatches(mockTB3, `def`, fmt.Errorf("abc"))
+	ErrorMatches(mockTB3, `def`, errors.New("abc"))
 	assertFailureMessageMatches(t, mockTB3, `^error "abc" does not match "def"$`)
 }
 
 func TestAssertNoError_Fails(t *testing.T) {
 	m := &fakeTB{}
-	NoError(m, fmt.Errorf("problem"))
+	NoError(m, errors.New("problem"))
 	assertFailureMessageMatches(t, m, `^unexpected error: problem$`)
 }
 
 func TestErrorIs_Success(t *testing.T) {
-	base := fmt.Errorf("base error")
+	base := errors.New("base error")
 	wrapped := fmt.Errorf("wrap: %w", base)
 	// direct match
 	ErrorIs(t, base, base)
@@ -171,8 +171,8 @@ func TestErrorIs_Success(t *testing.T) {
 func TestErrorIs_Fails(t *testing.T) {
 	// mismatch
 	mock1 := &fakeTB{}
-	base := fmt.Errorf("base")
-	other := fmt.Errorf("other")
+	base := errors.New("base")
+	other := errors.New("other")
 	ErrorIs(mock1, base, other)
 	assertFailureMessageMatches(t, mock1, `got &errors.errorString{s:"base"}; want &errors.errorString{s:"other"}`)
 

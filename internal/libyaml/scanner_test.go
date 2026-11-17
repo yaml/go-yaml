@@ -81,6 +81,9 @@ func runScanTokensDetailedTest(t *testing.T, tc TestCase) {
 //nolint:thelper // because this function is the real test
 func runScanErrorTest(t *testing.T, tc TestCase) {
 	parser := NewParser()
+	if tc.Also == "skip-comments" {
+		parser.SetSkipComments(true)
+	}
 	parser.SetInputString([]byte(tc.Yaml))
 
 	var token Token

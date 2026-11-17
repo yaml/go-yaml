@@ -27,20 +27,17 @@ func main() {
 		},
 	}
 
-	// Convert to node with specific formatting
+	// Build a node graph that can be inspected or edited
 	var node yaml.Node
-	err := node.Dump(environments,
-		yaml.WithIndent(2),
-		yaml.WithCompactSeqIndent(),
-		yaml.WithExplicitStart(),
-	)
+	err := node.Dump(environments)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Now we can manipulate the node or output it
 	fmt.Println("Generated YAML with custom formatting:")
-	data, err := yaml.Dump(&node)
+	data, err := yaml.Dump(&node,
+		yaml.WithIndent(2), yaml.WithExplicitStart())
 	if err != nil {
 		log.Fatal(err)
 	}

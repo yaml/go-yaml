@@ -195,7 +195,7 @@
     - node: Document
       content:
       - node: Mapping
-        style: Plain
+        style: Block
         tag: '!!map'
         content:
         - node: Scalar

@@ -7,30 +7,40 @@ Below is a summary of its capabilities:
 
 ## License
 
-The `go-yaml` project is licensed under the Apache License 2.0.
-See the [LICENSE](LICENSE) file for more details.
+See [LICENSE](../../LICENSE) and [NOTICE](../../NOTICE) for licensing details,
+including the MIT license retained by the listed libyaml-derived files.
 
 ## Features
 
 ### YAML Parsing and Encoding
-- `-y` / `--yaml`: Outputs YAML in a compact format.
-- `-Y` / `--YAML`: Outputs YAML while preserving styles and comments.
+
+- `-y` / `--yaml`: Outputs YAML through ordinary value encoding.
+- `-Y` / `--YAML`: Outputs YAML using nodes, retaining supported styles and
+  comments without promising exact formatting preservation.
 
 ### JSON Conversion
+
 - `-j` / `--json`: Outputs JSON in a compact format.
 - `-J` / `--JSON`: Outputs JSON in a pretty-printed format.
 
 ### Token Inspection
+
 - `-t` / `--token`: Outputs tokens from the YAML input.
 - `-T` / `--TOKEN`: Outputs tokens with line information.
 
 ### Event Inspection
+
 - `-e` / `--event`: Outputs events from the YAML input.
 - `-E` / `--EVENT`: Outputs events with line information.
 
 ### Node Representation
+
 - `-n` / `--node`: Outputs a compact representation of the YAML node structure.
 - `-N` / `--NODE`: Outputs nodes with tags and styles.
+
+Collection styles are `Block` or `Flow`.
+`Plain` is a scalar style, alongside `Double`, `Single`, `Literal`, and `Folded`.
+Detailed node input rejects `Plain` for mappings and sequences.
 
 ### Chaining
 
@@ -70,45 +80,82 @@ inputs. Token and event streams include `STREAM-START` and `STREAM-END` so a
 pipeline can validate that it received a complete stream.
 
 ### Formatting Options
+
 - `-l` / `--long`: Enables long (block) formatted output.
 
 ### Processing Modes
-- `-u` / `--unmarshal`: Uses `Unmarshal` instead of `Decode` for YAML input.
-- `-m` / `--marshal`: Uses `Marshal` instead of `Encode` for YAML output.
 
-### Help and Version
+The default processing path uses `Load` and `Dump`.
+These long flags select the classic APIs for comparison:
+
+- `--unmarshal`: Uses `Unmarshal` for YAML input.
+- `--decode`: Uses `Decoder.Decode` for YAML input.
+- `--marshal`: Uses `Marshal` for YAML output.
+- `--encode`: Uses `Encoder.Encode` for YAML output.
+
+### Help and Build Information
+
 - `-h` / `--help`: Displays help information.
-- `--version`: Displays the version of the tool.
+- `-o help`: Lists available option names and presets.
+
+Use Go's build information to identify the installed module revision:
+
+```bash
+go version -m "$(command -v go-yaml)"
+```
 
 ## Usage
-The tool reads YAML data from `stdin` and processes it based on the specified
-flags.
+
+Select an output mode and pass a file, or read from standard input.
+Put flags before the file name:
+
+```bash
+go-yaml -J config.yaml
+go-yaml -n < config.yaml
+```
+
 It validates flag combinations and provides error messages for incompatible
 options.
 
 ## Plugin builds
 
-The ordinary command contains the built-in `go-yaml` parser and limit plugin.
+The ordinary command contains the built-in `go-yaml` parser, loader-limits,
+tab-indent, alias-data, merge-key, and error-format plugins.
+Alias-Data preserves ordinary document-scoped aliases by default.
+An explicit `--plugin=alias-data` enables stream anchors.
+Use `plugin: {alias-data: {stream: false}}` for document scope or
+`plugin: {alias-data: disable}` to reject alias references.
+Set `plugin: {alias-data: {path: true}}` in an options file for dotted paths
+such as `*settings.server.port` and `*items.3.name`.
+This also enables stream anchors unless `stream: false` is explicit.
 Optional plugin implementations must be selected while building the command.
 
 `PLUGIN` contains only the plugin selector DSL:
 
 ```bash
-make cli PLUGIN=parser=reference@v0.2.5,json-comments
-./go-yaml --plugin=parser=reference@0.2.5,json-comments \
-  -j example/json-comments/data.yaml
+make cli PLUGIN=yaml-parser=reference@v0.2.6,loader-limits
+./go-yaml --plugin=yaml-parser=reference@0.2.6,loader-limits \
+  -j data.yaml
 ```
 
 The selector forms are `API`, `API@VERSION`, `API=IMPLEMENTATION`, and
 `API=IMPLEMENTATION@VERSION`.
 Comma-separated selectors can be passed in one flag.
 A bare API selects its default implementation.
-The `json-comments` default is `sanitizer`, and the `parser` default is
-`go-yaml`.
+The `yaml-parser` default is `go-yaml`, and the `tab-indent` default is
+`tab-indent`.
+The `error-format` default implementation is also named `error-format`:
+
+```bash
+make cli PLUGIN=error-format
+./go-yaml --plugin=error-format -j data.yaml
+```
 
 `PLUGIN` and `--plugin` never name files and never contain YAML.
-The build resolves the newest v-prefixed plugin release when a selector omits
-the version.
+For optional implementations, the build resolves the newest v-prefixed plugin
+release when a selector omits the version.
+Core implementations such as `error-format` are unversioned within the
+registry and ship with go-yaml.
 Runtime selectors can choose only implementations already linked into the
 binary.
 
@@ -121,11 +168,15 @@ configuration as the command's defaults.
 ```yaml
 indent: 4
 plugin:
-  parser: reference@v0.2.5
-  limit:
+  yaml-parser: reference@v0.2.6
+  loader-limits:
     depth: 50
     alias: 100
-  json-comments: sanitizer@v0.1.9
+  error-format:
+    v4:
+      position: long
+  tab-indent:
+    mode: auto
 ```
 
 ```bash
@@ -145,22 +196,65 @@ An empty configuration mapping selects ordinary defaults while leaving compiled
 implementations available to `--plugin`.
 
 A plugin value may be a mapping, short string, or boolean.
-`true` uses the API default, and `false` disables that API.
-Mappings can use `disable: true` to retain settings without selecting the
-plugin.
+`true` uses the API default.
+For optional plugins, `false` or a mapping with `disable: true` leaves the plugin
+unselected.
+For Merge-Key, disabling turns off merging; for Alias-Data, it rejects alias
+references.
+Disabling loader-limits leaves the core safety limits active.
 Null plugin values are invalid.
 Versions may be entered with or without `v`, but documentation and Git tags use
 the prefix.
 
-The JSON-comments sanitizer works in JSON, YAML, node, event, token, and legacy
-loading modes when the built-in parser is selected.
-External parser plugins work in JSON, YAML, node, and event modes.
-Token and legacy modes reject them because those paths do not consume parser
-plugin events.
+External YAML-parser plugins work in JSON, YAML, node, and event modes.
+Token and legacy modes reject them because those paths do not consume
+YAML-parser plugin events.
+Tab indentation works in YAML, JSON, node, event, and token modes.
+Legacy loading and dumping modes reject it because they do not use the
+plugin-aware pipeline.
 
 For local development, related checkouts must be under `repos/`.
-Set `JSON-COMMENTS-LOCAL=1` or `REFERENCE-PARSER-LOCAL=1` to use them.
+Set `REFERENCE-PARSER-LOCAL=1` to use the local reference-parser checkout.
 Build staging, workspaces, and downloaded build metadata live under `.cache/`.
 Go stores downloaded released modules in its module cache.
 
-Use `make cli` without `CONFIG` or `PLUGIN` to restore the ordinary command.
+Use `make cli` without `CONFIG`, `PLUGIN`, or `PLUGIN-PACKAGE` to restore the
+ordinary command.
+
+## External plugin packages
+
+`PLUGIN-PACKAGE` accepts a comma-separated list of released Go packages, each
+with an explicit tagged version.
+Each package must export `Register() error` and register its implementations
+using `yaml.RegisterPlugin`.
+
+```bash
+make cli \
+  PLUGIN-PACKAGE=example.org/custom-parser/goyaml@v1.2.3 \
+  PLUGIN=yaml-parser=custom
+```
+
+For example, build the published JSON-comments adapter, then select it at
+runtime:
+
+```bash
+make cli \
+  PLUGIN-PACKAGE=github.com/yamlstar/yamlstar-plugin-parser-json-comments/goyaml@v0.1.1
+./go-yaml --plugin=yaml-parser=json-comments -J - <<<'a: b // c'
+```
+
+A native build reports an unknown implementation for `json-comments`.
+Runtime selection cannot add packages to that executable.
+
+Package versions may include release suffixes such as `v1.2.3-rc.1`.
+Local paths, unversioned packages, and `@latest` are not supported.
+A packages-only build keeps native defaults and permits later selection with
+`--plugin` or `--config`.
+Packages register in list order; configuration is validated after registration.
+Compilation, registration, or configuration failures preserve an existing binary.
+
+See [the plugin documentation](../../docs/plugin.md#external-plugin-packages)
+for multiple-package builds and the external registration contract.
+
+Run the [plugin demos](demo/README.md) to try the implementations from a fresh
+clone, with optional interactive command editing.

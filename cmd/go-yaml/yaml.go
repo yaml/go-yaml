@@ -178,7 +178,7 @@ func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []ya
 	return nil
 }
 
-// processYAMLDecode uses deprecated Decoder.Decode for YAML processing (no options support)
+// processYAMLDecode uses classic Decoder.Decode for YAML processing (no options support)
 func processYAMLDecode(reader io.Reader, preserve, encode bool, opts []yaml.Option) error {
 	decoder := yaml.NewDecoder(reader)
 	firstDoc := true
@@ -222,7 +222,7 @@ func processYAMLDecode(reader io.Reader, preserve, encode bool, opts []yaml.Opti
 					return fmt.Errorf("failed to close encoder: %w", err)
 				}
 			} else {
-				// Default output (no options for deprecated Decode API)
+				// Default output (no options for classic Decode API)
 				output, err := yaml.Marshal(outNode)
 				if err != nil {
 					return fmt.Errorf("failed to marshal YAML: %w", err)
@@ -256,7 +256,7 @@ func processYAMLDecode(reader io.Reader, preserve, encode bool, opts []yaml.Opti
 					return fmt.Errorf("failed to close encoder: %w", err)
 				}
 			} else {
-				// Default output (no options for deprecated Decode API)
+				// Default output (no options for classic Decode API)
 				output, err := yaml.Marshal(data)
 				if err != nil {
 					return fmt.Errorf("failed to marshal YAML: %w", err)

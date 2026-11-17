@@ -1,0 +1,61 @@
+# Collection styles in detailed node output and input.
+
+- name: Block collection nodes round trip with automatic detection
+  cmd: |
+    <<<$'foo:\n- bar' go-yaml -N | go-yaml -Y
+  out: |
+    foo:
+    - bar
+
+- name: Block collection nodes round trip with explicit input stage
+  cmd: |
+    <<<$'foo:\n- bar' go-yaml -N | go-yaml -f node -Y
+  out: |
+    foo:
+    - bar
+
+- name: Read explicit Block mapping and sequence styles
+  cmd: |
+    <<<'{node: Mapping, style: Block, content: [
+      {node: Scalar, style: Plain, value: foo},
+      {node: Sequence, style: Block, content: [
+        {node: Scalar, style: Plain, value: bar}]}]}' go-yaml -Y
+  out: |
+    foo:
+    - bar
+
+- name: Reject Plain mapping style with automatic detection
+  cmd: |
+    output=$(<<<'{node: Mapping, style: Plain}' go-yaml -Y 2>&1)
+    status=$?
+    [[ $status == 1 &&
+      $output == *'invalid node style "Plain" for Mapping node'* ]]
+
+- name: Reject Plain sequence style with automatic detection
+  cmd: |
+    output=$(<<<'{node: Sequence, style: Plain}' go-yaml -Y 2>&1)
+    status=$?
+    [[ $status == 1 &&
+      $output == *'invalid node style "Plain" for Sequence node'* ]]
+
+- name: Reject Plain mapping style with explicit input stage
+  cmd: |
+    output=$(<<<'{node: Mapping, style: Plain}' go-yaml -f node -Y 2>&1)
+    status=$?
+    [[ $status == 1 &&
+      $output == *'invalid node style "Plain" for Mapping node'* ]]
+
+- name: Reject Plain sequence style with explicit input stage
+  cmd: |
+    output=$(<<<'{node: Sequence, style: Plain}' go-yaml -f node -Y 2>&1)
+    status=$?
+    [[ $status == 1 &&
+      $output == *'invalid node style "Plain" for Sequence node'* ]]
+
+- name: Reject Plain collection style in a document node list
+  cmd: |
+    output=$(<<<'[{node: Document, content: [
+      {node: Sequence, style: Plain}]}]' go-yaml -Y 2>&1)
+    status=$?
+    [[ $status == 1 &&
+      $output == *'invalid node style "Plain" for Sequence node'* ]]

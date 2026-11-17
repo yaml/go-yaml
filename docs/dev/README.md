@@ -7,7 +7,7 @@ contributors.
 
 - **[go-yaml-internals.md](go-yaml-internals.md)** - Comprehensive analysis
   of the load and dump stack internals, including all stages, transforms,
-  security features, and architectural issues
+  security features, and implementation boundaries
 - **[how-go-yaml-works.md](how-go-yaml-works.md)** - High-level overview of
   how go-yaml processes YAML
 - **[dump-load-api.md](dump-load-api.md)** - API documentation for dump and

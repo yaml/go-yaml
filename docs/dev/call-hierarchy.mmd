@@ -5,13 +5,13 @@ flowchart TB
     subgraph LOAD ["LOAD: Pull-Based"]
         direction TB
         L_entry["Entry Points<br/>Loader.Load / Load"]
-        L_loader["Loader.Load<br/>loader.go"]
+        L_loader["Loader.Load<br/>internal/libyaml/loader.go"]
         L_constructor["Constructor.Construct<br/>constructor.go"]
         L_resolver["Resolver.Resolve<br/>resolver.go"]
-        L_composer["Composer.Parse<br/>composer.go"]
+        L_composer["Composer.Compose<br/>composer.go"]
         L_parser["Parser.Parse<br/>parser.go"]
-        L_scanner["Scanner.Scan<br/>scanner.go"]
-        L_reader["Reader.updateBuffer<br/>reader.go"]
+        L_scanner["Parser.Scan (scanner stage)<br/>scanner.go"]
+        L_reader["Parser.updateBuffer (reader stage)<br/>reader.go"]
 
         L_entry -->|calls| L_loader
         L_loader -->|1. compose| L_composer
@@ -25,12 +25,12 @@ flowchart TB
     subgraph DUMP ["DUMP: Push-Based"]
         direction TB
         D_entry["Entry Points<br/>Dumper.Dump / Dump"]
-        D_dumper["Dumper.Dump<br/>dumper.go"]
+        D_dumper["Dumper.Dump<br/>internal/libyaml/dumper.go"]
         D_representer["Representer.Represent<br/>representer.go"]
         D_desolver["Desolver.Desolve<br/>desolver.go"]
         D_serializer["Serializer.Serialize<br/>serializer.go"]
         D_emitter["Emitter.Emit<br/>emitter.go"]
-        D_writer["Writer.flush<br/>writer.go"]
+        D_writer["Emitter.flush (writer stage)<br/>writer.go"]
 
         D_entry -->|calls| D_dumper
         D_dumper -->|1. represent| D_representer

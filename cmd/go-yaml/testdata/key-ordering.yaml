@@ -60,7 +60,7 @@
     node: Document
     content:
     - node: Mapping
-      style: Plain
+      style: Block
       anchor: myanchor
       tag: '!!map'
       content:
@@ -91,7 +91,7 @@
     node: Document
     content:
     - node: Sequence
-      style: Plain
+      style: Block
       anchor: myseq
       tag: '!!seq'
       content:
@@ -123,7 +123,7 @@
     node: Document
     content:
     - node: Sequence
-      style: Plain
+      style: Block
       anchor: myseq
       tag: '!!seq'
       content:
@@ -167,7 +167,7 @@
     node: Document
     content:
     - node: Mapping
-      style: Plain
+      style: Block
       tag: '!!map'
       content:
       - node: Scalar
@@ -220,7 +220,7 @@
     node: Document
     content:
     - node: Mapping
-      style: Plain
+      style: Block
       anchor: outer
       tag: '!!map'
       content:
@@ -230,7 +230,7 @@
         head: '# outer head'
         value: nested
       - node: Mapping
-        style: Plain
+        style: Block
         anchor: inner
         tag: '!!map'
         content:

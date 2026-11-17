@@ -11,7 +11,7 @@
     node: Document
     content:
     - node: Sequence
-      style: Plain
+      style: Block
       tag: '!!seq'
       content:
       - node: Scalar
@@ -37,7 +37,7 @@
     node: Document
     content:
     - node: Sequence
-      style: Plain
+      style: Block
       tag: '!!seq'
       content:
       - node: Scalar
@@ -65,7 +65,7 @@
     node: Document
     content:
     - node: Sequence
-      style: Plain
+      style: Block
       tag: '!!seq'
       content:
       - node: Scalar
@@ -95,7 +95,7 @@
     node: Document
     content:
     - node: Mapping
-      style: Plain
+      style: Block
       tag: '!!map'
       content:
       - node: Scalar
@@ -135,11 +135,11 @@
     node: Document
     content:
     - node: Sequence
-      style: Plain
+      style: Block
       tag: '!!seq'
       content:
       - node: Mapping
-        style: Plain
+        style: Block
         anchor: data
         tag: '!!map'
         content:
@@ -160,7 +160,7 @@
           tag: '!!int'
           value: '2'
       - node: Mapping
-        style: Plain
+        style: Block
         tag: '!!map'
         content:
         - node: Scalar

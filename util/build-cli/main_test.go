@@ -14,121 +14,224 @@ import (
 
 func TestInspectConfig(t *testing.T) {
 	for _, tc := range []struct {
-		name, config  string
-		json, invalid bool
-		version       string
+		name, config                 string
+		external, reference, invalid bool
+		version                      string
 	}{
-		{"defaults", "{}", false, false, ""},
 		{
-			"limit", "plugin: {limit: {depth: 50, alias: null}}",
-			false, false, "",
-		},
-		{"tab indent", "plugin: {tab-indent: true}", false, false, ""},
-		{
-			"tab indent details",
-			"plugin: {tab-indent: " +
-				"{load: spaces, dump: spaces, auto: stream}}",
-			false, false, "",
-		},
-		{"JSON comments", "plugin: {json-comments: true}", true, false, ""},
-		{
-			"JSON comments disabled", "plugin: {json-comments: false}",
-			false, false, "",
-		},
-		{"limit disabled", "plugin: {limit: false}", false, false, ""},
-		{
-			"limit disabled in mapping",
-			"plugin: {limit: {depth: 3, disable: true}}", false, false, "",
+			name:   "error format",
+			config: "plugin: {error-format: true}",
 		},
 		{
-			"JSON disabled in mapping",
-			"plugin: {json-comments: {disable: true}}", false, false, "",
+			name:   "error format implementation",
+			config: "plugin: {error-format: error-format}",
 		},
 		{
-			"unknown disabled in mapping",
-			"plugin: {absent: {disable: true}}", false, false, "",
+			name:   "error format v3",
+			config: "plugin: {error-format: {v3: {}}}",
 		},
 		{
-			"JSON enabled in mapping",
-			"plugin: {json-comments: {disable: false}}", true, false, "",
-		},
-		{"unknown disabled", "plugin: {absent: false}", false, false, ""},
-		{"both", "plugin: {limit: {}, json-comments: {}}", true, false, ""},
-		{
-			"null JSON comments", "plugin: {json-comments: null}",
-			false, true, "",
-		},
-		{"null limit", "plugin: {limit: null}", false, true, ""},
-		{
-			"invalid disable", "plugin: {json-comments: {disable: null}}",
-			false, true, "",
-		},
-		{"null plugin field", "plugin: null", false, true, ""},
-		{"unknown plugin", "plugin: {absent: {}}", false, true, ""},
-		{"unknown option", "indnet: 4", false, true, ""},
-		{"bad indent", "indent: 100", false, true, ""},
-		{"bad limit", "plugin: {limit: {depth: nope}}", false, true, ""},
-		{
-			"bad tab indent", "plugin: {tab-indent: {mode: spaces}}",
-			false, true, "",
+			name:   "error format v3 shorthand",
+			config: "plugin: {error-format: v3}",
 		},
 		{
-			"removed tab scope", "plugin: {tab-indent: {scope: document}}",
-			false, true, "",
-		},
-		{"bad plugins", "plugin: [limit]", false, true, ""},
-		{"syntax", "[", false, true, ""},
-		{"multiple documents", "--- {}\n--- {}", false, true, ""},
-		{
-			name: "version", config: "plugin: {json-comments: {version: 0.1.9}}",
-			json: true, version: "v0.1.9",
+			name:   "error format v4 shorthand",
+			config: "plugin: {error-format: v4}",
 		},
 		{
-			name:   "prefixed version",
-			config: "plugin: {json-comments: {version: v0.1.9}}",
-			json:   true, version: "v0.1.9",
+			name: "error format v4",
+			config: "plugin: {error-format: " +
+				"{name: error-format, v4: {position: long}}}",
 		},
 		{
-			name:   "implementation name",
-			config: "plugin: {json-comments: {name: sanitizer}}",
-			json:   true,
+			name:    "invalid error format",
+			config:  "plugin: {error-format: {v4: {position: bad}}}",
+			invalid: true,
 		},
 		{
-			name:   "unknown implementation",
-			config: "plugin: {json-comments: {name: missing}}", invalid: true,
+			name:    "versioned error format",
+			config:  "plugin: {error-format: {version: 1.2.3}}",
+			invalid: true,
 		},
 		{
-			name:   "disabled version",
-			config: "plugin: {json-comments: {version: 0.1.9, disable: true}}",
+			name:    "unknown error format implementation",
+			config:  "plugin: {error-format: {name: missing}}",
+			invalid: true,
+		},
+		{
+			name:    "old error format API",
+			config:  "plugin: {errfmt: true}",
+			invalid: true,
+		},
+		{
+			name:    "old error format implementation",
+			config:  "plugin: {error-format: errfmt}",
+			invalid: true,
+		},
+		{
+			name:   "disabled old error format API",
+			config: "plugin: {errfmt: false}",
+		},
+		{
+			name:    "old limit API",
+			config:  "plugin: {limit: true}",
+			invalid: true,
+		},
+		{
+			name:    "old limit implementation",
+			config:  "plugin: {loader-limits: limit}",
+			invalid: true,
+		},
+		{
+			name:    "old explicit limit implementation",
+			config:  "plugin: {loader-limits: {name: limit}}",
+			invalid: true,
+		},
+		{
+			name:    "limit API conflict",
+			config:  "plugin: {limit: true, loader-limits: true}",
+			invalid: true,
+		},
+		{
+			name:   "YAML parser",
+			config: "plugin: {yaml-parser: go-yaml}",
+		},
+		{
+			name:    "old parser API",
+			config:  "plugin: {parser: go-yaml}",
+			invalid: true,
 		},
 		{
 			name:   "disabled invalid host fields",
 			config: "plugin: {absent: {name: 1, version: bad, disable: true}}",
 		},
+		{name: "defaults", config: "{}"},
+		{name: "limit", config: "plugin: {loader-limits: {depth: 50, alias: null}}"},
+		{name: "tab indent", config: "plugin: {tab-indent: true}"},
+		{name: "merge key", config: "plugin: {merge-key: true}"},
+		{name: "merge disabled", config: "plugin: {merge-key: disable}"},
+		{name: "merge false", config: "plugin: {merge-key: false}"},
 		{
-			name:   "null version",
-			config: "plugin: {json-comments: {version: null}}", invalid: true,
+			name:   "merge policy",
+			config: "plugin: {merge-key: {multiple: combine, conflicts: last}}",
 		},
 		{
-			name:   "invalid version",
-			config: "plugin: {json-comments: {version: latest}}", invalid: true,
+			name:   "invalid merge policy",
+			config: "plugin: {merge-key: {multiple: last}}", invalid: true,
+		},
+		{
+			name:   "tab details",
+			config: "plugin: {tab-indent: {load: spaces, dump: spaces, auto: stream}}",
+		},
+		{name: "limit disabled", config: "plugin: {loader-limits: false}"},
+		{
+			name:   "disabled mapping",
+			config: "plugin: {loader-limits: {depth: 3, disable: true}}",
+		},
+		{name: "unknown disabled", config: "plugin: {absent: false}"},
+		{
+			name:   "unknown disabled mapping",
+			config: "plugin: {absent: {disable: true, name: 1}}",
+		},
+		{name: "null plugin", config: "plugin: null", invalid: true},
+		{name: "null limit", config: "plugin: {loader-limits: null}", invalid: true},
+		{
+			name:    "invalid disable",
+			config:  "plugin: {loader-limits: {disable: null}}",
+			invalid: true,
+		},
+		{name: "unknown plugin", config: "plugin: {absent: {}}", invalid: true},
+		{name: "unknown option", config: "indnet: 4", invalid: true},
+		{name: "bad indent", config: "indent: 100", invalid: true},
+		{
+			name:    "bad limit",
+			config:  "plugin: {loader-limits: {depth: nope}}",
+			invalid: true,
+		},
+		{
+			name:    "bad tab indent",
+			config:  "plugin: {tab-indent: {mode: spaces}}",
+			invalid: true,
+		},
+		{
+			name:    "removed tab scope",
+			config:  "plugin: {tab-indent: {scope: document}}",
+			invalid: true,
+		},
+		{name: "bad plugins", config: "plugin: [loader-limits]", invalid: true},
+		{name: "syntax", config: "[", invalid: true},
+		{name: "documents", config: "--- {}\n--- {}", invalid: true},
+		{
+			name:      "reference",
+			config:    "plugin: {yaml-parser: reference@v0.2.6}",
+			reference: true,
+			version:   "v0.2.6",
+		},
+		{
+			name:      "reference mapping",
+			config:    "plugin: {yaml-parser: {name: reference, version: 0.2.6}}",
+			reference: true,
+			version:   "v0.2.6",
+		},
+		{
+			name:    "reference null version",
+			config:  "plugin: {yaml-parser: {name: reference, version: null}}",
+			invalid: true,
+		},
+		{
+			name:    "reference latest version",
+			config:  "plugin: {yaml-parser: reference@latest}",
+			invalid: true,
+		},
+		{
+			name:     "external parser",
+			config:   "plugin: {yaml-parser: custom}",
+			external: true,
+		},
+		{
+			name:     "external limit",
+			config:   "plugin: {loader-limits: custom}",
+			external: true,
+		},
+		{
+			name:     "external API",
+			config:   "plugin: {custom: {setting: true}}",
+			external: true,
+		},
+		{
+			name:      "external with reference",
+			config:    "plugin: {yaml-parser: reference@v0.2.6, custom: true}",
+			external:  true,
+			reference: true,
+			version:   "v0.2.6",
+		},
+		{
+			name:     "external invalid core option",
+			config:   "indent: 100",
+			external: true,
+			invalid:  true,
+		},
+		{
+			name:     "external invalid plugin value",
+			config:   "plugin: {custom: null}",
+			external: true,
+			invalid:  true,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := inspectConfig([]byte(tc.config))
+			got, err := inspectConfig([]byte(tc.config), tc.external)
 			if tc.invalid {
 				if err == nil {
 					t.Fatal("invalid configuration accepted")
 				}
 				return
 			}
-			if err != nil || got.jsonComments != tc.json ||
-				got.jsonVersion != tc.version {
+			if err != nil || got.referenceParser != tc.reference ||
+				got.referenceVersion != tc.version {
 				t.Fatalf("got %+v, %v", got, err)
 			}
-			if tc.version != "" &&
-				!strings.Contains(string(got.embedded), "version:") {
-				t.Fatalf("build version missing from defaults: %s", got.embedded)
+			if string(got.embedded) != tc.config {
+				t.Fatal("embedded configuration changed")
 			}
 		})
 	}
@@ -154,6 +257,155 @@ func TestConfiguredTabIndentCLI(t *testing.T) {
 	if err != nil || string(out) != "root:\n\tvalue: true\n" {
 		t.Fatalf("got %q, %v", out, err)
 	}
+}
+
+func TestConfiguredAliasDataCLI(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	goTool, err := exec.LookPath("go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory := t.TempDir()
+	config := filepath.Join(directory, "options.yaml")
+	binary := filepath.Join(directory, "go-yaml")
+	// Building and --help must not read the configured missing source file.
+	text := "plugin: {alias-data: {file: /not/a/real/file}}\n"
+	if err := os.WriteFile(config, []byte(text), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := buildCLI(root, config, binary, goTool, ""); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(binary, "-j")
+	cmd.Stdin = strings.NewReader("value: 1\n")
+	output, err := cmd.CombinedOutput()
+	if err == nil || !strings.Contains(string(output), "alias-data: file") {
+		t.Fatalf("source not read at load time: %q, %v", output, err)
+	}
+	for _, selector := range []string{"alias-data", "alias-data=disable"} {
+		if err := buildCLIWithPlugins(root, "", selector,
+			binary, goTool, ""); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(binary, "-j")
+		cmd.Stdin = strings.NewReader("--- &a 1\n--- *a\n")
+		output, err := cmd.CombinedOutput()
+		if selector == "alias-data" {
+			if err != nil || string(output) != "1\n1\n" {
+				t.Fatalf("stream selection: %q, %v", output, err)
+			}
+		} else if err == nil || !strings.Contains(string(output), "aliases are disabled") {
+			t.Fatalf("disabled selection: %q, %v", output, err)
+		}
+	}
+	text = "plugin: {alias-data: {path: true, data: " +
+		"{settings: {port: 8080, '42': {bar: 42}}}}}\n"
+	if err := os.WriteFile(config, []byte(text), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := buildCLI(root, config, binary, goTool, ""); err != nil {
+		t.Fatal(err)
+	}
+	cmd = exec.Command(binary, "-j")
+	cmd.Stdin = strings.NewReader("--- &saved {foo: 42}\n---\n" +
+		"copy: *saved.foo\nport: *settings.port\nnumeric: *settings.'42'.bar\n")
+	output, err = cmd.CombinedOutput()
+	want := "{\"foo\":42}\n{\"copy\":42,\"numeric\":42,\"port\":8080}\n"
+	if err != nil || string(output) != want {
+		t.Fatalf("embedded path configuration: %q, %v", output, err)
+	}
+}
+
+func TestInspectAliasDataConfig(t *testing.T) {
+	for _, setting := range []string{
+		"true", "false", "disable", "{}", "{disable: true}",
+		"{stream: false}", "{data: {external: 42}}",
+		"{disable: true, file: /not/a/real/file}",
+		"{path: true}", "{path: true, stream: false}",
+		"{path: false}", "{disable: true, path: invalid}",
+	} {
+		config := "plugin: {alias-data: " + setting + "}"
+		if _, err := inspectConfig([]byte(config), false); err != nil {
+			t.Fatalf("%s: %v", setting, err)
+		}
+	}
+	for _, setting := range []string{
+		"{stream: wrong}", "{disable: wrong}", "{path: wrong}", "{path: null}",
+	} {
+		config := "plugin: {alias-data: " + setting + "}"
+		if _, err := inspectConfig([]byte(config), false); err == nil {
+			t.Fatalf("invalid build config accepted: %s", setting)
+		}
+	}
+}
+
+func TestConfiguredErrorFormatCLI(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	goTool, err := exec.LookPath("go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory := t.TempDir()
+	config := filepath.Join(directory, "options.yaml")
+	binary := filepath.Join(directory, "go-yaml")
+	data := "plugin:\n  error-format:\n    v4:\n" +
+		"      position: long\n"
+	if err := os.WriteFile(config, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := buildCLI(root, config, binary, goTool, ""); err != nil {
+		t.Fatal(err)
+	}
+	run := func(want string, flags ...string) {
+		t.Helper()
+		cmd := exec.Command(binary, append([]string{"-j"}, flags...)...)
+		cmd.Stdin = strings.NewReader("value: -\n")
+		out, err := cmd.CombinedOutput()
+		if err == nil || !strings.Contains(string(out), want) {
+			t.Fatalf("%v: got %q, %v; want %q", flags, out, err, want)
+		}
+	}
+	run("go-yaml load error in scanner at line 1, column 8:")
+	for _, selector := range []string{
+		"error-format", "error-format=error-format",
+	} {
+		run("go-yaml load error in scanner at L1.C8:", "--plugin="+selector)
+		if err := buildCLIWithPlugins(
+			root, "", selector, binary, goTool, ""); err != nil {
+			t.Fatal(err)
+		}
+		run("go-yaml load error in scanner at L1.C8:")
+	}
+	data = "plugin: {error-format: {v3: {}}}\n"
+	if err := os.WriteFile(config, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	run("yaml: line 1: block sequence entries are not allowed in this context",
+		"-C", config)
+	data = "plugin: {error-format: v3}\n"
+	if err := os.WriteFile(config, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	want := "yaml: line 1: block sequence entries are not allowed in this context"
+	run(want, "-C", config)
+	run(want, "--plugin=error-format=v3")
+	if err := buildCLI(root, config, binary, goTool, ""); err != nil {
+		t.Fatal(err)
+	}
+	run(want)
+	if err := buildCLIWithPlugins(
+		root, "", "error-format=v3", binary, goTool, ""); err != nil {
+		t.Fatal(err)
+	}
+	run(want)
+	run(`plugin "errfmt" has no default implementation`, "--plugin=errfmt")
+	run(`unknown implementation "errfmt"`, "--plugin=error-format=errfmt")
 }
 
 func TestConfiguredCLI(t *testing.T) {
@@ -222,7 +474,7 @@ func TestConfiguredCLI(t *testing.T) {
 	if bytes.Contains(modules, []byte("glojure")) {
 		t.Fatal("ordinary configured build linked Glojure")
 	}
-	write("plugin: {json-comments: {disable: true, version: 0.1.9}}\n")
+	write("plugin: {absent: {disable: true, version: 1.2.3}}\n")
 	if err := buildCLI(root, config, binary, goTool, ""); err != nil {
 		t.Fatal(err)
 	}
@@ -235,105 +487,6 @@ func TestConfiguredCLI(t *testing.T) {
 	modules, err = exec.Command(goTool, "version", "-m", binary).CombinedOutput()
 	if err != nil || bytes.Contains(modules, []byte("glojure")) {
 		t.Fatalf("disabled plugin linked Glojure: %v", err)
-	}
-}
-
-func TestConfiguredJSONCLI(t *testing.T) {
-	if os.Getenv("GO_YAML_TEST_JSON_COMMENTS") == "" {
-		t.Skip("run make test-json-comments for the optional plugin")
-	}
-	root, err := filepath.Abs(filepath.Join("..", ".."))
-	if err != nil {
-		t.Fatal(err)
-	}
-	goTool, err := exec.LookPath("go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	directory := t.TempDir()
-	config := filepath.Join(directory, "options.yaml")
-	binary := filepath.Join(directory, "go-yaml")
-	write := func(text string) {
-		t.Helper()
-		if err := os.WriteFile(config, []byte(text), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	run := func(want string, flags ...string) {
-		t.Helper()
-		cmd := exec.Command(binary, flags...)
-		cmd.Stdin = strings.NewReader("a: true // comment\n")
-		out, err := cmd.CombinedOutput()
-		if err != nil || string(out) != want {
-			t.Fatalf("%v: got %q, %v", flags, out, err)
-		}
-	}
-	write("plugin:\n  limit: {depth: 50, alias: 100}\n  json-comments: true\n")
-	if err := buildCLI(root, config, binary, goTool, os.Getenv("GO_YAML_BUILD_PERL")); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Remove(config); err != nil {
-		t.Fatal(err)
-	}
-	run("{\"a\":true}\n", "-j")
-	run("{\"a\":true}\n", "-j", "--plugin=json-comments")
-	run("{\"a\":true}\n", "-j",
-		"--plugin=json-comments=sanitizer")
-	write("plugin: {json-comments: {name: sanitizer, version: 0.1.9}}\n")
-	if err := buildCLI(root, config, binary, goTool,
-		os.Getenv("GO_YAML_BUILD_PERL")); err != nil {
-		t.Fatal(err)
-	}
-	run("{\"a\":true}\n", "-j")
-	run("{\"a\":true}\n", "-j", "-C", config)
-	modules, err := exec.Command(goTool, "version", "-m", binary).CombinedOutput()
-	if err != nil || !bytes.Contains(modules, []byte(
-		"github.com/yamlstar/yamlstar-plugin-json-comments\tv0.1.9")) {
-		t.Fatalf("linked plugin version: %v\n%s", err, modules)
-	}
-	write("plugin: {json-comments: {version: 0.1.7}}\n")
-	versionBefore, err := os.ReadFile(binary)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = buildCLI(root, config, binary, goTool,
-		os.Getenv("GO_YAML_BUILD_PERL"))
-	if err == nil {
-		t.Fatal("unavailable plugin version built")
-	}
-	versionAfter, readErr := os.ReadFile(binary)
-	if readErr != nil || !bytes.Equal(versionBefore, versionAfter) {
-		t.Fatal("failed version selection replaced the binary")
-	}
-	cmd := exec.Command(binary, "-j", "-C", config)
-	cmd.Stdin = strings.NewReader("a: true // comment\n")
-	out, err := cmd.CombinedOutput()
-	if err == nil || !bytes.Contains(out, []byte("version mismatch")) {
-		t.Fatalf("runtime version mismatch: %v, %s", err, out)
-	}
-	write("{}\n")
-	run("{\"a\":\"true // comment\"}\n", "-j", "-C", config)
-	run("{\"a\":true}\n", "-j", "-C", config, "--plugin=json-comments")
-	write("plugin: {json-comments: false}\n")
-	run("{\"a\":\"true // comment\"}\n", "-j", "-C", config)
-	run("{\"a\":true}\n", "-j", "-C", config, "--plugin=json-comments")
-	write("plugin: {json-comments: {disable: true}}\n")
-	run("{\"a\":\"true // comment\"}\n", "-j", "-C", config)
-	run("{\"a\":true}\n", "-j", "-C", config, "--plugin=json-comments")
-
-	// Validate optional configuration against the linked implementation.
-	before, err := os.ReadFile(binary)
-	if err != nil {
-		t.Fatal(err)
-	}
-	write("plugin: {json-comments: {unknown: true}}\n")
-	err = buildCLI(root, config, binary, goTool, os.Getenv("GO_YAML_BUILD_PERL"))
-	if err == nil || !strings.Contains(err.Error(), "configuration must be empty") {
-		t.Fatalf("got %v", err)
-	}
-	after, err := os.ReadFile(binary)
-	if err != nil || !bytes.Equal(before, after) {
-		t.Fatal("failed plugin validation replaced the binary")
 	}
 }
 
@@ -367,22 +520,84 @@ func TestConfiguredReferenceCLI(t *testing.T) {
 			t.Fatalf("%v: got %q, %v", flags, out, err)
 		}
 	}
-	write("plugin: {parser: reference@v0.2.5}\n")
+	write("plugin: {yaml-parser: reference@v0.2.6}\n")
 	if err := buildCLI(root, config, binary, goTool,
 		os.Getenv("GO_YAML_BUILD_PERL")); err != nil {
 		t.Fatal(err)
 	}
 	run("-j")
-	run("-j", "--plugin=parser=reference@0.2.5")
-	run("-j", "--plugin=parser=go-yaml")
+	run("-j", "--plugin=yaml-parser=reference@0.2.6")
+	run("-j", "--plugin=yaml-parser=go-yaml")
+	cmd := exec.Command(binary, "-j",
+		"--plugin=yaml-parser=reference,alias-data")
+	cmd.Stdin = strings.NewReader("--- &saved {x: 1}\n---\ncopy: *saved\n")
+	output, err := cmd.CombinedOutput()
+	if err != nil || string(output) != "{\"x\":1}\n{\"copy\":{\"x\":1}}\n" {
+		t.Fatalf("reference parser stream aliases: %q, %v", output, err)
+	}
+	cmd = exec.Command(binary, "-j",
+		"--plugin=yaml-parser=reference,alias-data=disable")
+	cmd.Stdin = strings.NewReader("[&a 1, *a]\n")
+	output, err = cmd.CombinedOutput()
+	if err == nil || !strings.Contains(string(output), "aliases are disabled") {
+		t.Fatalf("reference parser alias rejection: %q, %v", output, err)
+	}
+	write("plugin: {yaml-parser: reference, alias-data: {path: true, " +
+		"data: {numeric: {'42': {bar: 43}}}}}\n")
+	cmd = exec.Command(binary, "-j", "-C", config)
+	cmd.Stdin = strings.NewReader("--- &saved {foo: {bar: 42}}\n---\n" +
+		"copy: *saved.foo.bar\nnumeric: *numeric.'42'.bar\n")
+	output, err = cmd.CombinedOutput()
+	want := "{\"foo\":{\"bar\":42}}\n{\"copy\":42,\"numeric\":43}\n"
+	if err != nil || string(output) != want {
+		t.Fatalf("reference parser dotted path: %q, %v", output, err)
+	}
 	modules, err := exec.Command(goTool, "version", "-m", binary).CombinedOutput()
 	if err != nil || !bytes.Contains(modules, []byte(
-		"github.com/yamlstar/yamlstar-plugin-parser-reference\tv0.2.5")) {
+		"github.com/yamlstar/yamlstar-plugin-parser-reference\tv0.2.6")) {
 		t.Fatalf("linked plugin version: %v\n%s", err, modules)
 	}
-	write("plugin: {parser: reference@v0.2.4}\n")
+	write("plugin: {yaml-parser: reference@v0.2.4}\n")
 	if err := buildCLI(root, config, binary, goTool,
 		os.Getenv("GO_YAML_BUILD_PERL")); err == nil {
 		t.Fatal("unavailable parser version built")
 	}
+}
+
+func TestConfiguredMergeKeyCLI(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	goTool, err := exec.LookPath("go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory := t.TempDir()
+	binary := filepath.Join(directory, "go-yaml")
+	if err := buildCLIWithPlugins(root, "", "merge-key=disable",
+		binary, goTool, ""); err != nil {
+		t.Fatal(err)
+	}
+	run := func(input, want string, flags ...string) {
+		t.Helper()
+		cmd := exec.Command(binary, append([]string{"-j"}, flags...)...)
+		cmd.Stdin = strings.NewReader(input)
+		out, err := cmd.CombinedOutput()
+		if err != nil || strings.TrimSpace(string(out)) != want {
+			t.Fatalf("got %q, %v; want %q", out, err, want)
+		}
+	}
+	run("<<: {x: 1}", `{"\u003c\u003c":{"x":1}}`)
+	run("<<: {x: 1}", `{"x":1}`, "--plugin=merge-key")
+	config := filepath.Join(directory, "merge.yaml")
+	if err := os.WriteFile(config, []byte(
+		"plugin: {merge-key: {multiple: combine, conflicts: last}}\n"),
+		0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := buildCLI(root, config, binary, goTool, ""); err != nil {
+		t.Fatal(err)
+	}
+	run("<<: {x: 1, a: 1}\n<<: {x: 2, b: 2}", `{"a":1,"b":2,"x":2}`)
 }

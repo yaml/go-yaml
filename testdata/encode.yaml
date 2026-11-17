@@ -13,7 +13,9 @@
 #       ...
 #
 # Test Types:
-#   encode - Validates YAML marshaling of Go values
+#   encode - Validates Encoder.Encode with v3 compatibility defaults
+#   marshal - Validates Marshal with v3 compatibility defaults
+#   dump - Validates Dump with v4 defaults and optional overrides
 #
 # Common Keys:
 #   name - Test case name (string)
@@ -33,8 +35,8 @@
 #
 # Note:
 #   The test framework unmarshals the 'data' into the specified 'type',
-#   then marshals it back to YAML and compares with 'want'. This ensures the
-#   value can be properly constructed from YAML representation.
+#   then serializes it with the selected API and compares with 'want'.
+#   Input quote styles are not retained when constructing Go maps or structs.
 
 # Basic string values
 - encode:
@@ -315,6 +317,22 @@
       a: '1:1'
     type: map[string]string
     want: |
+      a: "1:1"
+
+- marshal:
+    name: Marshal - colon-separated string (base 60 float compat)
+    data:
+      a: '1:1'
+    type: map[string]string
+    want: |
+      a: "1:1"
+
+- dump:
+    name: v4 defaults - colon-separated string (base 60 float compat)
+    data:
+      a: '1:1'
+    type: map[string]string
+    want: |
       a: '1:1'
 
 - encode:
@@ -396,6 +414,22 @@
       '<<': []
     type: map[string]any
     want: |
+      "<<": []
+
+- marshal:
+    name: Marshal - merge key as regular key
+    data:
+      '<<': []
+    type: map[string]any
+    want: |
+      "<<": []
+
+- dump:
+    name: v4 defaults - merge key as regular key
+    data:
+      '<<': []
+    type: map[string]any
+    want: |
       '<<': []
 
 - encode:
@@ -404,16 +438,50 @@
       foo: '<<'
     type: map[string]any
     want: |
+      foo: "<<"
+
+- marshal:
+    name: Marshal - merge key as value
+    data:
+      foo: '<<'
+    type: map[string]any
+    want: |
+      foo: "<<"
+
+- dump:
+    name: v4 defaults - merge key as value
+    data:
+      foo: '<<'
+    type: map[string]any
+    want: |
       foo: '<<'
 
 # Long strings
-- encode:
+- marshal:
     name: long string no wrapping
     data:
       a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '
     type: map[string]string
     want: |
       a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '
+
+- encode:
+    name: Encode - long string wrapping
+    data:
+      a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '
+    type: map[string]string
+    want: |
+      a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz
+          ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '
+
+- dump:
+    name: Dump - long string wrapping
+    data:
+      a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '
+    type: map[string]string
+    want: |
+      a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz
+        ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '
 
 # Struct encoding tests
 - encode:
@@ -505,6 +573,22 @@
 
 - encode:
     name: struct string field off
+    data:
+      a: off
+    type: testStructA_String
+    want: |
+      a: "off"
+
+- marshal:
+    name: Marshal - struct string field off
+    data:
+      a: off
+    type: testStructA_String
+    want: |
+      a: "off"
+
+- dump:
+    name: v4 defaults - struct string field off
     data:
       a: off
     type: testStructA_String
@@ -604,6 +688,272 @@
       |4
            a
 
+# Multiline text whose first content line begins with a tab stays literal:
+# the emitter writes the explicit indentation indicator, which is the only
+# way the scanner accepts a tab in block indentation. The want is
+# double-quoted so the tab stays an escape sequence instead of a literal
+# space-before-tab in the patch.
+# https://github.com/yaml/go-yaml/issues/383
+- encode:
+    name: tab-leading text - multiline (literal with indicator)
+    data:
+      text: "\tthis\nis\nmultiline"
+    type: map[string]string
+    want: "text: |4-\n    \tthis\n    is\n    multiline\n"
+
+- encode:
+    name: tab-leading text - each line tabbed (literal with indicator)
+    data:
+      text: "\tB\n\tC\n"
+    type: map[string]string
+    want: "text: |4\n    \tB\n    \tC\n"
+
+- encode:
+    name: tab-leading text - after leading break (literal with indicator)
+    data:
+      text: "\n\tindented by tab\nregular"
+    type: map[string]string
+    want: "text: |4-\n\n    \tindented by tab\n    regular\n"
+
+- encode:
+    name: tab-leading text - tab on later line (literal)
+    data:
+      text: "first\n\tsecond\n"
+    type: map[string]string
+    want: "text: |\n    first\n    \tsecond\n"
+
+# A block scalar whose first non-empty line is indented needs an explicit
+# indentation indicator, relative to the parent node's indentation. A block
+# sequence item only adds two columns, so the indicator must not use the
+# configured indent width here. The same nesting is checked under explicit
+# indent widths, including the top of the 1..9 range an indentation
+# indicator can express.
+# https://github.com/yaml/go-yaml/issues/76
+# https://github.com/go-yaml/yaml/issues/1071
+- encode:
+    name: block scalar indicator - indented first line in sequence
+    data:
+      parameters:
+          - description: |2-
+                a
+              b
+    type: map[string][]map[string]any
+    want: |
+      parameters:
+          - description: |2-
+                a
+              b
+
+- encode:
+    name: block scalar indicator - deeply indented first line
+    data:
+      parameters:
+          - description: |2-
+                   a
+              b
+    type: map[string][]map[string]any
+    want: |
+      parameters:
+          - description: |2-
+                   a
+              b
+
+- encode:
+    name: block scalar indicator - mixed line indentation
+    data:
+      parameters:
+          - description: |2-
+               a
+                    b
+    type: map[string][]map[string]any
+    want: |
+      parameters:
+          - description: |2-
+               a
+                    b
+
+- encode:
+    name: block scalar indicator - leading break then indented
+    data:
+      parameters:
+          - description: |2-
+
+                indented
+              regular
+    type: map[string][]map[string]any
+    want: |
+      parameters:
+          - description: |2-
+
+                indented
+              regular
+
+- encode:
+    name: block scalar indicator - two leading breaks then indented
+    data:
+      parameters:
+          - description: |2-
+
+
+                more indented
+              regular
+    type: map[string][]map[string]any
+    want: |
+      parameters:
+          - description: |2-
+
+
+                more indented
+              regular
+
+- dump:
+    name: block scalar indicator - indent 2 in sequence
+    data:
+      parameters:
+          - description: |2-
+                a
+              b
+    type: map[string][]map[string]any
+    opts:
+      indent: 2
+    want: |
+      parameters:
+      - description: |2-
+            a
+          b
+
+- dump:
+    name: block scalar indicator - indent 3 in sequence
+    data:
+      parameters:
+          - description: |2-
+                a
+              b
+    type: map[string][]map[string]any
+    opts:
+      indent: 3
+    want: |
+      parameters:
+       - description: |3-
+              a
+            b
+
+- dump:
+    name: block scalar indicator - indent 4 in sequence
+    data:
+      parameters:
+          - description: |2-
+                a
+              b
+    type: map[string][]map[string]any
+    opts:
+      indent: 4
+    want: |
+      parameters:
+        - description: |4-
+                a
+              b
+
+- dump:
+    name: block scalar indicator - indent 5 in sequence
+    data:
+      parameters:
+          - description: |2-
+                a
+              b
+    type: map[string][]map[string]any
+    opts:
+      indent: 5
+    want: |
+      parameters:
+         - description: |5-
+                  a
+                b
+
+- dump:
+    name: block scalar indicator - indent 6 in sequence
+    data:
+      parameters:
+          - description: |2-
+                a
+              b
+    type: map[string][]map[string]any
+    opts:
+      indent: 6
+    want: |
+      parameters:
+          - description: |6-
+                    a
+                  b
+
+- dump:
+    name: block scalar indicator - indent 7 in sequence
+    data:
+      parameters:
+          - description: |2-
+                a
+              b
+    type: map[string][]map[string]any
+    opts:
+      indent: 7
+    want: |
+      parameters:
+           - description: |7-
+                      a
+                    b
+
+- dump:
+    name: block scalar indicator - indent 8 in sequence
+    data:
+      parameters:
+          - description: |2-
+                a
+              b
+    type: map[string][]map[string]any
+    opts:
+      indent: 8
+    want: |
+      parameters:
+            - description: |8-
+                        a
+                      b
+
+- dump:
+    name: block scalar indicator - indent 9 in sequence
+    data:
+      parameters:
+          - description: |2-
+                a
+              b
+    type: map[string][]map[string]any
+    opts:
+      indent: 9
+    want: |
+      parameters:
+             - description: |9-
+                          a
+                        b
+
+- dump:
+    name: block scalar indicator - indent 9 with leading breaks
+    data:
+      parameters:
+          - description: |2-
+
+
+                more indented
+              regular
+    type: map[string][]map[string]any
+    opts:
+      indent: 9
+    want: |
+      parameters:
+             - description: |9-
+
+
+                          more indented
+                        regular
+
 # Whitespace-only strings (all simple cases)
 - encode:
     name: whitespace only - just newline (double quoted)
@@ -676,6 +1026,7 @@
       " \t\n \t"
 
 # Whitespace with content (simple cases without leading tabs)
+# Trailing spaces in literal expectations are significant.
 - encode:
     name: whitespace with content - hello newline (literal)
     data: "hello\n"
@@ -693,35 +1044,99 @@
            hello
 
 - encode:
-    name: whitespace with content - space newline hello (double quoted short)
+    name: whitespace with content - space newline hello (literal with indent)
     data: " \nhello"
     type: string
     want: |
-      " \nhello"
+      |4-
+           
+          hello
 
 - encode:
-    name: whitespace with content - spaces hello spaces newline (double quoted trailing)
+    name: whitespace with content - spaces hello spaces newline (literal)
     data: "  hello  \n"
     type: string
     want: |
-      "  hello  \n"
+      |4
+            hello  
 
 - encode:
-    name: whitespace with content - hello spaces newline (double quoted trailing)
+    name: whitespace with content - hello spaces newline (literal)
     data: "hello  \n"
     type: string
     want: |
-      "hello  \n"
+      |
+          hello  
 
 - encode:
-    name: whitespace with content - hello newline spaces (double quoted trailing)
+    name: whitespace with content - hello newline spaces (literal)
     data: "hello\n  "
     type: string
     want: |
-      "hello\n  "
+      |-
+          hello
+            
+
+- encode:
+    name: literal trailing spaces before newline (go-yaml 60 and yq 566)
+    data:
+      this: "should \nreally work\n"
+    type: map[string]string
+    want: |
+      this: |
+          should 
+          really work
+
+- encode:
+    name: literal final space on more-indented line (yq 1781)
+    data:
+      mstring: "aaa\n bbb "
+    type: map[string]string
+    want: |
+      mstring: |-
+          aaa
+           bbb 
+
+- encode:
+    name: literal whitespace line in compact sequence mapping
+    data:
+      outer:
+      - text: " \nhello"
+    type: map[string][]map[string]any
+    want: |
+      outer:
+          - text: |2-
+               
+              hello
+
+# Scalar style selection priority: a multiline value stays literal even
+# when quoting is preferred, including tab-leading content, which the
+# emitter handles with an explicit indentation indicator. A single line
+# value that must be quoted still uses the preferred quotes (see the
+# QuoteSingle cases below).
+- dump:
+    name: style priority - literal wins over quote preference
+    data:
+      v: "hello\nworld"
+    type: map[string]string
+    opts:
+      required-quotes: single
+    want: |
+      v: |-
+        hello
+        world
+
+- dump:
+    name: style priority - tab-leading multiline stays literal
+    data:
+      v: "\tthis\nis\nmultiline"
+    type: map[string]string
+    opts:
+      required-quotes: single
+    want: "v: |2-\n  \tthis\n  is\n  multiline\n"
 
 # WithQuotePreference tests - QuoteSingle (v4 default)
-- encode-opts:
+- dump:
     name: QuoteSingle - string "true"
     data:
       v: 'true'
@@ -731,7 +1146,7 @@
     want: |
       v: 'true'
 
-- encode-opts:
+- dump:
     name: QuoteSingle - string "false"
     data:
       v: 'false'
@@ -741,7 +1156,7 @@
     want: |
       v: 'false'
 
-- encode-opts:
+- dump:
     name: QuoteSingle - string "null"
     data:
       v: 'null'
@@ -751,7 +1166,7 @@
     want: |
       v: 'null'
 
-- encode-opts:
+- dump:
     name: QuoteSingle - string "123"
     data:
       v: '123'
@@ -761,7 +1176,7 @@
     want: |
       v: '123'
 
-- encode-opts:
+- dump:
     name: QuoteSingle - leading whitespace
     data:
       v: ' hello'
@@ -771,7 +1186,7 @@
     want: |
       v: ' hello'
 
-- encode-opts:
+- dump:
     name: QuoteSingle - trailing whitespace
     data:
       v: 'hello '
@@ -781,7 +1196,7 @@
     want: |
       v: 'hello '
 
-- encode-opts:
+- dump:
     name: QuoteSingle - syntax character (colon-space)
     data:
       v: ': hello'
@@ -791,7 +1206,7 @@
     want: |
       v: ': hello'
 
-- encode-opts:
+- dump:
     name: QuoteSingle - dash string
     data:
       v: '-'
@@ -801,8 +1216,28 @@
     want: |
       v: '-'
 
+- dump:
+    name: QuoteSingle - string "off" (YAML 1.1 bool, representer path)
+    data:
+      v: 'off'
+    type: map[string]string
+    opts:
+      required-quotes: single
+    want: |
+      v: 'off'
+
+- dump:
+    name: QuoteSingle - merge key "<<" (representer path)
+    data:
+      '<<': []
+    type: map[string]any
+    opts:
+      required-quotes: single
+    want: |
+      '<<': []
+
 # WithQuotePreference tests - QuoteDouble
-- encode-opts:
+- dump:
     name: QuoteDouble - string "true"
     data:
       v: 'true'
@@ -812,7 +1247,7 @@
     want: |
       v: "true"
 
-- encode-opts:
+- dump:
     name: QuoteDouble - string "false"
     data:
       v: 'false'
@@ -822,7 +1257,7 @@
     want: |
       v: "false"
 
-- encode-opts:
+- dump:
     name: QuoteDouble - string "null"
     data:
       v: 'null'
@@ -832,7 +1267,7 @@
     want: |
       v: "null"
 
-- encode-opts:
+- dump:
     name: QuoteDouble - string "123"
     data:
       v: '123'
@@ -842,7 +1277,7 @@
     want: |
       v: "123"
 
-- encode-opts:
+- dump:
     name: QuoteDouble - leading whitespace
     data:
       v: ' hello'
@@ -852,7 +1287,7 @@
     want: |
       v: " hello"
 
-- encode-opts:
+- dump:
     name: QuoteDouble - trailing whitespace
     data:
       v: 'hello '
@@ -862,7 +1297,7 @@
     want: |
       v: "hello "
 
-- encode-opts:
+- dump:
     name: QuoteDouble - syntax character (colon-space)
     data:
       v: ': hello'
@@ -872,7 +1307,7 @@
     want: |
       v: ": hello"
 
-- encode-opts:
+- dump:
     name: QuoteDouble - dash string
     data:
       v: '-'
@@ -882,10 +1317,30 @@
     want: |
       v: "-"
 
+- dump:
+    name: QuoteDouble - string "off" (YAML 1.1 bool, representer path)
+    data:
+      v: 'off'
+    type: map[string]string
+    opts:
+      required-quotes: double
+    want: |
+      v: "off"
+
+- dump:
+    name: QuoteDouble - merge key "<<" (representer path)
+    data:
+      '<<': []
+    type: map[string]any
+    opts:
+      required-quotes: double
+    want: |
+      "<<": []
+
 # WithQuotePreference tests - QuoteLegacy (v3 behavior)
 # Legacy: bool-like strings (representer) → double quotes
 # Legacy: whitespace strings (emitter) → single quotes
-- encode-opts:
+- dump:
     name: QuoteLegacy - string "true" (double from representer)
     data:
       v: 'true'
@@ -895,7 +1350,7 @@
     want: |
       v: "true"
 
-- encode-opts:
+- dump:
     name: QuoteLegacy - string "false" (double from representer)
     data:
       v: 'false'
@@ -905,7 +1360,7 @@
     want: |
       v: "false"
 
-- encode-opts:
+- dump:
     name: QuoteLegacy - string "null" (double from representer)
     data:
       v: 'null'
@@ -915,7 +1370,7 @@
     want: |
       v: "null"
 
-- encode-opts:
+- dump:
     name: QuoteLegacy - string "123" (double from representer)
     data:
       v: '123'
@@ -925,7 +1380,17 @@
     want: |
       v: "123"
 
-- encode-opts:
+- dump:
+    name: QuoteLegacy - string "off" (YAML 1.1 bool, double from representer)
+    data:
+      v: 'off'
+    type: map[string]string
+    opts:
+      required-quotes: legacy
+    want: |
+      v: "off"
+
+- dump:
     name: QuoteLegacy - leading whitespace (single from emitter)
     data:
       v: ' hello'
@@ -935,7 +1400,7 @@
     want: |
       v: ' hello'
 
-- encode-opts:
+- dump:
     name: QuoteLegacy - trailing whitespace (single from emitter)
     data:
       v: 'hello '
@@ -945,7 +1410,7 @@
     want: |
       v: 'hello '
 
-- encode-opts:
+- dump:
     name: QuoteLegacy - syntax character (single from emitter)
     data:
       v: ': hello'
@@ -955,7 +1420,7 @@
     want: |
       v: ': hello'
 
-- encode-opts:
+- dump:
     name: QuoteLegacy - dash string (single from emitter)
     data:
       v: '-'
@@ -966,7 +1431,7 @@
       v: '-'
 
 # Plain strings should remain unquoted regardless of quote preference
-- encode-opts:
+- dump:
     name: QuoteSingle - plain string stays plain
     data:
       v: hello
@@ -976,7 +1441,7 @@
     want: |
       v: hello
 
-- encode-opts:
+- dump:
     name: QuoteDouble - plain string stays plain
     data:
       v: hello
@@ -985,4 +1450,50 @@
       required-quotes: double
     want: |
       v: hello
+
+# Regression tests for block scalars whose first non-empty line is indented.
+# Without an explicit indentation indicator the output does not parse back.
+- encode:
+    name: block scalar with leading empty lines and indented content
+    data:
+      v: "\n\n more indented\nregular\n"
+    type: map[string]string
+    want: |
+      v: |4
+
+
+           more indented
+          regular
+
+- encode:
+    name: block scalar with a leading empty line and indented content
+    data:
+      v: "\n  indented\nplain\n"
+    type: map[string]string
+    want: |
+      v: |4
+
+            indented
+          plain
+
+- encode:
+    name: block scalar with an indented first line
+    data:
+      v: " first indented\nregular\n"
+    type: map[string]string
+    want: |
+      v: |4
+           first indented
+          regular
+
+- encode:
+    name: block scalar with a leading empty line and unindented content
+    data:
+      v: "\nno indent\nhere\n"
+    type: map[string]string
+    want: |
+      v: |
+
+          no indent
+          here
 

@@ -58,7 +58,7 @@ func processJSONLoad(reader io.Reader, pretty bool, opts ...yaml.Option) error {
 	return nil
 }
 
-// processJSONDecode uses deprecated Decoder.Decode for YAML processing (no options support)
+// processJSONDecode uses classic Decoder.Decode for YAML processing (no options support)
 func processJSONDecode(reader io.Reader, pretty bool, opts ...yaml.Option) error {
 	decoder := yaml.NewDecoder(reader)
 

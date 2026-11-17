@@ -9,6 +9,7 @@ package yaml_test
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"reflect"
 	"testing"
@@ -280,7 +281,7 @@ func TestNodeZeroEncodeDecode(t *testing.T) {
 	// Kind zero is still unknown, though.
 	n.Line = 1
 	_, err = yaml.Marshal(&n)
-	assert.ErrorMatches(t, "go-yaml dump error in serializer: cannot represent node with unknown kind 0", err)
+	assert.ErrorMatches(t, "yaml: cannot represent node with unknown kind 0", err)
 	err = n.Load(&v)
 	assert.ErrorMatches(t, `go-yaml load error in constructor at L1: cannot construct node with unknown kind: '0'`, err)
 }
@@ -297,7 +298,7 @@ func TestNodeOmitEmpty(t *testing.T) {
 
 	v.B.Line = 1
 	_, err = yaml.Marshal(&v)
-	assert.ErrorMatches(t, "go-yaml dump error in serializer: cannot represent node with unknown kind 0", err)
+	assert.ErrorMatches(t, "yaml: cannot represent node with unknown kind 0", err)
 }
 
 func nodeRoundTrip(t *testing.T, src []byte, indent int) []byte {
@@ -317,48 +318,24 @@ func nodeRoundTrip(t *testing.T, src []byte, indent int) []byte {
 	return buf.Bytes()
 }
 
-func TestNodeFoldedScalarRoundtripStable(t *testing.T) {
-	cases := []struct {
-		name string
-		src  string
-	}{
-		{
-			name: "folded heading then more-indented block",
-			src:  "key: >\n  Heading:\n\n    * first item\n    * second item\n",
-		},
-		{
-			name: "folded single newline between plain lines",
-			src:  "key: >\n  one\n\n  two\n",
-		},
-		{
-			name: "folded single line",
-			src:  "key: >\n  just one line\n",
-		},
-		{
-			name: "literal control",
-			src:  "key: |\n  Heading:\n\n    * first item\n    * second item\n",
-		},
+func runNodeRoundTripTestCase(t *testing.T, tc map[string]any) {
+	t.Helper()
+
+	src := datatest.RequireString(t, tc, "yaml")
+	var first map[string]string
+	if err := yaml.Unmarshal([]byte(src), &first); err != nil {
+		t.Fatalf("Unmarshal source: %v", err)
 	}
+	want := first["key"]
 
-	for _, tc := range cases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			var first map[string]string
-			if err := yaml.Unmarshal([]byte(tc.src), &first); err != nil {
-				t.Fatalf("Unmarshal source: %v", err)
-			}
-			want := first["key"]
-
-			current := []byte(tc.src)
-			for round := 0; round < 4; round++ {
-				var m map[string]string
-				if err := yaml.Unmarshal(current, &m); err != nil {
-					t.Fatalf("round %d: Unmarshal: %v", round, err)
-				}
-				assert.Equal(t, want, m["key"])
-				current = nodeRoundTrip(t, current, 2)
-			}
-		})
+	current := []byte(src)
+	for round := 0; round < 4; round++ {
+		var m map[string]string
+		if err := yaml.Unmarshal(current, &m); err != nil {
+			t.Fatalf("round %d: Unmarshal: %v", round, err)
+		}
+		assert.Equal(t, want, m["key"])
+		current = nodeRoundTrip(t, current, 2)
 	}
 }
 
@@ -387,7 +364,7 @@ func isStandardTag(tag string) bool {
 // parseNodeInfo converts a NodeInfo structure into a yaml.Node
 func parseNodeInfo(info *NodeInfo) (*yaml.Node, error) {
 	if info == nil {
-		return nil, fmt.Errorf("nil NodeInfo")
+		return nil, errors.New("nil NodeInfo")
 	}
 
 	node := &yaml.Node{}
@@ -608,6 +585,21 @@ func runNodeTestCase(t *testing.T, tc map[string]any) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, yamlInput, buf.String())
+
+		if roundtrip, _ := tc["roundtrip"].(bool); roundtrip {
+			current := buf.Bytes()
+			for round := 0; round < 4; round++ {
+				var actualNode yaml.Node
+				err := yaml.Unmarshal(current, &actualNode)
+				assert.NoError(t, err)
+				actualInfo := formatNodeInfo(actualNode)
+				assertNodeInfoEqual(t, &expectedInfo, actualInfo,
+					fmt.Sprintf("%s round %d", name, round))
+				if round < 3 {
+					current = nodeRoundTrip(t, current, 2)
+				}
+			}
+		}
 	}
 }
 
@@ -652,7 +644,8 @@ func TestNodeFromYAML(t *testing.T) {
 	datatest.RunTestCases(t, func() ([]map[string]any, error) {
 		return datatest.LoadTestCasesFromFile("testdata/node.yaml", libyaml.LoadAny)
 	}, map[string]datatest.TestHandler{
-		"node-test": runNodeTestCase,
+		"node-test":      runNodeTestCase,
+		"node-roundtrip": runNodeRoundTripTestCase,
 	})
 }
 

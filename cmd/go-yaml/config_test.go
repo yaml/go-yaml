@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pb33f/go-yaml"
@@ -37,7 +38,7 @@ func TestRegisterCompiledPlugins(t *testing.T) {
 func TestEmbeddedOptions(t *testing.T) {
 	saved := defaultConfig
 	t.Cleanup(func() { defaultConfig = saved })
-	defaultConfig = "indent: 4\nplugin:\n  limit:\n    depth: 1\n"
+	defaultConfig = "indent: 4\nplugin:\n  loader-limits:\n    depth: 1\n"
 	initOptionRegistry()
 	opts, err := buildOptions("", nil)
 	if err != nil {
@@ -52,7 +53,7 @@ func TestEmbeddedOptions(t *testing.T) {
 		t.Fatal("embedded limit not applied")
 	}
 
-	opts, err = buildOptions("", []string{"indent=2"}, "limit")
+	opts, err = buildOptions("", []string{"indent=2"}, "loader-limits")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,19 +64,30 @@ func TestEmbeddedOptions(t *testing.T) {
 	if err := yaml.Load([]byte("[[]]"), &value, opts...); err != nil {
 		t.Fatalf("explicit limit should use defaults: %v", err)
 	}
-	opts, err = buildOptions("", nil, "limit=limit")
+	opts, err = buildOptions("", nil, "loader-limits=loader-limits")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := yaml.Load([]byte("[[]]"), &value, opts...); err != nil {
 		t.Fatalf("explicit implementation should use defaults: %v", err)
 	}
-	for _, selector := range []string{"", "=limit", "limit=", "a=b=c"} {
+	for _, selector := range []string{"limit", "limit=limit", "loader-limits=limit"} {
+		if _, err := buildOptions("", nil, selector); err == nil {
+			t.Fatalf("removed limit selector %q accepted", selector)
+		}
+	}
+	if _, err := buildOptions("", nil, "parser=go-yaml"); err == nil {
+		t.Fatal("old parser selector accepted")
+	}
+	for _, selector := range []string{"", "=loader-limits", "loader-limits=", "a=b=c"} {
 		if _, err := buildOptions("", nil, selector); err == nil {
 			t.Fatalf("invalid selector %q accepted", selector)
 		}
 	}
-
+	defaultConfig = "plugin: {limit: true, loader-limits: true}\n"
+	if _, err := buildOptions("", nil); err == nil {
+		t.Fatal("removed limit API accepted alongside loader-limits")
+	}
 	config := filepath.Join(t.TempDir(), "runtime.yaml")
 	if err := os.WriteFile(config, []byte("indent: 6\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -90,5 +102,72 @@ func TestEmbeddedOptions(t *testing.T) {
 	}
 	if err := yaml.Load([]byte("[[]]"), &value, opts...); err != nil {
 		t.Fatalf("runtime config did not replace embedded limits: %v", err)
+	}
+}
+
+func TestErrorFormatOptions(t *testing.T) {
+	saved := defaultConfig
+	t.Cleanup(func() { defaultConfig = saved })
+	defaultConfig = "plugin: {error-format: {v3: {}}}\n"
+	for _, tc := range []struct {
+		name, selector, want string
+		invalid              bool
+	}{
+		{"embedded v3", "", "yaml: line 1:", false},
+		{"v3 shorthand", "error-format=v3", "yaml: line 1:", false},
+		{"v4 shorthand", "error-format=v4", "go-yaml load error in scanner", false},
+		{"default", "error-format", "go-yaml load error in scanner", false},
+		{
+			"explicit implementation", "error-format=error-format",
+			"go-yaml load error in scanner", false,
+		},
+		{"old API", "errfmt", "", true},
+		{"old implementation", "error-format=errfmt", "", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var selectors []string
+			if tc.selector != "" {
+				selectors = append(selectors, tc.selector)
+			}
+			opts, err := buildOptions("", nil, selectors...)
+			if tc.invalid {
+				if err == nil {
+					t.Fatal("old plugin name accepted")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			var value any
+			err = yaml.Load([]byte("value: -\n"), &value, opts...)
+			if err == nil || !strings.HasPrefix(err.Error(), tc.want) {
+				t.Fatalf("got %v, want prefix %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestMergeKeyOptions(t *testing.T) {
+	initOptionRegistry()
+	for _, tc := range []struct {
+		selector string
+		input    string
+		key      string
+	}{
+		{"merge-key", "<<: {x: 1}", "x"},
+		{"merge-key=disable", "<<: {x: 1}", "<<"},
+	} {
+		opts, err := buildOptions("", nil, tc.selector)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got map[string]any
+		if err := yaml.Load([]byte(tc.input), &got, opts...); err != nil {
+			t.Fatal(err)
+		}
+		if _, found := got[tc.key]; !found {
+			t.Fatalf("%s: %#v", tc.selector, got)
+		}
 	}
 }

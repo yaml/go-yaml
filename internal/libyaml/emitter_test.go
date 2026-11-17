@@ -75,6 +75,33 @@ func TestEmitFoldedScalarNoExtraNewline(t *testing.T) {
 	}
 }
 
+// TestEmitAlias verifies that emitting an alias only needs the anchor
+// data that analyzeEvent extracted from the event: the alias event
+// itself carries nothing else the emitter has to consult.
+func TestEmitAlias(t *testing.T) {
+	emitter := NewEmitter()
+	var output []byte
+	emitter.SetOutputString(&output)
+
+	event := NewAliasEvent([]byte("anchor"))
+	err := emitter.analyzeEvent(&event)
+	assert.NoErrorf(t, err, "analyzeEvent() error: %v", err)
+
+	// The state machine reaches emitAlias right after a token separator
+	// (an indent or a mapping value indicator), with one state to pop.
+	emitter.whitespace = true
+	emitter.states = append(emitter.states, EMIT_DOCUMENT_CONTENT_STATE)
+
+	err = emitter.emitAlias()
+	assert.NoErrorf(t, err, "emitAlias() error: %v", err)
+	err = emitter.flush()
+	assert.NoErrorf(t, err, "flush() error: %v", err)
+
+	assert.Equal(t, "*anchor", string(output))
+	assert.Equal(t, EMIT_DOCUMENT_CONTENT_STATE, emitter.state)
+	assert.Equal(t, 0, len(emitter.states))
+}
+
 func runEmitWriterTest(t *testing.T, tc TestCase) {
 	t.Helper()
 

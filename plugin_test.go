@@ -5,13 +5,16 @@ package yaml_test
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 	"sync/atomic"
 	"testing"
 
 	"github.com/pb33f/go-yaml"
-	"github.com/pb33f/go-yaml/plugin/limit"
+	errorformatv3 "github.com/pb33f/go-yaml/plugin/errorformat/v3"
+	errorformatv4 "github.com/pb33f/go-yaml/plugin/errorformat/v4"
+	"github.com/pb33f/go-yaml/plugin/loaderlimits"
 )
 
 // generateAliases builds YAML with n aliases referencing a large anchor.
@@ -37,7 +40,7 @@ func generateDeepNesting(depth int) []byte {
 	return []byte(sb.String())
 }
 
-func TestWithPlugin_Limit_AliasFunc(t *testing.T) {
+func TestWithPlugin_LoaderLimits_AliasFunc(t *testing.T) {
 	called := false
 	fn := func(aliasCount, constructCount int) error {
 		called = true
@@ -45,7 +48,8 @@ func TestWithPlugin_Limit_AliasFunc(t *testing.T) {
 	}
 	data := generateAliases(200)
 	var result any
-	err := yaml.Load(data, &result, yaml.WithPlugin(limit.New(limit.AliasFunc(fn))))
+	err := yaml.Load(data, &result,
+		yaml.WithPlugin(loaderlimits.New(loaderlimits.AliasFunc(fn))))
 	if err != nil {
 		t.Fatalf("Expected success with custom AliasFunc, got: %v", err)
 	}
@@ -54,7 +58,7 @@ func TestWithPlugin_Limit_AliasFunc(t *testing.T) {
 	}
 }
 
-func TestWithPlugin_Limit_DepthFunc(t *testing.T) {
+func TestWithPlugin_LoaderLimits_DepthFunc(t *testing.T) {
 	called := false
 	fn := func(depth int, ctx *yaml.DepthContext) error {
 		called = true
@@ -62,7 +66,8 @@ func TestWithPlugin_Limit_DepthFunc(t *testing.T) {
 	}
 	data := generateDeepNesting(5)
 	var result any
-	err := yaml.Load(data, &result, yaml.WithPlugin(limit.New(limit.DepthFunc(fn))))
+	err := yaml.Load(data, &result,
+		yaml.WithPlugin(loaderlimits.New(loaderlimits.DepthFunc(fn))))
 	if err != nil {
 		t.Fatalf("Expected success with custom DepthFunc, got: %v", err)
 	}
@@ -84,7 +89,7 @@ func TestWithPlugin_UnsupportedType(t *testing.T) {
 	}
 }
 
-func TestDefaultBehavior_HasLimit(t *testing.T) {
+func TestDefaultBehaviorHasLoaderLimits(t *testing.T) {
 	// Bare NewLoader should have default depth limits
 	data := generateDeepNesting(10001)
 	loader, err := yaml.NewLoader(bytes.NewReader(data))
@@ -192,7 +197,7 @@ func TestPluginRegistry(t *testing.T) {
 		}
 	}
 	if _, err := yaml.OptsYAML(
-		"plugin: {limit: {version: 0.1.8}}"); err == nil ||
+		"plugin: {loader-limits: {version: 0.1.8}}"); err == nil ||
 		!strings.Contains(err.Error(), "unversioned") {
 		t.Fatalf("unversioned implementation: %v", err)
 	}
@@ -208,7 +213,345 @@ func TestPluginRegistry(t *testing.T) {
 		t.Fatal("multiple parser plugins accepted")
 	}
 	if err := yaml.Load(nil, &value,
-		yaml.WithPlugin(p, limit.New())); err != nil {
+		yaml.WithPlugin(p, loaderlimits.New())); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestPluginConfigShortForm(t *testing.T) {
+	api := fmt.Sprintf("test-short-form-%d", atomic.AddUint64(&registryTestID, 1))
+	source := func(value string) any {
+		return registeredSourceFunc(func([]byte) ([]yaml.PluginEvent, error) {
+			return registeredScalarStream(value), nil
+		})
+	}
+	if err := yaml.RegisterPlugin(yaml.PluginRegistration{
+		API: api, Name: api,
+		Factory: func(cfg map[string]any) (any, error) {
+			if len(cfg) == 1 {
+				for _, key := range []string{"compact", "alternate"} {
+					if options, ok := cfg[key].(map[string]any); ok && len(options) == 0 {
+						return source("configured " + key), nil
+					}
+				}
+			}
+			return nil, errors.New("expected an empty compact or alternate entry")
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := yaml.RegisterPlugin(yaml.PluginRegistration{
+		API: api, Name: "alternate", Version: "1.2.3",
+		Factory: func(map[string]any) (any, error) { return source("named"), nil },
+	}); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ setting, want string }{
+		{"compact", "configured compact"},
+		{"{compact: {}}", "configured compact"},
+		{"{alternate: {}}", "configured alternate"},
+		{"alternate", "named"},
+		{"alternate@v1.2.3", "named"},
+	} {
+		t.Run(tc.setting, func(t *testing.T) {
+			opt, err := yaml.OptsYAML(fmt.Sprintf("plugin: {%s: %s}", api, tc.setting))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var value string
+			if err := yaml.Load(nil, &value, opt); err != nil || value != tc.want {
+				t.Fatalf("got %q, %v; want %q", value, err, tc.want)
+			}
+		})
+	}
+	for _, setting := range []string{
+		"missing", "compact@v1.2.3", "{name: compact}", "alternate@v1.2.4",
+	} {
+		if _, err := yaml.OptsYAML(fmt.Sprintf(
+			"plugin: {%s: %s}", api, setting)); err == nil {
+			t.Fatalf("accepted invalid selection %s", setting)
+		}
+	}
+}
+
+func TestLoaderLimitsCanonicalNames(t *testing.T) {
+	var _ yaml.LoaderLimitsPlugin = loaderlimits.New()
+	for _, config := range []string{
+		"plugin: {loader-limits: true}",
+		"plugin: {loader-limits: loader-limits}",
+	} {
+		opt, err := yaml.OptsYAML(config)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var value any
+		if err := yaml.Load([]byte("[[]]"), &value, opt); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var value any
+	if err := yaml.Load([]byte("[[]]"), &value,
+		yaml.WithNamedPlugin("loader-limits")); err != nil {
+		t.Fatal(err)
+	}
+	for _, config := range []string{
+		"plugin: {limit: true}",
+		"plugin: {limit: limit}",
+		"plugin: {loader-limits: limit}",
+		"plugin: {loader-limits: {name: limit}}",
+		"plugin: {limit: true, loader-limits: true}",
+	} {
+		if _, err := yaml.OptsYAML(config); err == nil {
+			t.Errorf("accepted removed limit alias: %s", config)
+		}
+	}
+	if err := yaml.Load([]byte("[[]]"), &value,
+		yaml.WithNamedPlugin("limit")); err == nil {
+		t.Fatal("accepted removed named limit plugin")
+	}
+}
+
+// errorFormatBadYAML triggers a scanner error (block sequence not allowed here).
+var errorFormatBadYAML = []byte("value: -\n")
+
+func TestNamedErrorFormatPlugin(t *testing.T) {
+	var _ yaml.ErrorFormatPlugin = errorformatv3.New()
+	var _ yaml.ErrorFormatPlugin = errorformatv4.Must()
+
+	var value any
+	err := yaml.Load(errorFormatBadYAML, &value,
+		yaml.WithNamedPlugin("error-format"))
+	if err == nil || !strings.HasPrefix(err.Error(),
+		"go-yaml load error in scanner at L1.C8:") {
+		t.Fatalf("named error-format plugin: %v", err)
+	}
+	if err := yaml.Load(nil, &value,
+		yaml.WithNamedPlugin("errfmt")); err == nil {
+		t.Fatal("old error-format API name accepted")
+	}
+}
+
+func TestWithPlugin_ErrorFormatV4_Default(t *testing.T) {
+	var result any
+	err := yaml.Load(errorFormatBadYAML, &result, yaml.WithPlugin(errorformatv4.Must()))
+	if err == nil {
+		t.Fatal("Expected error, got nil")
+	}
+	got := err.Error()
+	want := "go-yaml load error in "
+	if !strings.HasPrefix(got, want) {
+		t.Errorf("Default format: got %q, want prefix %q", got, want)
+	}
+}
+
+func TestWithPlugin_ErrorFormatV3(t *testing.T) {
+	var result any
+	err := yaml.Load(errorFormatBadYAML, &result, yaml.WithPlugin(errorformatv3.New()))
+	if err == nil {
+		t.Fatal("Expected error, got nil")
+	}
+	got := err.Error()
+	want := "yaml: line "
+	if !strings.HasPrefix(got, want) {
+		t.Errorf("Legacy format: got %q, want prefix %q", got, want)
+	}
+}
+
+func TestWithPlugin_ErrorFormatV4_LongPosition(t *testing.T) {
+	p, err := errorformatv4.New(errorformatv4.WithPositionStyle(errorformatv4.PositionLong))
+	if err != nil {
+		t.Fatalf("New errorformatv4 failed: %v", err)
+	}
+	var result any
+	err = yaml.Load(errorFormatBadYAML, &result, yaml.WithPlugin(p))
+	if err == nil {
+		t.Fatal("Expected error, got nil")
+	}
+	got := err.Error()
+	if !strings.Contains(got, "line 1, column 8") {
+		t.Errorf("Long position format: got %q", got)
+	}
+}
+
+func TestWithPlugin_ErrorFormatV4_LinePosition(t *testing.T) {
+	p, err := errorformatv4.New(errorformatv4.WithPositionStyle(errorformatv4.PositionLine))
+	if err != nil {
+		t.Fatalf("New errorformatv4 failed: %v", err)
+	}
+	var result any
+	err = yaml.Load(errorFormatBadYAML, &result, yaml.WithPlugin(p))
+	if err == nil {
+		t.Fatal("Expected error, got nil")
+	}
+	got := err.Error()
+	if !strings.Contains(got, " at line 1: ") {
+		t.Errorf("Line position format: got %q", got)
+	}
+}
+
+func TestWithPlugin_ErrorFormatV4_DumpDefault(t *testing.T) {
+	_, err := yaml.Dump(make(chan int), yaml.WithPlugin(errorformatv4.Must()))
+	if err == nil {
+		t.Fatal("Expected error, got nil")
+	}
+	want := "go-yaml dump error in representer: "
+	if !strings.HasPrefix(err.Error(), want) {
+		t.Errorf("Default dump format: got %q, want prefix %q", err, want)
+	}
+}
+
+func TestWithPlugin_ErrorFormatV3_Dump(t *testing.T) {
+	_, err := yaml.Dump(make(chan int), yaml.WithPlugin(errorformatv3.New()))
+	if err == nil {
+		t.Fatal("Expected error, got nil")
+	}
+	want := "yaml: cannot represent type: chan int"
+	if err.Error() != want {
+		t.Errorf("Legacy dump format: got %q, want %q", err, want)
+	}
+}
+
+func TestWithPlugin_ErrorFormatV4_DumpStages(t *testing.T) {
+	t.Run("serializer", func(t *testing.T) {
+		n := yaml.Node{Kind: 99}
+		_, err := yaml.Dump(&n, yaml.WithPlugin(errorformatv4.Must()))
+		if err == nil {
+			t.Fatal("Expected error, got nil")
+		}
+		want := "go-yaml dump error in serializer: "
+		if !strings.HasPrefix(err.Error(), want) {
+			t.Errorf("Serializer dump format: got %q, want prefix %q", err, want)
+		}
+	})
+
+	t.Run("writer", func(t *testing.T) {
+		dumper, err := yaml.NewDumper(errorWriter{}, yaml.WithPlugin(errorformatv4.Must()))
+		if err != nil {
+			t.Fatalf("NewDumper failed: %v", err)
+		}
+		err = dumper.Dump(map[string]string{"a": "b"})
+		if err == nil {
+			t.Fatal("Expected error, got nil")
+		}
+		want := "go-yaml dump error in writer: some write error"
+		if err.Error() != want {
+			t.Errorf("Writer dump format: got %q, want %q", err, want)
+		}
+	})
+}
+
+type customDumpErrorMarshaler struct{}
+
+func (customDumpErrorMarshaler) MarshalYAML() (any, error) {
+	return nil, yaml.NewDumpError(
+		yaml.RepresenterStage,
+		"custom dump error",
+		errors.New("custom cause"),
+	)
+}
+
+func TestWithPlugin_ErrorFormatV3_CustomDumpError(t *testing.T) {
+	_, err := yaml.Dump(customDumpErrorMarshaler{}, yaml.WithPlugin(errorformatv3.New()))
+	if err == nil {
+		t.Fatal("Expected error, got nil")
+	}
+	if err.Error() != "yaml: custom dump error" {
+		t.Errorf("Custom dump error format: got %q", err)
+	}
+	var dumpErr *yaml.DumpError
+	if !errors.As(err, &dumpErr) {
+		t.Fatal("Expected errors.As to find *yaml.DumpError")
+	}
+	if dumpErr.Stage != yaml.RepresenterStage {
+		t.Errorf("DumpError stage: got %q, want %q", dumpErr.Stage, yaml.RepresenterStage)
+	}
+}
+
+func TestWithDefaults_ErrorFormatting(t *testing.T) {
+	tests := []struct {
+		name string
+		opts []yaml.Option
+		want string
+	}{
+		{
+			name: "bare defaults use v4",
+			want: "go-yaml load error in ",
+		},
+		{
+			name: "v2 defaults use current v4 formatter",
+			opts: []yaml.Option{yaml.WithV2Defaults()},
+			want: "go-yaml load error in ",
+		},
+		{
+			name: "v3 defaults use v3",
+			opts: []yaml.Option{yaml.WithV3Defaults()},
+			want: "yaml: line ",
+		},
+		{
+			name: "v4 defaults use v4",
+			opts: []yaml.Option{yaml.WithV4Defaults()},
+			want: "go-yaml load error in ",
+		},
+		{
+			name: "explicit plugin after defaults wins",
+			opts: []yaml.Option{yaml.WithV3Defaults(), yaml.WithPlugin(errorformatv4.Must())},
+			want: "go-yaml load error in ",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var result any
+			err := yaml.Load(errorFormatBadYAML, &result, tt.opts...)
+			if err == nil {
+				t.Fatal("Expected error, got nil")
+			}
+			if !strings.HasPrefix(err.Error(), tt.want) {
+				t.Errorf("got %q, want prefix %q", err.Error(), tt.want)
+			}
+		})
+	}
+}
+
+func TestWithDefaults_DumpErrorFormatting(t *testing.T) {
+	tests := []struct {
+		name string
+		opts []yaml.Option
+		want string
+	}{
+		{
+			name: "bare defaults use v4",
+			want: "go-yaml dump error in representer: ",
+		},
+		{
+			name: "v2 defaults use current v4 formatter",
+			opts: []yaml.Option{yaml.WithV2Defaults()},
+			want: "go-yaml dump error in representer: ",
+		},
+		{
+			name: "v3 defaults use v3",
+			opts: []yaml.Option{yaml.WithV3Defaults()},
+			want: "yaml: cannot represent type: chan int",
+		},
+		{
+			name: "v4 defaults use v4",
+			opts: []yaml.Option{yaml.WithV4Defaults()},
+			want: "go-yaml dump error in representer: ",
+		},
+		{
+			name: "explicit plugin after defaults wins",
+			opts: []yaml.Option{yaml.WithV3Defaults(), yaml.WithPlugin(errorformatv4.Must())},
+			want: "go-yaml dump error in representer: ",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := yaml.Dump(make(chan int), tt.opts...)
+			if err == nil {
+				t.Fatal("Expected error, got nil")
+			}
+			if !strings.HasPrefix(err.Error(), tt.want) {
+				t.Errorf("got %q, want prefix %q", err.Error(), tt.want)
+			}
+		})
 	}
 }

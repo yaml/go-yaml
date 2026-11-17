@@ -90,10 +90,10 @@ func initOptionRegistry() {
 		"indent": {typ: "int", handler: func(value string) ([]yaml.Option, error) {
 			var val int
 			if _, err := fmt.Sscanf(value, "%d", &val); err != nil {
-				return nil, fmt.Errorf("indent requires integer value (2-9)")
+				return nil, errors.New("indent requires integer value (2-9)")
 			}
 			if val < 2 || val > 9 {
-				return nil, fmt.Errorf("indent must be between 2 and 9")
+				return nil, errors.New("indent must be between 2 and 9")
 			}
 			return []yaml.Option{yaml.WithIndent(val)}, nil
 		}},
@@ -108,14 +108,14 @@ func initOptionRegistry() {
 		"line-width": {typ: "int", handler: func(value string) ([]yaml.Option, error) {
 			var val int
 			if _, err := fmt.Sscanf(value, "%d", &val); err != nil {
-				return nil, fmt.Errorf("line-width requires integer value")
+				return nil, errors.New("line-width requires integer value")
 			}
 			return []yaml.Option{yaml.WithLineWidth(val)}, nil
 		}},
 		"width": {typ: "int", handler: func(value string) ([]yaml.Option, error) {
 			var val int
 			if _, err := fmt.Sscanf(value, "%d", &val); err != nil {
-				return nil, fmt.Errorf("width requires integer value")
+				return nil, errors.New("width requires integer value")
 			}
 			return []yaml.Option{yaml.WithLineWidth(val)}, nil
 		}},
@@ -145,7 +145,7 @@ func initOptionRegistry() {
 			case "crln":
 				lb = yaml.LineBreakCRLN
 			default:
-				return nil, fmt.Errorf("line-break must be ln, cr, or crln")
+				return nil, errors.New("line-break must be ln, cr, or crln")
 			}
 			return []yaml.Option{yaml.WithLineBreak(lb)}, nil
 		}},
@@ -322,7 +322,7 @@ func buildOptions(configFile string, optionFlags []string, pluginSpecs ...string
 	}
 	if len(pluginSpecs) > 0 {
 		// Replace each explicitly selected plugin's configuration with defaults.
-		// This also avoids selecting a configured parser plugin twice.
+		// This also avoids selecting a configured YAML-parser plugin twice.
 		config := map[string]any{}
 		if len(configData) > 0 {
 			if err := yaml.Load(configData, &config); err != nil {
@@ -337,7 +337,7 @@ func buildOptions(configFile string, optionFlags []string, pluginSpecs ...string
 			var ok bool
 			plugins, ok = value.(map[string]any)
 			if !ok {
-				return nil, fmt.Errorf("plugin configuration must be a mapping")
+				return nil, errors.New("plugin configuration must be a mapping")
 			}
 		}
 		for _, spec := range pluginSpecs {
@@ -346,6 +346,10 @@ func buildOptions(configFile string, optionFlags []string, pluginSpecs ...string
 				return nil, err
 			}
 			for _, selection := range selections {
+				if selection.Name != "" && selection.Version == "" {
+					plugins[selection.API] = selection.Name
+					continue
+				}
 				if selection.Name == "" && selection.Version == "" {
 					plugins[selection.API] = true
 					continue
@@ -506,9 +510,16 @@ func main() {
 	if optionErr != nil {
 		log.Fatal(optionErr)
 	}
+	if configured.AliasData != nil &&
+		(*tokenMode || *tokenProfuseMode || *eventMode || *eventProfuseMode ||
+			*yamlPreserveMode || unmarshalMode || decodeMode) {
+		log.Fatal("explicit alias-data policies are unsupported with token, " +
+			"event, preserving, or legacy loading modes")
+	}
 	if configured.Parser != nil &&
 		(*tokenMode || *tokenProfuseMode || unmarshalMode || decodeMode) {
-		log.Fatal("parser plugins are not supported with token output or legacy loading modes")
+		log.Fatal("yaml-parser plugins are not supported with token output " +
+			"or legacy loading modes")
 	}
 	if configured.IndentConfig != nil &&
 		(unmarshalMode || decodeMode || marshalMode || encodeMode) {
@@ -594,13 +605,6 @@ func main() {
 			log.Fatal("Failed to process structured input:", err)
 		}
 		return
-	}
-	if configured.JSONComments != nil &&
-		(*tokenMode || *tokenProfuseMode || unmarshalMode || decodeMode) {
-		inputData, err = configured.JSONComments.Sanitize(inputData)
-		if err != nil {
-			log.Fatal("Failed to sanitize JSON comments:", err)
-		}
 	}
 	input = bytes.NewReader(inputData)
 
@@ -787,8 +791,8 @@ It reads YAML input text from stdin or a file and writes results to stdout.
 
 The go-yaml API has three sets of functions for reading/writing YAML:
   - Load/Dump (default, new API with options support - v4 defaults)
-  - Decode/Encode (deprecated, no options)
-  - Unmarshal/Marshal (deprecated, no options)
+  - Decode/Encode (classic, no options)
+  - Unmarshal/Marshal (classic, no options)
 
 
 Usage:
@@ -824,10 +828,10 @@ Formatting Options:
 
 API Selection Options:
   --plugin=SPEC    Select plugins with API[=NAME][@VERSION] syntax
-  --unmarshal      Use Unmarshal API for input (deprecated, v3 defaults)
-  --decode         Use Decode API for input (deprecated)
-  --marshal        Use Marshal API for output (deprecated)
-  --encode         Use Encode API for output (deprecated)
+  --unmarshal      Use Unmarshal API for input (classic, v3 defaults)
+  --decode         Use Decode API for input (classic)
+  --marshal        Use Marshal API for output (classic)
+  --encode         Use Encode API for output (classic)
 
 Configuration:
   -C, --config     Load options from YAML config file

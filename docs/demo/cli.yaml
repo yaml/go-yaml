@@ -1,0 +1,36 @@
+output: docs/demo/cli.gif
+width: 1200
+height: 700
+font_size: 22
+typing_speed: 35ms
+padding: 20
+shell: bash
+background_color: '#171717'
+
+steps:
+- hide:
+- >-
+  export PATH="$PWD:$PATH";
+  export PS1='$ ';
+  unset PROMPT_COMMAND HISTFILE;
+  mkdir -p .cache/readme-demo;
+  cp docs/demo/sample.yaml .cache/readme-demo/config.yaml;
+  cd .cache/readme-demo
+- 500
+- CLEAR
+- show:
+- '# Convert YAML to JSON'
+- go-yaml -J config.yaml
+- 3500
+- CLEAR
+- '# Inspect the node tree'
+- go-yaml -n config.yaml
+- 4000
+- CLEAR
+- '# Choose output options'
+- go-yaml -Y -o indent=4 config.yaml
+- 3500
+- CLEAR
+- '# YAML -> tokens -> events -> nodes -> YAML'
+- go-yaml -t config.yaml | go-yaml -e | go-yaml -N | go-yaml -Y
+- 5000

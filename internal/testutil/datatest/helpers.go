@@ -8,6 +8,7 @@ package datatest
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -188,7 +189,7 @@ func GenerateData(spec any) ([]byte, error) {
 		return result, nil
 	}
 
-	return nil, fmt.Errorf("data spec must have 'loop' or 'join' field")
+	return nil, errors.New("data spec must have 'loop' or 'join' field")
 }
 
 // generateSimpleLoop generates test data by repeating a string value n times.

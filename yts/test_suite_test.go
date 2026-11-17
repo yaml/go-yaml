@@ -120,6 +120,29 @@ func loadFirstDocument(in []byte, out any) error {
 	return err
 }
 
+// jsonNumbers converts the integers in a value loaded from YAML to float64.
+// encoding/json decodes every JSON number to float64, so without this a
+// YAML int like 65 never equals the 65 from in.json.
+func jsonNumbers(v any) any {
+	switch v := v.(type) {
+	case int:
+		return float64(v)
+	case int64:
+		return float64(v)
+	case uint64:
+		return float64(v)
+	case []any:
+		for i, e := range v {
+			v[i] = jsonNumbers(e)
+		}
+	case map[string]any:
+		for k, e := range v {
+			v[k] = jsonNumbers(e)
+		}
+	}
+	return v
+}
+
 func runTest(t *testing.T, testPath string) {
 	t.Helper()
 
@@ -253,10 +276,12 @@ func runTest(t *testing.T, testPath string) {
 			return
 		}
 		var jsonValue any
-		jsonErr := json.Unmarshal(inJSON, &jsonValue)
-		if jsonErr != nil {
+		// Read only the first JSON value, matching loadFirstDocument.
+		// Empty streams have a nil value on both sides.
+		jsonErr := json.NewDecoder(bytes.NewReader(inJSON)).Decode(&jsonValue)
+		if jsonErr != nil && jsonErr != io.EOF {
 			t.Errorf("Test: %s\nDescription: %s\nError: Failed to unmarshal in.json: %v", testPath, testDescription, jsonErr)
-		} else if !reflect.DeepEqual(currentUnmarshaledValue, jsonValue) {
+		} else if !reflect.DeepEqual(jsonNumbers(currentUnmarshaledValue), jsonValue) {
 			t.Errorf("Test: %s\nDescription: %s\nError: YAML unmarshal vs JSON unmarshal mismatch\nExpected: %+v\nGot     : %+v", testPath, testDescription, jsonValue, currentUnmarshaledValue)
 		}
 	})
