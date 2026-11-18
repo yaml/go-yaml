@@ -314,6 +314,65 @@ For v4-specific implementations, use `go.yaml.in/yaml/v4.Node`.
 The legacy callback signature `UnmarshalYAML(func(any) error) error` is still
 recognized and can be used across v2, v3, and v4.
 
+## Parsing and Decoding Differences
+
+v4 fixes several parser and decoder bugs and tightens or relaxes a few
+checks.
+Documents that v3 read one way can be read another way, or accepted or
+rejected differently, after the upgrade.
+The cases below were found by feeding the same input to
+`go.yaml.in/yaml/v4` v4.0.0 and to v3 through `Unmarshal` into `any`.
+`go.yaml.in/yaml/v3` v3.0.5 and v3.0.6 and `gopkg.in/yaml.v3` v3.0.1 gave
+identical results on every row.
+Inputs are shown as Go string literals.
+
+### Same document, different value
+
+| Input | v3 | v4 |
+|-------|----|----|
+| `"-0\n"` and `"a: -0\n"` | integer `0` | float `-0` |
+| `"a: !\n"` (`!` on an empty scalar) | `nil` | `""` |
+| `"! 00\n"` (`!` on a non-empty scalar) | integer `0` | string `"00"` |
+| `"\|\n00"` (block scalar content not indented) | `""`, content dropped | `"00"` |
+
+The `-0` row is the behavior reported in yaml/go-yaml#517:
+`Marshal(-0.0)` followed by `Unmarshal` yields integer `0` in v3 and
+float `-0` in v4.
+
+### Accepted by v4, rejected by v3
+
+| Input | Note |
+|-------|------|
+| `"a: \"x\x7fy\"\n"` | The raw characters DEL (U+007F) and the C1 controls U+0080 to U+009F, except NEL (U+0085), are accepted in plain, quoted and block scalars, in keys and in comments. v4 keeps them in the decoded string. |
+| `":\n"`, `": x\n"` | An empty implicit key decodes as a `null` key. |
+| `"a: &x! 1\n"` | `!` in an anchor name. |
+| `"{!}\n"` | `!` alone in a flow mapping. |
+
+A document that uses one of these constructs is valid for one version and
+invalid for the other.
+Files shared between programs on different major versions, for example a
+writer on v4 and a reader on v3, can therefore be rejected by the older side.
+
+Raw C0 control characters, such as ESC, are still rejected by both versions.
+Escapes such as `\x1b` or `\x9b` in a double-quoted scalar were already
+accepted by v3.
+Code that relies on the parser alone to keep control characters out of
+decoded values should do its own check; with v4 that now includes raw DEL
+and C1 characters in the input.
+
+### Rejected by v4, accepted by v3
+
+| Input | v3 | v4 |
+|-------|----|----|
+| `"0\n:"` | `0`, the trailing `:` is dropped | error |
+| `"!a,b x\n"` (flow character in a tag) | `"x"` | error |
+| `"a: 'b'#c\n"` (`#` directly after a quoted scalar) | `"b"` | error |
+
+Run your test suite and any stored configuration through v4 before relying
+on the upgrade.
+`yaml.WithV3Defaults()` selects v3 output settings and error formatting; it
+does not restore the v3 parser behavior listed here.
+
 ## Migration Strategies
 
 ### Strategy 1: Minimal Change (Fastest)
