@@ -96,6 +96,7 @@ type Emitter struct {
 	BestIndent      int
 	best_width      int        // The preferred width of the output lines.
 	unicode         bool       // Allow unescaped non-ASCII characters?
+	supplementary   bool       // Treat U+10000..U+10FFFF (emoji) as printable?
 	line_break      LineBreak  // The preferred line break.
 	quotePreference QuoteStyle // Preferred quote style when quoting is required.
 
@@ -274,6 +275,20 @@ func (emitter *Emitter) SetWidth(width int) {
 // SetUnicode sets if unescaped non-ASCII characters are allowed.
 func (emitter *Emitter) SetUnicode(unicode bool) {
 	emitter.unicode = unicode
+}
+
+// SetSupplementary sets if characters outside the Basic Multilingual Plane
+// (U+10000..U+10FFFF, which includes emoji) are printable.
+func (emitter *Emitter) SetSupplementary(supplementary bool) {
+	emitter.supplementary = supplementary
+}
+
+// isPrintable is the package isPrintable, widened to the supplementary
+// planes when SetSupplementary is on. YAML 1.2's c-printable includes
+// [#x10000-#x10FFFF]; the package function predates that and is kept as the
+// default so existing output does not change.
+func (emitter *Emitter) isPrintable(b []byte, i int) bool {
+	return isPrintable(b, i) || (emitter.supplementary && b[i] >= 0xF0 && b[i] <= 0xF4)
 }
 
 // SetLineBreak sets the preferred line break character.
@@ -1473,7 +1488,7 @@ func (emitter *Emitter) analyzeScalar(value []byte) error {
 
 		if value[i] == '\t' {
 			tab_characters = true
-		} else if !isPrintable(value, i) || !isASCII(value, i) && !emitter.unicode {
+		} else if !emitter.isPrintable(value, i) || !isASCII(value, i) && !emitter.unicode {
 			special_characters = true
 		}
 		if isSpace(value, i) {
@@ -1959,7 +1974,7 @@ func (emitter *Emitter) writeDoubleQuotedScalar(value []byte, allow_breaks bool)
 	}
 
 	for i := 0; i < len(value); {
-		if !isPrintable(value, i) || (!emitter.unicode && !isASCII(value, i)) ||
+		if !emitter.isPrintable(value, i) || (!emitter.unicode && !isASCII(value, i)) ||
 			isBOM(value, i) || isLineBreak(value, i) ||
 			value[i] == '"' || value[i] == '\\' {
 

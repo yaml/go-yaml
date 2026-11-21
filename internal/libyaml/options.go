@@ -36,6 +36,9 @@ type Options struct {
 	LineWidth int
 	// Unicode controls whether non-ASCII characters are allowed in YAML output.
 	Unicode bool
+	// SupplementaryUnicode controls whether characters U+10000..U+10FFFF
+	// (emoji, among others) are written as-is rather than escaped.
+	SupplementaryUnicode bool
 	// Canonical forces canonical YAML output format (explicit tags for all values).
 	Canonical bool
 	// LineBreak sets the line ending style for YAML output (LN, CR, CRLF).
@@ -300,6 +303,30 @@ func WithUnicode(unicode ...bool) Option {
 	val := len(unicode) == 0 || unicode[0]
 	return func(o *Options) error {
 		o.Unicode = val
+		return nil
+	}
+}
+
+// WithSupplementaryUnicode controls whether characters outside the Basic
+// Multilingual Plane (U+10000..U+10FFFF, which includes emoji) are written
+// as-is in YAML output.
+//
+// When false, any scalar holding one is double-quoted with the character
+// escaped (e.g., "\U0001F916"), and a block scalar loses its | or > style.
+// When true, they are treated as printable, as YAML 1.2's c-printable
+// production says they are. It has no effect unless WithUnicode is also true.
+// When called without arguments, defaults to true.
+//
+// The default is false, which keeps earlier output unchanged.
+func WithSupplementaryUnicode(supplementary ...bool) Option {
+	if len(supplementary) > 1 {
+		return func(o *Options) error {
+			return errors.New("yaml: WithSupplementaryUnicode accepts at most one argument")
+		}
+	}
+	val := len(supplementary) == 0 || supplementary[0]
+	return func(o *Options) error {
+		o.SupplementaryUnicode = val
 		return nil
 	}
 }

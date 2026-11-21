@@ -198,6 +198,24 @@
   from: [true, false]
   like: "accepts at most one argument"
 
+# WithSupplementaryUnicode tests
+- name: WithSupplementaryUnicode with no args (default true)
+  type: with-supplementary-unicode
+  from: []
+  want:
+    supplementary_unicode: true
+
+- name: WithSupplementaryUnicode with false
+  type: with-supplementary-unicode
+  from: [false]
+  want:
+    supplementary_unicode: false
+
+- name: WithSupplementaryUnicode with too many args
+  type: with-supplementary-unicode
+  from: [true, false]
+  like: "accepts at most one argument"
+
 # WithUniqueKeys tests
 - name: WithUniqueKeys with no args (default true)
   type: with-unique-keys

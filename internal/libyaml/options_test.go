@@ -22,6 +22,7 @@ func TestOptions(t *testing.T) {
 		"with-all-documents":           runWithAllDocumentsTest,
 		"with-line-width":              runWithLineWidthTest,
 		"with-unicode":                 runWithUnicodeTest,
+		"with-supplementary-unicode":   runWithSupplementaryUnicodeTest,
 		"with-unique-keys":             runWithUniqueKeysTest,
 		"with-canonical":               runWithCanonicalTest,
 		"with-line-break":              runWithLineBreakTest,
@@ -498,6 +499,13 @@ func checkWantFields(t *testing.T, opts *Options, want any) {
 			}
 			assert.Equalf(t, expected, opts.Unicode, "Unicode = %v, want %v", opts.Unicode, expected)
 
+		case "supplementary_unicode":
+			expected, ok := expectedValue.(bool)
+			if !ok {
+				t.Fatalf("want.supplementary_unicode should be bool, got %T", expectedValue)
+			}
+			assert.Equalf(t, expected, opts.SupplementaryUnicode, "SupplementaryUnicode = %v, want %v", opts.SupplementaryUnicode, expected)
+
 		case "unique_keys":
 			expected, ok := expectedValue.(bool)
 			if !ok {
@@ -552,5 +560,26 @@ func checkWantFields(t *testing.T, opts *Options, want any) {
 		default:
 			t.Fatalf("unknown want field: %s", key)
 		}
+	}
+}
+
+// runWithSupplementaryUnicodeTest tests WithSupplementaryUnicode
+func runWithSupplementaryUnicodeTest(t *testing.T, tc TestCase) {
+	t.Helper()
+
+	args := parseBoolSlice(t, tc.From)
+	opt := WithSupplementaryUnicode(args...)
+	opts := &Options{}
+	err := opt(opts)
+
+	if tc.Like != "" {
+		assert.NotNilf(t, err, "expected error matching %q", tc.Like)
+		if err != nil {
+			matched, _ := regexp.MatchString(tc.Like, err.Error())
+			assert.Truef(t, matched, "error %q should match %q", err.Error(), tc.Like)
+		}
+	} else {
+		assert.NoErrorf(t, err, "WithSupplementaryUnicode error: %v", err)
+		checkWantFields(t, opts, tc.Want)
 	}
 }

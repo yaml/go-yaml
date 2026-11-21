@@ -181,6 +181,19 @@ var (
 	// The default is true.
 	WithUnicode = libyaml.WithUnicode
 
+	// WithSupplementaryUnicode controls whether characters outside the Basic
+	// Multilingual Plane (U+10000..U+10FFFF, which includes emoji) are written
+	// as-is in YAML output.
+	//
+	// When false, any scalar holding one is double-quoted with the character
+	// escaped (e.g., "\U0001F916"), and a block scalar loses its | or > style.
+	// When true, they are treated as printable, as YAML 1.2's c-printable
+	// production says they are. It has no effect unless WithUnicode is also
+	// true. When called without arguments, defaults to true.
+	//
+	// The default is false, which keeps earlier output unchanged.
+	WithSupplementaryUnicode = libyaml.WithSupplementaryUnicode
+
 	// WithUniqueKeys enables or disables duplicate key detection during YAML
 	// loading.
 	//
@@ -428,6 +441,7 @@ func OptsYAML(yamlStr string) (Option, error) {
 		CompactSeqIndent      *bool   `yaml:"compact-seq-indent"`
 		LineWidth             *int    `yaml:"line-width"`
 		Unicode               *bool   `yaml:"unicode"`
+		SupplementaryUnicode  *bool   `yaml:"supplementary-unicode"`
 		Canonical             *bool   `yaml:"canonical"`
 		LineBreak             *string `yaml:"line-break"`
 		ExplicitStart         *bool   `yaml:"explicit-start"`
@@ -464,6 +478,9 @@ func OptsYAML(yamlStr string) (Option, error) {
 	}
 	if cfg.Unicode != nil {
 		optList = append(optList, WithUnicode(*cfg.Unicode))
+	}
+	if cfg.SupplementaryUnicode != nil {
+		optList = append(optList, WithSupplementaryUnicode(*cfg.SupplementaryUnicode))
 	}
 	if cfg.ExplicitStart != nil {
 		optList = append(optList, WithExplicitStart(*cfg.ExplicitStart))

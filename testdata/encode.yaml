@@ -352,6 +352,36 @@
       a: 你好
 
 - encode:
+    name: emoji string is escaped by default
+    data:
+      a: '🤖'
+    type: map[string]string
+    want: |
+      a: "\U0001F916"
+
+- dump:
+    name: emoji string stays plain with supplementary-unicode
+    data:
+      a: '🤖'
+    type: map[string]string
+    opts:
+      supplementary-unicode: true
+    want: |
+      a: 🤖
+
+- dump:
+    name: multi-line emoji string stays literal with supplementary-unicode
+    data:
+      a: "printf 🤖\n# not a comment\n"
+    type: map[string]string
+    opts:
+      supplementary-unicode: true
+    want: |
+      a: |
+        printf 🤖
+        # not a comment
+
+- encode:
     name: timestamp-like string gets quoted
     data:
       a: '2015-02-24T18:19:39Z'

@@ -2573,6 +2573,13 @@ func runDumpTest(t *testing.T, tc map[string]any) {
 			}
 			opts = append(opts, yaml.WithIndent(ind))
 		}
+		if suRaw, exists := optsMap["supplementary-unicode"]; exists {
+			su, ok := suRaw.(bool)
+			if !ok {
+				t.Fatalf("supplementary-unicode must be a bool, got %T", suRaw)
+			}
+			opts = append(opts, yaml.WithSupplementaryUnicode(su))
+		}
 	}
 
 	runEncodeValueTest(t, tc, func(value any) ([]byte, error) {

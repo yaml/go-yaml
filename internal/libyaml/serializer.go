@@ -37,6 +37,7 @@ func NewSerializer(w io.Writer, opts *Options) *Serializer {
 	emitter.quotePreference = opts.QuotePreference
 	emitter.SetWidth(opts.LineWidth)
 	emitter.SetUnicode(opts.Unicode)
+	emitter.SetSupplementary(opts.SupplementaryUnicode)
 	emitter.SetCanonical(opts.Canonical)
 	emitter.SetLineBreak(opts.LineBreak)
 	emitter.tabIndent = tabs
