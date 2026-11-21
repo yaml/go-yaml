@@ -15,6 +15,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"go.yaml.in/yaml/v4"
 	"go.yaml.in/yaml/v4/internal/libyaml"
@@ -120,27 +121,58 @@ func loadFirstDocument(in []byte, out any) error {
 	return err
 }
 
-// jsonNumbers converts the integers in a value loaded from YAML to float64.
-// encoding/json decodes every JSON number to float64, so without this a
-// YAML int like 65 never equals the 65 from in.json.
-func jsonNumbers(v any) any {
-	switch v := v.(type) {
+// equalValues compares a YAML value with a JSON value, taking into account type conversions.
+// Specifically, it converts YAML integers to float64 for comparison with JSON numbers.
+// It also handles comparison of timestamps, even recursively within arrays and maps.
+func equalValues(yamlValue, jsonValue any) bool {
+	switch yamlValue := yamlValue.(type) {
 	case int:
-		return float64(v)
+		return equalValues(float64(yamlValue), jsonValue)
 	case int64:
-		return float64(v)
+		return equalValues(float64(yamlValue), jsonValue)
 	case uint64:
-		return float64(v)
+		return equalValues(float64(yamlValue), jsonValue)
+	case time.Time:
+		jsonTimestamp, ok := jsonValue.(string)
+		if !ok {
+			return false
+		}
+
+		// our lib parse strings that match the YAML timestamp format to time.Time
+		// so we need to parse the JSON timestamp string the same way to compare them
+		var parsedTimestamp time.Time
+		if err := loadFirstDocument([]byte(jsonTimestamp), &parsedTimestamp); err != nil {
+			return false
+		}
+		return yamlValue.Equal(parsedTimestamp)
+
 	case []any:
-		for i, e := range v {
-			v[i] = jsonNumbers(e)
+		jsonValues, ok := jsonValue.([]any)
+		if !ok || len(yamlValue) != len(jsonValues) {
+			return false
 		}
+		for i := range yamlValue {
+			if !equalValues(yamlValue[i], jsonValues[i]) {
+				return false
+			}
+		}
+		return true
+
 	case map[string]any:
-		for k, e := range v {
-			v[k] = jsonNumbers(e)
+		jsonValues, ok := jsonValue.(map[string]any)
+		if !ok || len(yamlValue) != len(jsonValues) {
+			return false
 		}
+		for key, value := range yamlValue {
+			jsonValue, ok := jsonValues[key]
+			if !ok || !equalValues(value, jsonValue) {
+				return false
+			}
+		}
+		return true
 	}
-	return v
+
+	return reflect.DeepEqual(yamlValue, jsonValue)
 }
 
 func runTest(t *testing.T, testPath string) {
@@ -281,7 +313,7 @@ func runTest(t *testing.T, testPath string) {
 		jsonErr := json.NewDecoder(bytes.NewReader(inJSON)).Decode(&jsonValue)
 		if jsonErr != nil && jsonErr != io.EOF {
 			t.Errorf("Test: %s\nDescription: %s\nError: Failed to unmarshal in.json: %v", testPath, testDescription, jsonErr)
-		} else if !reflect.DeepEqual(jsonNumbers(currentUnmarshaledValue), jsonValue) {
+		} else if !equalValues(currentUnmarshaledValue, jsonValue) {
 			t.Errorf("Test: %s\nDescription: %s\nError: YAML unmarshal vs JSON unmarshal mismatch\nExpected: %+v\nGot     : %+v", testPath, testDescription, jsonValue, currentUnmarshaledValue)
 		}
 	})

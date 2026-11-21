@@ -46,7 +46,6 @@ TestYAMLSuite/RZP5/LoadTest
 TestYAMLSuite/S98Z/EventComparisonTest
 TestYAMLSuite/S98Z/LoadTest
 TestYAMLSuite/SBG9/LoadTest
-TestYAMLSuite/UGM3/JSONComparisonTest
 TestYAMLSuite/UGM3/MarshalTest
 TestYAMLSuite/V9D5/LoadTest
 TestYAMLSuite/W4TN/EventComparisonTest
