@@ -193,8 +193,7 @@ func (c *Constructor) effectiveMapping(n *Node, keyType reflect.Type) *Node {
 		}
 		v := reflect.New(keyType).Elem()
 		nerrs := len(c.TypeErrors)
-		if !c.Construct(n, v) {
-			// Null keys can be skipped without a conversion diagnostic.
+		if !c.constructKey(n, v) {
 			return nil, &LoadErrors{Errors: c.TypeErrors[nerrs:]}
 		}
 		value := v.Interface()

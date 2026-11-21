@@ -128,7 +128,7 @@ func TestMergeKeyConflictAfterInvalidKey(t *testing.T) {
 	}
 }
 
-func TestMergeKeySkipsUnconstructibleNullKeys(t *testing.T) {
+func TestMergeKeyReportsUnconstructibleNullKeys(t *testing.T) {
 	for _, tc := range []struct {
 		input string
 		want  map[int]string
@@ -140,8 +140,9 @@ func TestMergeKeySkipsUnconstructibleNullKeys(t *testing.T) {
 		},
 	} {
 		var got map[int]string
-		if err := yaml.Load([]byte(tc.input), &got); err != nil {
-			t.Fatal(err)
+		err := yaml.Load([]byte(tc.input), &got)
+		if err == nil || !strings.Contains(err.Error(), "cannot construct !!null `null` into int") {
+			t.Fatalf("a null key the map cannot hold went unreported: %v", err)
 		}
 		if !reflect.DeepEqual(got, tc.want) {
 			t.Fatalf("got %#v, want %#v", got, tc.want)
