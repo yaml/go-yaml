@@ -1986,6 +1986,13 @@ func (parser *Parser) scanComments(scan_mark Mark) error {
 		close_flow := parser.flow_level > 0 && (c == ']' || c == '}')
 		if close_flow || isBreakOrZero(parser.buffer, parser.buffer_pos+peek) {
 			// Got line break or terminator.
+			// CR LF is one line break, go on from its LF so that it
+			// is seen once and marks are the same as for a lone LF.
+			var err error
+			peek, err = parser.skipCR(peek)
+			if err != nil {
+				return err
+			}
 			if close_flow || !recent_empty {
 				if close_flow || first_empty && (start_mark.Line == foot_line && token.Type != VALUE_TOKEN || start_mark.Column-1 < next_indent) {
 					// This is the first empty line and there were no empty lines before,
@@ -2077,7 +2084,14 @@ func (parser *Parser) scanComments(scan_mark Mark) error {
 			}
 		}
 
-		peek = 0
+		// The break that ends the comment line is still unread.
+		// The loop increment steps over one byte of it, so for CR LF
+		// start at the LF, or it would count as an empty line.
+		var err error
+		peek, err = parser.skipCR(0)
+		if err != nil {
+			return err
+		}
 		column = 1
 		line = parser.mark.Line
 		next_indent = parser.indent
@@ -2515,6 +2529,20 @@ func (parser *Parser) scanFlowScalar(token *Token, single bool) error {
 		token.Style = DOUBLE_QUOTED_SCALAR_STYLE
 	}
 	return nil
+}
+
+// skipCR returns peek moved on to the LF if a CR LF line break starts peek
+// bytes ahead of the current position, and peek as it is otherwise.
+func (parser *Parser) skipCR(peek int) (int, error) {
+	if parser.unread < peek+2 {
+		if err := parser.updateBuffer(peek + 2); err != nil {
+			return peek, err
+		}
+	}
+	if isCRLF(parser.buffer, parser.buffer_pos+peek) {
+		peek++
+	}
+	return peek, nil
 }
 
 // Scan a plain scalar.
