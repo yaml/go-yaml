@@ -225,7 +225,7 @@ func runTest(t *testing.T, testPath string) {
 
 		currentUnmarshalErr := loadFirstDocument(inYAML, &currentUnmarshaledValue)
 
-		if !(currentUnmarshalErr == nil || expectError) {
+		if currentUnmarshalErr != nil || expectError {
 			return
 		}
 		marshaledYAML, marshalErr := yaml.Dump(currentUnmarshaledValue)
@@ -263,7 +263,7 @@ func runTest(t *testing.T, testPath string) {
 
 		currentUnmarshalErr := loadFirstDocument(inYAML, &currentUnmarshaledValue)
 
-		if !(currentUnmarshalErr == nil || expectError) {
+		if currentUnmarshalErr != nil || expectError {
 			return
 		}
 		inJSONPath := filepath.Join(testPath, "in.json")
