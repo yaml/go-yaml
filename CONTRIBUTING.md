@@ -36,30 +36,17 @@ Before submitting an issue, please:
 
 ### Using the `go-yaml` CLI Tool
 
-This tool can be used to inspect both the internal stages and final results of
-YAML processing with the go-yaml library.
-It should be used when reporting most bugs.
+**Please use the `go-yaml` CLI in issues, pull requests, and discussions
+about YAML behavior.**
+Include minimal input, an exact command, actual output, and the expected result.
+For behavior changes, show output before and after the patch.
 
-The `go-yaml` CLI tool uses the `go.yaml.in/yaml/v4` library to decode and
-encode YAML.
-Decoding YAML is a multi-stage process that involves tokens, events, and nodes.
-The `go-yaml` CLI tool lets you see all of these intermediate stages of the
-decoding process.
-This is crucial for understanding what go-yaml is doing internally.
-
-The `go-yaml` CLI tool can be built with the `make go-yaml` command or installed
-with the `go install go.yaml.in/yaml/v4/cmd/go-yaml@latest` command.
-
-You can learn about all of its options with the `go-yaml -h` command.
-
-Here is an example of using it on a small piece of YAML:
-
-```bash
-./go-yaml -t <<< '
-foo: &a1 bar
-*a1: baz
-'
-```
+See [Report and discuss behavior with the CLI](docs/reporting.md) for
+installation, runnable examples, stage inspection, version details, and examples
+from real issue discussions and PR reviews.
+If the behavior depends on Go types, struct tags, or custom marshalers, include
+a small runnable Go program too.
+Changes without YAML behavior do not need a CLI example.
 
 
 ### Coding Conventions
@@ -67,7 +54,8 @@ foo: &a1 bar
 - Follow standard Go coding conventions
 - Use `make fmt` to format your code
 - Write descriptive comments for non-obvious code
-- Add tests for your work
+- Add tests for your work, strongly preferring the existing
+  [testdata style](#testing)
 - Keep line length to 80 characters
 - Use meaningful variable and function names
 - Start doc and comment sentences on a new line
@@ -76,11 +64,32 @@ foo: &a1 bar
 
 ### Commit Conventions
 
-- No merge commits
-- Commit subject line should:
-  - Start with a capital letter
-  - Not end with a period
-  - Be no more than 50 characters
+Do not use merge commits or commit subject prefixes such as `fix:` or `docs:`.
+The [commit-message CI check](.github/workflows/check-commit-message.yaml) runs
+[util/check-commit-messages](util/check-commit-messages), which enforces:
+
+- Subjects are 20 to 50 characters, inclusive, and start with a capital letter.
+- Subjects do not use conventional commit prefixes or start with square brackets.
+- Subjects do not end with a period or contain consecutive or trailing spaces.
+- The second line is blank when a body is present.
+- Body lines have no trailing spaces.
+- `Co-authored-by` lines do not attribute authorship to AI tools.
+
+`Signed-off-by` trailers are allowed but not required by this check.
+A separate [CI check](.github/workflows/forbid-merge-commits.yaml) rejects merge
+commits.
+
+Please include a descriptive body, start each sentence on a new line, and wrap
+at 72 columns.
+These body-formatting preferences are not enforced by the commit-message check.
+
+Check your commits locally using the same validator as CI:
+
+```bash
+util/check-commit-messages origin/main..HEAD
+```
+
+Use the actual PR base revision instead of `origin/main` if different.
 
 
 ### Pull Requests
@@ -92,10 +101,46 @@ foo: &a1 bar
    - Look at the existing code for examples
 1. Write clear commit messages
 1. Update tests and documentation
+1. Include a [CLI before-and-after example](docs/reporting.md#show-a-pull-requests-before-and-after)
+   for behavior changes
 1. Submit a pull request
 
 
 ### Testing
+
+**We strongly encourage writing tests as YAML cases in the existing
+`testdata/` style.**
+For bugs and behavior changes, turn the minimal CLI reproduction into a
+regression case in the appropriate fixture file.
+Prefer extending these fixtures when they can express the behavior.
+Use a Go test when the case needs setup or assertions the fixture harness
+cannot express, and explain that choice in the PR.
+
+Start with a nearby case and follow that file's format and test handler:
+
+- [testdata/decode.yaml](testdata/decode.yaml) for loading into Go values.
+- [testdata/encode.yaml](testdata/encode.yaml) for marshaling and dumping.
+- [testdata/node.yaml](testdata/node.yaml) for node behavior.
+- [internal/libyaml/testdata/](internal/libyaml/testdata/) for processing stages;
+  see the [fixture format](internal/libyaml/README.md#test-layout) and
+  [focused test commands](internal/libyaml/README.md#running-tests).
+
+For example, this existing case in `testdata/decode.yaml` names the behavior,
+supplies YAML input and a target Go type, and states the expected value:
+
+```yaml
+- decode:
+    name: string value in map[string]string
+    yaml: 'v: hi'
+    type: map[string]string
+    want:
+      v: hi
+```
+
+Fixture fields vary by test type, so use the file's header, nearby cases, and
+corresponding Go handler as the source of truth.
+Run `make test-main` for root-package fixtures or `make test-internal` for
+internal-stage fixtures while developing, then run the full tests.
 
 - Ensure all tests pass with `make test`
 - Add new tests for new functionality

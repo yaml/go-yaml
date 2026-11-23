@@ -5,6 +5,7 @@
 | Document | Description |
 |----------|-------------|
 | [v3 to v4 Migration](v3-to-v4-migration.md) | Complete guide for upgrading from v3 |
+| [Reporting with the CLI](reporting.md) | Reproduce bugs, review PRs, and discuss behavior |
 | [Options Reference](options.md) | All configuration options explained |
 | [Plugin System](plugin.md) | Overview of go-yaml plugins |
 | [Plugin Guides](plugin/) | Detailed guides for shipped plugins |

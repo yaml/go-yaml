@@ -12,7 +12,8 @@ Maintained by the [YAML organization](https://github.com/yaml).
 [Get started](#get-started) · [CLI](#the-go-yaml-cli) ·
 [Options](#options-that-fit-your-application) ·
 [Plugins](#plugins-extend-go-yamls-capabilities) ·
-[Documentation](#documentation) · [Migration](docs/v3-to-v4-migration.md)
+[Documentation](#documentation) · [Migration](docs/v3-to-v4-migration.md) ·
+[Report with the CLI](docs/reporting.md)
 
 ## Choose your version
 
@@ -92,6 +93,10 @@ See the [runnable examples](example/README.md) and
 The CLI exposes the library's scanner, parser, node tree, and output formats.
 Use it to inspect configuration, explore options, compare behavior, and make
 bug reports reproducible.
+**Please include CLI examples in issues, pull requests, and discussions about
+YAML behavior.**
+See [Report and discuss behavior with the CLI](docs/reporting.md) for runnable
+examples and before-and-after comparisons.
 
 ```bash
 go install go.yaml.in/yaml/v4/cmd/go-yaml@latest
@@ -253,6 +258,7 @@ configuration, dependencies, and limitations of each processing path.
 | [v3 to v4 migration](docs/v3-to-v4-migration.md) | Upgrade while preserving compatibility |
 | [Options guide](docs/options.md) | Control loading and output |
 | [Plugin guide](docs/plugin.md) | Configure or write extensions |
+| [Reporting with the CLI](docs/reporting.md) | Reproduce bugs, review PRs, and discuss behavior |
 | [CLI guide](cmd/go-yaml/README.md) | Inspect stages and build custom commands |
 | [Examples](example/README.md) | Run complete Go programs |
 | [Contributor guide](CONTRIBUTING.md) | Build, test, and contribute |
@@ -275,30 +281,25 @@ Consult the API reference and test behavior against your application's data.
 
 ## Report bugs and propose ideas
 
-**Please use the CLI when reporting bugs or suggesting behavior.**
-A small example that others can run helps us understand both failures and
-proposals.
-Include:
+**Please use the `go-yaml` CLI for issues, pull requests, and discussions
+about YAML behavior.**
+Include minimal input, the exact command, actual and expected output, and your
+version and configuration.
+For pull requests, show the same example before and after the change.
+**We strongly encourage writing regression tests in the existing YAML
+`testdata/` style.**
+See [Writing testdata cases](CONTRIBUTING.md#testing) for examples and guidance,
+and [Stage fixture format](internal/libyaml/README.md#test-layout) for scanner,
+parser, and emitter tests.
 
-1. Minimal input as text and the exact command or Go program you ran.
-2. Actual output and expected output, including errors.
-3. Relevant options, configuration, and plugin selections.
-4. Your Go version, operating system, and installed module revision.
+**[Read the guide to reporting and discussing behavior with the CLI](docs/reporting.md).**
+It covers installation, copyable reproductions, processing stages, options,
+classic APIs, and examples from real issues and PR reviews.
+If the behavior depends on Go types or custom marshalers, include a small Go
+reproducer too.
 
-For CLI reports, useful commands include:
-
-```bash
-go-yaml -T config.yaml
-go-yaml -E config.yaml
-go-yaml -N config.yaml
-go version
-go version -m "$(command -v go-yaml)"
-```
-
-If the problem involves Go types, struct tags, or custom marshalers, include
-a small Go reproducer as well.
-For ideas, show the input and output you would like the CLI to support.
-Open an [issue](https://github.com/yaml/go-yaml/issues/new) or join the
+Open an [issue](https://github.com/yaml/go-yaml/issues/new), start a
+[discussion](https://github.com/yaml/go-yaml/discussions), or join the
 [maintainers on Slack](https://cloud-native.slack.com/archives/C08PPAT8PS7).
 
 Contributors can build the CLI with `make cli`, run `make test`, and enter the
