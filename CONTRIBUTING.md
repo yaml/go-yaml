@@ -64,11 +64,32 @@ Changes without YAML behavior do not need a CLI example.
 
 ### Commit Conventions
 
-- No merge commits
-- Commit subject line should:
-  - Start with a capital letter
-  - Not end with a period
-  - Be no more than 50 characters
+Do not use merge commits or commit subject prefixes such as `fix:` or `docs:`.
+The [commit-message CI check](.github/workflows/check-commit-message.yaml) runs
+[util/check-commit-messages](util/check-commit-messages), which enforces:
+
+- Subjects are 20 to 50 characters, inclusive, and start with a capital letter.
+- Subjects do not use conventional commit prefixes or start with square brackets.
+- Subjects do not end with a period or contain consecutive or trailing spaces.
+- The second line is blank when a body is present.
+- Body lines have no trailing spaces.
+- `Co-authored-by` lines do not attribute authorship to AI tools.
+
+`Signed-off-by` trailers are allowed but not required by this check.
+A separate [CI check](.github/workflows/forbid-merge-commits.yaml) rejects merge
+commits.
+
+Please include a descriptive body, start each sentence on a new line, and wrap
+at 72 columns.
+These body-formatting preferences are not enforced by the commit-message check.
+
+Check your commits locally using the same validator as CI:
+
+```bash
+util/check-commit-messages origin/main..HEAD
+```
+
+Use the actual PR base revision instead of `origin/main` if different.
 
 
 ### Pull Requests
