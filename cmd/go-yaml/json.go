@@ -11,24 +11,25 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 
 	"go.yaml.in/yaml/v4"
 )
 
 // ProcessJSON reads YAML from reader and outputs JSON encoding
-func ProcessJSON(reader io.Reader, pretty, unmarshalMode, decodeMode bool, opts ...yaml.Option) error {
+func ProcessJSON(destinationType reflect.Type, reader io.Reader, pretty, unmarshalMode, decodeMode bool, opts ...yaml.Option) error {
 	if unmarshalMode {
-		return processJSONUnmarshal(reader, pretty)
+		return processJSONUnmarshal(destinationType, reader, pretty)
 	}
 	if decodeMode {
-		return processJSONDecode(reader, pretty, nil) // Decode API doesn't support options
+		return processJSONDecode(destinationType, reader, pretty, nil) // Decode API doesn't support options
 	}
 	// Default: use Load API with options
-	return processJSONLoad(reader, pretty, opts...)
+	return processJSONLoad(destinationType, reader, pretty, opts...)
 }
 
 // processJSONLoad uses Loader.Load for YAML processing with options
-func processJSONLoad(reader io.Reader, pretty bool, opts ...yaml.Option) error {
+func processJSONLoad(destinationType reflect.Type, reader io.Reader, pretty bool, opts ...yaml.Option) error {
 	loader, err := yaml.NewLoader(reader, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to create loader: %w", err)
@@ -36,8 +37,8 @@ func processJSONLoad(reader io.Reader, pretty bool, opts ...yaml.Option) error {
 
 	for {
 		// Read each document
-		var data any
-		err := loader.Load(&data)
+		data := newDestination(destinationType)
+		err := loader.Load(data)
 		if err != nil {
 			if err.Error() == "EOF" {
 				break
@@ -59,13 +60,13 @@ func processJSONLoad(reader io.Reader, pretty bool, opts ...yaml.Option) error {
 }
 
 // processJSONDecode uses classic Decoder.Decode for YAML processing (no options support)
-func processJSONDecode(reader io.Reader, pretty bool, opts ...yaml.Option) error {
+func processJSONDecode(destinationType reflect.Type, reader io.Reader, pretty bool, opts ...yaml.Option) error {
 	decoder := yaml.NewDecoder(reader)
 
 	for {
 		// Read each document
-		var data any
-		err := decoder.Decode(&data)
+		data := newDestination(destinationType)
+		err := decoder.Decode(data)
 		if err != nil {
 			if err == io.EOF || err.Error() == "EOF" {
 				break
@@ -87,7 +88,7 @@ func processJSONDecode(reader io.Reader, pretty bool, opts ...yaml.Option) error
 }
 
 // processJSONUnmarshal uses yaml.Unmarshal for YAML processing
-func processJSONUnmarshal(reader io.Reader, pretty bool) error {
+func processJSONUnmarshal(destinationType reflect.Type, reader io.Reader, pretty bool) error {
 	// Read all input from reader
 	input, err := io.ReadAll(reader)
 	if err != nil {
@@ -96,6 +97,12 @@ func processJSONUnmarshal(reader io.Reader, pretty bool) error {
 
 	// Split input into documents
 	documents := bytes.Split(input, []byte("---"))
+	if destinationType != nil {
+		documents, err = splitTypedDocuments(input)
+		if err != nil {
+			return err
+		}
+	}
 
 	for _, doc := range documents {
 		// Skip empty documents
@@ -103,9 +110,9 @@ func processJSONUnmarshal(reader io.Reader, pretty bool) error {
 			continue
 		}
 
-		// For unmarshal mode, always use `any` to avoid preserving comments
-		var data any
-		err := yaml.Load(doc, &data)
+		// Construct a value without preserving node comments.
+		data := newDestination(destinationType)
+		err := loadDestination(destinationType, doc, data)
 		if err != nil {
 			return fmt.Errorf("failed to load YAML: %w", err)
 		}

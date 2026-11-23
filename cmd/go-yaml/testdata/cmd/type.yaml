@@ -1,0 +1,73 @@
+- name: typed scalar across loading APIs
+  cmd: |
+    for api in '' --decode --unmarshal; do
+      printf '12\n' | go-yaml --type string -j $api
+    done
+  out: |
+    "12"
+    "12"
+    "12"
+- name: nested collections
+  cmd: "printf 'a: [true, false]\n' | go-yaml --type 'map[string][]bool' -j"
+  out: '{"a":[true,false]}'
+- name: arrays
+  cmd: "printf '[1, 2]\n' | go-yaml --type '[2]int' -j"
+  out: '[1,2]'
+- name: pointers
+  cmd: "printf '[before, null, after]\n' | go-yaml --type '[]*string' -j"
+  out: '["before",null,"after"]'
+- name: generic values
+  cmd: "printf '[1, null, true]\n' | go-yaml --type any -j"
+  out: '[1,null,true]'
+- name: fresh documents across APIs
+  cmd: |
+    for api in '' --decode --unmarshal; do
+      printf 'a: 1\n---\nb: 2\n' |
+        go-yaml --type 'map[string]int' -j $api
+    done
+  out: |
+    {"a":1}
+    {"b":2}
+    {"a":1}
+    {"b":2}
+    {"a":1}
+    {"b":2}
+- name: typed YAML options
+  cmd: "printf '[a, b]\n' | go-yaml --type '[]string' -y -o explicit-start"
+  out: |
+    ---
+    - a
+    - b
+- name: pretty JSON
+  cmd: "printf '[1, 2]\n' | go-yaml --type '[]int' -J"
+  out: |
+    [
+      1,
+      2
+    ]
+- name: separator inside string with unmarshal
+  cmd: "printf '\"é---value\"\n---\n\"next\"\n' | go-yaml --type string -j --unmarshal"
+  out: |
+    "é---value"
+    "next"
+- name: UTF-8 BOM scalar without newline
+  cmd: |
+    for mode in -j -y; do
+      printf '\357\273\27712' |
+        go-yaml --type int --unmarshal $mode
+    done
+  out: |
+    12
+    12
+- name: UTF-8 BOM quoted scalar and multiple documents
+  cmd: |
+    for mode in -j -y; do
+      printf '\357\273\277"first"\n---\n"last"' |
+        go-yaml --type string --unmarshal $mode
+    done
+  out: |
+    "first"
+    "last"
+    first
+    ---
+    last
