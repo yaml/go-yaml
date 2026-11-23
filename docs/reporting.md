@@ -159,12 +159,16 @@ The `v3` preset selects compatibility defaults in the v4 library; it does not
 run the v3 library or undo all v4 behavior changes.
 
 The default CLI path uses Load/Dump.
-To compare the classic APIs, use:
+To compare the classic Decoder/Encoder APIs, use:
 
 ```bash
-go-yaml --unmarshal --marshal -y input.yaml
 go-yaml --decode --encode -y input.yaml
 ```
+
+For comparisons involving `Unmarshal` and `Marshal`, use a small Go reproducer
+that calls those functions directly.
+The CLI's `--unmarshal --marshal -y` path currently calls `Load` and `Dump`,
+so it does not demonstrate the classic APIs' behavior or defaults.
 
 Classic modes have restrictions on options and plugins.
 See the [CLI reference](../cmd/go-yaml/README.md) for supported combinations
