@@ -3,6 +3,10 @@
 The `go-yaml` binary is a YAML node inspection tool that provides various
 modes for analyzing and transforming YAML data.
 
+**Use the CLI in bug reports, pull requests, and behavior discussions.**
+See [Reporting with the CLI](../../docs/reporting.md) for small reproductions,
+before-and-after comparisons, and examples from real reports.
+
 Below is a summary of its capabilities:
 
 ## License

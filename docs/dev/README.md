@@ -5,6 +5,12 @@ contributors.
 
 ## Contents
 
+- **[Writing testdata cases](../../CONTRIBUTING.md#testing)** - Preferred test
+  style, fixture locations, and a worked example
+- **[Stage fixture format](../../internal/libyaml/README.md#test-layout)** -
+  Scanner, parser, and emitter fixtures, with
+  [focused test commands](../../internal/libyaml/README.md#running-tests)
+
 - **[go-yaml-internals.md](go-yaml-internals.md)** - Comprehensive analysis
   of the load and dump stack internals, including all stages, transforms,
   security features, and implementation boundaries
