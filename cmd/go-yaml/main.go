@@ -15,6 +15,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"reflect"
 	"strings"
 
 	"go.yaml.in/yaml/v4"
@@ -397,6 +398,7 @@ func main() {
 	}
 
 	// Parse command line flags
+	typeName := flag.String("type", "", "Go destination type for -y, -j, or -J")
 	showHelp := flag.Bool("h", false, "Show this help information")
 
 	// YAML modes
@@ -482,6 +484,26 @@ func main() {
 	}
 
 	flag.Parse()
+	var destinationType reflect.Type
+	typeSet := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "type" {
+			typeSet = true
+		}
+	})
+	if typeSet {
+		if *yamlPreserveMode || *tokenMode || *tokenProfuseMode ||
+			*eventMode || *eventProfuseMode || *nodeMode || *nodeProfuseMode ||
+			!(*yamlMode || *jsonMode || *jsonPrettyMode) {
+			log.Fatal("--type requires -y, -j, or -J and cannot inspect tokens, events, or nodes")
+		}
+		var err error
+		destinationType, err = resolveType(*typeName)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	compact := !*longMode // compact is default, long mode negates it
 
 	// Validate flag combinations
@@ -581,6 +603,9 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to read input stage:", err)
 	}
+	if destinationType != nil && structured.stage != stageYAML {
+		log.Fatal("--type requires YAML text input; use --from=yaml to force it")
+	}
 	if structured.stage != stageYAML {
 		var target stageKind
 		var profuse bool
@@ -633,22 +658,22 @@ func main() {
 		}
 	} else if *jsonMode {
 		// Use JSON formatting mode (compact by default)
-		if err := ProcessJSON(input, false, unmarshalMode, decodeMode, opts...); err != nil {
+		if err := ProcessJSON(destinationType, input, false, unmarshalMode, decodeMode, opts...); err != nil {
 			log.Fatal("Failed to process JSON:", err)
 		}
 	} else if *jsonPrettyMode {
 		// Use pretty JSON formatting mode
-		if err := ProcessJSON(input, true, unmarshalMode, decodeMode, opts...); err != nil {
+		if err := ProcessJSON(destinationType, input, true, unmarshalMode, decodeMode, opts...); err != nil {
 			log.Fatal("Failed to process JSON:", err)
 		}
 	} else if *yamlMode {
 		// Use YAML formatting mode (clean by default)
-		if err := ProcessYAML(input, false, unmarshalMode, decodeMode, marshalMode, encodeMode, opts); err != nil {
+		if err := ProcessYAML(destinationType, input, false, unmarshalMode, decodeMode, marshalMode, encodeMode, opts); err != nil {
 			log.Fatal("Failed to process YAML:", err)
 		}
 	} else if *yamlPreserveMode {
 		// Use YAML formatting mode with preserve
-		if err := ProcessYAML(input, true, unmarshalMode, decodeMode, marshalMode, encodeMode, opts); err != nil {
+		if err := ProcessYAML(destinationType, input, true, unmarshalMode, decodeMode, marshalMode, encodeMode, opts); err != nil {
 			log.Fatal("Failed to process YAML:", err)
 		}
 	} else {
@@ -827,7 +852,8 @@ Formatting Options:
                    Presets: v2, v3, v4 (default: v4)
 
 API Selection Options:
-  --plugin=SPEC    Select plugins with API[=NAME][@VERSION] syntax
+  --plugin SPEC    Select plugins with API[=NAME][@VERSION] syntax
+  --type TYPE      Load into a Go type (primitives, slices, arrays, maps, pointers)
   --unmarshal      Use Unmarshal API for input (classic, v3 defaults)
   --decode         Use Decode API for input (classic)
   --marshal        Use Marshal API for output (classic)

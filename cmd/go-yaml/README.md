@@ -258,3 +258,30 @@ for multiple-package builds and the external registration contract.
 
 Run the [plugin demos](demo/README.md) to try the implementations from a fresh
 clone, with optional interactive command editing.
+
+## Typed destinations
+
+Use `--type TYPE` with `-y`, `-j`, or `-J` to load directly into a Go type:
+
+```bash
+printf '%s\n' '[before, null, after]' | go-yaml --type '[]string' -j
+go-yaml --type 'map[string][]bool' -y input.yaml
+```
+
+Supported types are string, bool, all signed and unsigned integer types
+(including uintptr, byte, and rune), float32, float64, and any.
+Compose these with slices, pointers, maps, and fixed-size arrays.
+Array lengths must be nonnegative integer literals.
+Map keys must be comparable.
+Structs, custom named types, and custom methods are not supported.
+
+The destination is allocated anew for each document and passed directly to
+Loader.Load, Decoder.Decode (`--decode`), or Unmarshal (`--unmarshal`).
+Loading options apply to Loader.Load; classic APIs do not accept options.
+No Go compiler is needed.
+Omitting `--type` retains the existing behavior.
+
+Typed loading requires YAML text input and cannot be combined with token,
+event, node, or preserved YAML (`-Y`) output.
+Use `--from=yaml` when input resembles a CLI inspection representation.
+See [reporting typed issues](../../docs/reporting.md) for fixture examples.

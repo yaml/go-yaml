@@ -10,24 +10,25 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 
 	"go.yaml.in/yaml/v4"
 )
 
 // ProcessYAML reads YAML from reader and outputs formatted YAML
-func ProcessYAML(reader io.Reader, preserve, unmarshalMode, decodeMode, marshalMode, encodeMode bool, opts []yaml.Option) error {
+func ProcessYAML(destinationType reflect.Type, reader io.Reader, preserve, unmarshalMode, decodeMode, marshalMode, encodeMode bool, opts []yaml.Option) error {
 	if unmarshalMode {
-		return processYAMLUnmarshal(reader, preserve, marshalMode)
+		return processYAMLUnmarshal(destinationType, reader, preserve, marshalMode)
 	}
 	if decodeMode {
-		return processYAMLDecode(reader, preserve, encodeMode, nil) // Decode API doesn't support options
+		return processYAMLDecode(destinationType, reader, preserve, encodeMode, nil) // Decode API doesn't support options
 	}
 	// Default: use Load API with options
-	return processYAMLLoad(reader, preserve, marshalMode, encodeMode, opts)
+	return processYAMLLoad(destinationType, reader, preserve, marshalMode, encodeMode, opts)
 }
 
 // processYAMLLoad uses Loader.Load for YAML processing with options
-func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []yaml.Option) error {
+func processYAMLLoad(destinationType reflect.Type, reader io.Reader, preserve, marshal, encode bool, opts []yaml.Option) error {
 	if preserve {
 		// Preserve comments and styles by using yaml.Node
 		loader, err := yaml.NewLoader(reader, opts...)
@@ -107,7 +108,7 @@ func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []ya
 		}
 
 	} else {
-		// Don't preserve comments and styles - use `any` for clean output
+		// Construct values for output without node comments and styles.
 		loader, err := yaml.NewLoader(reader, opts...)
 		if err != nil {
 			return fmt.Errorf("failed to create loader: %w", err)
@@ -126,8 +127,8 @@ func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []ya
 		firstDoc := true
 
 		for {
-			var data any
-			err := loader.Load(&data)
+			data := newDestination(destinationType)
+			err := loader.Load(data)
 			if err != nil {
 				if err == io.EOF || err.Error() == "EOF" {
 					break
@@ -179,7 +180,7 @@ func processYAMLLoad(reader io.Reader, preserve, marshal, encode bool, opts []ya
 }
 
 // processYAMLDecode uses classic Decoder.Decode for YAML processing (no options support)
-func processYAMLDecode(reader io.Reader, preserve, encode bool, opts []yaml.Option) error {
+func processYAMLDecode(destinationType reflect.Type, reader io.Reader, preserve, encode bool, opts []yaml.Option) error {
 	decoder := yaml.NewDecoder(reader)
 	firstDoc := true
 
@@ -230,8 +231,8 @@ func processYAMLDecode(reader io.Reader, preserve, encode bool, opts []yaml.Opti
 				fmt.Print(string(output))
 			}
 		} else {
-			var data any
-			err := decoder.Decode(&data)
+			data := newDestination(destinationType)
+			err := decoder.Decode(data)
 			if err != nil {
 				if err == io.EOF || err.Error() == "EOF" {
 					break
@@ -270,7 +271,7 @@ func processYAMLDecode(reader io.Reader, preserve, encode bool, opts []yaml.Opti
 }
 
 // processYAMLUnmarshal uses yaml.Unmarshal for YAML processing
-func processYAMLUnmarshal(reader io.Reader, preserve, marshal bool) error {
+func processYAMLUnmarshal(destinationType reflect.Type, reader io.Reader, preserve, marshal bool) error {
 	// Read all input from reader
 	input, err := io.ReadAll(reader)
 	if err != nil {
@@ -279,6 +280,12 @@ func processYAMLUnmarshal(reader io.Reader, preserve, marshal bool) error {
 
 	// Split input into documents
 	documents := bytes.Split(input, []byte("---"))
+	if destinationType != nil {
+		documents, err = splitTypedDocuments(input)
+		if err != nil {
+			return err
+		}
+	}
 	firstDoc := true
 
 	for _, doc := range documents {
@@ -333,9 +340,9 @@ func processYAMLUnmarshal(reader io.Reader, preserve, marshal bool) error {
 				}
 			}
 		} else {
-			// For unmarshal mode with -y (not -Y), always use `any` to avoid preserving comments
-			var data any
-			if err := yaml.Load(doc, &data); err != nil {
+			// Construct a value without preserving node comments.
+			data := newDestination(destinationType)
+			if err := loadDestination(destinationType, doc, data); err != nil {
 				return fmt.Errorf("failed to load YAML: %w", err)
 			}
 
