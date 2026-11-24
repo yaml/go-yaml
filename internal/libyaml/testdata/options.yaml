@@ -162,11 +162,11 @@
   want:
     line_width: 100
 
-- name: WithLineWidth with zero
+- name: WithLineWidth with zero (unlimited)
   type: with-line-width
   from: 0
   want:
-    line_width: 0
+    line_width: -1
 
 - name: WithLineWidth with negative (unlimited)
   type: with-line-width

@@ -276,7 +276,9 @@ func WithAllDocuments(all ...bool) Option {
 // The default is 80 characters.
 func WithLineWidth(width int) Option {
 	return func(o *Options) error {
-		if width < 0 {
+		// The emitter treats 0 as the default width (80), so store any
+		// non-positive value as -1 (unlimited), as documented.
+		if width <= 0 {
 			width = -1
 		}
 		o.LineWidth = width

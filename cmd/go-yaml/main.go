@@ -282,7 +282,7 @@ Version presets:
 Formatting options:
   indent=NUM            Indentation spaces (2-9)
   compact-seq-indent    '- ' counts as indentation (short: compact)
-  line-width=NUM        Preferred line width, -1=unlimited (short: width)
+  line-width=NUM        Preferred line width, 0 or -1=unlimited (short: width)
   unicode               Allow non-ASCII in output
   canonical             Canonical YAML output format
   line-break=TYPE       Line ending: ln, cr, or crln

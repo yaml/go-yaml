@@ -1451,6 +1451,27 @@
     want: |
       v: hello
 
+# Line width 0 disables wrapping, like -1.
+- dump:
+    name: Dump - long string no wrapping with line width 0
+    data:
+      a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '
+    type: map[string]string
+    opts:
+      line-width: 0
+    want: |
+      a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '
+
+- dump:
+    name: Dump - long string no wrapping with line width -1
+    data:
+      a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '
+    type: map[string]string
+    opts:
+      line-width: -1
+    want: |
+      a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '
+
 # Regression tests for block scalars whose first non-empty line is indented.
 # Without an explicit indentation indicator the output does not parse back.
 - encode:

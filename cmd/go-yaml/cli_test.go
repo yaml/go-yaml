@@ -61,6 +61,7 @@ type TestCase struct {
 	V3Yaml                string `yaml:"v3-yaml,omitempty"`
 	Indent3Yaml           string `yaml:"indent3-yaml,omitempty"`
 	Width40Yaml           string `yaml:"width40-yaml,omitempty"`
+	Width0Yaml            string `yaml:"width0-yaml,omitempty"`
 	CompactYaml           string `yaml:"compact-yaml,omitempty"`
 	V3Indent2             string `yaml:"v3-indent2-yaml,omitempty"`
 	CanonicalYaml         string `yaml:"canonical-yaml,omitempty"`
@@ -93,6 +94,7 @@ var flagMapping = map[string]string{
 	"v3-yaml":                 "-o v3 -y",
 	"indent3-yaml":            "-o indent=3 -y",
 	"width40-yaml":            "-o width=40 -y",
+	"width0-yaml":             "-o width=0 -y",
 	"compact-yaml":            "-o compact -y",
 	"v3-indent2-yaml":         "-o v3,indent=2 -y",
 	"canonical-yaml":          "-o canonical -y",
@@ -168,6 +170,7 @@ func runTestCase(t *testing.T, tc TestCase) {
 		{"v3-yaml", flagMapping["v3-yaml"], tc.V3Yaml},
 		{"indent3-yaml", flagMapping["indent3-yaml"], tc.Indent3Yaml},
 		{"width40-yaml", flagMapping["width40-yaml"], tc.Width40Yaml},
+		{"width0-yaml", flagMapping["width0-yaml"], tc.Width0Yaml},
 		{"compact-yaml", flagMapping["compact-yaml"], tc.CompactYaml},
 		{"v3-indent2-yaml", flagMapping["v3-indent2-yaml"], tc.V3Indent2},
 		{"canonical-yaml", flagMapping["canonical-yaml"], tc.CanonicalYaml},
