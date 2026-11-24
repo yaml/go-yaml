@@ -466,13 +466,28 @@
       a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '
 
 - encode:
-    name: Encode - long string wrapping
+    name: Encode - long string no wrapping
     data:
       a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '
     type: map[string]string
     want: |
-      a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz
-          ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '
+      a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '
+
+- encode:
+    name: Encode - long plain string no wrapping
+    data:
+      msg: a single line of plain text that is longer than eighty columns, so a line width of 80 would fold it
+    type: map[string]string
+    want: |
+      msg: a single line of plain text that is longer than eighty columns, so a line width of 80 would fold it
+
+- encode:
+    name: Encode - long double-quoted string no wrapping
+    data:
+      msg: "a single line of plain text that is longer than eighty columns, so a line width of 80 would fold it\x01"
+    type: map[string]string
+    want: |
+      msg: "a single line of plain text that is longer than eighty columns, so a line width of 80 would fold it\x01"
 
 - dump:
     name: Dump - long string wrapping
@@ -482,6 +497,17 @@
     want: |
       a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz
         ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '
+
+- dump:
+    name: Dump - long string wrapping with indent 4
+    data:
+      a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '
+    type: map[string]string
+    opts:
+      indent: 4
+    want: |
+      a: 'abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 abcdefghijklmnopqrstuvwxyz
+          ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890 '
 
 # Struct encoding tests
 - encode:

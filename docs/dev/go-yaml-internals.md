@@ -15,7 +15,7 @@ The internal package owns the processing stages.
 | `Dump`, `NewDumper` | Represent, desolve, serialize |
 | `Unmarshal`, `NewDecoder` | Load pipeline with v3 compatibility settings |
 | `Marshal` | Dump pipeline with v3 settings and unlimited line width |
-| `NewEncoder` | Dump pipeline with v3 output settings and v4 error formatting |
+| `NewEncoder` | Same pipeline as `Marshal`, with v4 error formatting |
 | `Node.Load`, `Node.Decode` | Construct an already composed node graph |
 | `Node.Dump`, `Node.Encode` | Build nodes through a YAML serialization round trip |
 

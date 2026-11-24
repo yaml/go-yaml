@@ -184,8 +184,8 @@ output, err := yaml.Dump(config,
 
 `Load` and `Dump` use v4 defaults: two-space indentation and compact sequences.
 The classic APIs retain their compatibility settings.
-To match `Marshal` formatting when switching to `Dump`, use
-`WithV3Defaults()` followed by `WithLineWidth(-1)`.
+To match `Marshal` or `NewEncoder` output when switching to `Dump` or
+`NewDumper`, use `WithV3Defaults()` followed by `WithLineWidth(-1)`.
 Presets select defaults; they do not reverse every v4 bug fix or API change.
 
 You can also share configuration between Go code and the CLI:
