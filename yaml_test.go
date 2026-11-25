@@ -2888,6 +2888,47 @@ func TestNodeScalarStyleFallback(t *testing.T) {
 	}
 }
 
+// The reproducer of https://github.com/yaml/go-yaml/issues/519: Marshal
+// wrote some tags in shorthand form that cannot be parsed back, because
+// the shorthand is not valid YAML for them. Such tags are emitted in
+// verbatim form instead, so the output round-trips.
+func TestMarshalInvalidShorthandTagRoundTrip(t *testing.T) {
+	for _, tc := range []struct {
+		tag  string
+		want string
+	}{
+		{"!!", "!<tag:yaml.org,2002:> x\n"},
+		{"!,0", "!<%21,0> x\n"},
+		{"!foo,bar", "!<%21foo,bar> x\n"},
+		{"!!100%", "!<tag:yaml.org,2002:100%25> x\n"},
+		// Valid shorthand tags are unaffected.
+		{"!!str", "x\n"},
+		{"!", "! x\n"},
+	} {
+		node := yaml.Node{Kind: yaml.ScalarNode, Tag: tc.tag, Value: "x"}
+		out, err := yaml.Marshal(&node)
+		assert.NoErrorf(t, err, "tag %q", tc.tag)
+		assert.Equalf(t, tc.want, string(out), "tag %q", tc.tag)
+
+		var back yaml.Node
+		assert.NoErrorf(t, yaml.Unmarshal(out, &back), "tag %q", tc.tag)
+		assert.Equalf(t, tc.tag, back.Content[0].Tag, "tag %q", tc.tag)
+		assert.Equalf(t, "x", back.Content[0].Value, "tag %q", tc.tag)
+	}
+
+	// A tag decoded from input keeps round-tripping through Marshal,
+	// including one expanded from a %TAG directive with a comma.
+	var doc yaml.Node
+	assert.NoError(t, yaml.Unmarshal(
+		[]byte("%TAG !e! !,0\n---\n!e!a x\n"), &doc))
+	out, err := yaml.Marshal(doc.Content[0])
+	assert.NoError(t, err)
+	assert.Equal(t, "!<%21,0a> x\n", string(out))
+	var back yaml.Node
+	assert.NoError(t, yaml.Unmarshal(out, &back))
+	assert.Equal(t, "!,0a", back.Content[0].Tag)
+}
+
 // The reproducer of https://github.com/yaml/go-yaml/issues/399: a multiline
 // scalar inside a block sequence item must round-trip. The emitter once
 // computed the indentation indicator from BestIndent, which does not match

@@ -1387,11 +1387,49 @@ func (emitter *Emitter) analyzeTag(tag []byte) error {
 		if bytes.HasPrefix(tag, tag_directive.prefix) {
 			emitter.tag_data.handle = tag_directive.handle
 			emitter.tag_data.suffix = tag[len(tag_directive.prefix):]
+			if !validShorthandTag(emitter.tag_data.handle,
+				emitter.tag_data.suffix) {
+				// The shorthand form would not scan back to
+				// the same tag, so fall back to the verbatim
+				// form, which can represent any tag.
+				emitter.tag_data.handle = nil
+				emitter.tag_data.suffix = tag
+			}
 			return nil
 		}
 	}
 	emitter.tag_data.suffix = tag
 	return nil
+}
+
+// validShorthandTag reports whether handle+suffix can be emitted as a
+// shorthand tag and scan back to the same tag. The secondary handle ("!!")
+// requires a non-empty suffix, and the suffix may only contain characters
+// allowed in a non-verbatim tag (see isTagURIChar). A '%' must start a
+// valid URI escape, otherwise the tag does not round-trip either.
+func validShorthandTag(handle, suffix []byte) bool {
+	if bytes.Equal(handle, []byte("!!")) && len(suffix) == 0 {
+		return false
+	}
+	for i := 0; i < len(suffix); {
+		if !isTagURIChar(suffix, i, false) {
+			return false
+		}
+		if suffix[i] == '%' {
+			if i+2 >= len(suffix) ||
+				!isHex(suffix, i+1) || !isHex(suffix, i+2) {
+				return false
+			}
+			i += 3
+			continue
+		}
+		if w := width(suffix[i]); w > 0 {
+			i += w
+		} else {
+			i++
+		}
+	}
+	return true
 }
 
 // Check if a scalar is valid.
