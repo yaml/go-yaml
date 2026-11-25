@@ -285,6 +285,7 @@ type Parser struct {
 	states         []ParserState  // The parser states stack.
 	marks          []Mark         // The stack of marks.
 	tag_directives []TagDirective // The list of TAG directives.
+	omitted_key    bool           // Is the current block mapping key omitted?
 
 	// Representer stuff
 
@@ -1229,6 +1230,10 @@ func (parser *Parser) parseBlockMappingKey(event *Event, first bool) error {
 			return parser.processEmptyScalar(event, mark)
 		}
 	case VALUE_TOKEN:
+		// The key is omitted (`: value`).
+		// Remember that, so the value parser can reject a block
+		// collection on the same line as the colon.
+		parser.omitted_key = true
 		parser.state = PARSE_BLOCK_MAPPING_VALUE_STATE
 		return parser.processEmptyScalar(event, token.StartMark)
 	case BLOCK_END_TOKEN:
@@ -1268,9 +1273,28 @@ func (parser *Parser) parseBlockMappingValue(event *Event) error {
 	}
 	if token.Type == VALUE_TOKEN {
 		mark := token.EndMark
+		omitted_key := parser.omitted_key
+		parser.omitted_key = false
 		parser.skipToken()
 		if err := parser.peekToken(&token); err != nil {
 			return err
+		}
+		if omitted_key && token.StartMark.Line == mark.Line {
+			// The value of an omitted key is implicit, so a block
+			// collection cannot start on the same line as the colon
+			// (`: b: c`, `: - a`), just as it cannot after `a:`.
+			// The scanner only rejects that after a simple key; it
+			// cannot tell an omitted key from an explicit `? key`.
+			switch token.Type {
+			case BLOCK_MAPPING_START_TOKEN:
+				return parser.formatParserError(
+					"mapping values are not allowed in this context",
+					token.StartMark)
+			case BLOCK_SEQUENCE_START_TOKEN:
+				return parser.formatParserError(
+					"block sequence entries are not allowed in this context",
+					token.StartMark)
+			}
 		}
 		if token.Type != KEY_TOKEN &&
 			token.Type != VALUE_TOKEN &&
@@ -1281,6 +1305,7 @@ func (parser *Parser) parseBlockMappingValue(event *Event) error {
 		parser.state = PARSE_BLOCK_MAPPING_KEY_STATE
 		return parser.processEmptyScalar(event, mark)
 	}
+	parser.omitted_key = false
 	parser.state = PARSE_BLOCK_MAPPING_KEY_STATE
 	return parser.processEmptyScalar(event, token.StartMark)
 }

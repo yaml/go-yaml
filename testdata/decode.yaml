@@ -700,6 +700,54 @@
       a:
         b: c
 
+# Omitted keys
+- decode:
+    name: omitted key with a scalar value
+    yaml: ': a'
+    type: map[any]any
+    want:
+      null: a
+
+- decode:
+    name: omitted key with a block mapping value on the next line
+    yaml: |
+      :
+        b: c
+    type: map[any]any
+    want:
+      null:
+        b: c
+
+- decode:
+    name: explicit empty key with a block mapping value on the same line
+    yaml: |
+      ?
+      : b: c
+    type: map[any]any
+    want:
+      null:
+        b: c
+
+- decode:
+    name: explicit key with a block mapping value on the same line
+    yaml: |
+      ? a
+      : b: c
+    type: map[any]any
+    want:
+      a:
+        b: c
+
+- decode:
+    name: explicit key with a block sequence value on the same line
+    yaml: |
+      ? a
+      : - b
+    type: map[any]any
+    want:
+      a:
+      - b
+
 # Quoted values
 - decode:
     name: quoted strings as keys and values
