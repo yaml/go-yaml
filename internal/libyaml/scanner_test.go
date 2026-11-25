@@ -178,6 +178,8 @@ func runCharPredicateTest(t *testing.T, tc TestCase) {
 		got = isSpaceOrZero(input, index)
 	case "isBlankOrZero":
 		got = isBlankOrZero(input, index)
+	case "isDocumentIndicator":
+		got = isDocumentIndicator(input, index)
 	default:
 		t.Fatalf("unknown function: %s", tc.Function)
 	}
