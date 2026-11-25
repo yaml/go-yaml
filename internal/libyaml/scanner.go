@@ -3092,10 +3092,14 @@ func (parser *Parser) scanToNextToken() error {
 
 		// Tabs after an indicator or sufficient indentation may separate
 		// scalar or flow content, but may not indent a block collection.
+		// The indicators are '-', '?' and the ':' of an explicit or omitted
+		// key; the ':' of a simple key is handled above.
 		if parser.flow_level == 0 && isTab(parser.buffer, parser.buffer_pos) &&
 			len(parser.tokens) > 0 {
 			previous := &parser.tokens[len(parser.tokens)-1]
-			if (previous.Type == BLOCK_ENTRY_TOKEN &&
+			if ((previous.Type == BLOCK_ENTRY_TOKEN ||
+				previous.Type == KEY_TOKEN ||
+				previous.Type == VALUE_TOKEN) &&
 				previous.EndMark.Line == parser.mark.Line) ||
 				(parser.mark.Line > previous.EndMark.Line &&
 					parser.mark.Column > parser.indent) {

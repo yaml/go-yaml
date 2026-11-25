@@ -700,6 +700,35 @@
       a:
         b: c
 
+# Tabs after key indicators
+- decode:
+    name: tab between an explicit key indicator and a plain scalar
+    yaml: "? \ta\n: \tb\n"
+    type: map[string]string
+    want:
+      a: b
+
+- decode:
+    name: tab between an explicit key indicator and a quoted scalar
+    yaml: "? \t\"d\"\n: \t'e'\n"
+    type: map[string]string
+    want:
+      d: e
+
+- decode:
+    name: tab between an explicit key indicator and a block scalar
+    yaml: "? \t|\n  a\n: \t>\n  b\n"
+    type: map[string]string
+    want:
+      "a\n": "b\n"
+
+- decode:
+    name: tab between an omitted key's colon and its value
+    yaml: ":\ta\n"
+    type: map[any]any
+    want:
+      null: a
+
 # Quoted values
 - decode:
     name: quoted strings as keys and values
