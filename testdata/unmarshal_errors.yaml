@@ -244,3 +244,18 @@
     type: map[string]time.Duration
     yaml: 'a: !!float 5'
     want: 'yaml: construct errors: line 1: cannot construct !!float `5` into time.Duration'
+
+- unmarshal-error:
+    name: Reserved directive without document start
+    yaml: |
+      %FOO bar
+      value
+    want: 'yaml: line 2: did not find expected <document start>'
+
+- unmarshal-error:
+    name: Reserved directive after document without document end
+    yaml: |
+      ---
+      %FOO bar
+      ---
+    want: 'yaml: line 2: did not find expected <document end> before directive'

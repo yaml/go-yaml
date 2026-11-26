@@ -292,6 +292,27 @@
     - STREAM_END_TOKEN
 
 - scan-tokens-detailed:
+    name: Reserved directive
+    yaml: |
+      %FOO  bar baz # comment
+      ---
+      key: value
+    want:
+    - STREAM_START_TOKEN
+    - RESERVED_DIRECTIVE_TOKEN:
+        value: FOO
+    - DOCUMENT_START_TOKEN
+    - BLOCK_MAPPING_START_TOKEN
+    - KEY_TOKEN
+    - SCALAR_TOKEN:
+        value: key
+    - VALUE_TOKEN
+    - SCALAR_TOKEN:
+        value: value
+    - BLOCK_END_TOKEN
+    - STREAM_END_TOKEN
+
+- scan-tokens-detailed:
     name: Escape sequences
     yaml: |-
       "hello\nworld"
