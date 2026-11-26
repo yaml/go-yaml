@@ -684,6 +684,35 @@ type inlineD struct {
 	D int
 }
 
+func TestMergeIndicatorAsAValueIsAString(t *testing.T) {
+	// The merge key "<<" only has a meaning as a mapping key. In value
+	// position it is the plain string "<<".
+	for _, tc := range []struct {
+		doc  string
+		want any
+	}{
+		{doc: "a: <<\n", want: map[string]any{"a": "<<"}},
+		{doc: "- <<\n", want: []any{"<<"}},
+		{doc: "a: [<<, x]\n", want: map[string]any{"a": []any{"<<", "x"}}},
+		{doc: "<<\n", want: "<<"},
+		{doc: "a: !!str <<\n", want: map[string]any{"a": "<<"}},
+	} {
+		var got any
+		err := yaml.Unmarshal([]byte(tc.doc), &got)
+		assert.NoError(t, err)
+		assert.DeepEqual(t, tc.want, got)
+	}
+
+	// The merge key in key position still merges.
+	var merged map[string]any
+	err := yaml.Unmarshal([]byte("base: &base {a: 1}\nmerged:\n  <<: *base\n  b: 2\n"), &merged)
+	assert.NoError(t, err)
+	assert.DeepEqual(t, map[string]any{
+		"base":   map[string]any{"a": 1},
+		"merged": map[string]any{"a": 1, "b": 2},
+	}, merged)
+}
+
 func TestUnmarshal(t *testing.T) {
 	for i, item := range unmarshalTests {
 		t.Run(fmt.Sprintf("test %d: %q", i, item.data), func(t *testing.T) {
