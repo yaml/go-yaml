@@ -38,6 +38,8 @@ type AliasDataContext interface {
 // LoadFile loads exactly one mapping document with the selected parser and
 // ordinary document-scoped aliases, without consulting external alias data.
 // Its copied nodes retain tags, styles, and scalar text; root merges are applied.
+// Copied nodes follow the KnownFields setting of the load.
+// Nodes that a plugin builds itself do not.
 type AliasDataServices struct {
 	NewNode     func(any) (*Node, error)
 	LoadFile    func(string) (*Node, error)
@@ -294,6 +296,8 @@ func copyAliasDataNode(root *Node, opts *Options) (*Node, error) {
 			}
 		}
 		copied := *node
+		// Copies are operation-local, so stamping them cannot race.
+		copied.knownFields = opts.KnownFields
 		copied.Content = nil
 		copied.Alias = nil
 		copies[node] = &copied

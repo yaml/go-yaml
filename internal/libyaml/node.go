@@ -203,6 +203,14 @@ type Node struct {
 
 	// Stream holds stream metadata (non-nil only when Kind == StreamNode).
 	Stream *Stream
+
+	// knownFields is set on nodes composed while KnownFields was enabled, so
+	// that [Node.Decode] can honor it in custom UnmarshalYAML methods.
+	//
+	// It must remain the last field and unexported: the leading fields have
+	// to stay a layout-compatible prefix for the v3 Node (see
+	// tryCallYAMLConstructor).
+	knownFields bool
 }
 
 // IsZero returns whether the node has all of its fields unset.
@@ -291,12 +299,20 @@ func (n *Node) SetString(s string) {
 
 // Decode decodes the node and stores its data into the value pointed to by v.
 //
+// If the node was loaded with KnownFields enabled (see Decoder.KnownFields and
+// WithKnownFields), Decode applies it as well.
+// Therefore, calling Decode from an UnmarshalYAML method keeps strict field
+// checking.
+// All other options have their default values, use [Node.Load] to set options
+// explicitly.
+//
 // See the documentation for [yaml.Unmarshal] for details about the
 // conversion of YAML into a Go value.
 //
 // [yaml.Unmarshal]: https://pkg.go.dev/go.yaml.in/yaml/v4#Unmarshal
 func (n *Node) Decode(v any) (err error) {
 	d := NewConstructor(DefaultOptions)
+	d.KnownFields = n.knownFields
 	defer handleErr(&err)
 	out := reflect.ValueOf(v)
 	if out.Kind() == reflect.Pointer && !out.IsNil() {
@@ -314,9 +330,13 @@ func (n *Node) Decode(v any) (err error) {
 // Explicit Alias-Data policies are rejected because composition has already
 // occurred and the policy cannot be applied to this node graph.
 //
-// Each call starts with fresh options, independently of an outer Loader.
-// Pass WithKnownFields() explicitly to check fields inside a custom
-// UnmarshalYAML implementation.
+// Unlike [Node.Decode], Load does not inherit anything from the load that
+// produced the node and applies exactly the given options.
+// This is useful inside custom UnmarshalYAML implementations that need to set
+// options independent of how they are being loaded.
+// The options apply to v only:
+// nested UnmarshalYAML methods that call Decode still apply the KnownFields
+// setting of the load that produced their node.
 // Parser settings do not apply to this already composed graph.
 //
 // Maps and pointers (to a struct, string, int, etc) are accepted as v

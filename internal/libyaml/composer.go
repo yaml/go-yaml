@@ -24,6 +24,7 @@ type Composer struct {
 	doneInit     bool
 	Textless     bool
 	streamNodes  bool     // enable stream node emission
+	knownFields  bool     // mark composed nodes with Node.knownFields
 	returnStream bool     // flag to return stream node next
 	atStreamEnd  bool     // at stream end
 	encoding     Encoding // stream encoding from STREAM_START
@@ -64,6 +65,7 @@ func (c *Composer) configureInput(r io.Reader) {
 		c.Parser.depthCheck = c.opts.DepthCheck
 		c.Parser.formatError = c.opts.FormatLoadError
 		c.Parser.indentConfig = c.opts.IndentConfig
+		c.knownFields = c.opts.KnownFields
 	}
 }
 
@@ -76,6 +78,7 @@ func NewComposerFromEvents(events []Event, opts *Options) *Composer {
 	}
 	c.Parser.SetInputEvents(events)
 	if opts != nil {
+		c.knownFields = opts.KnownFields
 		c.Parser.depthCheck = opts.DepthCheck
 		c.Parser.formatError = opts.FormatLoadError
 	}
@@ -162,10 +165,11 @@ func (c *Composer) node(kind Kind, tag, value string) *Node {
 	// Note: Nodes without explicit tags are left with empty tags.
 	// Tag defaulting happens in a separate stage via Resolver.
 	n := &Node{
-		Kind:  kind,
-		Tag:   tag,
-		Value: value,
-		Style: style,
+		Kind:        kind,
+		Tag:         tag,
+		Value:       value,
+		Style:       style,
+		knownFields: c.knownFields,
 	}
 	if !c.Textless {
 		n.Line = c.event.StartMark.Line
@@ -381,6 +385,15 @@ func (c *Composer) Destroy() {
 // SetStreamNodes enables or disables stream node emission.
 func (c *Composer) SetStreamNodes(enable bool) {
 	c.streamNodes = enable
+}
+
+// SetLegacyKnownFields sets the KnownFields mark for the nodes of all
+// documents composed from now on.
+//
+// This method is only provided for the legacy Decoder API, which can change
+// the setting after the composer was created.
+func (c *Composer) SetLegacyKnownFields(enable bool) {
+	c.knownFields = enable
 }
 
 // expect consumes an event from the event stream and

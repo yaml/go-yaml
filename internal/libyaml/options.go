@@ -177,6 +177,8 @@ func WithCompactSeqIndent(compact ...bool) Option {
 // When enabled, loading will return an error if the YAML input contains fields
 // that do not correspond to any fields in the target struct.
 // Calling WithKnownFields() enables checking; it is disabled by default.
+// When set while loading with Load or a Loader, the setting also applies to
+// [Node.Decode] calls made by UnmarshalYAML methods of the loaded values.
 func WithKnownFields(knownFields ...bool) Option {
 	if len(knownFields) > 1 {
 		return func(o *Options) error {
