@@ -543,7 +543,7 @@ func OptsYAML(yamlStr string) (Option, error) {
 				}
 			}
 		case string:
-			p, err := pluginRegistry.CreateShortForm(name, v)
+			p, err := pluginRegistry().CreateShortForm(name, v)
 			if err != nil {
 				return nil, err
 			}
