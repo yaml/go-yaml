@@ -2573,6 +2573,13 @@ func runDumpTest(t *testing.T, tc map[string]any) {
 			}
 			opts = append(opts, yaml.WithIndent(ind))
 		}
+		if lwRaw, exists := optsMap["line-width"]; exists {
+			lw, ok := lwRaw.(int)
+			if !ok {
+				t.Fatalf("line-width must be an int, got %T", lwRaw)
+			}
+			opts = append(opts, yaml.WithLineWidth(lw))
+		}
 	}
 
 	runEncodeValueTest(t, tc, func(value any) ([]byte, error) {

@@ -313,7 +313,8 @@ func (s *Serializer) isSimpleCollection(node *Node) bool {
 	estimatedLen := s.estimateFlowLength(node)
 	width := s.lineWidth
 	if width <= 0 {
-		width = 80 // Default width if not set
+		// Unlimited width (-1) falls back to 80 for flow collections.
+		width = 80
 	}
 	return estimatedLen > 0 && estimatedLen <= width
 }

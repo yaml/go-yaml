@@ -35,6 +35,12 @@
     value: This is a very long line of text that
       should wrap at a specific width
 
+- name: Line width 0 disables wrapping
+  text: |
+    value: "This is a very long line of text that is longer than eighty columns, so it would wrap at the default width"
+  width0-yaml: |
+    value: This is a very long line of text that is longer than eighty columns, so it would wrap at the default width
+
 - name: Compact sequence indentation
   text: |
     foo:
