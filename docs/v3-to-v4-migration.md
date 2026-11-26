@@ -239,11 +239,11 @@ items:
 ### Preserving v3 Behavior
 
 Use `yaml.WithV3Defaults()` to select v3 defaults.
-When replacing `Marshal`, also disable wrapping to match its line-width
-setting:
+When replacing `Marshal` or `NewEncoder`, also disable wrapping to match
+their line-width setting:
 
 ```go
-// Match the classic Marshal formatting settings.
+// Match the classic Marshal and NewEncoder output settings.
 data, err := yaml.Dump(&config,
     yaml.WithV3Defaults(),
     yaml.WithLineWidth(-1),
@@ -360,7 +360,8 @@ go-yaml -n testfile.yaml
 
 ### Issue: Output formatting changed
 
-**Solution:** Select v3 defaults and, when matching `Marshal`, disable wrapping:
+**Solution:** Select v3 defaults and, when matching `Marshal` or `NewEncoder`,
+disable wrapping:
 ```go
 output, err := yaml.Dump(&data,
     yaml.WithV3Defaults(),

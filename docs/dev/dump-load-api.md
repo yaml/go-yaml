@@ -61,8 +61,8 @@ With `Dump` and `Load`, you can choose your starting point:
 This means `Dump` and `Load` default to modern v4 formatting, but can easily
 select compatibility defaults while giving you control when you need it.
 Presets do not reproduce every legacy behavior.
-`Marshal` disables wrapping; use `WithLineWidth(-1)` after `WithV3Defaults()`
-when matching it.
+`Marshal` and `NewEncoder` disable wrapping; use `WithLineWidth(-1)` after
+`WithV3Defaults()` when matching them.
 `Load` validates trailing documents, unlike `Unmarshal`.
 
 ## API Overview
@@ -359,13 +359,16 @@ if err != nil {
 defer file.Close()
 
 dumper, _ := yaml.NewDumper(file,
-    yaml.WithV3Defaults(), yaml.WithPlugin(errorformatv4.Must()))
+    yaml.WithV3Defaults(),
+    yaml.WithLineWidth(-1),
+    yaml.WithPlugin(errorformatv4.Must()))
 dumper.Dump(&doc1)
 dumper.Dump(&doc2)
 dumper.Dump(&doc3)
 dumper.Close()
 // Import errorformatv4 from go.yaml.in/yaml/v4/plugin/errorformat/v4.
-// NewEncoder uses v3 output settings and v4 error formatting.
+// NewEncoder uses v3 output settings, unlimited line width and v4 error
+// formatting.
 ```
 
 ### Decode

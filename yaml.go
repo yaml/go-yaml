@@ -56,9 +56,10 @@ func WithV2Defaults() Option {
 
 // WithV3Defaults returns default options for go-yaml v3 compatibility.
 // [Unmarshal] uses these defaults.
-// [Marshal] uses them with the line width overridden to -1 (unlimited).
+// [Marshal] and [NewEncoder] use them with the line width overridden to -1
+// (unlimited).
 // [Dump] with this preset uses a line width of 80 unless overridden, so its
-// output may wrap differently from [Marshal].
+// output may wrap differently from [Marshal] and [NewEncoder].
 func WithV3Defaults() Option {
 	return Options(
 		WithIndent(4),
@@ -945,11 +946,17 @@ type Encoder struct {
 
 // NewEncoder returns a new encoder that writes to w.
 // It uses v3-compatible serialization options and the v4 error formatter.
+// Like [Marshal], it does not wrap long lines.
 // The Encoder should be closed after use to flush all data
 // to w.
 func NewEncoder(w io.Writer) *Encoder {
 	// NewDumper won't return an error with these defaults.
-	dumper, _ := libyaml.NewDumper(w, WithV3Defaults(), WithPlugin(errorformatv4.Must()))
+	// Use unlimited line width to match the v3 Encoder and Marshal.
+	dumper, _ := libyaml.NewDumper(w,
+		WithV3Defaults(),
+		WithLineWidth(-1),
+		WithPlugin(errorformatv4.Must()),
+	)
 	return &Encoder{dumper: dumper}
 }
 

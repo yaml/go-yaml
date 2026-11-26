@@ -118,8 +118,9 @@
 //
 // [NewLoader] and [NewDumper] use v4 defaults (2-space indentation, compact
 // sequences). The older [Marshal] and [Unmarshal] functions use v3 defaults
-// for backward compatibility; Marshal also disables line wrapping.
+// for backward compatibility.
 // [NewEncoder] uses v3 output settings with v4 error formatting.
+// Like v3, [Marshal] and [NewEncoder] do not wrap long lines.
 // Classic APIs remain supported.
 // Use the options system to select different version defaults if needed.
 package yaml

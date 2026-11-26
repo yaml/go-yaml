@@ -2651,6 +2651,24 @@ func TestEncoderMultipleDocuments(t *testing.T) {
 	assert.Equal(t, "a: b\n---\nc: d\n", buf.String())
 }
 
+// Encoder must not wrap long lines, like the v3 Encoder and Marshal.
+// The legacy indentation setters must not reintroduce wrapping either.
+func TestEncoderNoLineWrapping(t *testing.T) {
+	long := "a single line of plain text that is longer than eighty" +
+		" columns, so a line width of 80 would fold it"
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+	enc.CompactSeqIndent()
+	err := enc.Encode(map[string]string{"a": long})
+	assert.NoError(t, err)
+	err = enc.Encode(map[string][]string{"b": {long}})
+	assert.NoError(t, err)
+	err = enc.Close()
+	assert.NoError(t, err)
+	assert.Equal(t, "a: "+long+"\n---\nb:\n- "+long+"\n", buf.String())
+}
+
 func TestEncoderWriteError(t *testing.T) {
 	enc := yaml.NewEncoder(errorWriter{})
 	err := enc.Encode(map[string]string{"a": "b"})
