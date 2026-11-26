@@ -2602,6 +2602,94 @@
         - {kind: Scalar, text: b, head: '# head'}
         - {kind: Scalar, tag: '!!int', text: '2'}
 
+# CR LF is a single line break for comments too
+- node-test:
+    name: head comment lines with CRLF breaks
+    encode: false
+    yaml: "a: 1\r\n# c1\r\n# c2\r\nb: 2\r\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: a}
+        - {kind: Scalar, tag: '!!int', text: '1'}
+        - {kind: Scalar, text: b, head: "# c1\n# c2"}
+        - {kind: Scalar, tag: '!!int', text: '2'}
+
+- node-test:
+    name: indented head comment lines with CRLF breaks
+    encode: false
+    yaml: "o:\r\n  # c1\r\n  # c2\r\n  x: 1\r\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: o}
+        - kind: Mapping
+          content:
+          - {kind: Scalar, text: x, head: "# c1\n# c2"}
+          - {kind: Scalar, tag: '!!int', text: '1'}
+
+- node-test:
+    name: head comment with an empty line and CRLF breaks
+    encode: false
+    yaml: "a: 1\r\n\r\n# c1\r\n\r\n# c2\r\nb: 2\r\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: a}
+        - {kind: Scalar, tag: '!!int', text: '1'}
+        - {kind: Scalar, text: b, head: "# c1\n\n# c2"}
+        - {kind: Scalar, tag: '!!int', text: '2'}
+
+- node-test:
+    name: foot comment lines with CRLF breaks
+    encode: false
+    yaml: "a:\r\n  - 1\r\n  # f1\r\n  # f2\r\n"
+    node:
+      kind: Document
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: a}
+        - kind: Sequence
+          content:
+          - {kind: Scalar, tag: '!!int', text: '1', foot: "# f1\n# f2"}
+
+- node-test:
+    name: all comment types on scalar with CRLF breaks
+    encode: false
+    yaml: "# One\r\n# Two\r\ntrue # Three\r\n# Four\r\n# Five\r\n"
+    node:
+      kind: Document
+      content:
+      - kind: Scalar
+        tag: '!!bool'
+        text: 'true'
+        head: "# One\n# Two"
+        line: '# Three'
+        foot: "# Four\n# Five"
+
+- node-test:
+    name: foot comments of two levels with CRLF breaks
+    encode: false
+    yaml: "c:\r\n  d: 3\r\n# c2\r\n # k1\r\n\r\n"
+    node:
+      kind: Document
+      foot: '# k1'
+      content:
+      - kind: Mapping
+        content:
+        - {kind: Scalar, text: c}
+        - kind: Mapping
+          content:
+          - {kind: Scalar, text: d, foot: '# c2'}
+          - {kind: Scalar, tag: '!!int', text: '3'}
+
 # Nested empty collections
 - node-test:
     name: empty mapping in mapping
