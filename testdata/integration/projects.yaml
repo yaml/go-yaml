@@ -1,0 +1,146 @@
+# Downstream projects and report metadata. Execution lives in
+# util/integration/<project>.bash. Set skip: true to omit default execution
+# while retaining the project in listings and the generated report.
+actionlint:
+  name: Actionlint
+  repo: rhysd/actionlint
+  vref: main
+  star: 4367
+  note: An rc.3-to-rc.6 upgrade incompatibility was reported in https://github.com/ossf/scorecard/issues/5278.
+  time: 0m 15s
+adguard-home:
+  skip: true  # too slow
+  name: AdGuard Home
+  repo: AdguardTeam/AdGuardHome
+  vref: master
+  star: 37834
+  time: 7m 1s
+apptainer:
+  name: Apptainer
+  repo: apptainer/apptainer
+  vref: main
+  star: 2007
+  time: 1m 8s
+atlantis:
+  name: Atlantis
+  repo: runatlantis/atlantis
+  vref: main
+  star: 9337
+  time: 3m 10s
+authelia:
+  skip: true  # too slow
+  name: Authelia
+  repo: authelia/authelia
+  vref: master
+  star: 29438
+  time: 4m 48s
+cog:
+  name: Cog
+  repo: replicate/cog
+  vref: main
+  star: 9492
+  time: 1m 14s
+compose:
+  name: Docker Compose
+  repo: docker/compose
+  vref: main
+  star: 38534
+  time: 0m 40s
+dasel:
+  name: Dasel
+  repo: tomwright/dasel
+  vref: master
+  star: 8053
+  time: 0m 40s
+ddev:
+  skip: true  # too slow
+  name: DDEV
+  repo: ddev/ddev
+  vref: main
+  star: 3933
+  time: 23m 18s
+doco-cd:
+  skip: true  # too slow
+  name: doco-cd
+  repo: kimdre/doco-cd
+  vref: main
+  star: 1753
+  time: 10m 4s
+dubbo-go:
+  skip: true  # too slow
+  name: Apache Dubbo-go
+  repo: apache/dubbo-go
+  vref: main
+  star: 4973
+  time: 7m 41s
+evcc:
+  name: evcc
+  repo: evcc-io/evcc
+  vref: master
+  star: 7460
+  time: 3m 18s
+gardener:
+  skip: true  # too slow
+  name: Gardener
+  repo: gardener/gardener
+  vref: master
+  star: 3479
+  note: Requires rc.6 but replaces it with rc.2.
+  time: 39m 11s
+gitea:
+  name: Gitea
+  repo: go-gitea/gitea
+  vref: main
+  star: 58762
+  note: Uses a commit after rc.6.
+  time: 0m 4s
+incus:
+  name: Incus
+  repo: lxc/incus
+  vref: main
+  star: 6527
+  time: 1m 42s
+ko:
+  name: ko
+  repo: google/ko
+  vref: main
+  star: 8579
+  time: 2m 1s
+loki:
+  skip: true  # too slow
+  name: Grafana Loki
+  repo: grafana/loki
+  vref: main
+  star: 29093
+  time: 12m 43s
+osv-scanner:
+  name: OSV-Scanner
+  repo: google/osv-scanner
+  vref: main
+  star: 11324
+  time: 1m 37s
+talos:
+  skip: true  # too slow
+  name: Talos
+  repo: siderolabs/talos
+  vref: main
+  star: 11431
+terramate:
+  skip: true  # too slow
+  name: Terramate
+  repo: terramate-io/terramate
+  vref: main
+  star: 3643
+  time: 30m 22s
+updatecli:
+  skip: true  # too slow
+  name: Updatecli
+  repo: updatecli/updatecli
+  vref: main
+  star: 1005
+yq:
+  name: yq
+  repo: mikefarah/yq
+  vref: master
+  star: 16202
+  time: 0m 44s
