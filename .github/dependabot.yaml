@@ -24,3 +24,26 @@ updates:
     default-days: 10
   schedule:
     interval: weekly
+
+# Keep CI workflow dependencies current on maintained legacy branches.
+- package-ecosystem: github-actions
+  directory: /
+  target-branch: v2
+  groups:
+    actions:
+      patterns: ['*']
+  cooldown:
+    default-days: 10
+  schedule:
+    interval: weekly
+
+- package-ecosystem: github-actions
+  directory: /
+  target-branch: v3
+  groups:
+    actions:
+      patterns: ['*']
+  cooldown:
+    default-days: 10
+  schedule:
+    interval: weekly
