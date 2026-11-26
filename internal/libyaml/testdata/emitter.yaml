@@ -24,6 +24,7 @@
 #          * indent    - Integer (2-9), indentation width in spaces
 #          * width     - Integer, line width (-1 for unlimited, or positive number)
 #          * unicode   - Boolean, enable Unicode character output
+#          * compact_sequence_indent - Boolean, count '- ' as part of sequence indentation
 #   yaml - Input YAML string (for roundtrip type only)
 #   want - Expected result (format varies by test type)
 #
@@ -880,3 +881,84 @@
     want:
     - '&::a::b'
     - '*::a::b'
+
+# Regression tests for https://github.com/yaml/go-yaml/issues/505
+- emit-config:
+    name: Compact sequence in sequence mapping with indent 3
+    conf:
+      indent: 3
+      compact_sequence_indent: true
+    data:
+    - STREAM_START_EVENT:
+        encoding: UTF8_ENCODING
+    - DOCUMENT_START_EVENT:
+        implicit: true
+    - SEQUENCE_START_EVENT:
+        implicit: true
+        style: BLOCK_SEQUENCE_STYLE
+    - MAPPING_START_EVENT:
+        implicit: true
+        style: BLOCK_MAPPING_STYLE
+    - SCALAR_EVENT:
+        value: a
+        implicit: true
+        quoted_implicit: true
+        style: PLAIN_SCALAR_STYLE
+    - SEQUENCE_START_EVENT:
+        implicit: true
+        style: BLOCK_SEQUENCE_STYLE
+    - SCALAR_EVENT:
+        value: 'null'
+        implicit: true
+        style: PLAIN_SCALAR_STYLE
+    - SEQUENCE_END_EVENT
+    - MAPPING_END_EVENT
+    - SEQUENCE_END_EVENT
+    - DOCUMENT_END_EVENT:
+        implicit: true
+    - STREAM_END_EVENT
+    want: |
+      - a:
+        - null
+
+- emit-config:
+    name: Compact sequence in nested sequence mapping with indent 5
+    conf:
+      indent: 5
+      compact_sequence_indent: true
+    data:
+    - STREAM_START_EVENT:
+        encoding: UTF8_ENCODING
+    - DOCUMENT_START_EVENT:
+        implicit: true
+    - SEQUENCE_START_EVENT:
+        implicit: true
+        style: BLOCK_SEQUENCE_STYLE
+    - SEQUENCE_START_EVENT:
+        implicit: true
+        style: BLOCK_SEQUENCE_STYLE
+    - MAPPING_START_EVENT:
+        implicit: true
+        style: BLOCK_MAPPING_STYLE
+    - SCALAR_EVENT:
+        value: a
+        implicit: true
+        quoted_implicit: true
+        style: PLAIN_SCALAR_STYLE
+    - SEQUENCE_START_EVENT:
+        implicit: true
+        style: BLOCK_SEQUENCE_STYLE
+    - SCALAR_EVENT:
+        value: 'null'
+        implicit: true
+        style: PLAIN_SCALAR_STYLE
+    - SEQUENCE_END_EVENT
+    - MAPPING_END_EVENT
+    - SEQUENCE_END_EVENT
+    - SEQUENCE_END_EVENT
+    - DOCUMENT_END_EVENT:
+        implicit: true
+    - STREAM_END_EVENT
+    want: |
+      - - a:
+          - null

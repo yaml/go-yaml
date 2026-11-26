@@ -2455,6 +2455,7 @@ func (emitter *Emitter) increaseIndentCompact(flow, indentless bool, compact_seq
 			emitter.indent += 2
 		} else {
 			// Everything else aligns to the chosen indentation.
+			parentIndent := emitter.indent
 			emitter.indent = emitter.BestIndent *
 				((emitter.indent + emitter.BestIndent) / emitter.BestIndent)
 			if compact_seq {
@@ -2467,7 +2468,14 @@ func (emitter *Emitter) increaseIndentCompact(flow, indentless bool, compact_seq
 				// will be correct because we need to subtract
 				// 2 to account for the - at the beginning of
 				// the sequence node.
-				emitter.indent = emitter.indent - 2
+				//
+				// Clamp to parentIndent when the grid step is
+				// only 1 column so the sequence never moves to
+				// the left of its enclosing mapping.
+				emitter.indent -= 2
+				if emitter.indent < parentIndent {
+					emitter.indent = parentIndent
+				}
 			}
 		}
 	}

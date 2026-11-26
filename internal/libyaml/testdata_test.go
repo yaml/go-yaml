@@ -296,11 +296,12 @@ type TokenSpec struct {
 
 // EmitterConfig specifies emitter configuration
 type EmitterConfig struct {
-	Canonical bool   `yaml:"canonical"`
-	Indent    int    `yaml:"indent"`
-	Width     int    `yaml:"width"`
-	Unicode   bool   `yaml:"unicode"`
-	LineBreak string `yaml:"line_break"`
+	Canonical             bool   `yaml:"canonical"`
+	Indent                int    `yaml:"indent"`
+	Width                 int    `yaml:"width"`
+	Unicode               bool   `yaml:"unicode"`
+	LineBreak             string `yaml:"line_break"`
+	CompactSequenceIndent bool   `yaml:"compact_sequence_indent"`
 }
 
 // SetupSpec specifies test setup
@@ -902,6 +903,9 @@ func ConfigureEmitter(emitter *Emitter, config EmitterConfig) {
 		case "CRLF":
 			emitter.SetLineBreak(CRLN_BREAK)
 		}
+	}
+	if config.CompactSequenceIndent {
+		emitter.CompactSequenceIndent = true
 	}
 }
 
