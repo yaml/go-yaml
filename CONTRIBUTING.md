@@ -184,6 +184,11 @@ The repository's makefile (`GNUmakefile`) provides a number of useful targets:
 
 ## Preparing a GitHub Release
 
+The CLI is a nested module in the same repository.
+For coordinated library/CLI releases, follow the
+[CLI module release procedure](cmd/go-yaml/README.md#coordinated-releases),
+including updating the CLI library pin and tagging both modules.
+
 Write and review the announcement in `docs/releases/vVERSION.md`.
 After the annotated tag is available on GitHub, run from the repository root:
 

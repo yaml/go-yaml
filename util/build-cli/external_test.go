@@ -6,6 +6,8 @@ package main
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/json"
+	"io"
 	"net/url"
 	"os"
 	"os/exec"
@@ -124,6 +126,62 @@ func Register() error {
 		if err := os.WriteFile(filepath.Join(directory, version+suffix),
 			contents, 0o644); err != nil {
 			t.Fatal(err)
+		}
+	}
+	// Populate the isolated proxy with the CLI's pinned dependencies before
+	// disabling external access. Fixture plugin modules remain isolated.
+	sums, err := os.ReadFile(filepath.Join("..", "..", "cmd", "go-yaml", "go.sum"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	args := []string{"mod", "download", "-json"}
+	seen := map[string]bool{}
+	for _, line := range strings.Split(string(sums), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) != 3 {
+			continue
+		}
+		spec := fields[0] + "@" + strings.TrimSuffix(fields[1], "/go.mod")
+		if !seen[spec] {
+			args = append(args, spec)
+			seen[spec] = true
+		}
+	}
+	download := exec.Command("go", args...)
+	download.Dir = t.TempDir()
+	download.Env = buildEnvironment("off")
+	data, err := download.Output()
+	if err != nil {
+		t.Fatalf("download CLI dependencies: %v", err)
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	for {
+		var dependency struct{ Path, Version, Info, GoMod, Zip string }
+		err := decoder.Decode(&dependency)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Module-cache paths already contain Go's uppercase escaping.
+		marker := string(filepath.Separator) + "cache" + string(filepath.Separator) + "download" + string(filepath.Separator)
+		for _, source := range []string{dependency.Info, dependency.GoMod, dependency.Zip} {
+			_, relative, ok := strings.Cut(source, marker)
+			if !ok {
+				t.Fatalf("unexpected module cache path %q", source)
+			}
+			target := filepath.Join(proxy, relative)
+			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			contents, err := os.ReadFile(source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(target, contents, 0o644); err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 	t.Setenv("GOPROXY", (&url.URL{Scheme: "file", Path: proxy}).String())

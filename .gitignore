@@ -5,3 +5,5 @@
 /yts/testdata/
 /go-yaml
 *.so
+
+.go-yaml/
