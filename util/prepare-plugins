@@ -136,10 +136,9 @@ remove_tree($stage);
 make_path($stage);
 copy_tree("$root/cmd/go-yaml", $stage);
 
-run_go($stage, 'mod', 'init', 'go.yaml.in/yaml/v4/plugin-cli');
+run_go($stage, 'mod', 'edit', '-module=go.yaml.in/yaml/v4/plugin-cli');
 run_go($stage, 'mod', 'edit', '-go=1.24');
 run_go($stage, 'mod', 'edit', "-replace=go.yaml.in/yaml/v4=$root");
-run_go($stage, 'get', 'go.yaml.in/yaml/v4@v4.0.0-rc.6');
 for my $plugin (@plugins) {
     write_file("$stage/$plugin->{api}.go", $plugin->{source});
     run_go($stage, 'mod', 'edit',

@@ -460,10 +460,9 @@ func stageNative(root, stage, goTool string) error {
 		return err
 	}
 	for _, args := range [][]string{
-		{"mod", "init", "go.yaml.in/yaml/v4/config-cli"},
+		{"mod", "edit", "-module=go.yaml.in/yaml/v4/config-cli"},
 		{"mod", "edit", "-go=1.18"},
 		{"mod", "edit", "-replace=go.yaml.in/yaml/v4=" + root},
-		{"get", "go.yaml.in/yaml/v4@v4.0.0-rc.6"},
 		{"mod", "tidy"},
 	} {
 		cmd := exec.Command(goTool, args...)

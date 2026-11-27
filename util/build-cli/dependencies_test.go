@@ -76,9 +76,16 @@ func TestCoreConsumersWithoutTextTemplate(t *testing.T) {
 				return out
 			}
 			for _, dependency := range strings.Fields(string(runGo("list", "-deps", "."))) {
+				if !strings.HasPrefix(dependency, "go.yaml.in/yaml/v4") && strings.Contains(strings.Split(dependency, "/")[0], ".") {
+					t.Fatalf("core consumer imports external dependency %s", dependency)
+				}
 				if dependency == "text/template" {
 					t.Fatal("core consumer imports text/template, preventing dead-code elimination")
 				}
+			}
+			modules := strings.Split(strings.TrimSpace(string(runGo("list", "-m", "-f", "{{.Path}}", "all"))), "\n")
+			if len(modules) != 2 || modules[0] != "consumer" || modules[1] != "go.yaml.in/yaml/v4" {
+				t.Fatalf("core module graph is not isolated: %v", modules)
 			}
 			binary := filepath.Join(dir, "consumer")
 			runGo("build", "-o", binary, ".")
@@ -86,5 +93,22 @@ func TestCoreConsumersWithoutTextTemplate(t *testing.T) {
 				t.Fatalf("consumer: %v\n%s", err, out)
 			}
 		})
+	}
+}
+
+func TestCLIWorkspaceUsesCheckout(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("go", "list", "-m", "-f", "{{.Dir}}", "go.yaml.in/yaml/v4")
+	cmd.Dir = filepath.Join(root, "cmd", "go-yaml")
+	cmd.Env = buildEnvironment(filepath.Join(root, "go.work"))
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("resolve CLI library: %v\n%s", err, output)
+	}
+	if filepath.Clean(strings.TrimSpace(string(output))) != root {
+		t.Fatalf("CLI uses library %q instead of checkout %s", output, root)
 	}
 }

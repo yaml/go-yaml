@@ -31,7 +31,7 @@ jobs:
         - language: actions
           build-mode: none
         - language: go
-          build-mode: autobuild
+          build-mode: manual
 
     steps:
     - name: Checkout repository
@@ -46,6 +46,10 @@ jobs:
       with:
         languages: ${{ matrix.language }}
         build-mode: ${{ matrix.build-mode }}
+
+    - name: Build library and CLI modules
+      if: matrix.language == 'go'
+      run: make shell CMD='go build ./... ./cmd/go-yaml/...'
 
     - name: Perform CodeQL Analysis
       # yamllint disable-line rule:line-length

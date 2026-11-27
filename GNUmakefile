@@ -98,7 +98,7 @@ SHELL-SCRIPTS = \
 
 COVER-TESTS := \
  . \
- ./cmd/... \
+ ./cmd/go-yaml/... \
  ./internal/... \
 
 # v=1 for verbose tests; release uses v as its version.
@@ -133,7 +133,7 @@ test-main: $(GO-DEPS)
 	@echo 'ALL MAIN FILES PASS'
 
 test-cmd: $(GO-DEPS)
-	go test ./cmd/...$(TEST-OPTS)
+	GOWORK=$(CURDIR)/go.work go test ./cmd/go-yaml/...$(TEST-OPTS)
 	@echo 'ALL CMD FILES PASS'
 
 test-internal: $(GO-DEPS)
@@ -141,7 +141,7 @@ test-internal: $(GO-DEPS)
 	@echo 'ALL INTERNAL FILES PASS'
 
 test-cover: $(GO-DEPS)
-	go test . $(COVER-TESTS) -vet=off --cover$(TEST-OPTS)
+	GOWORK=$(CURDIR)/go.work go test . $(COVER-TESTS) -vet=off --cover$(TEST-OPTS)
 
 test-yts: $(GO-DEPS) $(YTS-DIR)
 	go test ./yts$(TEST-OPTS)
@@ -169,7 +169,7 @@ get-test-data: $(YTS-DIR)
 golangci-lint-install: $(GOLANGCI-LINT)
 
 # Keep related checkouts and their fixtures outside core checks.
-GO-PACKAGES := . ./cmd/... ./internal/... ./plugin/... ./yts/... ./example/... \
+GO-PACKAGES := . ./cmd/go-yaml/... ./internal/... ./plugin/... ./yts/... ./example/... \
   ./util/build-cli/...
 export GOLANGCI_LINT_CACHE := $(CURDIR)/.cache/golangci-lint
 
@@ -177,13 +177,25 @@ fmt: $(GOLANGCI-LINT-VERSIONED)
 	$< fmt $(GO-FILES)
 
 lint: $(GOLANGCI-LINT-VERSIONED)
-	$< run $(GO-PACKAGES)
+	GOWORK=$(CURDIR)/go.work $< run $(GO-PACKAGES)
 
 lint-yaml: $(UV)
 	$(UV) tool run --from yamllint==$(YAMLLINT-VERSION) yamllint .
 
+# Tidy the CLI against this checkout without publishing a local replace.
+# go mod tidy does not use workspace replacements.
 tidy: $(GO-DEPS)
-	go mod tidy
+	GOWORK=off go mod tidy
+	mkdir -p .cache/cli-tidy
+	cp cmd/go-yaml/go.mod cmd/go-yaml/go.sum .cache/cli-tidy/
+	cd cmd/go-yaml && GOWORK=off go mod edit \
+	  -modfile=$(CURDIR)/.cache/cli-tidy/go.mod \
+	  -replace=go.yaml.in/yaml/v4=$(CURDIR)
+	cd cmd/go-yaml && GOWORK=off go mod tidy \
+	  -modfile=$(CURDIR)/.cache/cli-tidy/go.mod
+	go mod edit -modfile=.cache/cli-tidy/go.mod \
+	  -dropreplace=go.yaml.in/yaml/v4
+	cp .cache/cli-tidy/go.mod .cache/cli-tidy/go.sum cmd/go-yaml/
 
 # Pass configuration paths as environment values, not shell source.
 export GO_YAML_BUILD_CONFIG = $(CONFIG)
@@ -199,11 +211,11 @@ ifneq ($(strip $(CONFIG)$(PLUGIN)$(PLUGIN-PACKAGE)),)
 cli: $(PERL)
 	go run ./util/build-cli
 else
-	go build -o $(CLI-BINARY) ./cmd/go-yaml
+	GOWORK=$(CURDIR)/go.work go build -o $(CLI-BINARY) ./cmd/go-yaml
 endif
 
 $(CLI-BINARY): $(GO)
-	go build -o $@ ./cmd/$@
+	GOWORK=$(CURDIR)/go.work go build -o $@ ./cmd/$@
 
 # Create release notes as a draft after the annotated tag is published.
 export GO_YAML_RELEASE_VERSION = $(v)

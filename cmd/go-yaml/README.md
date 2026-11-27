@@ -10,6 +10,50 @@ Below is a summary of its capabilities:
 See [LICENSE](../../LICENSE) and [NOTICE](../../NOTICE) for licensing details,
 including the MIT license retained by the listed libyaml-derived files.
 
+## Module layout and local builds
+
+The CLI has its own Go module in this directory, within the library repository.
+TUI and clipboard dependencies belong only to this module.
+The library's root module remains dependency-free.
+The checked-in root `go.work` uses both modules, so local CLI builds and tests
+always use the library source from the same checkout.
+
+Run these commands from the repository root:
+
+```sh
+make cli
+make test-cmd
+make test-cli-build
+make tidy
+```
+
+Within `make shell`, use `go test ./cmd/go-yaml/...` for the CLI.
+A root `go test ./...` does not include nested modules.
+Use `GOWORK=off` when checking the library independently of the CLI.
+`make tidy` maintains both modules, using a temporary local library replacement
+for the CLI without recording that replacement in its published `go.mod`.
+Configured builds copy the CLI module's dependency pins and replace the library
+with the same checkout.
+
+### Coordinated releases
+
+Both modules stay in this repository and should be released from the same commit.
+Before tagging, set the CLI's library requirement to the intended library
+release version and run the combined checks above.
+Publish the library version first, then the CLI module version.
+Go requires nested-module tags with the `cmd/go-yaml/` prefix, for example
+`cmd/go-yaml/v0.1.0`; the CLI module path has no trailing major-version suffix,
+so it uses v0/v1 module versions independently of the library's v4 numbering.
+The library requirement ties each CLI release to its matching library release.
+
+The package installation path remains `go.yaml.in/yaml/v4/cmd/go-yaml`.
+The first nested CLI release must depend on a library version containing this
+module split: older library archives still include the CLI package and produce
+an ambiguous-import error outside the workspace.
+Until that coordinated release, build this development version with `make cli`.
+The temporary library pin refers to the published base commit; it is replaced
+by the workspace during development and must be advanced before release.
+
 ## Features
 
 ### YAML Parsing and Encoding
@@ -285,3 +329,51 @@ Typed loading requires YAML text input and cannot be combined with token,
 event, node, or preserved YAML (`-Y`) output.
 Use `--from=yaml` when input resembles a CLI inspection representation.
 See [reporting typed issues](../../docs/reporting.md) for fixture examples.
+
+## Interactive workbench
+
+Run `go-yaml` without arguments, or add `--tui`, to open the terminal UI.
+Piped input initializes the input panel.
+A controlling terminal is required.
+
+Use Tab/Shift-Tab to navigate panels and the top Config and Help buttons.
+Click buttons or activate them with Enter or Space.
+Config starts hidden; Ctrl-G or the Config button toggles it.
+Escape closes an open dropdown or dialog first, then configuration.
+Help toggles a third pane in the same position as Config.
+Config and Help replace each other; Escape closes either pane.
+The selector beside the OUTPUT title changes output mode without opening Config.
+The Config panel’s Reset button restores Columns layout, YAML output, live run,
+and default options, clearing advanced arguments while preserving input text.
+Activate Reset with a mouse click or select it and press Enter/Space.
+Boolean controls show `[+]` for true, `[-]` for false, and `[ ]` for default.
+Ctrl-E in input opens `$VISUAL`/`$EDITOR` (falling back to vi).
+Ctrl-R runs immediately, Ctrl-S copies and shows the CLI command, and Ctrl-L cycles layouts.
+Ctrl-Q saves and exits; Escape closes dialogs.
+Ctrl-C prompts for a second Ctrl-C to save and exit.
+Any other key or mouse action cancels the quit prompt.
+Ctrl-V remains available for paste; use End for end-of-line navigation.
+Function keys are not bound.
+Edits trigger live runs after 300 milliseconds.
+Click `[Clear]` beside INPUT to empty and save the input.
+Clearing immediately refreshes output when live run is enabled.
+
+The configuration panel updates the saved YAML session.
+Additional CLI arguments can be stored in its `args` sequence.
+Use `-C` in that sequence to select an existing YAML options file.
+Input and session settings are saved in the launch directory's ignored
+`.go-yaml/` directory and restored on startup.
+
+The command appears in a bordered box confirming clipboard success.
+If clipboard access fails, the box reports that failure and still shows the command.
+
+Configuration is saved as YAML without a version field, with named `layout` and `output`
+selections and comments listing every available choice.
+The `options` mapping always includes every boolean control.
+Blank values inherit defaults; `true` and `false` set explicit overrides.
+Ctrl-E in configuration opens `.go-yaml/session.yaml` in Vim.
+Option changes always rerun the command, including changes made in Vim.
+Live mode controls automatic reruns for input edits.
+Layout changes only redraw the interface.
+Invalid edits remain on disk for repair and prevent configuration autosave.
+Escape closes configuration.

@@ -391,6 +391,26 @@ func buildOptions(configFile string, optionFlags []string, pluginSpecs ...string
 
 // main reads YAML from stdin, parses it, and outputs the node structure
 func main() {
+	tui := len(os.Args) == 1
+	var tuiArgs []string
+	help := false
+	for _, arg := range os.Args[1:] {
+		if arg == "--tui" {
+			tui = true
+		} else {
+			tuiArgs = append(tuiArgs, arg)
+		}
+		if arg == "--help" || arg == "-h" {
+			help = true
+		}
+	}
+	if tui && !help {
+		if err := startTUI(tuiArgs); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+
 	// Initialize option registry
 	initOptionRegistry()
 	if err := registerCompiledPlugins(); err != nil {
@@ -863,6 +883,7 @@ Configuration:
   -C, --config     Load options from YAML config file
 
 Other Options:
+  --tui           Open interactive workbench (also the default with no args)
   -h, --help       Show this help information
 
 `, version)
