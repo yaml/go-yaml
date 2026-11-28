@@ -2112,6 +2112,14 @@
           * first item
           * second item
 
+- node-roundtrip:
+    name: literal keep before trailing comment
+    yaml: "key: |+\n  text\n\n# trail\n"
+
+- node-roundtrip:
+    name: folded keep before trailing comment
+    yaml: "key: >+\n  text\n\n\n# trail\n"
+
 - node-test:
     name: folded long more-indented line
     yaml: |
