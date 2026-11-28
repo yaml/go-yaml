@@ -133,6 +133,10 @@ type Emitter struct {
 	space_above bool // Is there's an empty line above?
 	foot_indent int  // The indent used to write the foot comment above, or -1 if none.
 
+	// [Go] Was the last output the content of a keep ('+') block scalar?
+	// Its trailing line breaks are part of the value.
+	keep_breaks bool
+
 	// Anchor analysis.
 	anchor_data struct {
 		anchor []byte // The anchor value.
@@ -584,8 +588,13 @@ func (emitter *Emitter) emitDocumentEnd(event *Event) error {
 			Message: "expected DOCUMENT-END",
 		}
 	}
-	// [Go] Force document foot separation.
-	emitter.foot_indent = 0
+	// [Go] Force document foot separation, unless a keep block scalar
+	// already ends the document: an extra line break would be read back
+	// as part of its value.
+	if !emitter.keep_breaks {
+		emitter.foot_indent = 0
+	}
+	emitter.keep_breaks = false
 	if err := emitter.processFootComment(); err != nil {
 		return err
 	}
@@ -1296,6 +1305,7 @@ func (emitter *Emitter) processFootComment() error {
 		return err
 	}
 	emitter.FootComment = emitter.FootComment[:0]
+	emitter.keep_breaks = false
 	emitter.foot_indent = emitter.indent
 	if emitter.foot_indent < 0 {
 		emitter.foot_indent = 0
@@ -1742,6 +1752,7 @@ func (emitter *Emitter) writeIndicator(indicator []byte, need_whitespace, is_whi
 	emitter.whitespace = is_whitespace
 	emitter.indention = (emitter.indention && is_indention)
 	emitter.OpenEnded = false
+	emitter.keep_breaks = false
 	return nil
 }
 
@@ -2150,6 +2161,7 @@ func (emitter *Emitter) writeBlockScalarHints(value []byte) error {
 			return err
 		}
 	}
+	emitter.keep_breaks = chomp_hint[0] == '+'
 	return nil
 }
 
